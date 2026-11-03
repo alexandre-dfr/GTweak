@@ -13,6 +13,12 @@ Usage :
         [--squelette FICHIER]
 
 --squelette écrit le squelette du tableau de couverture (décision vide).
+
+Prérequis : PyYAML (6.x) installé dans l'interpréteur de base, par exemple
+`python -m pip install pyyaml` lancé en administrateur ou dans une
+installation Python propre. L'option -I (mode isolé) ignore le dossier
+site de l'utilisateur et les variables PYTHON*, donc un `pip install --user`
+ne suffit pas.
 """
 import argparse
 import collections

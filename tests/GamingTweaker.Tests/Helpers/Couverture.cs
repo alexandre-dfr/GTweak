@@ -36,20 +36,61 @@ namespace GamingTweaker.Tests.Helpers
 
         public static IReadOnlyList<LigneCouverture> Lire() => Parse(File.ReadAllText(Chemin(), Encoding.UTF8));
 
-        /// <summary>Lit le premier tableau dont l'en-tête est celui de la couverture.</summary>
+        /// <summary>
+        /// Lit le tableau dont l'en-tête est celui de la couverture. Le tableau s'étend jusqu'au titre
+        /// suivant (ligne « # ») ou à la fin du fichier ; une ligne vide suivie d'autres lignes, ou une
+        /// ligne qui n'est pas une ligne de tableau, lève une exception au lieu d'arrêter la lecture.
+        /// </summary>
         public static List<LigneCouverture> Parse(string markdown)
         {
             var lignes = markdown.Replace("\r\n", "\n").Split('\n');
             int i = Array.FindIndex(lignes, l => l.Trim() == Entete);
             if (i < 0) throw new InvalidDataException("En-tête du tableau de couverture introuvable.");
+            if (i + 1 >= lignes.Length || !Regex.IsMatch(lignes[i + 1].Trim(), @"^\|(\s*-+\s*\|){5}$"))
+                throw new InvalidDataException("Ligne de séparation du tableau de couverture absente.");
+            int fin = i + 2;
+            while (fin < lignes.Length && !lignes[fin].TrimStart().StartsWith("#")) fin++;
+            int dernier = fin - 1;
+            while (dernier > i + 1 && string.IsNullOrWhiteSpace(lignes[dernier])) dernier--;
+
             var res = new List<LigneCouverture>();
-            for (i += 2; i < lignes.Length && lignes[i].TrimStart().StartsWith("|"); i++)
+            for (int k = i + 2; k <= dernier; k++)
             {
-                var c = lignes[i].Trim().Trim('|').Split('|').Select(s => s.Trim()).ToArray();
-                if (c.Length != 5) throw new InvalidDataException("Ligne mal formée (" + c.Length + " colonnes) : " + lignes[i]);
+                var t = lignes[k].Trim();
+                if (!t.StartsWith("|") || !t.EndsWith("|"))
+                    throw new InvalidDataException("Ligne " + (k + 1) + " : ligne vide ou hors tableau à l'intérieur du tableau de couverture : « " + lignes[k] + " »");
+                var c = t.Substring(1, t.Length - 2).Split('|').Select(s => s.Trim()).ToArray();
+                if (c.Length != 5) throw new InvalidDataException("Ligne " + (k + 1) + " mal formée (" + c.Length + " colonnes) : " + lignes[k]);
                 res.Add(new LigneCouverture { Source = c[0], Entree = c[1], Niveau = c[2], Decision = c[3], Raison = c[4] });
             }
             return res;
+        }
+
+        /// <summary>
+        /// Compare les entrées du tableau à tools/inventaire/inventaire.json : chaque entrée de
+        /// l'inventaire doit figurer exactement une fois, et aucune autre. Renvoie les écarts.
+        /// </summary>
+        public static List<string> EcartsAvecInventaire()
+        {
+            var racine = Path.GetDirectoryName(Path.GetDirectoryName(Chemin()));
+            var inv = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(Path.Combine(racine, "tools", "inventaire", "inventaire.json"), Encoding.UTF8));
+            var attendu = new List<string>();
+            foreach (var e in inv["winutil"])
+                attendu.Add("WinUtil|" + (string)e["entree"] + " (`" + (string)e["cle"] + "`)");
+            foreach (var e in inv["privacysexy"])
+            {
+                var g = (string)e["groupe"];
+                attendu.Add("privacy.sexy|" + ((string.IsNullOrEmpty(g) ? "" : g + " > ") + (string)e["entree"]).Replace("|", "/"));
+            }
+            var lu = Lire().Select(l => l.Source + "|" + l.Entree).ToList();
+            var ecarts = new List<string>();
+            foreach (var g in attendu.GroupBy(x => x))
+            {
+                int n = lu.Count(x => x == g.Key);
+                if (n != g.Count()) ecarts.Add(g.Key + " : " + n + " ligne(s) au lieu de " + g.Count());
+            }
+            ecarts.AddRange(lu.Where(x => !attendu.Contains(x)).Select(x => x + " : absente de l'inventaire"));
+            return ecarts;
         }
 
         public static List<LigneCouverture> SansDecision() =>
