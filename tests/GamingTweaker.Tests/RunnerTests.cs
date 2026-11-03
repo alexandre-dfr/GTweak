@@ -99,14 +99,116 @@ namespace GamingTweaker.Tests
             Assert.DoesNotContain("A", log);
         }
 
-        [Fact]
-        public async Task Annulation_marque_le_reste_annule()
+        // ---- Annulation (A) ----
+        private static async Task<RunResult> RunCancelOn(string script, string trigger)
         {
-            var script = ScriptBuilder.Build(new[] { Item("a", "Start-Sleep 30") }, Sel("a"), Path.Combine(Path.GetTempPath(), "j.json"));
-            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-            var (res, _) = await Run(script, 120, cts.Token);
-            Assert.Equal(OutcomeStatus.Skipped, res.Items[0].Status);
-            Assert.Equal("annulé", res.Items[0].Message);
+            var cts = new CancellationTokenSource();
+            var res = await Runner.RunAsync(script, l => { if (l == trigger) cts.Cancel(); }, cts.Token, id => 120);
+            return res;
+        }
+
+        [Fact]
+        public async Task Annulation_en_cours_d_option_marque_tout_le_reste_annule()
+        {
+            var script = ScriptBuilder.Build(new[] { Item("a", "Start-Sleep 30"), Item("b", "Write-Output 'b'"), Item("c", "Write-Output 'c'") }, Sel("a", "b", "c"), Path.Combine(Path.GetTempPath(), "j.json"));
+            var res = await RunCancelOn(script, "##GT|start|a");
+            Assert.Equal(new[] { "a", "b", "c" }, res.Items.Select(i => i.Id).ToArray());
+            Assert.All(res.Items, i => { Assert.Equal(OutcomeStatus.Skipped, i.Status); Assert.Equal("annulé", i.Message); });
+        }
+
+        [Fact]
+        public async Task Annulation_entre_deux_options_marque_le_reste_annule()
+        {
+            var script = ScriptBuilder.Build(new[] { Item("a", "Write-Output 'a'"), Item("b", "Start-Sleep 30"), Item("c", "Write-Output 'c'") }, Sel("a", "b", "c"), Path.Combine(Path.GetTempPath(), "j.json"));
+            var res = await RunCancelOn(script, "##GT|ok|a");
+            Assert.Equal(new[] { "a", "b", "c" }, res.Items.Select(i => i.Id).ToArray());
+            Assert.Equal(OutcomeStatus.Ok, res.Items[0].Status);
+            Assert.Equal(OutcomeStatus.Skipped, res.Items[1].Status);
+            Assert.Equal(OutcomeStatus.Skipped, res.Items[2].Status);
+            Assert.Equal("annulé", res.Items[2].Message);
+        }
+
+        // ---- Mort du processus (B) ----
+        [Fact]
+        public async Task Mort_du_processus_chaque_option_planifiee_a_un_resultat()
+        {
+            // Choix : l'option en cours est Failed (code), puis le script est relancé et les suivantes s'exécutent.
+            var script = ScriptBuilder.Build(new[] { Item("a", "Write-Output 'a'"), Item("b", "[Environment]::Exit(3)"), Item("c", "Write-Output 'c'") }, Sel("a", "b", "c"), Path.Combine(Path.GetTempPath(), "j.json"));
+            var (res, _) = await Run(script);
+            Assert.Equal(new[] { "a", "b", "c" }, res.Items.Select(i => i.Id).ToArray());
+            Assert.Equal(new[] { OutcomeStatus.Ok, OutcomeStatus.Failed, OutcomeStatus.Ok }, res.Items.Select(i => i.Status).ToArray());
+            Assert.Contains("code 3", res.Items[1].Message);
+        }
+
+        [Fact]
+        public void Complete_marque_non_executees_les_options_jamais_demarrees()
+        {
+            var st = new RunState();
+            st.BeginLaunch();
+            st.HandleLine("##GT|plan|a"); st.HandleLine("##GT|plan|b"); st.HandleLine("##GT|plan|c");
+            st.HandleLine("##GT|start|a"); st.HandleLine("##GT|ok|a");
+            st.Complete(false, 3);
+            Assert.Equal(OutcomeStatus.Ok, st.Items[0].Status);
+            Assert.Equal(OutcomeStatus.Failed, st.Items[1].Status);
+            Assert.Equal("non exécuté : PowerShell arrêté (code 3)", st.Items[1].Message);
+            Assert.Equal("non exécuté : PowerShell arrêté (code 3)", st.Items[2].Message);
+        }
+
+        // ---- Injection par guillemets typographiques (C) ----
+        [Theory]
+        [InlineData("’")] [InlineData("‘")] [InlineData("‚")] [InlineData("‛")]
+        public async Task Chemin_de_journal_avec_guillemet_typographique(string q)
+        {
+            var journal = Path.Combine(Path.GetTempPath(), "D" + q + "; Write-Output INJECTED2; " + q, "j.txt");
+            var apply = "Write-Output ('jp=' + $GT_JournalPath)";
+            var script = ScriptBuilder.Build(new[] { Item("a", apply) }, Sel("a"), journal);
+            var (res, log) = await Run(script);
+            Assert.Equal(OutcomeStatus.Ok, res.Items[0].Status);
+            Assert.Contains("jp=" + journal, log);
+            Assert.DoesNotContain("INJECTED2", log);
+        }
+
+        // ---- Course délai / fin normale (D) ----
+        [Fact]
+        public void Delai_ne_ecrase_pas_une_option_terminee_entre_temps()
+        {
+            var st = new RunState();
+            st.BeginLaunch();
+            st.HandleLine("##GT|plan|a"); st.HandleLine("##GT|plan|b");
+            st.HandleLine("##GT|start|a");
+            var cand = st.TimeoutCandidate(id => 0, out int sec);
+            Assert.NotNull(cand);
+            st.HandleLine("##GT|ok|a");
+            Assert.False(st.ApplyTimeout(cand, sec));
+            Assert.Equal(OutcomeStatus.Ok, st.Items[0].Status);
+            Assert.Null(st.Items[0].Message);
+        }
+
+        [Fact]
+        public void Option_demarree_apres_la_decision_de_delai_n_est_pas_comptee_comme_traitee()
+        {
+            var st = new RunState();
+            st.BeginLaunch();
+            st.HandleLine("##GT|plan|a"); st.HandleLine("##GT|plan|b");
+            st.HandleLine("##GT|start|a");
+            var cand = st.TimeoutCandidate(id => 0, out int sec);
+            st.HandleLine("##GT|ok|a");
+            st.HandleLine("##GT|start|b");
+            Assert.False(st.ApplyTimeout(cand, sec));
+            Assert.Equal(new[] { "a" }, st.FinishedIds.ToArray());
+        }
+
+        [Fact]
+        public void Delai_reel_marque_echec()
+        {
+            var st = new RunState();
+            st.BeginLaunch();
+            st.HandleLine("##GT|plan|a"); st.HandleLine("##GT|start|a");
+            var cand = st.TimeoutCandidate(id => 0, out int sec);
+            Assert.True(st.ApplyTimeout(cand, sec));
+            Assert.Equal(OutcomeStatus.Failed, st.Items[0].Status);
+            Assert.Equal("délai dépassé (0 s)", st.Items[0].Message);
+            Assert.Contains("a", st.FinishedIds);
         }
     }
 }

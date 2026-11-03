@@ -27,7 +27,12 @@ namespace GamingTweaker.Core
             sb.Append("$GT_JournalPath = ").Append(Quote(journalPath ?? "")).Append("\r\n");
             sb.Append(ReadCommon()).Append("\r\n");
 
-            foreach (var it in items.Where(i => s.OptionIds.Contains(i.Id)))
+            var selected = items.Where(i => s.OptionIds.Contains(i.Id)).ToList();
+            // Plan : permet au runner de connaître toutes les options avant la première (annulation, arrêt brutal).
+            foreach (var it in selected)
+                sb.Append("if ($SkipIds -notcontains ").Append(Quote(it.Id)).Append(") { Write-GTEvent 'plan' ").Append(Quote(it.Id)).Append(" }\r\n");
+
+            foreach (var it in selected)
             {
                 var sel = new List<string>();
                 List<string> l;
@@ -43,7 +48,17 @@ namespace GamingTweaker.Core
             return sb.ToString();
         }
 
-        private static string Quote(string v) => "'" + v.Replace("'", "''") + "'";
+        // PowerShell traite aussi U+2018, U+2019, U+201A et U+201B comme des guillemets simples : on les double tous.
+        private static string Quote(string v)
+        {
+            var sb = new StringBuilder("'");
+            foreach (var c in v)
+            {
+                sb.Append(c);
+                if (c == '\'' || c == '‘' || c == '’' || c == '‚' || c == '‛') sb.Append(c);
+            }
+            return sb.Append('\'').ToString();
+        }
 
         private static string ReadCommon()
         {

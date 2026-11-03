@@ -15,6 +15,10 @@ namespace GamingTweaker.Tests
 
         [Fact] public void Catalogue_integre_est_valide() => Assert.Empty(Catalogue.Validate(Catalogue.LoadEmbedded()));
         [Fact] public void Id_en_double_detecte() => Assert.Contains(Catalogue.Validate(new[] { Ok("a"), Ok("a") }), e => e.Contains("a"));
+        [Theory]
+        [InlineData("a b")] [InlineData("a,b")] [InlineData("a'b")] [InlineData("A")] [InlineData(".a")]
+        public void Id_invalide_rejete(string id) => Assert.Contains(Catalogue.Validate(new[] { Ok(id) }), e => e.Contains("Identifiant invalide") && e.Contains(id));
+
         [Fact] public void Reversible_sans_revert_detecte() => Assert.NotEmpty(Catalogue.Validate(new[] { Ok("a", revert: null) }));
 
         [Fact] public void Non_reversible_avec_revert_detecte()

@@ -106,6 +106,8 @@ namespace GamingTweaker.Core
                 var id = string.IsNullOrWhiteSpace(it.Id) ? "(sans id)" : it.Id;
                 if (string.IsNullOrWhiteSpace(it.Id)) errors.Add("Option sans identifiant (titre : " + (it.Titre ?? "?") + ").");
                 else if (!seen.Add(it.Id)) errors.Add("Identifiant en double : " + it.Id + ".");
+                if (!string.IsNullOrWhiteSpace(it.Id) && !System.Text.RegularExpressions.Regex.IsMatch(it.Id, @"^[a-z0-9][a-z0-9.\-]*$"))
+                    errors.Add("Identifiant invalide : " + it.Id + " (caractères admis : a-z, 0-9, point, tiret).");
                 if (string.IsNullOrWhiteSpace(it.Menu)) errors.Add(id + " : menu manquant.");
                 if (string.IsNullOrWhiteSpace(it.Groupe)) errors.Add(id + " : groupe manquant.");
                 if (string.IsNullOrWhiteSpace(it.Titre)) errors.Add(id + " : titre manquant.");
