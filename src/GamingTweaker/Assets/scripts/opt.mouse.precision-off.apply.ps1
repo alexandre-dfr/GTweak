@@ -1,4 +1,5 @@
 $k = 'HKCU:\Control Panel\Mouse'
-Set-TweakRegistry -Path $k -Name 'MouseSpeed' -Value '0' -Type String
-Set-TweakRegistry -Path $k -Name 'MouseThreshold1' -Value '0' -Type String
-Set-TweakRegistry -Path $k -Name 'MouseThreshold2' -Value '0' -Type String
+Set-TweakRegistryIfNeeded -Path $k -Name 'MouseSpeed' -Type String -Value '0'
+Set-TweakRegistryIfNeeded -Path $k -Name 'MouseThreshold1' -Type String -Value '0'
+Set-TweakRegistryIfNeeded -Path $k -Name 'MouseThreshold2' -Type String -Value '0'
+Update-GTMouseParams

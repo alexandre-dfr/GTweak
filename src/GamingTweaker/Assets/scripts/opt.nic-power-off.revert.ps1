@@ -1,0 +1,1 @@
+Reset-GTDevicePowerKind -Kind Nic

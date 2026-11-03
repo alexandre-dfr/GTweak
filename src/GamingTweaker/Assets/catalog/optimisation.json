@@ -4,11 +4,604 @@
     "menu": "Optimisation",
     "groupe": "Souris et clavier",
     "titre": "Désactiver la précision du pointeur",
-    "description": "Le déplacement du curseur devient proportionnel au mouvement de la souris.",
+    "description": "Le déplacement du curseur devient proportionnel au mouvement de la souris : même geste, même distance, ce qui aide la mémoire musculaire en jeu. Désactive l'option « Améliorer la précision du pointeur » (MouseSpeed, MouseThreshold1 et 2 à 0) et applique le réglage à la session en cours. L'annulation rétablit les valeurs d'origine.",
     "risque": "Sur",
     "reversible": true,
     "redemarrage": false,
     "hkcu": true,
-    "compatibilite": { "windows": ["10", "11"], "editions": [], "cpu": [], "gpu": [] }
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.stickykeys-off",
+    "menu": "Optimisation",
+    "groupe": "Souris et clavier",
+    "titre": "Désactiver les touches rémanentes",
+    "description": "Supprime la fenêtre « Touches rémanentes », « Touches filtres » et « Touches bascule » qui s'ouvre quand on appuie cinq fois sur Maj ou qu'on maintient une touche, et qui interrompt les jeux. Les fonctions d'accessibilité restent activables dans les Paramètres. L'annulation rétablit les valeurs d'origine.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.usb-power-off",
+    "menu": "Optimisation",
+    "groupe": "Alimentation et processeur",
+    "titre": "Empêcher la mise en veille des périphériques USB",
+    "description": "Retire l'autorisation « L'ordinateur peut éteindre ce périphérique pour économiser l'énergie » sur les contrôleurs et concentrateurs USB : évite les coupures et micro-déconnexions de la souris, du clavier ou de la manette. L'annulation rétablit l'état d'origine de chaque périphérique. Les périphériques branchés après coup ne sont pas modifiés.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "testable": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.nic-power-off",
+    "menu": "Optimisation",
+    "groupe": "Alimentation et processeur",
+    "titre": "Empêcher la mise en veille des cartes réseau",
+    "description": "Retire l'autorisation « L'ordinateur peut éteindre ce périphérique pour économiser l'énergie » sur les cartes réseau physiques : évite les coupures de connexion et les pics de latence au réveil. L'annulation rétablit l'état d'origine de chaque carte.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "testable": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.usb-suspend-off",
+    "menu": "Optimisation",
+    "groupe": "Alimentation et processeur",
+    "titre": "Désactiver la suspension sélective USB",
+    "description": "Règle « Paramètre de suspension sélective USB » sur Désactivé, sur secteur et sur batterie : les ports USB ne sont plus mis en veille individuellement. S'applique au plan d'alimentation actif (à répéter si vous changez de plan). L'annulation rétablit les valeurs d'origine du plan.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.pcie-aspm-off",
+    "menu": "Optimisation",
+    "groupe": "Alimentation et processeur",
+    "titre": "Désactiver l'économie d'énergie PCI Express (ASPM)",
+    "description": "Règle « Gestion de l'alimentation de l'état de liaison » (ASPM) sur Désactivé : la carte graphique et le SSD NVMe ne passent plus en veille de liaison, ce qui évite de petites latences. Consommation légèrement plus élevée au repos. S'applique au plan d'alimentation actif. L'annulation rétablit les valeurs d'origine du plan.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "testable": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.coreparking-off",
+    "menu": "Optimisation",
+    "groupe": "Alimentation et processeur",
+    "titre": "Désactiver la mise en veille des cœurs du processeur",
+    "description": "Règle « Nombre minimal de cœurs non mis en veille » sur 100 % : tous les cœurs restent disponibles, ce qui réduit les à-coups de charge dans certains jeux. Consommation et chaleur légèrement plus élevées au repos. S'applique au plan d'alimentation actif ; le réglage est ignoré s'il n'existe pas sur ce processeur. L'annulation rétablit les valeurs d'origine du plan.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.plan-high",
+    "menu": "Optimisation",
+    "groupe": "Alimentation et processeur",
+    "titre": "Plan d'alimentation Performances élevées",
+    "description": "Active le plan « Performances élevées » (il est créé s'il manque). L'annulation réactive le plan qui était actif avant. Consommation plus élevée, surtout sur portable.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.plan-ultimate",
+    "menu": "Optimisation",
+    "groupe": "Alimentation et processeur",
+    "titre": "Plan d'alimentation Performances ultimes",
+    "description": "Crée une seule fois le plan « Performances ultimes » (caché par défaut) puis l'active : latence minimale, aucune économie d'énergie. À éviter sur portable. L'annulation réactive le plan qui était actif avant ; le plan créé reste disponible.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.hibernate-off",
+    "menu": "Optimisation",
+    "groupe": "Alimentation et processeur",
+    "titre": "Désactiver la veille prolongée",
+    "description": "Exécute « powercfg /h off » : supprime le fichier hiberfil.sys (plusieurs Go libérés) et désactive aussi le démarrage rapide de Windows. L'ordinateur ne peut plus hiberner. L'annulation réactive la veille prolongée avec « powercfg /h on ».",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.gamemode-on",
+    "menu": "Optimisation",
+    "groupe": "Jeux et graphismes",
+    "titre": "Activer le mode Jeu de Windows",
+    "description": "Active le mode Jeu : Windows limite les tâches d'arrière-plan et privilégie le jeu au premier plan. Règle AutoGameModeEnabled et AllowAutoGameMode. L'annulation supprime ces valeurs (réglage par défaut de Windows).",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.gamedvr-off",
+    "menu": "Optimisation",
+    "groupe": "Jeux et graphismes",
+    "titre": "Désactiver l'enregistrement en arrière-plan (Game DVR)",
+    "description": "Désactive la capture vidéo en arrière-plan de la barre de jeu (GameDVR_Enabled à 0), qui consomme du processeur et du disque pendant les parties. L'enregistrement manuel reste possible. L'annulation rétablit la valeur d'origine.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.hags",
+    "menu": "Optimisation",
+    "groupe": "Jeux et graphismes",
+    "titre": "Activer la planification GPU accélérée par le matériel (HAGS)",
+    "description": "Active « Planification GPU accélérée par le matériel » (HwSchMode à 2) : le GPU gère lui-même sa file de tâches, ce qui peut réduire la latence et libérer du processeur, avec un effet variable selon le jeu. Demande Windows 10 version 2004 (build 19041) ou plus récente et un pilote compatible. Redémarrage nécessaire. L'annulation supprime la valeur (choix par défaut de Windows).",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": true,
+    "testable": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.fso-off",
+    "menu": "Optimisation",
+    "groupe": "Jeux et graphismes",
+    "titre": "Désactiver les optimisations plein écran",
+    "description": "Impose le vrai plein écran exclusif (GameDVR_FSEBehaviorMode à 2, GameDVR_HonorUserFSEBehaviorMode à 1) à la place du plein écran optimisé de Windows : peut réduire la latence d'affichage dans certains jeux, mais en gêner d'autres (superpositions, alt-tab plus lent). L'annulation supprime ces valeurs.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.mpo-off",
+    "menu": "Optimisation",
+    "groupe": "Jeux et graphismes",
+    "titre": "Désactiver les plans multiples de superposition (MPO)",
+    "description": "Règle OverlayTestMode à 5 sous Dwm : désactive le Multiplane Overlay, qui provoque scintillements, écrans noirs ou saccades avec certains pilotes graphiques. Sans effet visible sur les autres machines. Redémarrage nécessaire. L'annulation supprime la valeur.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.gpu-msi",
+    "menu": "Optimisation",
+    "groupe": "Jeux et graphismes",
+    "titre": "Activer les interruptions MSI de la carte graphique",
+    "description": "Pour chaque carte graphique PCI, règle MSISupported à 1 (interruptions signalées par message) : moins de latence et de partage d'interruptions. Un pilote graphique réinstallé peut remettre sa valeur. Redémarrage nécessaire. Avancé : en cas d'écran noir au démarrage, restaurer par l'annulation ou en mode sans échec. L'annulation rétablit la valeur d'origine de chaque carte (elle passe par le journal : sans journal, rien n'est modifié).",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": true,
+    "testable": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.visualfx",
+    "menu": "Optimisation",
+    "groupe": "Jeux et graphismes",
+    "titre": "Effets visuels : meilleures performances",
+    "description": "Règle « Ajuster afin d'obtenir les meilleures performances » (VisualFXSetting à 2) : moins d'animations et d'ombres. L'annulation repasse en « Laisser Windows décider » (valeur 0).",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.bgapps-off",
+    "menu": "Optimisation",
+    "groupe": "Arrière-plan",
+    "titre": "Interdire les applications en arrière-plan",
+    "description": "Stratégie « Autoriser les applications à s'exécuter en arrière-plan » : refusé pour toutes les applications du Store (LetAppsRunInBackground à 2). Les notifications de ces applications peuvent cesser. Les programmes classiques ne sont pas concernés. L'annulation supprime la stratégie.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.widgets-off",
+    "menu": "Optimisation",
+    "groupe": "Arrière-plan",
+    "titre": "Désactiver les Widgets",
+    "description": "Stratégie qui désactive le panneau Widgets de Windows 11 (AllowNewsAndInterests à 0) et son processus. Le paquet n'est pas désinstallé. L'annulation supprime la stratégie.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.sysmain",
+    "menu": "Optimisation",
+    "groupe": "Arrière-plan",
+    "titre": "SysMain (Superfetch) en manuel et arrêté",
+    "description": "Passe le service SysMain en démarrage manuel et l'arrête : moins d'activité disque en arrière-plan. Les démarrages d'applications peuvent être un peu plus lents sur un disque dur. Un service déjà désactivé n'est pas réactivé. L'annulation rétablit le démarrage automatique et relance le service.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.wsearch",
+    "menu": "Optimisation",
+    "groupe": "Arrière-plan",
+    "titre": "Recherche Windows (WSearch) en manuel et arrêtée",
+    "description": "Passe le service d'indexation Windows Search en démarrage manuel et l'arrête : moins d'activité disque et processeur. La recherche dans le menu Démarrer et l'Explorateur devient plus lente. Un service déjà désactivé n'est pas réactivé. L'annulation rétablit le démarrage automatique (différé) et relance le service.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.services",
+    "menu": "Optimisation",
+    "groupe": "Arrière-plan",
+    "titre": "Services inutiles en démarrage manuel",
+    "description": "Passe en démarrage manuel les services cochés de la liste (Télécopie, Registre à distance, Cartes téléchargées, Téléphone, Démonstration commerciale, Contrôle parental, Géolocalisation, Spouleur d'impression, Fichiers hors connexion, Stockage, Partage de connexion Internet) : ils ne démarrent plus qu'à la demande, aucun n'est désactivé. Attention : l'impression n'est plus automatique si le Spouleur d'impression est en manuel (démarrez-le à la main ou cochez-le seulement si vous n'imprimez pas). Un service déjà désactivé n'est pas réactivé. L'annulation rétablit le démarrage d'origine de chaque service.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "liste": "services",
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.xbox-services",
+    "menu": "Optimisation",
+    "groupe": "Arrière-plan",
+    "titre": "Services Xbox en démarrage manuel",
+    "description": "Passe en démarrage manuel les services Xbox cochés (Gestionnaire d'authentification Xbox Live, Sauvegarde de jeu Xbox Live, Accessoires Xbox, Réseau Xbox Live) : ils ne démarrent plus qu'à la demande, aucun n'est désactivé. Risque : le Game Pass, l'application Xbox, les sauvegardes dans le cloud et certains jeux (Microsoft Store, jeux en ligne Xbox) peuvent dysfonctionner ou ne plus se connecter. L'annulation rétablit le démarrage d'origine de chaque service.",
+    "risque": "Risque",
+    "reversible": true,
+    "redemarrage": false,
+    "liste": "xbox-services",
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.startup",
+    "menu": "Optimisation",
+    "groupe": "Arrière-plan",
+    "titre": "Désactiver des programmes au démarrage",
+    "description": "Désactive les programmes cochés de la liste qui se lancent à l'ouverture de session (clés Run, Run32 et dossiers Démarrage, utilisateur et machine) par la méthode du Gestionnaire des tâches : les programmes ne sont ni supprimés ni désinstallés, ils ne démarrent simplement plus avec Windows. Un pilote ou un utilitaire de sécurité désactivé ne protège plus ou ne fonctionne plus au démarrage : ne cochez que ce que vous reconnaissez. L'annulation rétablit l'état d'origine de chaque entrée.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "liste": "startup",
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.nagle-off",
+    "menu": "Optimisation",
+    "groupe": "Réseau et planificateur",
+    "titre": "Désactiver l'algorithme de Nagle",
+    "description": "Pour chaque interface réseau, règle TcpAckFrequency et TCPNoDelay à 1 : les petits paquets sont envoyés tout de suite au lieu d'être regroupés, ce qui peut réduire la latence de certains jeux en ligne. Légère hausse du nombre de paquets. Prend effet à la prochaine connexion réseau. L'annulation supprime ces valeurs.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.netthrottle-off",
+    "menu": "Optimisation",
+    "groupe": "Réseau et planificateur",
+    "titre": "Désactiver la limitation du débit réseau multimédia",
+    "description": "Règle NetworkThrottlingIndex sur 0xFFFFFFFF (4294967295) : Windows ne plafonne plus le trafic réseau pendant la lecture multimédia. L'annulation rétablit la valeur par défaut de Windows (10).",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.prioritysep",
+    "menu": "Optimisation",
+    "groupe": "Réseau et planificateur",
+    "titre": "Priorité aux programmes au premier plan",
+    "description": "Règle Win32PrioritySeparation à 0x26 : temps processeur court et variable, avec priorité renforcée pour le programme actif (le jeu). L'annulation rétablit la valeur par défaut de Windows (2).",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.hpet",
+    "menu": "Optimisation",
+    "groupe": "Alimentation et processeur",
+    "titre": "Minuteries : HPET non forcé et tick dynamique désactivé",
+    "description": "Supprime useplatformclock du BCD (le minuteur haute précision n'est plus imposé) et règle disabledynamictick sur yes : minuterie plus régulière, parfois moins de latence, mais consommation et chaleur plus élevées au repos et résultats variables selon la carte mère. Risque : modifie la configuration de démarrage (BCD) ; sans effet sur certains systèmes. Redémarrage nécessaire. L'annulation rétablit les valeurs d'origine du BCD.",
+    "risque": "Risque",
+    "reversible": true,
+    "redemarrage": true,
+    "testable": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.vbs-off",
+    "menu": "Optimisation",
+    "groupe": "Sécurité",
+    "titre": "Désactiver la sécurité basée sur la virtualisation (VBS)",
+    "description": "Désactive la VBS et l'intégrité de la mémoire (HVCI) : gain de performances de quelques pour cent dans les jeux, surtout sur processeurs anciens. Risque : le noyau n'est plus protégé contre les pilotes malveillants, et certains anti-triche ou fonctions (Credential Guard) l'exigent ou la réclament. Si la VBS est verrouillée dans le micrologiciel (UEFI), le réglage peut rester sans effet. Redémarrage nécessaire. L'annulation supprime ces valeurs.",
+    "risque": "Risque",
+    "reversible": true,
+    "redemarrage": true,
+    "testable": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.spectre-off",
+    "menu": "Optimisation",
+    "groupe": "Sécurité",
+    "titre": "Désactiver les protections Spectre et Meltdown",
+    "description": "Règle FeatureSettingsOverride et FeatureSettingsOverrideMask sur 3 : désactive les correctifs de Spectre et Meltdown du noyau, pour un gain de performances variable (surtout sur processeurs anciens). Risque : le processeur redevient vulnérable à ces attaques, y compris depuis un site web malveillant ; à éviter sur une machine qui navigue ou travaille. Redémarrage nécessaire. L'annulation supprime ces valeurs.",
+    "risque": "Risque",
+    "reversible": true,
+    "redemarrage": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.defender-rt-off",
+    "menu": "Optimisation",
+    "groupe": "Sécurité",
+    "titre": "Désactiver la protection en temps réel de Defender",
+    "description": "Exécute « Set-MpPreference -DisableRealtimeMonitoring $true » : Windows Defender n'analyse plus les fichiers à l'ouverture. Risque élevé : plus aucune protection contre les virus tant que vous n'utilisez pas un autre antivirus ; Windows peut la réactiver seul. Si la protection contre les falsifications est active, l'option échoue avec la marche à suivre dans Sécurité Windows (désactivation manuelle) : aucun contournement n'est tenté. L'annulation réactive la protection en temps réel.",
+    "risque": "Risque",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
   }
 ]
