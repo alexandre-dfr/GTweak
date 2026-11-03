@@ -9,14 +9,14 @@ namespace GamingTweaker.Core
 {
     public static class ScriptBuilder
     {
-        public static string Build(IEnumerable<CatalogItem> items, Selection s, string journalPath)
+        public static string Build(IEnumerable<CatalogItem> items, Selection s, string journalPath, string quarantineDir = null)
         {
             AssemblyLoader.Register();
-            return BuildCore(items, s, journalPath);
+            return BuildCore(items, s, journalPath, quarantineDir);
         }
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
-        private static string BuildCore(IEnumerable<CatalogItem> items, Selection s, string journalPath)
+        private static string BuildCore(IEnumerable<CatalogItem> items, Selection s, string journalPath, string quarantineDir)
         {
             var sb = new StringBuilder();
             sb.Append("param([string[]]$SkipIds = @())\r\n");
@@ -25,6 +25,7 @@ namespace GamingTweaker.Core
             sb.Append("[Console]::OutputEncoding = [Text.Encoding]::UTF8\r\n");
             sb.Append("$ErrorActionPreference = 'Stop'\r\n");
             sb.Append("$GT_JournalPath = ").Append(Quote(journalPath ?? "")).Append("\r\n");
+            sb.Append("$GT_QuarantineDir = ").Append(quarantineDir == null ? "$null" : Quote(quarantineDir)).Append("\r\n");
             sb.Append(ReadCommon()).Append("\r\n");
 
             var selected = items.Where(i => s.OptionIds.Contains(i.Id)).ToList();

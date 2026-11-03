@@ -20,6 +20,7 @@ function Skip-GTItem([string]$Reason) {
 
 # Execute une option : start / ok / fail / skip. $Apply s'execute dans sa propre portee.
 function Invoke-GTItem([string]$Id, [scriptblock]$Apply) {
+    $script:GT_CurrentItem = $Id
     Write-GTEvent 'start' $Id
     try {
         & $Apply
@@ -29,4 +30,330 @@ function Invoke-GTItem([string]$Id, [scriptblock]$Apply) {
         if ($msg.StartsWith('GTSKIP:')) { Write-GTEvent 'skip' $Id $msg.Substring(7) }
         else { Write-GTEvent 'fail' $Id $msg }
     }
+}
+
+# ---------------------------------------------------------------------------
+# Journal d'annulation (journal.jsonl, une ligne JSON compacte par entree) et fonctions Set-Tweak*.
+# Chaque fonction ecrit puis vide son entree sur disque AVANT de modifier : si l'ecriture echoue, elle leve
+# une erreur et ne change rien. Kinds : registry, defender, service, task, power, bcd, hosts, app, quarantine.
+# ---------------------------------------------------------------------------
+
+function Write-GTJournal([string]$Kind, [string]$Target, [bool]$Existed, $Before, $After, [string]$ValueType) {
+    if ([string]::IsNullOrEmpty($GT_JournalPath)) { throw 'Journal d''annulation non configuré.' }
+    $e = [ordered]@{
+        item    = [string]$script:GT_CurrentItem
+        kind    = $Kind
+        target  = $Target
+        existed = $Existed
+        before  = $Before
+        after   = $After
+    }
+    if ($ValueType) { $e['valueType'] = $ValueType }
+    $line = (ConvertTo-Json -InputObject $e -Compress -Depth 5) + "`n"
+    try {
+        $dir = Split-Path -Parent $GT_JournalPath
+        if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+        $bytes = (New-Object System.Text.UTF8Encoding($false)).GetBytes($line)
+        $fs = New-Object System.IO.FileStream($GT_JournalPath, [IO.FileMode]::Append, [IO.FileAccess]::Write, [IO.FileShare]::Read)
+        try { $fs.Write($bytes, 0, $bytes.Length); $fs.Flush($true) } finally { $fs.Dispose() }
+    } catch {
+        throw ('Écriture du journal impossible, aucune modification faite : ' + $_.Exception.Message)
+    }
+}
+
+# ---- Registre -------------------------------------------------------------
+
+function Get-GTRegValue([string]$Path, [string]$Name) {
+    # Renvoie @{ Existed; Type; Value } avec Value dans la forme JSON du journal.
+    $k = Get-Item -LiteralPath $Path -ErrorAction SilentlyContinue
+    if (-not $k -or ($k.GetValueNames() -notcontains $Name)) { return @{ Existed = $false; Type = $null; Value = $null } }
+    $kind = $k.GetValueKind($Name).ToString()
+    $v = $k.GetValue($Name, $null, [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)
+    switch ($kind) {
+        'DWord'       { $v = [uint32][BitConverter]::ToUInt32([BitConverter]::GetBytes([int]$v), 0) }
+        'QWord'       { $v = [int64]$v }
+        'Binary'      { $v = [Convert]::ToBase64String([byte[]]$v) }
+        'MultiString' { $v = [string[]]@($v) }
+    }
+    return @{ Existed = $true; Type = $kind; Value = $v }
+}
+
+function ConvertTo-GTRegData([string]$Type, $Value) {
+    switch ($Type) {
+        'DWord'       { return [int][BitConverter]::ToInt32([BitConverter]::GetBytes([uint32]$Value), 0) }
+        'QWord'       { return [int64]$Value }
+        'Binary'      { if ($Value -is [string]) { return ,[byte[]][Convert]::FromBase64String($Value) } else { return ,[byte[]]@($Value) } }
+        'MultiString' { return ,[string[]]@($Value) }
+        default       { return [string]$Value }
+    }
+}
+
+function Set-GTRegRaw([string]$Path, [string]$Name, [string]$Type, $Data) {
+    if (-not (Test-Path -LiteralPath $Path)) { New-Item -Path $Path -Force | Out-Null }
+    New-ItemProperty -LiteralPath $Path -Name $Name -PropertyType $Type -Value $Data -Force | Out-Null
+}
+
+function Set-TweakRegistry {
+    param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][string]$Name,
+          [Parameter(Mandatory)][ValidateSet('DWord','QWord','String','ExpandString','MultiString','Binary')][string]$Type,
+          [Parameter(Mandatory)]$Value)
+    $cur = Get-GTRegValue $Path $Name
+    $data = ConvertTo-GTRegData $Type $Value
+    # La valeur journalisee « after » a la meme forme que « before » (relue apres ecriture dans la meme representation).
+    $afterJson = switch ($Type) {
+        'DWord'  { [uint32][BitConverter]::ToUInt32([BitConverter]::GetBytes([int]$data), 0) }
+        'Binary' { [Convert]::ToBase64String([byte[]]$data) }
+        default  { $data }
+    }
+    Write-GTJournal 'registry' ($Path + '|' + $Name) $cur.Existed $cur.Value $afterJson $(if ($cur.Existed) { $cur.Type } else { $Type })
+    Set-GTRegRaw $Path $Name $Type $data
+}
+
+# ---- Defender ---------------------------------------------------------------
+
+function Set-TweakDefenderRealtime {
+    param([Parameter(Mandatory)][bool]$Enabled)
+    $pref = Get-MpPreference
+    $before = -not [bool]$pref.DisableRealtimeMonitoring
+    Write-GTJournal 'defender' 'RealtimeMonitoring' $true $before $Enabled
+    Set-MpPreference -DisableRealtimeMonitoring (-not $Enabled)
+}
+
+# ---- Services ---------------------------------------------------------------
+
+function Get-GTServiceStart([string]$Name) {
+    # Automatic / AutomaticDelayed / Manual / Disabled (lu dans le registre : Start + DelayedAutostart).
+    $k = Get-ItemProperty -LiteralPath ('HKLM:\SYSTEM\CurrentControlSet\Services\' + $Name) -ErrorAction SilentlyContinue
+    if (-not $k) { return $null }
+    switch ([int]$k.Start) {
+        2 { if ([int]$k.DelayedAutostart -eq 1) { return 'AutomaticDelayed' } else { return 'Automatic' } }
+        3 { return 'Manual' }
+        4 { return 'Disabled' }
+        0 { return 'Boot' }
+        1 { return 'System' }
+    }
+    return $null
+}
+
+function Set-GTServiceStart([string]$Name, [string]$StartType) {
+    $map = @{ Automatic = 'auto'; AutomaticDelayed = 'delayed-auto'; Manual = 'demand'; Disabled = 'disabled'; Boot = 'boot'; System = 'system' }
+    if (-not $map.ContainsKey($StartType)) { throw ('Type de démarrage inconnu : ' + $StartType) }
+    $out = & sc.exe config $Name start= $map[$StartType] 2>&1
+    if ($LASTEXITCODE -ne 0) { throw ('sc.exe config a échoué pour ' + $Name + ' : ' + ($out -join ' ')) }
+}
+
+function Set-TweakService {
+    param([Parameter(Mandatory)][string]$Name,
+          [Parameter(Mandatory)][ValidateSet('Automatic','AutomaticDelayed','Manual','Disabled')][string]$StartType)
+    $before = Get-GTServiceStart $Name
+    if (-not $before) { Skip-GTItem ('Service ' + $Name + ' absent de cette machine.') }
+    Write-GTJournal 'service' $Name $true $before $StartType
+    Set-GTServiceStart $Name $StartType
+}
+
+# ---- Taches planifiees --------------------------------------------------------
+
+function Split-GTTaskPath([string]$Path) {
+    $i = $Path.LastIndexOf('\')
+    $dir = $Path.Substring(0, $i + 1); if (-not $dir) { $dir = '\' }
+    return @{ Dir = $dir; Name = $Path.Substring($i + 1) }
+}
+
+function Set-TweakTask {
+    param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][bool]$Enabled)
+    $p = Split-GTTaskPath $Path
+    $t = Get-ScheduledTask -TaskPath $p.Dir -TaskName $p.Name -ErrorAction SilentlyContinue
+    if (-not $t) { Skip-GTItem ('Tâche planifiée ' + $Path + ' absente de cette machine.') }
+    $before = [bool]($t.State -ne 'Disabled')
+    Write-GTJournal 'task' $Path $true $before $Enabled
+    if ($Enabled) { Enable-ScheduledTask -TaskPath $p.Dir -TaskName $p.Name | Out-Null }
+    else { Disable-ScheduledTask -TaskPath $p.Dir -TaskName $p.Name | Out-Null }
+}
+
+# ---- Alimentation -----------------------------------------------------------
+
+function Get-GTActiveScheme {
+    $o = (& powercfg.exe /getactivescheme) -join ' '
+    if ($o -match '([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})') { return $Matches[1] }
+    throw 'Plan d''alimentation actif introuvable.'
+}
+
+function Get-GTPowerValue([string]$Scheme, [string]$Sub, [string]$Setting) {
+    # Renvoie @{ AC; DC } (entiers) lus dans la sortie de powercfg /query.
+    $o = & powercfg.exe /query $Scheme $Sub $Setting
+    if ($LASTEXITCODE -ne 0) { throw ('powercfg /query a échoué pour ' + $Sub + ' ' + $Setting) }
+    $ac = $null; $dc = $null
+    foreach ($l in $o) {
+        if ($l -match ':\s*0x([0-9a-fA-F]+)\s*$') {
+            if ($l -match 'AC' -and $null -eq $ac) { $ac = [Convert]::ToInt64($Matches[1], 16) }
+            elseif ($l -match 'DC' -and $null -eq $dc) { $dc = [Convert]::ToInt64($Matches[1], 16) }
+        }
+    }
+    # Les libelles dependent de la langue (« CA » / « CC » en francais) : repli sur l'ordre des deux dernieres valeurs.
+    if ($null -eq $ac -or $null -eq $dc) {
+        $vals = @($o | Where-Object { $_ -match ':\s*0x([0-9a-fA-F]+)\s*$' } | ForEach-Object { [Convert]::ToInt64($Matches[1], 16) })
+        if ($vals.Count -lt 2) { throw 'Valeur d''alimentation illisible.' }
+        $ac = $vals[$vals.Count - 2]; $dc = $vals[$vals.Count - 1]
+    }
+    return @{ AC = $ac; DC = $dc }
+}
+
+function Set-GTPowerValue([string]$Scheme, [string]$Sub, [string]$Setting, $Ac, $Dc) {
+    & powercfg.exe /setacvalueindex $Scheme $Sub $Setting ([string]$Ac); if ($LASTEXITCODE -ne 0) { throw 'powercfg /setacvalueindex a échoué.' }
+    & powercfg.exe /setdcvalueindex $Scheme $Sub $Setting ([string]$Dc); if ($LASTEXITCODE -ne 0) { throw 'powercfg /setdcvalueindex a échoué.' }
+    & powercfg.exe /setactive $Scheme | Out-Null
+}
+
+function Set-TweakPower {
+    param([Parameter(Mandatory)][string]$Sub, [Parameter(Mandatory)][string]$Setting, [Parameter(Mandatory)][int]$Value)
+    $scheme = Get-GTActiveScheme
+    $cur = Get-GTPowerValue $scheme $Sub $Setting
+    Write-GTJournal 'power' ($scheme + '|' + $Sub + '|' + $Setting) $true @($cur.AC, $cur.DC) @($Value, $Value)
+    Set-GTPowerValue $scheme $Sub $Setting $Value $Value
+}
+
+# ---- BCD --------------------------------------------------------------------
+
+function Get-GTBcdValue([string[]]$Lines, [string]$Name) {
+    # Renvoie la valeur de l'element dans la sortie de « bcdedit /enum {current} », ou $null s'il est absent.
+    foreach ($l in $Lines) {
+        if ($l -match ('^\s*' + [regex]::Escape($Name) + '\s+(.+?)\s*$')) { return $Matches[1] }
+    }
+    return $null
+}
+
+function Set-TweakBcd {
+    param([Parameter(Mandatory)][string]$Name, [Parameter(Mandatory)][string]$Value)
+    $cur = Get-GTBcdValue (& bcdedit.exe /enum '{current}') $Name
+    Write-GTJournal 'bcd' $Name ($null -ne $cur) $cur $Value
+    $out = & bcdedit.exe /set $Name $Value 2>&1
+    if ($LASTEXITCODE -ne 0) { throw ('bcdedit /set a échoué : ' + ($out -join ' ')) }
+}
+
+# ---- Fichier hosts ----------------------------------------------------------
+
+$script:GT_HostsMarker = '# GamingTweaker'
+
+function Get-GTHostsDefault { return (Join-Path $env:SystemRoot 'System32\drivers\etc\hosts') }
+
+function Add-GTHostsLines([string]$HostsPath, [string[]]$NewLines) {
+    $enc = New-Object System.Text.UTF8Encoding($false)
+    $existing = @(); if (Test-Path -LiteralPath $HostsPath) { $existing = @([IO.File]::ReadAllLines($HostsPath)) }
+    [IO.File]::WriteAllLines($HostsPath, [string[]]($existing + $NewLines), $enc)
+}
+
+function Remove-GTHostsLines([string]$HostsPath, [string[]]$Lines) {
+    if (-not (Test-Path -LiteralPath $HostsPath)) { return }
+    $enc = New-Object System.Text.UTF8Encoding($false)
+    $left = New-Object System.Collections.Generic.List[string]
+    $toRemove = New-Object System.Collections.Generic.List[string]; $toRemove.AddRange([string[]]@($Lines))
+    foreach ($l in [IO.File]::ReadAllLines($HostsPath)) {
+        $i = $toRemove.IndexOf($l)
+        if ($i -ge 0) { $toRemove.RemoveAt($i) } else { $left.Add($l) }
+    }
+    [IO.File]::WriteAllLines($HostsPath, $left.ToArray(), $enc)
+}
+
+function Add-TweakHosts {
+    param([Parameter(Mandatory)][string[]]$Domains, [string]$HostsPath)
+    if (-not $HostsPath) { $HostsPath = Get-GTHostsDefault }
+    $existing = @(); if (Test-Path -LiteralPath $HostsPath) { $existing = @([IO.File]::ReadAllLines($HostsPath)) }
+    $new = @()
+    foreach ($d in $Domains) {
+        $line = '0.0.0.0 ' + $d + ' ' + $script:GT_HostsMarker
+        if (($existing -notcontains $line) -and ($new -notcontains $line)) { $new += $line }
+    }
+    if ($new.Count -eq 0) { return }
+    Write-GTJournal 'hosts' $HostsPath $true $null $new
+    Add-GTHostsLines $HostsPath $new
+}
+
+# ---- Applications -----------------------------------------------------------
+
+function Remove-TweakApp {
+    param([Parameter(Mandatory)][string]$Package)
+    $pk = @(Get-AppxPackage -Name $Package -AllUsers -ErrorAction SilentlyContinue)
+    if ($pk.Count -eq 0) { Skip-GTItem ('Application ' + $Package + ' absente de cette machine.') }
+    foreach ($p in $pk) {
+        Write-GTJournal 'app' $p.PackageFullName $true $p.PackageFullName $null
+        Remove-AppxPackage -Package $p.PackageFullName -AllUsers
+    }
+}
+
+# ---- Quarantaine ------------------------------------------------------------
+
+function Move-TweakQuarantine {
+    param([Parameter(Mandatory)][string]$File)
+    if ([string]::IsNullOrEmpty($GT_QuarantineDir)) { throw 'Dossier de quarantaine non configuré.' }
+    if (-not (Test-Path -LiteralPath $File)) { Skip-GTItem ('Fichier ' + $File + ' absent.') }
+    $dest = Join-Path $GT_QuarantineDir ([Guid]::NewGuid().ToString('N') + '_' + (Split-Path -Leaf $File))
+    Write-GTJournal 'quarantine' $File $true $File $dest
+    New-Item -ItemType Directory -Force -Path $GT_QuarantineDir | Out-Null
+    Move-Item -LiteralPath $File -Destination $dest -Force
+}
+
+# ---- Annulation -------------------------------------------------------------
+
+function Read-GTJournal {
+    # Entrees du journal (objets). Derniere ligne illisible ignoree ; ligne illisible au milieu : erreur.
+    if (-not (Test-Path -LiteralPath $GT_JournalPath)) { return @() }
+    $lines = @([IO.File]::ReadAllLines($GT_JournalPath, [Text.Encoding]::UTF8) | Where-Object { $_.Trim() })
+    $res = @()
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        try { $res += ,(ConvertFrom-Json -InputObject $lines[$i]) }
+        catch {
+            if ($i -eq $lines.Count - 1) { continue }
+            throw ('Journal corrompu (entrée ' + ($i + 1) + '), annulation impossible.')
+        }
+    }
+    return $res
+}
+
+function Restore-GTEntry($E) {
+    switch ($E.kind) {
+        'registry' {
+            $p = $E.target.IndexOf('|'); $path = $E.target.Substring(0, $p); $name = $E.target.Substring($p + 1)
+            if ($E.existed) { Set-GTRegRaw $path $name $E.valueType (ConvertTo-GTRegData $E.valueType $E.before) }
+            else { Remove-ItemProperty -LiteralPath $path -Name $name -ErrorAction SilentlyContinue }
+        }
+        'defender'   { Set-MpPreference -DisableRealtimeMonitoring (-not [bool]$E.before) }
+        'service'    { Set-GTServiceStart $E.target ([string]$E.before) }
+        'task' {
+            $p = Split-GTTaskPath $E.target
+            if ([bool]$E.before) { Enable-ScheduledTask -TaskPath $p.Dir -TaskName $p.Name | Out-Null }
+            else { Disable-ScheduledTask -TaskPath $p.Dir -TaskName $p.Name | Out-Null }
+        }
+        'power' {
+            $t = $E.target -split '\|'
+            Set-GTPowerValue $t[0] $t[1] $t[2] @($E.before)[0] @($E.before)[1]
+        }
+        'bcd' {
+            if ($E.existed) { $o = & bcdedit.exe /set $E.target ([string]$E.before) 2>&1 }
+            else { $o = & bcdedit.exe /deletevalue $E.target 2>&1 }
+            if ($LASTEXITCODE -ne 0) { throw ('bcdedit a échoué : ' + ($o -join ' ')) }
+        }
+        'hosts'      { Remove-GTHostsLines $E.target ([string[]]@($E.after)) }
+        'quarantine' {
+            if (Test-Path -LiteralPath $E.before) { throw ('Impossible de restaurer ' + $E.before + ' : un fichier existe déjà à cet emplacement.') }
+            $dir = Split-Path -Parent $E.before
+            if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+            Move-Item -LiteralPath $E.after -Destination $E.before
+        }
+        'app' { }
+        default { throw ('Type d''entrée de journal inconnu : ' + $E.kind) }
+    }
+}
+
+# Restaure une option : ses entrees en ordre inverse. Une entree en echec n'empeche pas les suivantes ; l'option echoue a la fin.
+function Restore-GTItem([Parameter(Mandatory)][string]$Item) {
+    $entries = @(Read-GTJournal | Where-Object { $_.item -eq $Item })
+    if ($entries.Count -eq 0) { Skip-GTItem 'Rien à annuler : aucune entrée de journal pour cette option.' }
+    [array]::Reverse($entries)
+    $errors = @(); $manual = @()
+    foreach ($e in $entries) {
+        if ($e.kind -eq 'app') { $manual += $e.target; continue }
+        try { Restore-GTEntry $e } catch { $errors += ([string]$e.kind + ' ' + [string]$e.target + ' : ' + $_.Exception.Message) }
+    }
+    if ($errors.Count -gt 0) { throw ($errors -join ' ; ') }
+    if ($manual.Count -gt 0) { Skip-GTItem ('Réinstallation manuelle nécessaire (Microsoft Store) : ' + ($manual -join ', ')) }
 }
