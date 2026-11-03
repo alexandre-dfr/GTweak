@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>GamingTweaker</RootNamespace>
+    <AssemblyName>GamingTweaker</AssemblyName>
+    <Nullable>disable</Nullable>
+    <SatelliteResourceLanguages>fr;en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <!-- requireAdministrator en Release, asInvoker en Debug (voir global-constraints). -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' != 'Release'">
+    <ApplicationManifest>app.debug.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Management" />
+  </ItemGroup>
+
+  <!-- Integre chaque DLL copiee localement en ressource embarquee et empeche sa copie. -->
+  <Target Name="EmbedLocalDlls" AfterTargets="ResolveReferences">
+    <ItemGroup>
+      <_DllToEmbed Include="@(ReferenceCopyLocalPaths)" Condition="'%(Extension)' == '.dll'" />
+      <EmbeddedResource Include="@(_DllToEmbed)" LogicalName="%(Filename)%(Extension)" />
+      <ReferenceCopyLocalPaths Remove="@(_DllToEmbed)" />
+    </ItemGroup>
+  </Target>
+
+</Project>
