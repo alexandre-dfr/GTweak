@@ -288,14 +288,14 @@ Nouvelles options à créer, en plus des tableaux minimaux du plan. Le titre est
 | `tel.location-off` | Collecte Windows | Localisation désactivée | Sûr | oui | 2 |
 | `tel.insider-off` | Collecte Windows | Programme Windows Insider et essais de fonctionnalités désactivés | Sûr | oui | 1 |
 | `tel.app-access-off` | Autorisations des applis | Accès des applis aux données personnelles bloqué (hors caméra et micro) | Sûr | oui | 5 |
-| `tel.search-off` | Recherche | Collecte de la recherche Windows désactivée (historique, contenu cloud, indexation sensible) | Sûr | oui | 2 |
+| `tel.search-off` | Recherche | Collecte de la recherche Windows désactivée (données partagées, contenu cloud, indexation sensible) | Sûr | oui | 2 |
 | `tel.cortana-off` | Recherche | Cortana et sa collecte désactivées | Sûr | oui | 3 |
 | `tel.sync-off` | Synchronisation | Synchronisation des paramètres avec le compte Microsoft désactivée | Sûr | oui | 1 |
 | `tel.clipboard-off` | Synchronisation | Presse-papiers cloud et historique du presse-papiers désactivés | Avancé | oui | 1 |
 | `tel.ui-privacy` | Interface | Suivi des applis récentes et notifications de l'écran de verrouillage désactivés | Sûr | oui | 1 |
 | `tel.explorer-online-off` | Interface | Contenu en ligne de l'Explorateur désactivé (astuces, publication web, commandes de tirages) | Sûr | oui | 1 |
 | `tel.recent-docs-off` | Interface | Historique des documents récents désactivé | Avancé | oui | 1 |
-| `tel.apps-telemetry-off` | Applications tierces | Télémétrie des outils tiers désactivée (.NET, PowerShell, winget, Visual Studio, VS Code, Lecteur Windows Media) | Sûr | oui | 3 |
+| `tel.apps-telemetry-off` | Applications tierces | Télémétrie des outils tiers désactivée (.NET, PowerShell, Visual Studio, Lecteur Windows Media, services Razer et Logitech) | Sûr | oui | 3 |
 | `tel.nvidia-off` | Applications tierces | Télémétrie NVIDIA désactivée (tâches, service, participation) | Sûr | oui | 2 |
 | `tel.office-off` | Applications tierces | Télémétrie de Microsoft Office désactivée | Sûr | oui | 1 |
 | `tel.edge-telemetry-off` | Navigateurs | Télémétrie et publicités d'Edge désactivées | Sûr | oui | 2 |

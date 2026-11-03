@@ -168,6 +168,7 @@
             <Grid Grid.Column="1" Margin="28,22,12,0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
@@ -198,7 +199,25 @@
                     </Button>
                 </Grid>
 
-                <ListBox Grid.Row="1" ItemsSource="{Binding Source={StaticResource OptionsView}}" ItemContainerStyle="{StaticResource OptionItemStyle}"
+                <!-- Bandeau du menu Télémétrie -->
+                <Border Grid.Row="1" Margin="0,0,16,12" Padding="14,10" CornerRadius="6" Background="{StaticResource PanelBrush}">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers><DataTrigger Binding="{Binding EstMenuTelemetrie}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <DockPanel LastChildFill="True">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                            <Button Content="Tout restaurer" Click="ToutRestaurer_Click" IsEnabled="{Binding PeutToutRestaurer}"
+                                    ToolTip="Annule les options de ce menu déjà appliquées : par le journal, sinon par un retour aux valeurs par défaut de Windows"/>
+                            <Button Content="O&amp;O ShutUp10++ (site officiel)" Margin="8,0,0,0" Click="ShutUp_Click" ToolTip="Ouvre la page officielle d'O&amp;O ShutUp10++ dans le navigateur"/>
+                        </StackPanel>
+                        <TextBlock Text="Les options appliquées peuvent toutes être annulées d'un coup." Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,12,0"/>
+                    </DockPanel>
+                </Border>
+
+                <ListBox Grid.Row="2" ItemsSource="{Binding Source={StaticResource OptionsView}}" ItemContainerStyle="{StaticResource OptionItemStyle}"
                          ItemTemplate="{StaticResource OptionTemplate}" Background="Transparent" BorderThickness="0"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.CanContentScroll="True"
                          VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling"
@@ -226,7 +245,7 @@
                     </ListBox.GroupStyle>
                 </ListBox>
 
-                <TextBlock Grid.Row="1" Text="Aucune option à afficher." Foreground="{StaticResource MutedBrush}" Margin="0,8">
+                <TextBlock Grid.Row="2" Text="Aucune option à afficher." Foreground="{StaticResource MutedBrush}" Margin="0,8">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock">
                             <Setter Property="Visibility" Value="Collapsed"/>

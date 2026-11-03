@@ -1,0 +1,605 @@
+[
+  {
+    "id": "tel.diagtrack-off",
+    "menu": "Télémétrie",
+    "groupe": "Collecte Windows",
+    "titre": "Désactiver le service de télémétrie DiagTrack",
+    "description": "Désactive et arrête « Expériences des utilisateurs connectés et télémétrie » (DiagTrack) et le service de routage des messages Push WAP (dmwappushservice). Sans effet sur les jeux.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "tel.level-min",
+    "menu": "Télémétrie",
+    "groupe": "Collecte Windows",
+    "titre": "Réduire la télémétrie Windows au minimum",
+    "description": "Règle le niveau de données de diagnostic sur 0 (stratégie AllowTelemetry), coupe les données commerciales, le téléchargement de la configuration cloud, la télémétrie de licence, les expériences personnalisées et les demandes de commentaires. Le niveau 0 n'est pleinement honoré que sur Windows Enterprise et Education ; sur Home et Pro, Windows applique son niveau minimal (« Obligatoire »), qui envoie encore un peu de données.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "tel.tasks-off",
+    "menu": "Télémétrie",
+    "groupe": "Collecte Windows",
+    "titre": "Désactiver les tâches planifiées de collecte de données",
+    "description": "Désactive les tâches de télémétrie de Windows (évaluation de compatibilité, programme d'amélioration de l'expérience, diagnostic de disque, retours d'expérience, informations sur l'appareil) et le programme d'amélioration de l'expérience utilisateur (stratégies CEIP). Les tâches absentes de cette version de Windows sont ignorées.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "tel.wer-off",
+    "menu": "Télémétrie",
+    "groupe": "Collecte Windows",
+    "titre": "Désactiver les rapports d'erreurs Windows",
+    "description": "Désactive l'envoi des rapports d'erreurs à Microsoft : stratégie, service « Rapport d'erreurs Windows » (WerSvc) et tâche de file d'attente. Les plantages d'applications ne sont plus signalés.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "tel.activity-off",
+    "menu": "Télémétrie",
+    "groupe": "Collecte Windows",
+    "titre": "Désactiver l'historique d'activité",
+    "description": "Désactive le flux d'activité et l'envoi de l'historique d'activité à Microsoft (stratégies EnableActivityFeed, PublishUserActivities, UploadUserActivities). L'historique du Presse-papiers n'est pas touché.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "tel.misc-off",
+    "menu": "Télémétrie",
+    "groupe": "Collecte Windows",
+    "titre": "Collectes diverses désactivées (reconnaissance vocale en ligne, saisie, commentaires, capteurs, Wi-Fi Sense)",
+    "description": "Désactive la reconnaissance vocale en ligne, l'envoi du consentement de personnalisation, la collecte de saisie manuscrite et de frappe, l'envoi des données de saisie, les capteurs de l'appareil et la connexion automatique Wi-Fi Sense.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "tel.compat-off",
+    "menu": "Télémétrie",
+    "groupe": "Collecte Windows",
+    "titre": "Télémétrie de compatibilité des applications désactivée (AIT, PCA, enregistreur d'actions, inventaire)",
+    "description": "Désactive la télémétrie d'impact des applications (AIT), l'inventaire d'applications, l'enregistreur d'actions, l'assistant de compatibilité des programmes (PCA, service en manuel) et les tâches de compatibilité d'Application Experience. Avancé : l'assistant de compatibilité peut proposer des correctifs pour d'anciens jeux ; le moteur de compatibilité lui-même reste actif.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "tel.location-off",
+    "menu": "Télémétrie",
+    "groupe": "Collecte Windows",
+    "titre": "Localisation désactivée",
+    "description": "Désactive la localisation de l'appareil : stratégie de localisation et de scripts de localisation, accès des applications à la position, capteur de localisation et service de géolocalisation (lfsvc).",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "tel.insider-off",
+    "menu": "Télémétrie",
+    "groupe": "Collecte Windows",
+    "titre": "Programme Windows Insider et essais de fonctionnalités désactivés",
+    "description": "Désactive le service Windows Insider, la réception des préversions et les essais de fonctionnalités Microsoft (expérimentation).",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "tel.adid-off",
+    "menu": "Télémétrie",
+    "groupe": "Publicité et suggestions",
+    "titre": "Désactiver l'identifiant publicitaire",
+    "description": "Empêche les applications d'utiliser votre identifiant publicitaire pour personnaliser les annonces (réglage de l'utilisateur et stratégie).",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "tel.suggestions-off",
+    "menu": "Télémétrie",
+    "groupe": "Publicité et suggestions",
+    "titre": "Désactiver les suggestions, astuces et applications promues",
+    "description": "Désactive l'installation silencieuse d'applications suggérées, les suggestions du menu Démarrer et des Paramètres, les astuces Windows, les expériences grand public de Microsoft et les notifications des fournisseurs de synchronisation. Windows à la une (Spotlight) n'est pas modifié.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "tel.app-access-off",
+    "menu": "Télémétrie",
+    "groupe": "Autorisations des applis",
+    "titre": "Accès des applis aux données personnelles bloqué (hors caméra et micro)",
+    "description": "Refuse aux applications du Store l'accès au nom et à l'image du compte, à l'activité, aux informations sur les autres applications, aux dossiers Documents, Images, Vidéos et Musique, aux fichiers, aux contacts, au calendrier, au téléphone et aux messages, aux e-mails, aux tâches, au Bluetooth et à l'activation vocale. La caméra, le micro, les notifications et l'activité en arrière-plan ne sont pas touchés. Réversible depuis Paramètres, Confidentialité.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "tel.bing-off",
+    "menu": "Télémétrie",
+    "groupe": "Recherche",
+    "titre": "Désactiver la recherche Bing et web dans le menu Démarrer",
+    "description": "Supprime les suggestions Bing et les résultats web de la recherche Windows, ainsi que les points forts de la recherche (stratégies et réglage de l'utilisateur).",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "tel.search-off",
+    "menu": "Télémétrie",
+    "groupe": "Recherche",
+    "titre": "Collecte de la recherche Windows désactivée (données partagées, contenu cloud, indexation sensible)",
+    "description": "Empêche la recherche Windows d'envoyer des données personnelles à Microsoft, de chercher dans le contenu cloud des comptes personnels et professionnels, d'utiliser la position, d'indexer les éléments chiffrés et d'accepter les requêtes distantes. L'indexation elle-même n'est pas désactivée.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "tel.cortana-off",
+    "menu": "Télémétrie",
+    "groupe": "Recherche",
+    "titre": "Cortana et sa collecte désactivées",
+    "description": "Désactive Cortana (recherche, cloud, écran verrouillé, historique, écoute vocale « Hey Cortana », raccourci et bouton de la barre des tâches). Sans effet si Cortana est absente de votre version de Windows.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "tel.sync-off",
+    "menu": "Télémétrie",
+    "groupe": "Synchronisation",
+    "titre": "Synchronisation des paramètres avec le compte Microsoft désactivée",
+    "description": "Désactive la synchronisation de tous les paramètres Windows (thème, mots de passe, langue, disposition du menu Démarrer…) avec le compte Microsoft, y compris sur les connexions facturées à l'usage.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "tel.clipboard-off",
+    "menu": "Télémétrie",
+    "groupe": "Synchronisation",
+    "titre": "Presse-papiers cloud et historique du presse-papiers désactivés",
+    "description": "Désactive la synchronisation du Presse-papiers entre appareils et l'historique du Presse-papiers (Windows + V). Avancé : l'historique du Presse-papiers ne fonctionne plus.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "tel.ui-privacy",
+    "menu": "Télémétrie",
+    "groupe": "Interface",
+    "titre": "Suivi des applis récentes et notifications de l'écran de verrouillage désactivés",
+    "description": "Désactive le suivi des applications récentes et les plus utilisées (stratégies de l'utilisateur) et l'affichage des notifications d'applications sur l'écran de verrouillage.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "tel.explorer-online-off",
+    "menu": "Télémétrie",
+    "groupe": "Interface",
+    "titre": "Contenu en ligne de l'Explorateur désactivé (astuces, publication web, commandes de tirages)",
+    "description": "Désactive dans l'Explorateur les astuces en ligne, la recherche d'un programme sur Internet pour ouvrir un fichier, la commande de tirages, la publication sur le web et le téléchargement des listes de fournisseurs des assistants.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "tel.recent-docs-off",
+    "menu": "Télémétrie",
+    "groupe": "Interface",
+    "titre": "Historique des documents récents désactivé",
+    "description": "Désactive l'historique des documents ouverts récemment, le vide à la fermeture de session et masque les fichiers récents de l'Accès rapide. Avancé : les listes de documents récents disparaissent.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "tel.apps-telemetry-off",
+    "menu": "Télémétrie",
+    "groupe": "Applications tierces",
+    "titre": "Télémétrie des outils tiers désactivée (.NET, PowerShell, Visual Studio, Lecteur Windows Media, services Razer et Logitech)",
+    "description": "Désactive la télémétrie de la CLI .NET et de PowerShell (variables d'environnement de l'utilisateur, prises en compte à la prochaine ouverture de session), de Visual Studio (programme d'amélioration, commentaires, IntelliCode) et du Lecteur Windows Media (statistiques, métadonnées). Passe les services Razer Game Scanner et Logitech Gaming Registry en démarrage manuel. Sans effet pour les logiciels absents.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "tel.nvidia-off",
+    "menu": "Télémétrie",
+    "groupe": "Applications tierces",
+    "titre": "Télémétrie NVIDIA désactivée (tâches, service, participation)",
+    "description": "Désactive la participation à la télémétrie NVIDIA, les tâches planifiées NvTm* et passe le service « NVIDIA Telemetry Container » en démarrage manuel. Les fichiers du pilote ne sont pas supprimés. Ignoré si aucun pilote NVIDIA n'est installé.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": [
+        "NVIDIA"
+      ]
+    }
+  },
+  {
+    "id": "tel.office-off",
+    "menu": "Télémétrie",
+    "groupe": "Applications tierces",
+    "titre": "Télémétrie de Microsoft Office désactivée",
+    "description": "Désactive la télémétrie cliente d'Office, la journalisation et l'envoi du service de suivi (OSM), le programme d'amélioration de l'expérience, les commentaires et les tâches de l'agent de télémétrie Office (versions 2013 à 2021 et Microsoft 365). Sans effet si Office est absent.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "tel.edge-telemetry-off",
+    "menu": "Télémétrie",
+    "groupe": "Navigateurs",
+    "titre": "Télémétrie et publicités d'Edge désactivées",
+    "description": "Désactive par stratégie les données de diagnostic, les métriques, l'envoi des sites visités, les commentaires, les recommandations et publicités d'Edge, les pages promotionnelles et la personnalisation par l'historique de navigation. Edge affiche alors « géré par votre organisation ».",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "tel.edge-debloat",
+    "menu": "Télémétrie",
+    "groupe": "Navigateurs",
+    "titre": "Fonctions promotionnelles d'Edge désactivées (Shopping, Rewards, Copilot, barre de recherche)",
+    "description": "Désactive par stratégie l'assistant d'achat, Microsoft Rewards, la barre latérale Copilot, la barre de recherche du bureau, les collections, le portefeuille, les suggestions Bing de la barre d'adresse et l'assistant de premier lancement. Avancé : change le comportement visible d'Edge ; Edge affiche « géré par votre organisation ».",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "tel.browsers-telemetry-off",
+    "menu": "Télémétrie",
+    "groupe": "Navigateurs",
+    "titre": "Télémétrie de Chrome et de Firefox désactivée",
+    "description": "Désactive par stratégie les métriques de Chrome, l'envoi des analyses de son outil de nettoyage, la télémétrie de Firefox et son agent de navigateur par défaut (valeur et tâches). Sans effet si ces navigateurs sont absents.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "tel.brave-debloat",
+    "menu": "Télémétrie",
+    "groupe": "Navigateurs",
+    "titre": "Brave allégé (Rewards, Leo, Wallet, VPN)",
+    "description": "Désactive par stratégie Brave Rewards, l'assistant Leo, le portefeuille, le VPN, Brave News et Talk, ainsi que les statistiques et mesures anonymisées. Sans effet si Brave est absent.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "tel.copilot-off",
+    "menu": "Télémétrie",
+    "groupe": "IA",
+    "titre": "Désactiver Windows Copilot",
+    "description": "Désactive Windows Copilot pour l'utilisateur courant par stratégie (TurnOffWindowsCopilot). Windows 11 uniquement.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "tel.recall-off",
+    "menu": "Télémétrie",
+    "groupe": "IA",
+    "titre": "Désactiver Recall (instantanés d'activité)",
+    "description": "Empêche Windows d'enregistrer des instantanés de l'activité pour Recall (stratégie DisableAIDataAnalysis). Windows 11 uniquement.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "tel.ai-off",
+    "menu": "Télémétrie",
+    "groupe": "IA",
+    "titre": "Fonctions IA de Windows retirées (paquets IA, IA du Bloc-notes, page IA des Paramètres)",
+    "description": "Retire les paquets Copilot, désactive les fonctions IA du Bloc-notes et le service WSAIFabricSvc, et masque la page des composants IA des Paramètres. Risqué : les paquets retirés ne reviennent que par réinstallation depuis le Microsoft Store (l'annulation rétablit seulement les réglages). Windows 11 uniquement.",
+    "risque": "Risque",
+    "reversible": true,
+    "redemarrage": false,
+    "delaiSec": 600,
+    "compatibilite": {
+      "windows": [
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "tel.hosts",
+    "menu": "Télémétrie",
+    "groupe": "Blocage réseau",
+    "titre": "Bloquer les serveurs de télémétrie Microsoft (fichier hosts)",
+    "description": "Ajoute au fichier hosts des lignes « 0.0.0.0 » (marquées « # GamingTweaker ») pour les serveurs de télémétrie, de rapports d'erreurs, de configuration distante et de localisation de Microsoft. Avancé : les serveurs de cartes, de connectivité réseau et de Windows Update ne sont pas bloqués. L'annulation retire ces lignes.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  }
+]

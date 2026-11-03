@@ -36,6 +36,8 @@ namespace GamingTweaker
                 + "\r\n\r\nLe charger plus tard les appliquera à nouveau. L'enregistrer quand même ?",
                 "Profil avec options risquées", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes;
 
+            vm.Restauration = new RestaurationService(paths);
+
             fenetre = new Ui.MainWindow(vm);
             fenetre.Show();
             fenetre.LancerControlesDemarrage(paths);

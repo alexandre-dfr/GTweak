@@ -19,6 +19,19 @@ namespace GamingTweaker.Tests.Helpers
         public override string ToString() => Source + " | " + Entree + " → " + (Decision ?? "");
     }
 
+    /// <summary>Une ligne du « Récapitulatif par menu » de docs/catalogue-couverture.md.</summary>
+    public sealed class LigneRecapitulatif
+    {
+        public string Id { get; set; }
+        public string Groupe { get; set; }
+        public string Titre { get; set; }
+        public RiskLevel Risque { get; set; }
+        /// <summary>Texte brut de la colonne « réversible » : « oui », « non » ou « partiel : … ».</summary>
+        public string Reversible { get; set; }
+        /// <summary>Vrai si l'option a un script revert (réversible différent de « non »).</summary>
+        public bool EstReversible { get { return Reversible != "non"; } }
+    }
+
     /// <summary>Lit le tableau de couverture des sources (Task 7B).</summary>
     public static class Couverture
     {
@@ -91,6 +104,44 @@ namespace GamingTweaker.Tests.Helpers
             }
             ecarts.AddRange(lu.Where(x => !attendu.Contains(x)).Select(x => x + " : absente de l'inventaire"));
             return ecarts;
+        }
+
+        /// <summary>
+        /// Lignes du tableau « ### menu » du Récapitulatif par menu (colonnes : id, groupe, titre, risque, réversible, lignes sources).
+        /// Un menu absent, un tableau mal formé ou un risque inconnu lèvent une exception.
+        /// </summary>
+        public static List<LigneRecapitulatif> Recapitulatif(string menu)
+            => ParseRecapitulatif(File.ReadAllText(Chemin(), Encoding.UTF8), menu);
+
+        public static List<LigneRecapitulatif> ParseRecapitulatif(string markdown, string menu)
+        {
+            var lignes = markdown.Replace("\r\n", "\n").Split('\n');
+            int i = Array.FindIndex(lignes, l => l.Trim() == "### " + menu);
+            if (i < 0) throw new InvalidDataException("Menu « " + menu + " » absent du récapitulatif.");
+            int k = i + 1;
+            while (k < lignes.Length && !lignes[k].TrimStart().StartsWith("|"))
+            {
+                if (lignes[k].TrimStart().StartsWith("#")) throw new InvalidDataException("Tableau du menu « " + menu + " » introuvable.");
+                k++;
+            }
+            if (k + 1 >= lignes.Length || !Regex.IsMatch(lignes[k + 1].Trim(), @"^\|(\s*-+\s*\|){6}$"))
+                throw new InvalidDataException("Séparation du tableau du menu « " + menu + " » absente.");
+            var res = new List<LigneRecapitulatif>();
+            for (int n = k + 2; n < lignes.Length && lignes[n].TrimStart().StartsWith("|"); n++)
+            {
+                var c = lignes[n].Trim().Trim('|').Split('|').Select(s => s.Trim()).ToArray();
+                if (c.Length != 6) throw new InvalidDataException("Ligne mal formée (" + c.Length + " colonnes) : " + lignes[n]);
+                RiskLevel r;
+                switch (c[3])
+                {
+                    case "Sûr": r = RiskLevel.Sur; break;
+                    case "Avancé": r = RiskLevel.Avance; break;
+                    case "Risqué": r = RiskLevel.Risque; break;
+                    default: throw new InvalidDataException("Risque inconnu « " + c[3] + " » : " + lignes[n]);
+                }
+                res.Add(new LigneRecapitulatif { Id = c[0].Trim('`'), Groupe = c[1], Titre = c[2], Risque = r, Reversible = c[4] });
+            }
+            return res;
         }
 
         public static List<LigneCouverture> SansDecision() =>

@@ -30,6 +30,19 @@ namespace GamingTweaker.Ui
         public string Taille { get; set; }
     }
 
+    /// <summary>Bilan de « Tout restaurer ».</summary>
+    public class ResultatRestauration
+    {
+        public int AnnuleesParJournal { get; set; }
+        public int AnnuleesParRevert { get; set; }
+        /// <summary>Une ligne « id : message » par option dont l'annulation a échoué.</summary>
+        public List<string> Echecs { get; } = new List<string>();
+        /// <summary>Options appliquées mais impossibles à restaurer (ni journal, ni script revert).</summary>
+        public List<string> Ignorees { get; } = new List<string>();
+        /// <summary>Annulations réussies avec une réserve (par exemple une réinstallation manuelle).</summary>
+        public List<string> Remarques { get; } = new List<string>();
+    }
+
     public class MainViewModel : ObservableObject
     {
         public static readonly string[] MenusOptions = { "Mises à jour", "Télémétrie", "Nettoyage", "Optimisation", "Bloatware" };
@@ -89,17 +102,21 @@ namespace GamingTweaker.Ui
         public string MenuCourant
         {
             get { return menuCourant; }
-            set { if (Set(ref menuCourant, value)) { Raise("EstEmplacement"); Raise("TitreAffiche"); Filtrer(); } }
+            set { if (Set(ref menuCourant, value)) { Raise("EstEmplacement"); Raise("EstMenuTelemetrie"); Raise("TitreAffiche"); Filtrer(); } }
         }
 
         public string Recherche
         {
             get { return recherche; }
-            set { if (Set(ref recherche, value ?? "")) { Raise("EnRecherche"); CommandManager.InvalidateRequerySuggested(); Raise("TitreAffiche"); Filtrer(); } }
+            set { if (Set(ref recherche, value ?? "")) { Raise("EnRecherche"); CommandManager.InvalidateRequerySuggested(); Raise("TitreAffiche"); Raise("EstMenuTelemetrie"); Filtrer(); } }
         }
 
         public bool EnRecherche { get { return Normaliser(recherche).Length > 0; } }
         public bool EstEmplacement { get { return !EnRecherche && Menus.Any(m => m.Nom == menuCourant && m.EstEmplacement); } }
+        public const string MenuTelemetrie = "Télémétrie";
+        public const string UrlShutUp10 = "https://www.oo-software.com/fr/shutup10";
+        /// <summary>Vrai quand le bandeau du menu Télémétrie (Tout restaurer, lien O&amp;O ShutUp10++) doit s'afficher.</summary>
+        public bool EstMenuTelemetrie { get { return !EnRecherche && menuCourant == MenuTelemetrie; } }
         public string TitreAffiche { get { return EnRecherche ? "Résultats de la recherche" : menuCourant; } }
 
         public string Message { get { return message; } set { Set(ref message, value ?? ""); } }
@@ -248,6 +265,72 @@ namespace GamingTweaker.Ui
                 DetectState s;
                 o.SetEtat(res != null && res.TryGetValue(o.Id, out s) ? s : DetectState.Unknown);
             }
+        }
+
+        // ---------- Tout restaurer (menu Télémétrie) ----------
+
+        /// <summary>Service d'annulation utilisé par « Tout restaurer » (journal, sinon script revert).</summary>
+        public IRestauration Restauration { get; set; }
+
+        private bool restaurationEnCours;
+        public bool RestaurationEnCours { get { return restaurationEnCours; } private set { if (Set(ref restaurationEnCours, value)) Raise("PeutToutRestaurer"); } }
+        public bool PeutToutRestaurer { get { return !restaurationEnCours; } }
+
+        /// <summary>
+        /// Pour chaque option du menu Télémétrie détectée « appliquée » : annulation par le journal actif le plus récent qui la contient,
+        /// sinon exécution de son script revert (valeurs par défaut de Windows). Les valeurs modifiées depuis par l'utilisateur ne sont pas comparées.
+        /// Une annulation par journal en échec n'est jamais remplacée par le script revert. Redétecte ensuite.
+        /// </summary>
+        public async Task<ResultatRestauration> ToutRestaurerAsync()
+        {
+            var res = new ResultatRestauration();
+            var svc = Restauration;
+            if (svc == null) { Message = "Tout restaurer est indisponible : aucun service d'annulation n'est configuré."; return res; }
+            if (RestaurationEnCours) return res;
+            RestaurationEnCours = true;
+            try
+            {
+                var tel = Options.Where(o => o.Menu == MenuTelemetrie).Select(o => o.Item).ToList();
+                Dictionary<string, DetectState> etats;
+                try { etats = await detect(tel); }
+                catch (Exception ex) { Message = "Détection impossible, rien n'a été restauré : " + ex.Message; return res; }
+
+                var appliquees = tel.Where(i => { DetectState s; return etats != null && etats.TryGetValue(i.Id, out s) && s == DetectState.Applied; }).ToList();
+                if (appliquees.Count == 0) { Message = "Rien à restaurer : aucune option du menu Télémétrie n'est appliquée."; return res; }
+
+                foreach (var it in appliquees)
+                {
+                    try
+                    {
+                        var journal = svc.TrouverJournalActif(it.Id);
+                        ItemOutcome o;
+                        bool parJournal = journal != null;
+                        if (parJournal) o = await svc.AnnulerParJournalAsync(journal, it.Id);
+                        else if (it.Reversible && !string.IsNullOrWhiteSpace(it.Revert)) o = await svc.ExecuterRevertAsync(it);
+                        else { res.Ignorees.Add(it.Id); continue; }
+
+                        if (o == null || o.Status == OutcomeStatus.Failed)
+                            res.Echecs.Add(it.Id + " : " + (o == null || string.IsNullOrWhiteSpace(o.Message) ? "échec de l'annulation" : o.Message.Trim()));
+                        else
+                        {
+                            if (parJournal) res.AnnuleesParJournal++; else res.AnnuleesParRevert++;
+                            if (o.Status == OutcomeStatus.Skipped && !string.IsNullOrWhiteSpace(o.Message)) res.Remarques.Add(it.Id + " : " + o.Message.Trim());
+                        }
+                    }
+                    catch (Exception ex) { res.Echecs.Add(it.Id + " : " + ex.Message); }
+                }
+
+                var sb = new StringBuilder("Tout restaurer : ");
+                sb.Append(res.AnnuleesParJournal).Append(" annulée(s) par le journal, ").Append(res.AnnuleesParRevert).Append(" remise(s) aux valeurs par défaut de Windows");
+                if (res.Echecs.Count > 0) sb.Append(", ").Append(res.Echecs.Count).Append(" échec(s) (").Append(string.Join(" ; ", res.Echecs)).Append(')');
+                if (res.Ignorees.Count > 0) sb.Append(", ").Append(res.Ignorees.Count).Append(" sans moyen de restauration (").Append(string.Join(", ", res.Ignorees)).Append(')');
+                sb.Append('.');
+                if (res.Remarques.Count > 0) sb.Append(' ').Append(string.Join(" ", res.Remarques));
+                Message = sb.ToString();
+                await DetectAsync();
+                return res;
+            }
+            finally { RestaurationEnCours = false; }
         }
 
         // ---------- Aperçu et exécution ----------

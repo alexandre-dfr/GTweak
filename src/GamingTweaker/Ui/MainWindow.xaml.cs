@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
@@ -38,6 +39,22 @@ namespace GamingTweaker.Ui
         private void ApercuPuisExecuter() { if (OuvrirApercu()) Executer(); }
 
         private void Recharger_Click(object sender, RoutedEventArgs e) { vm.RechargerProfil(); }
+
+        private async void ToutRestaurer_Click(object sender, RoutedEventArgs e)
+        {
+            var ok = MessageBox.Show(this,
+                "Toutes les options du menu Télémétrie déjà appliquées vont être annulées : par le journal de leur dernière exécution, sinon par un retour aux valeurs par défaut de Windows.\r\n\r\nContinuer ?",
+                "Tout restaurer", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
+            if (ok != MessageBoxResult.Yes) return;
+            try { await vm.ToutRestaurerAsync(); }
+            catch (Exception ex) { vm.Message = "Tout restaurer a échoué : " + ex.Message; }
+        }
+
+        private void ShutUp_Click(object sender, RoutedEventArgs e)
+        {
+            try { Process.Start(new ProcessStartInfo(MainViewModel.UrlShutUp10) { UseShellExecute = true }); }
+            catch (Exception ex) { vm.Message = "Impossible d'ouvrir le navigateur (" + ex.Message + "). Adresse : " + MainViewModel.UrlShutUp10; }
+        }
 
         private bool OuvrirApercu()
         {

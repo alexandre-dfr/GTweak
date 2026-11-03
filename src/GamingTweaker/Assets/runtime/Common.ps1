@@ -398,3 +398,105 @@ function Restore-GTItem([Parameter(Mandatory)][string]$Item) {
     Write-GTUndoneMarker $Item
     if ($manual.Count -gt 0) { Skip-GTItem ('Réinstallation manuelle nécessaire (Microsoft Store) : ' + ($manual -join ', ')) }
 }
+
+# ---------------------------------------------------------------------------
+# Aides des scripts du catalogue (detect / apply / revert).
+# Les scripts apply restent idempotents : une valeur deja a l'etat voulu n'est ni reecrite ni journalisee,
+# donc le journal ne garde que l'etat d'origine. Un element (tache, service) absent de la machine est ignore sans erreur.
+# ---------------------------------------------------------------------------
+
+# Vrai si la valeur existe avec ce type et cette valeur.
+function Test-GTRegistryValue([string]$Path, [string]$Name, [string]$Type, $Value) {
+    $cur = Get-GTRegValue $Path $Name
+    if (-not $cur.Existed -or $cur.Type -ne $Type) { return $false }
+    try {
+        if ($Type -eq 'DWord' -or $Type -eq 'QWord') { return ([int64]$cur.Value -eq [int64]$Value) }
+        return ([string]$cur.Value -ieq [string]$Value)
+    } catch { return $false }
+}
+
+function Set-TweakRegistryIfNeeded {
+    param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][string]$Name,
+          [Parameter(Mandatory)][string]$Type, [Parameter(Mandatory)]$Value)
+    if (Test-GTRegistryValue $Path $Name $Type $Value) { return }
+    Set-TweakRegistry -Path $Path -Name $Name -Type $Type -Value $Value
+}
+
+# Renvoie $true si le service existe sur cette machine (modifie ou deja a l'etat voulu), $false sinon.
+function Set-TweakServiceIfNeeded {
+    param([Parameter(Mandatory)][string]$Name, [Parameter(Mandatory)][string]$StartType)
+    $cur = Get-GTServiceStart $Name
+    if (-not $cur) { return $false }
+    if ($cur -ne $StartType) { Set-TweakService -Name $Name -StartType $StartType }
+    return $true
+}
+
+# $null si la tache est absente, sinon $true (activee) ou $false (desactivee).
+function Get-GTTaskEnabled([string]$Path) {
+    $p = Split-GTTaskPath $Path
+    $t = Get-ScheduledTask -TaskPath $p.Dir -TaskName $p.Name -ErrorAction SilentlyContinue
+    if (-not $t) { return $null }
+    return [bool]($t.State -ne 'Disabled')
+}
+
+# Renvoie $true si la tache existe sur cette machine (modifiee ou deja a l'etat voulu), $false sinon.
+function Set-TweakTaskIfNeeded {
+    param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][bool]$Enabled)
+    $cur = Get-GTTaskEnabled $Path
+    if ($null -eq $cur) { return $false }
+    if ($cur -ne $Enabled) { Set-TweakTask -Path $Path -Enabled $Enabled }
+    return $true
+}
+
+function Test-GTHostsBlocked([string[]]$Domains) {
+    $path = Get-GTHostsDefault
+    $existing = @(); if (Test-Path -LiteralPath $path) { $existing = @([IO.File]::ReadAllLines($path)) }
+    foreach ($d in $Domains) { if ($existing -notcontains ('0.0.0.0 ' + $d + ' ' + $script:GT_HostsMarker)) { return $false } }
+    return $true
+}
+
+# Detection : « Applied » si tous les elements presents sont a l'etat modifie (au moins un element present), sinon « NotApplied ».
+# -Registry : @(chemin, nom, type, valeur) ; -Service : @(nom, demarrage) ; -Task : chemins (desactivees) ; -HostName : domaines bloques.
+# Un service ou une tache absent de la machine est ignore ; une valeur de registre absente compte comme non appliquee.
+function Get-GTTweakState {
+    param([object[]]$Registry = @(), [object[]]$Service = @(), [string[]]$Task = @(), [string[]]$HostName = @())
+    $seen = 0
+    foreach ($r in $Registry) { $seen++; if (-not (Test-GTRegistryValue $r[0] $r[1] $r[2] $r[3])) { return 'NotApplied' } }
+    foreach ($s in $Service) {
+        $cur = Get-GTServiceStart $s[0]
+        if (-not $cur) { continue }
+        $seen++; if ($cur -ne $s[1]) { return 'NotApplied' }
+    }
+    foreach ($t in $Task) {
+        $cur = Get-GTTaskEnabled $t
+        if ($null -eq $cur) { continue }
+        $seen++; if ($cur) { return 'NotApplied' }
+    }
+    if ($HostName.Count -gt 0) { $seen++; if (-not (Test-GTHostsBlocked $HostName)) { return 'NotApplied' } }
+    if ($seen -eq 0) { return 'NotApplied' }
+    return 'Applied'
+}
+
+# Retour aux valeurs par defaut de Windows (scripts revert, utilises sans journal).
+# -Registry : @(chemin, nom, type, defaut) ; defaut $null = supprimer la valeur ; -Service : @(nom, demarrage) ; -Task : chemins reactivees.
+function Reset-GTTweaks {
+    param([object[]]$Registry = @(), [object[]]$Service = @(), [string[]]$Task = @(), [string[]]$HostName = @())
+    foreach ($r in $Registry) {
+        if ($null -eq $r[3]) {
+            if ((Get-GTRegValue $r[0] $r[1]).Existed) { Remove-ItemProperty -LiteralPath $r[0] -Name $r[1] -ErrorAction Stop }
+        } elseif (-not (Test-GTRegistryValue $r[0] $r[1] $r[2] $r[3])) {
+            Set-GTRegRaw $r[0] $r[1] $r[2] (ConvertTo-GTRegData $r[2] $r[3])
+        }
+    }
+    foreach ($s in $Service) {
+        $cur = Get-GTServiceStart $s[0]
+        if ($cur -and $cur -ne $s[1]) { Set-GTServiceStart $s[0] $s[1] }
+    }
+    foreach ($t in $Task) {
+        $cur = Get-GTTaskEnabled $t
+        if ($null -ne $cur -and -not $cur) { $p = Split-GTTaskPath $t; Enable-ScheduledTask -TaskPath $p.Dir -TaskName $p.Name | Out-Null }
+    }
+    if ($HostName.Count -gt 0) {
+        Remove-GTHostsLines (Get-GTHostsDefault) ([string[]]@($HostName | ForEach-Object { '0.0.0.0 ' + $_ + ' ' + $script:GT_HostsMarker }))
+    }
+}
