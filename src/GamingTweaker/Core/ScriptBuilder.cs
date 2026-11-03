@@ -22,11 +22,7 @@ namespace GamingTweaker.Core
             sb.Append("param([string[]]$SkipIds = @())\r\n");
             // -File transmet « a,b » comme une seule chaîne : on la redécoupe.
             sb.Append("$SkipIds = @($SkipIds | ForEach-Object { $_ -split ',' } | Where-Object { $_ })\r\n");
-            sb.Append("[Console]::OutputEncoding = [Text.Encoding]::UTF8\r\n");
-            sb.Append("$ErrorActionPreference = 'Stop'\r\n");
-            sb.Append("$GT_JournalPath = ").Append(Quote(journalPath ?? "")).Append("\r\n");
-            sb.Append("$GT_QuarantineDir = ").Append(quarantineDir == null ? "$null" : Quote(quarantineDir)).Append("\r\n");
-            sb.Append(ReadCommon()).Append("\r\n");
+            sb.Append(Header(journalPath, quarantineDir));
 
             var selected = items.Where(i => s.OptionIds.Contains(i.Id)).ToList();
             // Plan : permet au runner de connaître toutes les options avant la première (annulation, arrêt brutal).
@@ -49,8 +45,20 @@ namespace GamingTweaker.Core
             return sb.ToString();
         }
 
+        /// <summary>En-tête commun (encodage, journal, quarantaine, fonctions communes), partagé avec Detection.</summary>
+        internal static string Header(string journalPath, string quarantineDir)
+        {
+            var sb = new StringBuilder();
+            sb.Append("[Console]::OutputEncoding = [Text.Encoding]::UTF8\r\n");
+            sb.Append("$ErrorActionPreference = 'Stop'\r\n");
+            sb.Append("$GT_JournalPath = ").Append(Quote(journalPath ?? "")).Append("\r\n");
+            sb.Append("$GT_QuarantineDir = ").Append(quarantineDir == null ? "$null" : Quote(quarantineDir)).Append("\r\n");
+            sb.Append(ReadCommon()).Append("\r\n");
+            return sb.ToString();
+        }
+
         // PowerShell traite aussi U+2018, U+2019, U+201A et U+201B comme des guillemets simples : on les double tous.
-        private static string Quote(string v)
+        internal static string Quote(string v)
         {
             var sb = new StringBuilder("'");
             foreach (var c in v)

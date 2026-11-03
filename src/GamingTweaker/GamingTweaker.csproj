@@ -9,6 +9,7 @@
     <RootNamespace>GamingTweaker</RootNamespace>
     <AssemblyName>GamingTweaker</AssemblyName>
     <Nullable>disable</Nullable>
+    <StartupObject>GamingTweaker.Program</StartupObject>
     <SatelliteResourceLanguages>fr;en</SatelliteResourceLanguages>
   </PropertyGroup>
 
