@@ -212,5 +212,47 @@ namespace GamingTweaker.Tests
             var t = MainViewModel.RapportTexte(new SessionReport { SessionDir = null, ExitCode = 2, Avertissements = { "Une autre instance est déjà en cours." } }, vm.Options.Select(o => o.Item).ToList());
             Assert.Contains("Une autre instance est déjà en cours.", t);
         }
+
+        [Fact]
+        public void Lancer_rend_la_main_meme_si_le_pipeline_bloque_avant_son_premier_await()
+        {
+            var gate = new ManualResetEventSlim();
+            var v = new MainViewModel(new List<CatalogItem> { It("a.b", "Nettoyage", "G", "T", RiskLevel.Sur) }, new MachineFacts(),
+                new DataPaths { ProfilsDir = tmp }, its => Task.FromResult(new Dictionary<string, DetectState>()),
+                (r, l, ct) => { gate.Wait(5000); return Task.FromResult(new SessionReport()); }, o => true);
+            v.Options[0].IsChecked = true;
+            var t = v.LancerAsync(null, CancellationToken.None);
+            Assert.False(t.IsCompleted);
+            gate.Set();
+            Assert.True(t.Wait(5000));
+        }
+
+        [Fact]
+        public void Recommande_desactive_pendant_une_recherche()
+        {
+            vm.MenuCourant = "Optimisation";
+            Assert.True(vm.RecommanderCommand.CanExecute(null));
+            vm.Recherche = "souris";
+            Assert.False(vm.RecommanderCommand.CanExecute(null));
+        }
+
+        [Fact]
+        public void Recharger_le_profil_courant_recoche_ses_options()
+        {
+            Cocher("opt.sur");
+            Assert.Null(vm.SauverProfil("p1"));
+            vm.Options.Single(o => o.Id == "opt.sur").IsChecked = false;
+            vm.RechargerProfil();
+            Assert.True(Coche("opt.sur"));
+        }
+
+        [Fact]
+        public void Script_exporte_commence_par_un_en_tete_explicatif()
+        {
+            Cocher("opt.sur");
+            var t = vm.BuildExportScript();
+            Assert.StartsWith("#", t);
+            Assert.Contains("déjà appliquées ou ignorées ne seront pas exécutées", t.Substring(0, 400));
+        }
     }
 }

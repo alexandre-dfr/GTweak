@@ -31,13 +31,13 @@ namespace GamingTweaker.Ui
             if (err != null) MessageBox.Show(this, err, "Profil", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
-        private void Apercu_Click(object sender, RoutedEventArgs e) { OuvrirApercu(); }
+        // « Aperçu » et « LANCER » ouvrent le même aperçu ; son bouton LANCER démarre l'exécution.
+        private void Apercu_Click(object sender, RoutedEventArgs e) { ApercuPuisExecuter(); }
+        private void Lancer_Click(object sender, RoutedEventArgs e) { ApercuPuisExecuter(); }
 
-        private void Lancer_Click(object sender, RoutedEventArgs e)
-        {
-            // « Lancer » passe toujours par l'aperçu ; c'est depuis l'aperçu qu'on exécute.
-            if (OuvrirApercu()) Executer();
-        }
+        private void ApercuPuisExecuter() { if (OuvrirApercu()) Executer(); }
+
+        private void Recharger_Click(object sender, RoutedEventArgs e) { vm.RechargerProfil(); }
 
         private bool OuvrirApercu()
         {

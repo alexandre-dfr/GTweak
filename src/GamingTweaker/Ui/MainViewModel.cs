@@ -65,7 +65,7 @@ namespace GamingTweaker.Ui
             menus.Add(new MenuEntry { Nom = "Historique", EstEmplacement = true });
             Menus = menus;
 
-            RecommanderCommand = new RelayCommand(_ => ApplyRecommended(MenuCourant), _ => !EstEmplacement && Visibles.Any(o => o.NiveauRisque == RiskLevel.Sur));
+            RecommanderCommand = new RelayCommand(_ => ApplyRecommended(MenuCourant), _ => !EstEmplacement && !EnRecherche && Visibles.Any(o => o.NiveauRisque == RiskLevel.Sur));
             RafraichirProfils();
             Filtrer();
         }
@@ -95,7 +95,7 @@ namespace GamingTweaker.Ui
         public string Recherche
         {
             get { return recherche; }
-            set { if (Set(ref recherche, value ?? "")) { Raise("EnRecherche"); Raise("TitreAffiche"); Filtrer(); } }
+            set { if (Set(ref recherche, value ?? "")) { Raise("EnRecherche"); CommandManager.InvalidateRequerySuggested(); Raise("TitreAffiche"); Filtrer(); } }
         }
 
         public bool EnRecherche { get { return Normaliser(recherche).Length > 0; } }
@@ -201,6 +201,12 @@ namespace GamingTweaker.Ui
             foreach (var n in noms) ProfilsDisponibles.Add(n);
         }
 
+        /// <summary>Recharge le profil actuellement sélectionné (annule les modifications de cases depuis son chargement).</summary>
+        public void RechargerProfil()
+        {
+            if (!string.IsNullOrEmpty(profilSelectionne)) ChargerProfilNomme(profilSelectionne);
+        }
+
         private string CheminProfil(string nom) { return Path.Combine(paths.ProfilsDir, nom + ".json"); }
 
         private void ChargerProfilNomme(string nom)
@@ -263,6 +269,15 @@ namespace GamingTweaker.Ui
             return ScriptBuilder.Build(items, BuildSelection(), @"<dossier de la session>\journal.jsonl", paths == null ? null : paths.QuarantineDir);
         }
 
+        public const string NoteApercu = "Le dossier de session est créé au lancement ; les options déjà appliquées ou ignorées ne seront pas exécutées.";
+
+        /// <summary>Script à exporter : le script de l'aperçu précédé d'un en-tête explicatif.</summary>
+        public string BuildExportScript()
+        {
+            var script = BuildPreviewScript();
+            return "# GamingTweaker : script exporté depuis l'aperçu.\r\n# " + NoteApercu + "\r\n\r\n" + script;
+        }
+
         public Task<SessionReport> LancerAsync(IProgress<string> log, CancellationToken ct)
         {
             var req = new RunRequest
@@ -271,7 +286,8 @@ namespace GamingTweaker.Ui
                 ConfirmSansPointDeRestauration = ConfirmSansPointDeRestauration,
             };
             if (run == null) throw new InvalidOperationException("Aucun exécuteur configuré.");
-            return run(req, log, ct);
+            // Le pipeline prend le verrou et crée le point de restauration avant son premier await : hors du thread de l'interface.
+            return Task.Run(() => run(req, log, ct));
         }
 
         /// <summary>Ligne lisible pour le journal en direct ; null pour les lignes techniques à masquer.</summary>

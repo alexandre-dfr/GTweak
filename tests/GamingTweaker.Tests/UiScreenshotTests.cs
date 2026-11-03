@@ -117,11 +117,7 @@ namespace GamingTweaker.Tests
             // Détection terminée, avec une sélection (dont une option Risqué) et un avertissement d'élévation.
             gate.SetResult(items.ToDictionary(i => i.Id, i => i.Id == "opt.mouse" || i == items[3] ? DetectState.Applied : i.Id == "opt.hags" ? DetectState.Unknown : DetectState.NotApplied));
             Pump(d); tache.Wait(2000); Pump(d);
-            vm.Bandeau = "Les options du profil utilisateur seront ignorées : l'application est exécutée sous un autre compte administrateur.";
-            vm.Options.Single(o => o.Id == "opt.mouse").IsChecked = true;
-            vm.Options.Single(o => o.Id == "opt.usb").IsChecked = true;
-            vm.Options.Single(o => o.Id == "opt.spectre").IsChecked = true;
-            vm.ProfilSelectionne = "gaming"; vm.Message = ""; // le chargement du profil vide décocherait tout : on recoche ensuite
+            vm.ProfilSelectionne = "gaming"; vm.Message = ""; // le chargement du profil (vide) décoche tout : on coche ensuite
             vm.Options.Single(o => o.Id == "opt.mouse").IsChecked = true;
             vm.Options.Single(o => o.Id == "opt.usb").IsChecked = true;
             vm.Options.Single(o => o.Id == "opt.spectre").IsChecked = true;
@@ -144,6 +140,7 @@ namespace GamingTweaker.Tests
             Capture(run, "11-execution-rapport");
             // Le RunWindow refuse la fermeture tant que l'exécution n'est pas terminée ; ici elle l'est.
             run.Close(); win.Close();
+            try { Directory.Delete(tmp, true); } catch (IOException) { }
         }
     }
 }

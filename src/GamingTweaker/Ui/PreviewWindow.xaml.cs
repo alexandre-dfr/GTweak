@@ -9,23 +9,26 @@ namespace GamingTweaker.Ui
 {
     public partial class PreviewWindow : Window
     {
+        private readonly MainViewModel vm;
         public PreviewWindow(MainViewModel vm)
         {
             InitializeComponent();
             var rows = vm.BuildPreview();
             Lignes.ItemsSource = rows;
-            Titre.Text = rows.Count + (rows.Count > 1 ? " options seront appliquées" : " option sera appliquée");
+            Titre.Text = "Aperçu du script";
+            Sous.Text = rows.Count + (rows.Count > 1 ? " options sélectionnées. " : " option sélectionnée. ") + Sous.Text;
             if (rows.Any(r => r.Reversibilite == "définitif"))
                 Sous.Text += " Les options marquées « définitif » ne pourront pas être annulées.";
+            this.vm = vm;
             try { Script.Text = vm.BuildPreviewScript(); }
-            catch (Exception ex) { Script.Text = "Le script n'a pas pu être généré : " + ex.Message; }
+            catch (Exception ex) { Script.Text = "Le script n'a pas pu être généré : " + ex.Message; Exporter.IsEnabled = false; Lancer.IsEnabled = false; }
         }
 
         private void Exporter_Click(object sender, RoutedEventArgs e)
         {
             var dlg = new SaveFileDialog { Title = "Exporter le script", Filter = "Script PowerShell (*.ps1)|*.ps1", FileName = "GamingTweaker.ps1", DefaultExt = ".ps1" };
             if (dlg.ShowDialog(this) != true) return;
-            try { File.WriteAllText(dlg.FileName, Script.Text, new UTF8Encoding(true)); }
+            try { File.WriteAllText(dlg.FileName, vm.BuildExportScript(), new UTF8Encoding(true)); }
             catch (Exception ex) { MessageBox.Show(this, "Écriture impossible : " + ex.Message, "Exporter", MessageBoxButton.OK, MessageBoxImage.Warning); }
         }
 

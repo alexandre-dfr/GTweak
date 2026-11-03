@@ -21,7 +21,6 @@ namespace GamingTweaker.Ui
             Loaded += async (s, e) => await DemarrerAsync();
             Closing += (s, e) =>
             {
-                if (termine) return;
                 e.Cancel = true; // pas de fermeture en plein milieu : on demande l'arrêt proprement
                 Annuler_Click(null, null);
             };
@@ -31,7 +30,6 @@ namespace GamingTweaker.Ui
         {
             var log = new Progress<string>(l =>
             {
-                if (termine) return;
                 var txt = vm.FormaterLigne(l);
                 if (txt == null) return;
                 Journal.AppendText(txt + "\r\n"); Journal.ScrollToEnd();
@@ -47,7 +45,9 @@ namespace GamingTweaker.Ui
             Barre.IsIndeterminate = false; Barre.Value = Barre.Maximum;
             Etat.Text = rapport.SessionDir == null ? "Rien n'a été exécuté"
                       : rapport.ExitCode == 0 ? "Terminé" : "Terminé avec des erreurs";
-            Journal.Text = MainViewModel.RapportTexte(rapport, vm.Catalogue);
+            // Les lignes du journal déjà postées sur ce thread passent avant ce code : le rapport vient après le journal.
+            Journal.AppendText((Journal.Text.Length > 0 ? "\r\n---\r\n" : "") + MainViewModel.RapportTexte(rapport, vm.Catalogue));
+            Journal.ScrollToEnd();
             Annuler.Visibility = Visibility.Collapsed;
             Fermer.Visibility = Visibility.Visible;
             if (rapport.SessionDir != null) { sessionDir = rapport.SessionDir; Dossier.Visibility = Visibility.Visible; }

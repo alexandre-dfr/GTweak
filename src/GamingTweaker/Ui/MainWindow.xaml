@@ -259,7 +259,10 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="Profil" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" Margin="0,0,10,0"/>
                 <ComboBox Grid.Column="1" Width="200" Height="34" ItemsSource="{Binding ProfilsDisponibles}" SelectedItem="{Binding ProfilSelectionne, Mode=TwoWay}"/>
-                <Button Grid.Column="2" Content="Sauver" Margin="10,0,0,0" Click="Sauver_Click"/>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="10,0,0,0">
+                    <Button Content="Sauver" Click="Sauver_Click"/>
+                    <Button Content="Recharger" Margin="8,0,0,0" Click="Recharger_Click" ToolTip="Recharge le profil sélectionné"/>
+                </StackPanel>
                 <TextBlock Grid.Column="4" Text="{Binding ResumeSelection}" VerticalAlignment="Center" FontSize="15" FontWeight="SemiBold" Margin="0,0,24,0"/>
                 <Button Grid.Column="5" Content="Aperçu" IsEnabled="{Binding AUneSelection}" Click="Apercu_Click" Margin="0,0,12,0"/>
                 <Button Grid.Column="6" Content="LANCER" Style="{StaticResource PrimaryButton}" IsEnabled="{Binding AUneSelection}" Click="Lancer_Click"/>
