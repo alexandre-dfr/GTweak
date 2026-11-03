@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -91,9 +92,12 @@ namespace GamingTweaker.Core
                 catch (JsonException e) { return Echec($"Le profil « {nom} » est invalide : {e.Message}"); }
                 if (p == null) return Echec($"Le profil « {nom} » est invalide.");
 
-                p.Options = (p.Options ?? new List<string>()).Where(o => !string.IsNullOrWhiteSpace(o)).ToList();
+                p.Options = p.Options ?? new List<string>();
                 p.Nom = p.Nom ?? "";
                 p.Listes = p.Listes ?? new ProfilListes();
+
+                var invalide = Valider(p);
+                if (invalide != null) return Echec($"Le profil « {nom} » est invalide : {invalide}");
 
                 var r = new ProfilLoad { Profil = p };
                 if (p.Listes.Inconnues != null)
@@ -101,10 +105,58 @@ namespace GamingTweaker.Core
                         r.Avertissements.Add($"Liste « {k} » inconnue dans le profil « {nom} » : ignorée.");
                 return r;
             }
-            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
+            catch (Exception e)
             {
                 return Echec($"Impossible de lire le profil « {nom} » : {e.Message}");
             }
+        }
+
+        private static readonly Regex ReOption = new Regex(@"^[a-z0-9][a-z0-9.\-]*\z", RegexOptions.CultureInvariant);
+        private static readonly Regex ReWinget = new Regex(@"^[A-Za-z0-9][A-Za-z0-9.\-_+]*\z", RegexOptions.CultureInvariant);
+        private static readonly Regex ReKb = new Regex(@"^KB\d{4,8}\z", RegexOptions.CultureInvariant);
+        private static readonly Regex ReNom = new Regex(@"^[A-Za-z0-9][A-Za-z0-9_.\-]*\z", RegexOptions.CultureInvariant);
+
+        /// <summary>Contenu invalide = erreur de chargement (jamais ignoré ni élargi). Renvoie le message, ou null.</summary>
+        private static string Valider(Profil p)
+        {
+            string e;
+            if ((e = Verifier("options", p.Options, ReOption)) != null) return e;
+            var l = p.Listes;
+            if (l.Winget != null)
+            {
+                var mode = l.Winget.Mode == null ? null : l.Winget.Mode.Trim();
+                if (mode != "tout-sauf" && mode != "liste")
+                    return $"liste « winget », champ « mode » : valeur « {l.Winget.Mode} » non reconnue (attendu « tout-sauf » ou « liste »).";
+                l.Winget.Mode = mode;
+                if (l.Winget.Exclusions == null) l.Winget.Exclusions = new List<string>();
+                if (l.Winget.Elements == null) l.Winget.Elements = new List<string>();
+                if ((e = Verifier("winget (exclusions)", l.Winget.Exclusions, ReWinget)) != null) return e;
+                if ((e = Verifier("winget (elements)", l.Winget.Elements, ReWinget)) != null) return e;
+            }
+            if (l.WindowsUpdate != null)
+            {
+                if (l.WindowsUpdate.ExclusionsKb == null) l.WindowsUpdate.ExclusionsKb = new List<string>();
+                if ((e = Verifier("windowsUpdate (exclusionsKb)", l.WindowsUpdate.ExclusionsKb, ReKb)) != null) return e;
+            }
+            if (l.Bloatware != null && (e = Verifier("bloatware", l.Bloatware, ReNom)) != null) return e;
+            if (l.Services != null && (e = Verifier("services", l.Services, ReNom)) != null) return e;
+            if (l.Pilote != null)
+            {
+                var b = l.Pilote.Branche == null ? null : l.Pilote.Branche.Trim();
+                if (b != "GameReady" && b != "Studio")
+                    return $"liste « pilote », champ « branche » : valeur « {l.Pilote.Branche} » non reconnue (attendu « GameReady » ou « Studio »).";
+                l.Pilote.Branche = b;
+            }
+            return null;
+        }
+
+        private static string Verifier(string liste, List<string> valeurs, Regex re)
+        {
+            if (valeurs == null) return null;
+            foreach (var v in valeurs)
+                if (v == null || !re.IsMatch(v))
+                    return $"liste « {liste} » : valeur « {v ?? "null"} » invalide.";
+            return null;
         }
 
         private static ProfilLoad Echec(string msg) => new ProfilLoad { Erreur = msg };
@@ -115,6 +167,7 @@ namespace GamingTweaker.Core
             if (p == null) throw new ArgumentNullException(nameof(p));
             var dir = Path.GetDirectoryName(Path.GetFullPath(path));
             Directory.CreateDirectory(dir);
+            p.Version = VersionCourante;
             var json = JsonConvert.SerializeObject(p, Formatting.Indented);
             var tmp = Path.Combine(dir, Path.GetFileName(path) + "." + Guid.NewGuid().ToString("N") + ".tmp");
             try

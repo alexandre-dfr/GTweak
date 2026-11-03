@@ -133,5 +133,77 @@ namespace GamingTweaker.Tests
             Assert.Null(l.Erreur);
             Assert.NotNull(l.Profil.Listes);
         }
+
+        private static string Json(string listes = "{}", string options = "[\"opt.a\"]", string version = "1") =>
+            "{\"version\":" + version + ",\"nom\":\"n\",\"options\":" + options + ",\"listes\":" + listes + "}";
+
+        [Theory]
+        [InlineData("{\"winget\":{\"mode\":\"tout-saufs\"}}", "mode")]
+        [InlineData("{\"winget\":{\"mode\":null}}", "mode")]
+        [InlineData("{\"pilote\":{\"branche\":\"Gamer\"}}", "branche")]
+        [InlineData("{\"pilote\":{}}", "branche")]
+        [InlineData("{\"winget\":{\"mode\":\"liste\",\"elements\":[\"a\nb\"]}}", "winget")]
+        [InlineData("{\"winget\":{\"exclusions\":[\"-x\"]}}", "winget")]
+        [InlineData("{\"winget\":{\"exclusions\":[\"$(calc)\"]}}", "winget")]
+        [InlineData("{\"winget\":{\"exclusions\":[\"*\"]}}", "winget")]
+        [InlineData("{\"winget\":{\"exclusions\":[null]}}", "winget")]
+        [InlineData("{\"windowsUpdate\":{\"exclusionsKb\":[\"123\"]}}", "windowsUpdate")]
+        [InlineData("{\"bloatware\":[\"a'b\"]}", "bloatware")]
+        [InlineData("{\"services\":[\"-Fax\"]}", "services")]
+        [InlineData("{\"services\":[null]}", "services")]
+        [InlineData("{\"services\":[\"Fax\n\"]}", "services")]
+        public void Contenu_de_liste_invalide_est_une_erreur(string listes, string champ)
+        {
+            var l = Profils.Load(Ecrire(Json(listes)));
+            Assert.NotNull(l.Erreur);
+            Assert.Null(l.Profil);
+            Assert.Contains(champ, l.Erreur);
+        }
+
+        [Theory, InlineData("[\"Bad Id\"]"), InlineData("[\"-x\"]"), InlineData("[null]"), InlineData("[\"A.b\"]")]
+        public void Id_doption_invalide_est_une_erreur(string options)
+        {
+            var l = Profils.Load(Ecrire(Json(options: options)));
+            Assert.NotNull(l.Erreur);
+            Assert.Contains("options", l.Erreur);
+        }
+
+        [Fact] public void Valeurs_valides_acceptees() =>
+            Assert.Null(Profils.Load(Ecrire(Json("{\"winget\":{\"mode\":\"liste\",\"elements\":[\"Vendor.Pkg-1_x+\"]},\"windowsUpdate\":{\"exclusionsKb\":[\"KB5001234\"]},\"bloatware\":[\"Microsoft.BingNews\"],\"services\":[\"Fax\"],\"pilote\":{\"branche\":\"Studio\"}}"))).Erreur);
+
+        [Theory]
+        [InlineData("99999999999999999999", "[\"opt.a\"]", "{}")]
+        [InlineData("1", "\"x\"", "{}")]
+        [InlineData("1", "[\"opt.a\"]", "{\"winget\":\"x\"}")]
+        [InlineData("1", "[\"opt.a\"]", "{\"bloatware\":\"x\"}")]
+        [InlineData("1", "[\"opt.a\"]", "\"x\"")]
+        public void Load_ne_leve_jamais_sur_contenu_mal_type(string version, string options, string listes)
+        {
+            var l = Profils.Load(Ecrire(Json(listes, options, version)));
+            Assert.NotNull(l.Erreur);
+            Assert.Contains("p.json", l.Erreur);
+        }
+
+        [Fact] public void Save_ecrit_toujours_la_version_courante()
+        {
+            var p = P("opt.a"); p.Version = 7;
+            var path = Tmp(); Profils.Save(p, path);
+            Assert.Equal(1, Profils.Load(path).Profil.Version);
+        }
+
+        [Fact] public void Aller_retour_toutes_les_listes()
+        {
+            var p = P("opt.a");
+            p.Listes.Winget = new ListeWinget { Mode = "liste", Elements = { "A.B" } };
+            p.Listes.WindowsUpdate = new ListeWindowsUpdate { ExclusionsKb = { "KB1234" } };
+            p.Listes.Bloatware = new List<string> { "Microsoft.BingNews" };
+            p.Listes.Services = new List<string> { "Fax" };
+            var path = Tmp(); Profils.Save(p, path);
+            var l = Profils.Load(path).Profil.Listes;
+            Assert.Equal(new[] { "A.B" }, l.Winget.Elements);
+            Assert.Equal(new[] { "KB1234" }, l.WindowsUpdate.ExclusionsKb);
+            Assert.Equal(new[] { "Microsoft.BingNews" }, l.Bloatware);
+            Assert.Equal(new[] { "Fax" }, l.Services);
+        }
     }
 }
