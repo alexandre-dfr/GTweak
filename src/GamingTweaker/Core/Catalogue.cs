@@ -17,7 +17,7 @@ namespace GamingTweaker.Core
         [JsonProperty("groupe")] public string Groupe { get; set; }
         [JsonProperty("titre")] public string Titre { get; set; }
         [JsonProperty("description")] public string Description { get; set; }
-        [JsonProperty("risque")] public RiskLevel Risque { get; set; }
+        [JsonProperty("risque")] public RiskLevel? Risque { get; set; }
         [JsonProperty("reversible")] public bool Reversible { get; set; }
         [JsonProperty("redemarrage")] public bool Redemarrage { get; set; }
         [JsonProperty("testable")] public bool Testable { get; set; } = true;
@@ -52,8 +52,7 @@ namespace GamingTweaker.Core
                 .Where(n => n.StartsWith("catalog/", StringComparison.Ordinal) && n.EndsWith(".json", StringComparison.Ordinal))
                 .OrderBy(n => n, StringComparer.Ordinal))
             {
-                var list = JsonConvert.DeserializeObject<List<CatalogItem>>(ReadText(asm, name));
-                if (list != null) items.AddRange(list);
+                items.AddRange(Parse(name, ReadText(asm, name)));
             }
             foreach (var it in items)
             {
@@ -64,6 +63,24 @@ namespace GamingTweaker.Core
                 it.Estimate = ReadText(asm, "scripts/" + it.Id + ".estimate.ps1", true);
             }
             return items;
+        }
+
+        /// <summary>Analyse un fichier de catalogue ; toute erreur est signalée en français avec le nom du fichier.</summary>
+        public static List<CatalogItem> Parse(string fileName, string jsonText)
+        {
+            List<CatalogItem> list;
+            try
+            {
+                list = JsonConvert.DeserializeObject<List<CatalogItem>>(jsonText);
+            }
+            catch (JsonException ex)
+            {
+                throw new InvalidDataException(fileName + " : JSON invalide (" + ex.Message + "). Valeurs de risque admises : Sur, Avance, Risque.", ex);
+            }
+            if (list == null) throw new InvalidDataException(fileName + " : le fichier doit contenir une liste d'options.");
+            for (var i = 0; i < list.Count; i++)
+                if (list[i] == null) throw new InvalidDataException(fileName + " : l'élément n° " + (i + 1) + " est vide (null).");
+            return list;
         }
 
         private static string ReadText(Assembly asm, string resource, bool optional = false)
@@ -85,12 +102,14 @@ namespace GamingTweaker.Core
             var seen = new HashSet<string>(StringComparer.Ordinal);
             foreach (var it in items)
             {
+                if (it == null) { errors.Add("Élément de catalogue vide (null)."); continue; }
                 var id = string.IsNullOrWhiteSpace(it.Id) ? "(sans id)" : it.Id;
                 if (string.IsNullOrWhiteSpace(it.Id)) errors.Add("Option sans identifiant (titre : " + (it.Titre ?? "?") + ").");
                 else if (!seen.Add(it.Id)) errors.Add("Identifiant en double : " + it.Id + ".");
                 if (string.IsNullOrWhiteSpace(it.Menu)) errors.Add(id + " : menu manquant.");
                 if (string.IsNullOrWhiteSpace(it.Groupe)) errors.Add(id + " : groupe manquant.");
                 if (string.IsNullOrWhiteSpace(it.Titre)) errors.Add(id + " : titre manquant.");
+                if (it.Risque == null) errors.Add(id + " : risque manquant.");
                 if (string.IsNullOrWhiteSpace(it.Detect)) errors.Add(id + " : script detect manquant.");
                 if (string.IsNullOrWhiteSpace(it.Apply)) errors.Add(id + " : script apply manquant.");
                 if (it.Reversible && string.IsNullOrWhiteSpace(it.Revert)) errors.Add(id + " : option réversible sans script revert.");

@@ -40,6 +40,30 @@ namespace GamingTweaker.Tests
             Assert.Equal(new[] { "10", "11" }, it.Compatibilite.Windows);
         }
 
+        [Fact] public void Risque_manquant_detecte()
+        {
+            var items = Catalogue.Parse("catalog/x.json", "[{\"id\":\"r1\",\"menu\":\"M\",\"groupe\":\"G\",\"titre\":\"T\"}]");
+            Assert.Null(items[0].Risque);
+            items[0].Detect = "d"; items[0].Apply = "a";
+            Assert.Contains(Catalogue.Validate(items), e => e.Contains("r1") && e.Contains("risque manquant"));
+        }
+
+        [Theory]
+        [InlineData("[{\"id\":\"a\",\"risque\":\"Dangereux\"}]")]
+        [InlineData("[{\"id\":")]
+        [InlineData("[{\"id\":\"a\",\"hkcu\":null}]")]
+        [InlineData("[null]")]
+        public void Json_malforme_donne_une_erreur_claire_avec_le_fichier(string json)
+        {
+            var ex = Assert.Throws<System.IO.InvalidDataException>(() => Catalogue.Parse("catalog/x.json", json));
+            Assert.Contains("catalog/x.json", ex.Message);
+        }
+
+        [Fact] public void Validate_ignore_pas_un_element_null()
+        {
+            Assert.NotEmpty(Catalogue.Validate(new CatalogItem[] { null }));
+        }
+
         [Fact] public void Tous_les_scripts_sont_syntaxiquement_valides() => Assert.Empty(PsSyntax.CheckAll(Catalogue.LoadEmbedded()));
 
         [Fact] public void PsSyntax_detecte_une_erreur()
