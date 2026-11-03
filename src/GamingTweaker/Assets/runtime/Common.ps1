@@ -38,8 +38,34 @@ function Invoke-GTItem([string]$Id, [scriptblock]$Apply) {
 # une erreur et ne change rien. Kinds : registry, defender, service, task, power, bcd, hosts, app, quarantine.
 # ---------------------------------------------------------------------------
 
+function Add-GTJournalLine([string]$Line) {
+    # Ajoute une ligne et la force sur disque. Un fragment final sans saut de ligne final (ecriture interrompue) est tronque d'abord :
+    # il precede toujours la modification, donc n'a jamais ete applique.
+    try {
+        $dir = Split-Path -Parent $GT_JournalPath
+        if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+        $bytes = (New-Object System.Text.UTF8Encoding($false)).GetBytes($Line + "`n")
+        $fs = New-Object System.IO.FileStream($GT_JournalPath, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::Read)
+        try {
+            if ($fs.Length -gt 0) {
+                $all = New-Object byte[] ([int]$fs.Length)
+                $fs.Position = 0
+                $got = 0
+                while ($got -lt $all.Length) { $n = $fs.Read($all, $got, $all.Length - $got); if ($n -le 0) { break }; $got += $n }
+                if ($all[$all.Length - 1] -ne 10) { $fs.SetLength([long]([Array]::LastIndexOf($all, [byte]10) + 1)) }
+            }
+            $fs.Position = $fs.Length
+            $fs.Write($bytes, 0, $bytes.Length)
+            $fs.Flush($true)
+        } finally { $fs.Dispose() }
+    } catch {
+        throw ('Écriture du journal impossible, aucune modification faite : ' + $_.Exception.Message)
+    }
+}
+
 function Write-GTJournal([string]$Kind, [string]$Target, [bool]$Existed, $Before, $After, [string]$ValueType) {
     if ([string]::IsNullOrEmpty($GT_JournalPath)) { throw 'Journal d''annulation non configuré.' }
+    if ([string]::IsNullOrEmpty([string]$script:GT_CurrentItem)) { throw 'Option courante inconnue : écriture au journal refusée, aucune modification faite.' }
     $e = [ordered]@{
         item    = [string]$script:GT_CurrentItem
         kind    = $Kind
@@ -49,16 +75,11 @@ function Write-GTJournal([string]$Kind, [string]$Target, [bool]$Existed, $Before
         after   = $After
     }
     if ($ValueType) { $e['valueType'] = $ValueType }
-    $line = (ConvertTo-Json -InputObject $e -Compress -Depth 5) + "`n"
-    try {
-        $dir = Split-Path -Parent $GT_JournalPath
-        if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
-        $bytes = (New-Object System.Text.UTF8Encoding($false)).GetBytes($line)
-        $fs = New-Object System.IO.FileStream($GT_JournalPath, [IO.FileMode]::Append, [IO.FileAccess]::Write, [IO.FileShare]::Read)
-        try { $fs.Write($bytes, 0, $bytes.Length); $fs.Flush($true) } finally { $fs.Dispose() }
-    } catch {
-        throw ('Écriture du journal impossible, aucune modification faite : ' + $_.Exception.Message)
-    }
+    Add-GTJournalLine (ConvertTo-Json -InputObject $e -Compress -Depth 5)
+}
+
+function Write-GTUndoneMarker([string]$Item) {
+    Add-GTJournalLine (ConvertTo-Json -InputObject ([ordered]@{ item = $Item; kind = 'undone' }) -Compress)
 }
 
 # ---- Registre -------------------------------------------------------------
@@ -178,30 +199,28 @@ function Get-GTActiveScheme {
     throw 'Plan d''alimentation actif introuvable.'
 }
 
+function ConvertFrom-GTPowerQuery([string[]]$Lines) {
+    # Independant de la langue : les deux dernieres valeurs hexadecimales du bloc sont AC puis DC.
+    $vals = @()
+    foreach ($l in $Lines) {
+        $m = [regex]::Match([string]$l, ':\s*0x([0-9a-fA-F]+)\s*$')
+        if ($m.Success) { $vals += [Convert]::ToInt64($m.Groups[1].Value, 16) }
+    }
+    if ($vals.Count -lt 2) { throw 'Valeur d''alimentation illisible.' }
+    return @{ AC = $vals[$vals.Count - 2]; DC = $vals[$vals.Count - 1] }
+}
+
 function Get-GTPowerValue([string]$Scheme, [string]$Sub, [string]$Setting) {
-    # Renvoie @{ AC; DC } (entiers) lus dans la sortie de powercfg /query.
     $o = & powercfg.exe /query $Scheme $Sub $Setting
     if ($LASTEXITCODE -ne 0) { throw ('powercfg /query a échoué pour ' + $Sub + ' ' + $Setting) }
-    $ac = $null; $dc = $null
-    foreach ($l in $o) {
-        if ($l -match ':\s*0x([0-9a-fA-F]+)\s*$') {
-            if ($l -match 'AC' -and $null -eq $ac) { $ac = [Convert]::ToInt64($Matches[1], 16) }
-            elseif ($l -match 'DC' -and $null -eq $dc) { $dc = [Convert]::ToInt64($Matches[1], 16) }
-        }
-    }
-    # Les libelles dependent de la langue (« CA » / « CC » en francais) : repli sur l'ordre des deux dernieres valeurs.
-    if ($null -eq $ac -or $null -eq $dc) {
-        $vals = @($o | Where-Object { $_ -match ':\s*0x([0-9a-fA-F]+)\s*$' } | ForEach-Object { [Convert]::ToInt64($Matches[1], 16) })
-        if ($vals.Count -lt 2) { throw 'Valeur d''alimentation illisible.' }
-        $ac = $vals[$vals.Count - 2]; $dc = $vals[$vals.Count - 1]
-    }
-    return @{ AC = $ac; DC = $dc }
+    return (ConvertFrom-GTPowerQuery ([string[]]@($o)))
 }
 
 function Set-GTPowerValue([string]$Scheme, [string]$Sub, [string]$Setting, $Ac, $Dc) {
     & powercfg.exe /setacvalueindex $Scheme $Sub $Setting ([string]$Ac); if ($LASTEXITCODE -ne 0) { throw 'powercfg /setacvalueindex a échoué.' }
     & powercfg.exe /setdcvalueindex $Scheme $Sub $Setting ([string]$Dc); if ($LASTEXITCODE -ne 0) { throw 'powercfg /setdcvalueindex a échoué.' }
-    & powercfg.exe /setactive $Scheme | Out-Null
+    # Reappliquer le plan actif pour prise d'effet ; ne jamais changer de plan.
+    if ((Get-GTActiveScheme) -ieq $Scheme) { & powercfg.exe /setactive $Scheme | Out-Null }
 }
 
 function Set-TweakPower {
@@ -222,9 +241,23 @@ function Get-GTBcdValue([string[]]$Lines, [string]$Name) {
     return $null
 }
 
+function ConvertTo-GTBcdCanonical([string]$Value) {
+    # Les booleens s'affichent traduits (Yes/Oui/Ja/Si/Sim, No/Non/Nein/Nao...) : on les ramene a yes/no.
+    # Une autre valeur n'est acceptee que si c'est un mot ASCII simple (non traduit par bcdedit) ; sinon erreur.
+    $d = $Value.Normalize([Text.NormalizationForm]::FormD)
+    $plain = (($d.ToCharArray() | Where-Object { [Globalization.CharUnicodeInfo]::GetUnicodeCategory($_) -ne 'NonSpacingMark' }) -join '').ToLowerInvariant()
+    if (@('yes', 'oui', 'ja', 'si', 'sim', 'true') -contains $plain) { return 'yes' }
+    if (@('no', 'non', 'nein', 'nao', 'nee', 'false') -contains $plain) { return 'no' }
+    if ($Value -match '^[A-Za-z0-9_{}\-.:,]+$') { return $Value }
+    throw ('Valeur BCD « ' + $Value + ' » non reconnue : modification refusée.')
+}
+
 function Set-TweakBcd {
     param([Parameter(Mandatory)][string]$Name, [Parameter(Mandatory)][string]$Value)
-    $cur = Get-GTBcdValue (& bcdedit.exe /enum '{current}') $Name
+    $lines = & bcdedit.exe /enum '{current}' 2>&1
+    if ($LASTEXITCODE -ne 0) { throw ('bcdedit /enum a échoué, aucune modification faite : ' + ($lines -join ' ')) }
+    $shown = Get-GTBcdValue ([string[]]@($lines)) $Name
+    $cur = $null; if ($null -ne $shown) { $cur = ConvertTo-GTBcdCanonical $shown }
     Write-GTJournal 'bcd' $Name ($null -ne $cur) $cur $Value
     $out = & bcdedit.exe /set $Name $Value 2>&1
     if ($LASTEXITCODE -ne 0) { throw ('bcdedit /set a échoué : ' + ($out -join ' ')) }
@@ -314,7 +347,7 @@ function Restore-GTEntry($E) {
         'registry' {
             $p = $E.target.IndexOf('|'); $path = $E.target.Substring(0, $p); $name = $E.target.Substring($p + 1)
             if ($E.existed) { Set-GTRegRaw $path $name $E.valueType (ConvertTo-GTRegData $E.valueType $E.before) }
-            else { Remove-ItemProperty -LiteralPath $path -Name $name -ErrorAction SilentlyContinue }
+            elseif ((Get-GTRegValue $path $name).Existed) { Remove-ItemProperty -LiteralPath $path -Name $name -ErrorAction Stop }
         }
         'defender'   { Set-MpPreference -DisableRealtimeMonitoring (-not [bool]$E.before) }
         'service'    { Set-GTServiceStart $E.target ([string]$E.before) }
@@ -334,6 +367,7 @@ function Restore-GTEntry($E) {
         }
         'hosts'      { Remove-GTHostsLines $E.target ([string[]]@($E.after)) }
         'quarantine' {
+            if ((Test-Path -LiteralPath $E.before) -and -not (Test-Path -LiteralPath $E.after)) { return }  # deja restaure
             if (Test-Path -LiteralPath $E.before) { throw ('Impossible de restaurer ' + $E.before + ' : un fichier existe déjà à cet emplacement.') }
             $dir = Split-Path -Parent $E.before
             if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
@@ -344,10 +378,16 @@ function Restore-GTEntry($E) {
     }
 }
 
-# Restaure une option : ses entrees en ordre inverse. Une entree en echec n'empeche pas les suivantes ; l'option echoue a la fin.
+# Restaure une option : ses entrees posterieures au dernier marqueur « undone », en ordre inverse.
+# Une entree en echec n'empeche pas les suivantes ; l'option echoue a la fin (sans marqueur, donc rejouable).
 function Restore-GTItem([Parameter(Mandatory)][string]$Item) {
-    $entries = @(Read-GTJournal | Where-Object { $_.item -eq $Item })
-    if ($entries.Count -eq 0) { Skip-GTItem 'Rien à annuler : aucune entrée de journal pour cette option.' }
+    $all = @(Read-GTJournal | Where-Object { $_.item -eq $Item })
+    if ($all.Count -eq 0) { Skip-GTItem 'Rien à annuler : aucune entrée de journal pour cette option.' }
+    $lastMarker = -1
+    for ($i = 0; $i -lt $all.Count; $i++) { if ($all[$i].kind -eq 'undone') { $lastMarker = $i } }
+    $entries = @()
+    for ($i = $lastMarker + 1; $i -lt $all.Count; $i++) { $entries += ,$all[$i] }
+    if ($entries.Count -eq 0) { Skip-GTItem 'Option déjà annulée.' }
     [array]::Reverse($entries)
     $errors = @(); $manual = @()
     foreach ($e in $entries) {
@@ -355,5 +395,6 @@ function Restore-GTItem([Parameter(Mandatory)][string]$Item) {
         try { Restore-GTEntry $e } catch { $errors += ([string]$e.kind + ' ' + [string]$e.target + ' : ' + $_.Exception.Message) }
     }
     if ($errors.Count -gt 0) { throw ($errors -join ' ; ') }
+    Write-GTUndoneMarker $Item
     if ($manual.Count -gt 0) { Skip-GTItem ('Réinstallation manuelle nécessaire (Microsoft Store) : ' + ($manual -join ', ')) }
 }

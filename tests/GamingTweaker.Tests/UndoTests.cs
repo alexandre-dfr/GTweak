@@ -11,7 +11,7 @@ using Xunit;
 namespace GamingTweaker.Tests
 {
     /// <summary>Tests d'annulation : exécutent un vrai powershell.exe, uniquement sous HKCU\Software\GamingTweakerTest et le dossier temporaire.</summary>
-    public class UndoTests : IDisposable
+    public partial class UndoTests : IDisposable
     {
         private readonly string _sub = @"Software\GamingTweakerTest\" + Guid.NewGuid().ToString("N");
         private readonly string _tmp = Path.Combine(Path.GetTempPath(), "GTUndo-" + Guid.NewGuid().ToString("N"));

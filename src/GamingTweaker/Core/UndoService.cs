@@ -38,7 +38,7 @@ namespace GamingTweaker.Core
         {
             var ids = itemIds.ToList();
             var wanted = new HashSet<string>(ids);
-            var order = Journal.Read(journalPath).Select(e => e.Item).Distinct().Where(wanted.Contains).Reverse().ToList();
+            var order = Journal.Active(Journal.Read(journalPath)).Select(e => e.Item).Distinct().Where(wanted.Contains).Reverse().ToList();
             order.AddRange(ids.Where(i => !order.Contains(i)).Distinct());
             foreach (var id in order)
                 if (!Regex.IsMatch(id ?? "", @"^[a-z0-9][a-z0-9.\-]*$"))
@@ -66,7 +66,7 @@ namespace GamingTweaker.Core
         {
             var wanted = new HashSet<string>(itemIds);
             var res = new List<Conflict>();
-            foreach (var g in Journal.Read(journalPath).Where(e => wanted.Contains(e.Item)).GroupBy(e => new { e.Item, e.Kind, e.Target }))
+            foreach (var g in Journal.Active(Journal.Read(journalPath)).Where(e => wanted.Contains(e.Item)).GroupBy(e => new { e.Item, e.Kind, e.Target }))
             {
                 var last = g.Last();
                 string attendu, actuel;

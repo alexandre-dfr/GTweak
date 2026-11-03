@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Newtonsoft.Json;
@@ -25,9 +26,31 @@ namespace GamingTweaker.Core
     public static class Journal
     {
         /// <summary>
-        /// Lit le journal. Fichier absent : liste vide. Dernière ligne non vide illisible (écriture interrompue) : ignorée.
+        /// Lit le journal (marqueurs « undone » inclus). Fichier absent : liste vide. Dernière ligne non vide illisible (écriture interrompue) : ignorée.
         /// Ligne illisible au milieu : InvalidDataException en français (on refuse d'annuler à partir d'un journal douteux).
         /// </summary>
+        public const string UndoneKind = "undone";
+
+        /// <summary>
+        /// Entrées encore à annuler : pour chaque option, celles écrites après son dernier marqueur « undone » (marqueurs exclus).
+        /// L'ordre du journal est conservé.
+        /// </summary>
+        public static List<JournalEntry> Active(IEnumerable<JournalEntry> entries)
+        {
+            var all = entries.ToList();
+            var lastMarker = new Dictionary<string, int>();
+            for (int i = 0; i < all.Count; i++) if (all[i].Kind == UndoneKind) lastMarker[all[i].Item] = i;
+            var res = new List<JournalEntry>();
+            for (int i = 0; i < all.Count; i++)
+            {
+                if (all[i].Kind == UndoneKind) continue;
+                int m;
+                if (lastMarker.TryGetValue(all[i].Item, out m) && i < m) continue;
+                res.Add(all[i]);
+            }
+            return res;
+        }
+
         public static IReadOnlyList<JournalEntry> Read(string path)
         {
             AssemblyLoader.Register();
