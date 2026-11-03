@@ -21,6 +21,7 @@ namespace GamingTweaker.Ui
             Loaded += async (s, e) => await DemarrerAsync();
             Closing += (s, e) =>
             {
+                if (termine) return; // exécution finie : fermeture normale
                 e.Cancel = true; // pas de fermeture en plein milieu : on demande l'arrêt proprement
                 Annuler_Click(null, null);
             };

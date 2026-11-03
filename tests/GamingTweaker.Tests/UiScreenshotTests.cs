@@ -136,10 +136,13 @@ namespace GamingTweaker.Tests
             var prev = new PreviewWindow(vm); Prepare(prev, 1000, 680); prev.Show(); Pump(d);
             Capture(prev, "10-apercu"); prev.Close();
 
-            var run = new RunWindow(vm); Prepare(run, 900, 640); run.Show(); Pump(d); Thread.Sleep(200); Pump(d); Pump(d);
+            var run = new RunWindow(vm); bool runFerme = false, mainFerme = false; run.Closed += (a, b) => runFerme = true; win.Closed += (a, b) => mainFerme = true;
+            Prepare(run, 900, 640); run.Show(); Pump(d); Thread.Sleep(200); Pump(d); Pump(d);
             Capture(run, "11-execution-rapport");
             // Le RunWindow refuse la fermeture tant que l'exécution n'est pas terminée ; ici elle l'est.
-            run.Close(); win.Close();
+            run.Close(); win.Close(); Pump(d);
+            var apercuFerme = !prev.IsLoaded;
+            if (!runFerme || !apercuFerme || !mainFerme) throw new InvalidOperationException("Une fenêtre ne s'est pas fermée (RunWindow=" + runFerme + ", Aperçu=" + apercuFerme + ", Principale=" + mainFerme + ").");
             try { Directory.Delete(tmp, true); } catch (IOException) { }
         }
     }
