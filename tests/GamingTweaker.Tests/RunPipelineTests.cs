@@ -49,7 +49,9 @@ namespace GamingTweaker.Tests
 
         private DataPaths Paths() => DataPaths.Resolve(Path.Combine(tmp, "exe"), new MachineFacts { MachineName = "PC", MachineGuid = "12345678-aaaa-bbbb-cccc-ddddeeeeffff" }, Path.Combine(tmp, "pd"));
 
-        private RunPipeline Pipe(IRestorePoint rp, bool memeUtilisateur = true) => new RunPipeline(rp, () => memeUtilisateur);
+        private readonly string verrou = @"Local\GamingTweakerTest." + Guid.NewGuid().ToString("N");
+
+        private RunPipeline Pipe(IRestorePoint rp, bool memeUtilisateur = true) => new RunPipeline(rp, () => memeUtilisateur, verrou);
 
         private RunRequest Req(IEnumerable<CatalogItem> items, bool silent, Func<string, bool> confirm, params string[] ids) => new RunRequest
         {
@@ -214,12 +216,58 @@ namespace GamingTweaker.Tests
         [Fact]
         public void Seconde_instance_refusee()
         {
-            using (var premiere = SingleInstance.TryAcquire())
+            var nom = @"Local\GamingTweakerTest." + Guid.NewGuid().ToString("N");
+            using (var premiere = SingleInstance.TryAcquire(nom))
             {
                 Assert.NotNull(premiere);
-                Assert.Null(SingleInstance.TryAcquire());
+                Assert.Null(SingleInstance.TryAcquire(nom));
             }
-            using (var apres = SingleInstance.TryAcquire()) Assert.NotNull(apres);
+            using (var apres = SingleInstance.TryAcquire(nom)) Assert.NotNull(apres);
+        }
+
+        [Fact]
+        public async Task Verrou_deja_pris_refuse_l_execution_avec_le_code_2()
+        {
+            var a = Item("a", "1");
+            var fp = new FauxPoint();
+            using (SingleInstance.TryAcquire(verrou))
+            {
+                var r = await Pipe(fp).ExecuteAsync(Req(new[] { a }, true, null, "a"), null, CancellationToken.None);
+                Assert.Equal(2, r.ExitCode);
+                Assert.Empty(r.Items);
+                Assert.Null(r.SessionDir);
+                Assert.Contains(r.Avertissements, w => w.Contains("Une autre exécution de GamingTweaker est en cours."));
+                Assert.Equal(0, fp.Appels);
+                Assert.Null(Registry.CurrentUser.OpenSubKey(Cle));
+            }
+            // Le verrou est libéré après une exécution normale.
+            var r2 = await Pipe(fp).ExecuteAsync(Req(new[] { a }, true, null, "a"), null, CancellationToken.None);
+            Assert.Equal(0, r2.ExitCode);
+            using (var libre = SingleInstance.TryAcquire(verrou)) Assert.NotNull(libre);
+        }
+
+        [Fact]
+        public async Task Exception_pendant_l_execution_donne_Failed_code_1_et_rapport()
+        {
+            var a = Item("a", "1");
+            var pipe = new RunPipeline(new FauxPoint(), () => { throw new InvalidOperationException("boum interne"); }, verrou);
+            var r = await pipe.ExecuteAsync(Req(new[] { a }, true, null, "a"), null, CancellationToken.None);
+            Assert.Equal(1, r.ExitCode);
+            Assert.Contains(r.Avertissements, w => w.Contains("boum interne"));
+            Assert.Equal("Failed", (string)JObject.Parse(File.ReadAllText(Path.Combine(r.SessionDir, "state.json")))["etat"]);
+            Assert.True(File.Exists(Path.Combine(r.SessionDir, "report.json")));
+            Assert.NotNull(RunPipeline.FindInterrupted(Paths().MachineDir));
+        }
+
+        [Fact]
+        public void Decision_d_elevation_ne_regarde_que_la_session_courante()
+        {
+            var owners = new[] { Tuple.Create(1, "S-AUTRE"), Tuple.Create(2, "S-MOI") };
+            Assert.True(ElevationCheck.Decide("S-MOI", 2, owners));
+            Assert.False(ElevationCheck.Decide("S-MOI", 1, owners));
+            Assert.False(ElevationCheck.Decide("S-MOI", 3, owners));       // aucun explorer dans la session : non confirmé
+            Assert.False(ElevationCheck.Decide("S-MOI", 2, new Tuple<int, string>[0]));
+            Assert.True(ElevationCheck.Decide("s-moi", 2, owners));
         }
 
         [Fact]

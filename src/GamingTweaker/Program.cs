@@ -59,28 +59,26 @@ namespace GamingTweaker
             var load = Profils.Load(profilePath);
             if (load.Erreur != null) { Console.Error.WriteLine(load.Erreur); return 2; }
 
-            using (var instance = SingleInstance.TryAcquire())
+            // Le verrou d'instance est pris par RunPipeline.ExecuteAsync (interface et routine).
+            if (!IsAdministrator()) { Console.Error.WriteLine("Droits administrateur requis pour appliquer un profil."); return 2; }
+
+            var catalogue = Catalogue.LoadEmbedded();
+            var facts = SystemInfo.Detect();
+            var resolved = Profils.Resolve(load.Profil, catalogue, facts);
+            var req = new RunRequest
             {
-                if (instance == null) { Console.Error.WriteLine("Une autre instance de GamingTweaker est déjà en cours d'exécution."); return 2; }
-                if (!IsAdministrator()) { Console.Error.WriteLine("Droits administrateur requis pour appliquer un profil."); return 2; }
+                Selection = resolved.Selection, Silent = true, CatalogItems = catalogue.ToList(), Facts = facts,
+                Paths = DataPaths.Resolve(AppDomain.CurrentDomain.BaseDirectory, facts, DataPaths.DefaultProgramDataRoot),
+            };
+            req.Avertissements.AddRange(load.Avertissements);
+            req.Avertissements.AddRange(resolved.Inconnues.Select(id => "Option inconnue ignorée : " + id));
+            req.Avertissements.AddRange(resolved.Incompatibles.Select(id => "Option incompatible avec ce PC, ignorée : " + id));
 
-                var catalogue = Catalogue.LoadEmbedded();
-                var facts = SystemInfo.Detect();
-                var resolved = Profils.Resolve(load.Profil, catalogue, facts);
-                var req = new RunRequest
-                {
-                    Selection = resolved.Selection, Silent = true, CatalogItems = catalogue.ToList(), Facts = facts,
-                    Paths = DataPaths.Resolve(AppDomain.CurrentDomain.BaseDirectory, facts, DataPaths.DefaultProgramDataRoot),
-                };
-                req.Avertissements.AddRange(load.Avertissements);
-                req.Avertissements.AddRange(resolved.Inconnues.Select(id => "Option inconnue ignorée : " + id));
-                req.Avertissements.AddRange(resolved.Incompatibles.Select(id => "Option incompatible avec ce PC, ignorée : " + id));
-
-                var report = new RunPipeline(new RestorePoint(), ElevationCheck.SameUserAsDesktop)
-                    .ExecuteAsync(req, null, CancellationToken.None).GetAwaiter().GetResult();
-                if (report.SessionDir != null) Console.Out.WriteLine(Path.Combine(report.SessionDir, "report.txt"));
-                return report.ExitCode;
-            }
+            var report = new RunPipeline(new RestorePoint(), ElevationCheck.SameUserAsDesktop)
+                .ExecuteAsync(req, null, CancellationToken.None).GetAwaiter().GetResult();
+            if (report.SessionDir != null) Console.Out.WriteLine(Path.Combine(report.SessionDir, "report.txt"));
+            else foreach (var w in report.Avertissements) Console.Error.WriteLine(w);
+            return report.ExitCode;
         }
 
         private static bool IsAdministrator()

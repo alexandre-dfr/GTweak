@@ -46,8 +46,11 @@ namespace GamingTweaker.Core
         private readonly IRestorePoint restorePoint;
         private readonly Func<bool> sameUserAsDesktop;
 
-        public RunPipeline(IRestorePoint restorePoint, Func<bool> sameUserAsDesktop)
+        private readonly string lockName;
+
+        public RunPipeline(IRestorePoint restorePoint, Func<bool> sameUserAsDesktop, string lockName = null)
         {
+            this.lockName = lockName;
             this.restorePoint = restorePoint;
             this.sameUserAsDesktop = sameUserAsDesktop;
         }
@@ -65,6 +68,21 @@ namespace GamingTweaker.Core
         {
             var report = new SessionReport();
             report.Avertissements.AddRange(req.Avertissements ?? new List<string>());
+            // Verrou d'instance : couvre l'interface et la routine ; pris avant tout effet (point de restauration, session).
+            using (var verrou = SingleInstance.TryAcquire(lockName))
+            {
+                if (verrou == null)
+                {
+                    report.Avertissements.Add("Une autre exécution de GamingTweaker est en cours.");
+                    report.ExitCode = 2;
+                    return report;
+                }
+                return await ExecuteLocked(req, log, ct, report);
+            }
+        }
+
+        private async Task<SessionReport> ExecuteLocked(RunRequest req, IProgress<string> log, CancellationToken ct, SessionReport report)
+        {
             var selected = req.CatalogItems.Where(i => req.Selection.OptionIds.Contains(i.Id)).ToList();
 
             // 1. Point de restauration (seulement si une option réversible est choisie).
@@ -83,7 +101,8 @@ namespace GamingTweaker.Core
             // 2. Dossier de session, état Running.
             var debut = DateTime.Now;
             report.SessionDir = CreateSessionDir(req.Paths.SessionsDir, debut);
-            WriteState(report.SessionDir, new SessionState { Etat = "Running", Debut = debut.ToString(Format, CultureInfo.InvariantCulture) });
+            var debutTxt = debut.ToString(Format, CultureInfo.InvariantCulture);
+            WriteState(report.SessionDir, new SessionState { Etat = "Running", Debut = debutTxt });
             var logFile = Path.Combine(report.SessionDir, "log.txt");
             var logLock = new object();
             Action<string> write = line =>
@@ -94,82 +113,93 @@ namespace GamingTweaker.Core
 
             var outcomes = new Dictionary<string, ItemOutcome>(StringComparer.Ordinal);
             var lastApplied = LoadLastApplied(req.Paths.MachineDir);
-
-            // 3. Élévation : sous un autre compte, HKCU n'est pas celui de l'utilisateur.
-            var aExecuter = new List<CatalogItem>();
-            bool memeUtilisateur = sameUserAsDesktop == null || sameUserAsDesktop();
-            if (!memeUtilisateur)
-                report.Avertissements.Add("GamingTweaker tourne sous un autre compte que celui du bureau : les options qui modifient l'utilisateur courant (HKCU) sont ignorées.");
-            foreach (var it in selected)
-            {
-                if (!memeUtilisateur && it.Hkcu)
-                    outcomes[it.Id] = new ItemOutcome { Id = it.Id, Status = OutcomeStatus.Skipped, Message = "ignorée : exécution sous un autre compte que celui du bureau (réglage propre à l'utilisateur)" };
-                else aExecuter.Add(it);
-            }
-
-            // 4. Détection préalable.
-            write("Détection préalable de " + aExecuter.Count + " option(s)...");
-            var pre = aExecuter.Count == 0 ? new Dictionary<string, DetectState>() : await Detection.RunAsync(aExecuter);
             var toRun = new List<CatalogItem>();
-            foreach (var it in aExecuter)
+            bool echec = false;
+
+            try
             {
-                DetectState st;
-                if (!pre.TryGetValue(it.Id, out st)) st = DetectState.Unknown;
-                if (it.Reversible && st == DetectState.Applied)
+                // 3. Élévation : sous un autre compte, HKCU n'est pas celui de l'utilisateur.
+                var aExecuter = new List<CatalogItem>();
+                bool memeUtilisateur = sameUserAsDesktop == null || sameUserAsDesktop();
+                if (!memeUtilisateur)
+                    report.Avertissements.Add("GamingTweaker tourne sous un autre compte que celui du bureau (ou le bureau n'est pas identifiable) : les options qui modifient l'utilisateur courant (HKCU) sont ignorées.");
+                foreach (var it in selected)
                 {
-                    outcomes[it.Id] = new ItemOutcome { Id = it.Id, Status = OutcomeStatus.AlreadyApplied, Message = "déjà appliquée" };
-                    continue;
+                    if (!memeUtilisateur && it.Hkcu)
+                        outcomes[it.Id] = new ItemOutcome { Id = it.Id, Status = OutcomeStatus.Skipped, Message = "ignorée : exécution sous un autre compte que celui du bureau (réglage propre à l'utilisateur)" };
+                    else aExecuter.Add(it);
                 }
-                if (it.Reversible && st == DetectState.NotApplied && lastApplied.Contains(it.Id))
-                    report.Retablies.Add(it.Id);
-                toRun.Add(it);
+
+                // 4. Détection préalable.
+                write("Détection préalable de " + aExecuter.Count + " option(s)...");
+                var pre = aExecuter.Count == 0 ? new Dictionary<string, DetectState>() : await Detection.RunAsync(aExecuter);
+                foreach (var it in aExecuter)
+                {
+                    DetectState st;
+                    if (!pre.TryGetValue(it.Id, out st)) st = DetectState.Unknown;
+                    if (it.Reversible && st == DetectState.Applied)
+                    {
+                        outcomes[it.Id] = new ItemOutcome { Id = it.Id, Status = OutcomeStatus.AlreadyApplied, Message = "déjà appliquée" };
+                        continue;
+                    }
+                    if (it.Reversible && st == DetectState.NotApplied && lastApplied.Contains(it.Id))
+                        report.Retablies.Add(it.Id);
+                    toRun.Add(it);
+                }
+
+                // 5. Exécution.
+                if (toRun.Count > 0 && !ct.IsCancellationRequested)
+                {
+                    var delais = toRun.ToDictionary(i => i.Id, i => i.DelaiSec > 0 ? i.DelaiSec : 300);
+                    var script = ScriptBuilder.Build(toRun, req.Selection, Path.Combine(report.SessionDir, "journal.jsonl"), req.Paths.QuarantineDir);
+                    var res = await Runner.RunAsync(script, write, ct, id => delais.ContainsKey(id) ? delais[id] : 300);
+                    foreach (var o in res.Items) outcomes[o.Id] = o;
+                }
+                else if (toRun.Count > 0)
+                {
+                    foreach (var it in toRun) outcomes[it.Id] = new ItemOutcome { Id = it.Id, Status = OutcomeStatus.Skipped, Message = "annulé" };
+                }
+
+                // 6. Redétection : une option réversible « Ok » que la détection ne confirme pas est signalée.
+                var okRev = toRun.Where(i => i.Reversible && outcomes.ContainsKey(i.Id) && outcomes[i.Id].Status == OutcomeStatus.Ok).ToList();
+                if (okRev.Count > 0)
+                {
+                    var post = await Detection.RunAsync(okRev);
+                    foreach (var it in okRev)
+                        if (post[it.Id] == DetectState.NotApplied)
+                            report.Avertissements.Add(it.Titre + " (" + it.Id + ") : appliquée sans erreur, mais la détection ne la confirme pas.");
+                }
+            }
+            catch (Exception ex)
+            {
+                echec = true;
+                report.Avertissements.Add("Erreur inattendue pendant l'exécution : " + ex.Message);
+                foreach (var it in selected)
+                    if (!outcomes.ContainsKey(it.Id))
+                        outcomes[it.Id] = new ItemOutcome { Id = it.Id, Status = OutcomeStatus.Failed, Message = "non exécutée : erreur interne (" + ex.Message + ")" };
             }
 
-            // 5. Exécution.
-            if (toRun.Count > 0 && !ct.IsCancellationRequested)
-            {
-                var delais = toRun.ToDictionary(i => i.Id, i => i.DelaiSec > 0 ? i.DelaiSec : 300);
-                var script = ScriptBuilder.Build(toRun, req.Selection, Path.Combine(report.SessionDir, "journal.jsonl"), req.Paths.QuarantineDir);
-                var res = await Runner.RunAsync(script, write, ct, id => delais.ContainsKey(id) ? delais[id] : 300);
-                foreach (var o in res.Items) outcomes[o.Id] = o;
-            }
-            else if (toRun.Count > 0)
-            {
-                foreach (var it in toRun) outcomes[it.Id] = new ItemOutcome { Id = it.Id, Status = OutcomeStatus.Skipped, Message = "annulé" };
-            }
-
+            // 7. Bilan : toujours écrit, même après une erreur.
             report.Items = selected.Where(i => outcomes.ContainsKey(i.Id)).Select(i => outcomes[i.Id]).ToList();
             // Erreur globale sans identifiant (PowerShell n'a rien produit).
             report.Items.AddRange(outcomes.Values.Where(o => !selected.Any(i => i.Id == o.Id)));
-
-            // 6. Redétection : une option réversible « Ok » que la détection ne confirme pas est signalée.
-            var okRev = selected.Where(i => i.Reversible && outcomes.ContainsKey(i.Id) && outcomes[i.Id].Status == OutcomeStatus.Ok && toRun.Contains(i)).ToList();
-            if (okRev.Count > 0)
-            {
-                var post = await Detection.RunAsync(okRev);
-                foreach (var it in okRev)
-                    if (post[it.Id] == DetectState.NotApplied)
-                        report.Avertissements.Add(it.Titre + " (" + it.Id + ") : appliquée sans erreur, mais la détection ne la confirme pas.");
-            }
-
-            // 7. Bilan.
             report.RedemarrageRequis = selected.Any(i => i.Redemarrage && outcomes.ContainsKey(i.Id) && outcomes[i.Id].Status == OutcomeStatus.Ok);
-            report.ExitCode = report.Items.Any(i => i.Status == OutcomeStatus.Failed) ? 1 : 0;
+            report.ExitCode = echec || report.Items.Any(i => i.Status == OutcomeStatus.Failed) ? 1 : 0;
 
             var okIds = report.Items.Where(i => i.Status == OutcomeStatus.Ok).Select(i => i.Id);
             SaveLastApplied(req.Paths.MachineDir, lastApplied.Union(okIds).OrderBy(x => x, StringComparer.Ordinal));
-
-            WriteReports(report, selected, debut);
+            try { WriteReports(report, selected, debut); }
+            catch (Exception ex) { report.Avertissements.Add("Rapport non écrit : " + ex.Message); }
             WriteState(report.SessionDir, new SessionState
             {
-                Etat = "Done",
-                Debut = debut.ToString(Format, CultureInfo.InvariantCulture),
+                Etat = echec ? "Failed" : "Done",
+                Debut = debutTxt,
                 Fin = DateTime.Now.ToString(Format, CultureInfo.InvariantCulture),
             });
             return report;
         }
 
-        /// <summary>Dernière session restée à l'état Running (arrêt brutal, coupure), ou null.</summary>
+        /// <summary>Dernière session restée à l'état Running (arrêt brutal, coupure) ou Failed (erreur interne), ou null.</summary>
         public static SessionInterrompue FindInterrupted(string machineDir)
         {
             var dir = Path.Combine(machineDir ?? "", "Sessions");
@@ -181,7 +211,7 @@ namespace GamingTweaker.Core
                     var f = Path.Combine(d, "state.json");
                     if (!File.Exists(f)) continue;
                     var st = JsonConvert.DeserializeObject<SessionState>(File.ReadAllText(f, Encoding.UTF8), new JsonSerializerSettings { DateParseHandling = DateParseHandling.None });
-                    if (st == null || st.Etat != "Running") continue;
+                    if (st == null || (st.Etat != "Running" && st.Etat != "Failed")) continue;
                     DateTime debut;
                     if (!DateTime.TryParseExact(st.Debut ?? "", Format, CultureInfo.InvariantCulture, DateTimeStyles.None, out debut)) debut = Directory.GetCreationTime(d);
                     return new SessionInterrompue { SessionDir = d, Debut = debut };
@@ -202,11 +232,16 @@ namespace GamingTweaker.Core
 
         private static void WriteState(string sessionDir, SessionState st)
         {
-            var f = Path.Combine(sessionDir, "state.json");
-            var tmp = f + ".tmp";
-            File.WriteAllText(tmp, JsonConvert.SerializeObject(st, Formatting.Indented), new UTF8Encoding(false));
-            if (File.Exists(f)) File.Delete(f);
-            File.Move(tmp, f);
+            AtomicWrite(Path.Combine(sessionDir, "state.json"), JsonConvert.SerializeObject(st, Formatting.Indented));
+        }
+
+        /// <summary>Écrit dans un fichier temporaire puis remplace la cible (File.Replace), sans jamais la supprimer d'abord.</summary>
+        private static void AtomicWrite(string path, string text)
+        {
+            var tmp = path + ".tmp";
+            File.WriteAllText(tmp, text, new UTF8Encoding(false));
+            if (File.Exists(path)) File.Replace(tmp, path, null);
+            else File.Move(tmp, path);
         }
 
         private static HashSet<string> LoadLastApplied(string machineDir)
@@ -226,7 +261,7 @@ namespace GamingTweaker.Core
             try
             {
                 Directory.CreateDirectory(machineDir);
-                File.WriteAllText(Path.Combine(machineDir, "last-applied.json"), JsonConvert.SerializeObject(ids.ToList(), Formatting.Indented), new UTF8Encoding(false));
+                AtomicWrite(Path.Combine(machineDir, "last-applied.json"), JsonConvert.SerializeObject(ids.ToList(), Formatting.Indented));
             }
             catch (Exception) { /* non bloquant */ }
         }
