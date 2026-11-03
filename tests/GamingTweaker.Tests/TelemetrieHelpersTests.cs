@@ -104,21 +104,21 @@ namespace GamingTweaker.Tests
         }
 
         [Fact]
-        public void Le_journal_actif_le_plus_recent_est_choisi()
+        public void Les_journaux_actifs_sont_tous_listes_du_plus_recent_au_plus_ancien()
         {
             var svc = new RestaurationService(new DataPaths { SessionsDir = Path.Combine(tmp, "Sessions") });
-            Assert.Null(svc.TrouverJournalActif("tel.test"));
+            Assert.Empty(svc.TrouverJournauxActifs("tel.test"));
 
             File.WriteAllText(Journal, "{\"item\":\"tel.test\",\"kind\":\"registry\",\"target\":\"HKCU:\\\\x|A\",\"existed\":false,\"before\":null,\"after\":0,\"valueType\":\"DWord\"}\n");
             var recent = Path.Combine(tmp, "Sessions", "20260102-100000");
             Directory.CreateDirectory(recent);
             File.WriteAllText(Path.Combine(recent, "journal.jsonl"), "{\"item\":\"tel.test\",\"kind\":\"registry\",\"target\":\"HKCU:\\\\x|B\",\"existed\":false,\"before\":null,\"after\":0,\"valueType\":\"DWord\"}\n");
-            Assert.Equal(Path.Combine(recent, "journal.jsonl"), svc.TrouverJournalActif("tel.test"));
+            Assert.Equal(new[] { Path.Combine(recent, "journal.jsonl"), Journal }, svc.TrouverJournauxActifs("tel.test"));   // du plus récent au plus ancien : les deux sont à annuler
 
             // Une option déjà annulée dans le journal le plus récent n'est plus « active » : on retombe sur le précédent.
             File.AppendAllText(Path.Combine(recent, "journal.jsonl"), "{\"item\":\"tel.test\",\"kind\":\"undone\"}\n");
-            Assert.Equal(Journal, svc.TrouverJournalActif("tel.test"));
-            Assert.Null(svc.TrouverJournalActif("tel.autre"));
+            Assert.Equal(new[] { Journal }, svc.TrouverJournauxActifs("tel.test"));
+            Assert.Empty(svc.TrouverJournauxActifs("tel.autre"));
         }
 
         [Fact]
@@ -128,12 +128,12 @@ namespace GamingTweaker.Tests
             Assert.Equal(0, Lire("A"));
             var svc = new RestaurationService(new DataPaths { SessionsDir = Path.Combine(tmp, "Sessions") });
 
-            var journal = svc.TrouverJournalActif("tel.test");
+            var journal = svc.TrouverJournauxActifs("tel.test").Single();
             Assert.Equal(Journal, journal);
             var o = await svc.AnnulerParJournalAsync(journal, "tel.test");
             Assert.Equal(OutcomeStatus.Ok, o.Status);
             Assert.Null(Lire("A")); Assert.Null(Lire("S"));
-            Assert.Null(svc.TrouverJournalActif("tel.test"));   // marqueur « undone » écrit
+            Assert.Empty(svc.TrouverJournauxActifs("tel.test"));   // marqueur « undone » écrit
 
             // Sans journal : le script revert remet les valeurs par défaut (suppression ou valeur imposée).
             Registry.CurrentUser.CreateSubKey(sub).SetValue("A", 0, RegistryValueKind.DWord);
@@ -142,6 +142,52 @@ namespace GamingTweaker.Tests
             var o2 = await svc.ExecuterRevertAsync(Item("tel.test2", "x", revert: revert));
             Assert.Equal(OutcomeStatus.Ok, o2.Status);
             Assert.Null(Lire("A")); Assert.Equal("defaut", Lire("S"));
+        }
+
+        [Fact]
+        public async Task Tout_restaurer_annule_les_deux_sessions_et_l_ancien_etat_revient()
+        {
+            // Session A : applique A et S ; session B : réapplique S modifié entre-temps puis ajoute T.
+            await Appliquer("tel.test", "$k = " + K + "\nSet-TweakRegistryIfNeeded -Path $k -Name 'A' -Type DWord -Value 0\nSet-TweakRegistryIfNeeded -Path $k -Name 'S' -Type String -Value 'x'");
+            var sessionB = Path.Combine(tmp, "Sessions", "20260102-100000");
+            Directory.CreateDirectory(sessionB);
+            var jB = Path.Combine(sessionB, "journal.jsonl");
+            var scriptB = ScriptBuilder.Build(new[] { Item("tel.test", "$k = " + K + "\nSet-TweakRegistryIfNeeded -Path $k -Name 'S' -Type String -Value 'y'\nSet-TweakRegistryIfNeeded -Path $k -Name 'T' -Type DWord -Value 1") },
+                new Selection { OptionIds = new HashSet<string> { "tel.test" } }, jB);
+            await Runner.RunAsync(scriptB, null, CancellationToken.None, _ => 120);
+            Assert.Equal("y", Lire("S"));
+
+            var svc = new RestaurationService(new DataPaths { SessionsDir = Path.Combine(tmp, "Sessions"), MachineDir = Path.Combine(tmp, "M") });
+            var journaux = svc.TrouverJournauxActifs("tel.test");
+            Assert.Equal(new[] { jB, Journal }, journaux);
+            foreach (var j in journaux) Assert.Equal(OutcomeStatus.Ok, (await svc.AnnulerParJournalAsync(j, "tel.test")).Status);
+
+            Assert.Null(Lire("A")); Assert.Null(Lire("S")); Assert.Null(Lire("T"));   // l'état d'avant la session A
+            Assert.Empty(svc.TrouverJournauxActifs("tel.test"));
+        }
+
+        [Fact]
+        public void Oublier_retire_les_options_de_last_applied()
+        {
+            var machine = Path.Combine(tmp, "M");
+            Directory.CreateDirectory(machine);
+            File.WriteAllText(Path.Combine(machine, "last-applied.json"), "[\"tel.a\",\"tel.b\",\"opt.x\"]");
+            new RestaurationService(new DataPaths { MachineDir = machine }).OublierDernieresApplications(new[] { "tel.a", "tel.b" });
+            Assert.Equal(new[] { "opt.x" }, Newtonsoft.Json.JsonConvert.DeserializeObject<List<string>>(File.ReadAllText(Path.Combine(machine, "last-applied.json"))));
+        }
+
+        [Fact]
+        public void Le_verrou_d_instance_est_exclusif_et_le_compte_est_celui_fourni()
+        {
+            var nom = @"Local\GT.Test." + Guid.NewGuid().ToString("N");
+            var svc = new RestaurationService(new DataPaths(), () => false, nom);
+            Assert.False(svc.MemeUtilisateur());
+            using (var v = svc.PrendreVerrou())
+            {
+                Assert.NotNull(v);
+                Assert.Null(svc.PrendreVerrou());
+            }
+            using (var v2 = svc.PrendreVerrou()) Assert.NotNull(v2);
         }
     }
 }

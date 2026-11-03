@@ -145,7 +145,7 @@ Copies dans `tools/inventaire/sources/`, hors exe. L'inventaire lisible par mach
 | privacy.sexy | Disable OS data collection > Disable biometrics (breaks fingerprinting/facial login) | strict | exclu | Casse Windows Hello (empreinte, visage) : désactive une fonction de sécurité, hors section 4.10 |
 | privacy.sexy | Disable OS data collection > Disable Windows Insider Program | standard | tel.insider-off | Nouvelle option Sûr |
 | privacy.sexy | Disable OS data collection > Disable cloud sync | standard | tel.sync-off | Nouvelle option Sûr |
-| privacy.sexy | Configure programs | standard | tel.apps-telemetry-off | Nouvelle option Sûr (standard dominant) : .NET CLI, PowerShell, winget, Accessibility Insights ; services Razer Game Scanner et Logitech Gaming Registry en manuel ; CCleaner (sans recommandation) non repris |
+| privacy.sexy | Configure programs | standard | tel.apps-telemetry-off | Nouvelle option Sûr (standard dominant) : .NET CLI, PowerShell ; services Razer Game Scanner et Logitech Gaming Registry en manuel ; winget et Accessibility Insights non repris (réglages dans des fichiers JSON, non journalisables) ; CCleaner (sans recommandation) non repris |
 | privacy.sexy | Configure programs > Disable Visual Studio data collection | standard | tel.apps-telemetry-off | Visual Studio, IntelliCode, collecteur standard en manuel |
 | privacy.sexy | Configure programs > Disable Nvidia telemetry | standard | tel.nvidia-off | Nouvelle option Sûr ; la suppression de fichiers du pilote n'est pas reprise (non journalisable, réinstallée avec le pilote), le service passe en manuel |
 | privacy.sexy | Configure programs > Disable Nvidia telemetry > Disable Nvidia telemetry scheduled tasks | standard | tel.nvidia-off | Tâches NvTm* |

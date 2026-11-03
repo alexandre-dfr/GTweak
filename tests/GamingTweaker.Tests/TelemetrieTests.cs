@@ -110,8 +110,22 @@ namespace GamingTweaker.Tests
             var interdits = new[] { "Set-ItemProperty", "New-ItemProperty", "Remove-ItemProperty", "Set-Service", "sc.exe", "reg add", "reg.exe",
                                     "Disable-ScheduledTask", "Enable-ScheduledTask", "Out-File", "Set-Content", "Add-Content", "WriteAllLines", "Remove-AppxPackage" };
             foreach (var it in Catalogue().Values)
+            {
                 foreach (var m in interdits)
                     Assert.DoesNotContain(m, it.Apply ?? "");
+                // Arrêter/démarrer un service n'est pas journalisé : seul diagtrack-off peut arrêter le service (l'annulation rétablit le type de démarrage).
+                Assert.DoesNotContain("Start-Service", it.Apply ?? "");
+                if (it.Id != "tel.diagtrack-off") Assert.DoesNotContain("Stop-Service", it.Apply ?? "");
+            }
+        }
+
+        [Fact]
+        public void Les_descriptions_signalent_les_limites_de_hosts_et_de_diagtrack()
+        {
+            var cat = Catalogue();
+            Assert.Contains("HostsFileHijack", cat["tel.hosts"].Description);
+            Assert.Contains("Teams", cat["tel.hosts"].Description);
+            Assert.Contains("prochain démarrage", cat["tel.diagtrack-off"].Description);
         }
     }
 }

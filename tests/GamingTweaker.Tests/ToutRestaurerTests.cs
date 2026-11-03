@@ -13,11 +13,15 @@ namespace GamingTweaker.Tests
     {
         private class Faux : IRestauration
         {
-            public Dictionary<string, string> Journaux = new Dictionary<string, string>();
+            public Dictionary<string, List<string>> Journaux = new Dictionary<string, List<string>>();
             public HashSet<string> JournalEnEchec = new HashSet<string>();
             public List<string> Appels = new List<string>();
+            public List<string> Oublies = new List<string>();
+            public bool Occupe;
+            public bool MemeUser = true;
+            public bool VerrouLibere;
 
-            public string TrouverJournalActif(string id) { string j; return Journaux.TryGetValue(id, out j) ? j : null; }
+            public IReadOnlyList<string> TrouverJournauxActifs(string id) { List<string> j; return Journaux.TryGetValue(id, out j) ? j : new List<string>(); }
 
             public Task<ItemOutcome> AnnulerParJournalAsync(string journal, string id)
             {
@@ -29,6 +33,16 @@ namespace GamingTweaker.Tests
             {
                 Appels.Add("revert:" + item.Id);
                 return Task.FromResult(new ItemOutcome { Id = item.Id, Status = OutcomeStatus.Ok });
+            }
+
+            public IDisposable PrendreVerrou() { return Occupe ? null : new Verrou(this); }
+            public bool MemeUtilisateur() { return MemeUser; }
+            public void OublierDernieresApplications(IEnumerable<string> ids) { Oublies.AddRange(ids); }
+
+            private class Verrou : IDisposable
+            {
+                private readonly Faux f; public Verrou(Faux f) { this.f = f; }
+                public void Dispose() { f.VerrouLibere = true; }
             }
         }
 
@@ -67,7 +81,7 @@ namespace GamingTweaker.Tests
                 { "tel.definitif", DetectState.Applied }, { "opt.x", DetectState.Applied },
             };
             var faux = new Faux();
-            faux.Journaux["tel.a"] = @"C:\S\20260101-100000\journal.jsonl";
+            faux.Journaux["tel.a"] = new List<string> { @"C:\S\20260101-100000\journal.jsonl" };
             var vm = Cree(faux);
 
             var r = await vm.ToutRestaurerAsync();
@@ -79,6 +93,8 @@ namespace GamingTweaker.Tests
             Assert.Contains("tel.definitif", r.Ignorees);   // appliquée mais sans journal ni revert
             Assert.DoesNotContain("tel.win11", r.Ignorees); // incompatible : n'existe pas pour ce PC
             Assert.Equal(2, detections);                    // détection avant, puis nouvelle détection après
+            Assert.Equal(new[] { "tel.a", "tel.b" }, faux.Oublies);   // plus « appliquées par l'outil » (last-applied.json)
+            Assert.True(faux.VerrouLibere);
         }
 
         [Fact]
@@ -86,7 +102,7 @@ namespace GamingTweaker.Tests
         {
             etats["tel.a"] = DetectState.Applied;
             var faux = new Faux();
-            faux.Journaux["tel.a"] = "j";
+            faux.Journaux["tel.a"] = new List<string> { "j" };
             faux.JournalEnEchec.Add("tel.a");
             var vm = Cree(faux);
 
@@ -130,6 +146,76 @@ namespace GamingTweaker.Tests
                 its => { throw new InvalidOperationException("boom"); }, null, o => true) { Restauration = faux };
             await vm.ToutRestaurerAsync();
             Assert.Empty(faux.Appels);
+        }
+
+        [Fact]
+        public async Task Annule_tous_les_journaux_actifs_du_plus_recent_au_plus_ancien_meme_si_non_detectee_appliquee()
+        {
+            etats["tel.a"] = DetectState.NotApplied;     // appliquée en partie : la détection ne la voit pas
+            etats["tel.b"] = DetectState.Unknown;
+            var faux = new Faux();
+            faux.Journaux["tel.a"] = new List<string> { "B", "A" };
+            faux.Journaux["tel.b"] = new List<string> { "A" };
+            var vm = Cree(faux);
+
+            var r = await vm.ToutRestaurerAsync();
+
+            Assert.Equal(new[] { "journal:tel.a@B", "journal:tel.a@A", "journal:tel.b@A" }, faux.Appels);
+            Assert.Equal(2, r.AnnuleesParJournal);
+            Assert.Empty(r.Echecs);
+        }
+
+        [Fact]
+        public async Task Un_echec_sur_un_journal_arrete_les_suivants_de_cette_option()
+        {
+            var faux = new Faux();
+            faux.Journaux["tel.a"] = new List<string> { "B", "A" };
+            faux.JournalEnEchec.Add("tel.a");
+            var vm = Cree(faux);
+            var r = await vm.ToutRestaurerAsync();
+            Assert.Equal(new[] { "journal:tel.a@B" }, faux.Appels);
+            Assert.Single(r.Echecs);
+            Assert.Empty(faux.Oublies);
+        }
+
+        [Fact]
+        public async Task Le_revert_reste_limite_aux_options_detectees_appliquees_sans_journal()
+        {
+            etats["tel.a"] = DetectState.Unknown; etats["tel.b"] = DetectState.NotApplied;
+            var faux = new Faux();
+            var vm = Cree(faux);
+            await vm.ToutRestaurerAsync();
+            Assert.Empty(faux.Appels);
+        }
+
+        [Fact]
+        public async Task Une_autre_execution_en_cours_bloque_tout_restaurer()
+        {
+            etats["tel.a"] = DetectState.Applied;
+            var faux = new Faux { Occupe = true };
+            faux.Journaux["tel.a"] = new List<string> { "j" };
+            var vm = Cree(faux);
+            await vm.ToutRestaurerAsync();
+            Assert.Empty(faux.Appels);
+            Assert.Contains("autre exécution", vm.Message);
+        }
+
+        [Fact]
+        public async Task Sous_un_autre_compte_les_options_hkcu_sont_ignorees_et_signalees()
+        {
+            etats["tel.a"] = DetectState.Applied; etats["tel.b"] = DetectState.Applied;
+            var faux = new Faux { MemeUser = false };
+            faux.Journaux["tel.a"] = new List<string> { "j" };
+            faux.Journaux["tel.b"] = new List<string> { "j" };
+            var vm = Cree(faux);
+            vm.Options.Single(o => o.Id == "tel.a").Item.Hkcu = true;
+
+            var r = await vm.ToutRestaurerAsync();
+
+            Assert.Equal(new[] { "journal:tel.b@j" }, faux.Appels);
+            Assert.Equal(new[] { "tel.a" }, r.IgnoreesAutreCompte);
+            Assert.Contains("autre compte", vm.Message);
+            Assert.Equal(new[] { "tel.b" }, faux.Oublies);
         }
 
         [Fact]
