@@ -1,0 +1,14 @@
+[
+  {
+    "id": "opt.mouse.precision-off",
+    "menu": "Optimisation",
+    "groupe": "Souris et clavier",
+    "titre": "Désactiver la précision du pointeur",
+    "description": "Le déplacement du curseur devient proportionnel au mouvement de la souris.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": { "windows": ["10", "11"], "editions": [], "cpu": [], "gpu": [] }
+  }
+]

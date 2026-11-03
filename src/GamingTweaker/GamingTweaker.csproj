@@ -22,6 +22,12 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\catalog\*.json" LogicalName="catalog/%(Filename)%(Extension)" WithCulture="false" />
+    <EmbeddedResource Include="Assets\scripts\*.ps1" LogicalName="scripts/%(Filename)%(Extension)" WithCulture="false" />
   </ItemGroup>
 
   <ItemGroup>
@@ -31,9 +37,10 @@
   <!-- Integre chaque DLL copiee localement en ressource embarquee et empeche sa copie. -->
   <Target Name="EmbedLocalDlls" AfterTargets="ResolveReferences">
     <ItemGroup>
-      <_DllToEmbed Include="@(ReferenceCopyLocalPaths)" Condition="'%(Extension)' == '.dll'" />
-      <EmbeddedResource Include="@(_DllToEmbed)" LogicalName="%(Filename)%(Extension)" />
-      <ReferenceCopyLocalPaths Remove="@(_DllToEmbed)" />
+      <_DllToEmbed Include="@(ReferenceCopyLocalPaths)" Condition="'%(Extension)' == '.dll' And !$([System.String]::Copy('%(Filename)').EndsWith('.resources'))" />
+      <EmbeddedResource Include="@(_DllToEmbed)" LogicalName="%(Filename)%(Extension)" WithCulture="false" />
+      <!-- On retire DLL, satellites, pdb et xml des fichiers copies a cote de l'exe. -->
+      <ReferenceCopyLocalPaths Remove="@(ReferenceCopyLocalPaths)" Condition="'%(Extension)' == '.dll' Or '%(Extension)' == '.pdb' Or '%(Extension)' == '.xml'" />
     </ItemGroup>
   </Target>
 
