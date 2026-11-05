@@ -298,6 +298,53 @@ namespace GamingTweaker.Tests
             using (var k = Registry.CurrentUser.OpenSubKey(sub + "\\PoliciesExplorer")) Assert.Equal("hide:about;windowsupdate", k.GetValue("SettingsPageVisibility"));
         }
 
+        [Theory]
+        [InlineData("show:home", "hide:home")]
+        [InlineData("SHOW:home;about", "hide:home")]
+        [InlineData("hide:home", "hide:home")]
+        public async Task La_page_d_accueil_des_Parametres_remplace_un_show_home(string avant, string apres)
+        {
+            var id = "opt.settings-home-off";
+            var it = Redirigee(Catalogue.LoadEmbedded().Single(i => i.Id == id));
+            using (var k = Registry.CurrentUser.CreateSubKey(sub + @"\PoliciesExplorer")) k.SetValue("SettingsPageVisibility", avant, RegistryValueKind.String);
+            var sel = new Selection { OptionIds = new HashSet<string> { id } };
+            var r = await Runner.RunAsync(ScriptBuilder.Build(new[] { it }, sel, Journal), null, CancellationToken.None, _ => 120);
+            Assert.Equal(OutcomeStatus.Ok, r.Items.Single().Status);
+            using (var k = Registry.CurrentUser.OpenSubKey(sub + @"\PoliciesExplorer")) Assert.Equal(apres, k.GetValue("SettingsPageVisibility"));
+            Assert.Equal(DetectState.Applied, (await Detection.RunAsync(new[] { it }))[id]);
+            if (avant != apres)
+            {
+                Assert.Equal(OutcomeStatus.Ok, (await Service().AnnulerParJournalAsync(Journal, id)).Status);
+                using (var k = Registry.CurrentUser.OpenSubKey(sub + @"\PoliciesExplorer")) Assert.Equal(avant, k.GetValue("SettingsPageVisibility"));
+            }
+        }
+
+        [Fact]
+        public async Task La_page_d_accueil_des_Parametres_ignore_showonly_avec_un_message_exact()
+        {
+            var id = "opt.settings-home-off";
+            var it = Redirigee(Catalogue.LoadEmbedded().Single(i => i.Id == id));
+            using (var k = Registry.CurrentUser.CreateSubKey(sub + @"\PoliciesExplorer")) k.SetValue("SettingsPageVisibility", "showonly:about", RegistryValueKind.String);
+            var sel = new Selection { OptionIds = new HashSet<string> { id } };
+            var o = (await Runner.RunAsync(ScriptBuilder.Build(new[] { it }, sel, Journal), null, CancellationToken.None, _ => 120)).Items.Single();
+            Assert.Equal(OutcomeStatus.Skipped, o.Status);
+            Assert.Contains("showonly:", o.Message);
+        }
+
+        [Fact]
+        public async Task Remove_TweakRegistryKey_gere_un_chemin_avec_espace_par_reg_exe()
+        {
+            var chemin = @"HKCU:\" + sub + @"\Avec Espace\Sous Dossier";
+            using (var k = Registry.CurrentUser.CreateSubKey(sub + @"\Avec Espace\Sous Dossier\Enfant x")) k.SetValue("V", "é a", RegistryValueKind.String);
+            var avant = Instantane();
+            var r = await Executer("opt.test", "Remove-TweakRegistryKey -Path '" + chemin + "' | Out-Null");
+            Assert.Equal(OutcomeStatus.Ok, r.Items.Single().Status);
+            Assert.Empty(Instantane());
+            Assert.Single(Directory.GetFiles(Path.GetDirectoryName(Journal), "*.reg"));
+            Assert.Equal(OutcomeStatus.Ok, (await Service().AnnulerParJournalAsync(Journal, "opt.test")).Status);
+            Assert.Equal(avant, Instantane());
+        }
+
         [Fact]
         public async Task La_decouverte_automatique_exporte_Bags_et_BagMRU_puis_l_annulation_les_reimporte()
         {

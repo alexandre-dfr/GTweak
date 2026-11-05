@@ -726,7 +726,7 @@
     "menu": "Optimisation",
     "groupe": "Arrière-plan",
     "titre": "Charge processeur des analyses Defender limitée",
-    "description": "Limite à 1 % la charge moyenne du processeur pendant les analyses de Defender (stratégie AvgCPULoadFactor, 50 % par défaut). Les analyses sont beaucoup plus lentes mais gênent moins en jeu ; elles restent actives. Si la protection contre les falsifications de Sécurité Windows est active, l'option échoue avec la marche à suivre : aucun contournement n'est tenté. L'annulation retire la stratégie.",
+    "description": "Limite à 5 % (minimum documenté par Microsoft) la charge moyenne du processeur pendant les analyses de Defender (stratégie AvgCPULoadFactor, 50 % par défaut). Les analyses sont beaucoup plus lentes mais gênent moins en jeu ; elles restent actives. Si Windows n'applique pas la stratégie (par exemple bloquée par la protection contre les falsifications), l'option échoue en l'expliquant : aucun contournement n'est tenté. L'annulation retire la stratégie.",
     "risque": "Risque",
     "reversible": true,
     "redemarrage": false,

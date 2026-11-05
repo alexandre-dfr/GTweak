@@ -429,6 +429,13 @@ namespace GamingTweaker.Tests
             Assert.Contains("IsTamperProtected", it.Apply);
             Assert.Contains("throw", it.Apply);
             Assert.DoesNotContain("Set-MpPreference", it.Apply);
+            // La protection anti-falsification n'est qu'une explication de l'échec de vérification, jamais un motif d'échec préalable.
+            Assert.True(it.Apply.IndexOf("Set-TweakRegistryIfNeeded", StringComparison.Ordinal) < it.Apply.IndexOf("IsTamperProtected", StringComparison.Ordinal));
+            Assert.Contains("-Value 5", it.Apply);
+            Assert.Contains("ScanAvgCPULoadFactor", it.Apply);
+            Assert.Contains("'DWord', 5)", it.Detect);
+            Assert.Contains("5 %", it.Description);
+            Assert.DoesNotContain("désactivez", it.Apply);
         }
 
         [Fact]

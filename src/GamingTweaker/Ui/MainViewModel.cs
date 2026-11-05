@@ -425,7 +425,7 @@ namespace GamingTweaker.Ui
             switch (p[1])
             {
                 case "start": return "En cours : " + t;
-                case "ok": return "Appliqué : " + t;
+                case "ok": return "Appliqué : " + t + msg;
                 case "fail": return "Échec : " + t + msg;
                 case "skip": return "Ignoré : " + t + msg;
                 default: return null;

@@ -195,6 +195,15 @@ namespace GamingTweaker.Tests
         }
 
         [Fact]
+        public void Le_journal_en_direct_affiche_la_note_d_un_succes()
+        {
+            var v = new MainViewModel(new List<CatalogItem> { It("a.b", "Nettoyage", "G", "Titre", RiskLevel.Sur) }, new MachineFacts(),
+                new DataPaths { ProfilsDir = tmp }, its => Task.FromResult(new Dictionary<string, DetectState>()), null, o => true);
+            Assert.Equal("Appliqué : Titre (Déchiffrement lancé)", v.FormaterLigne("##GT|ok|a.b|Déchiffrement lancé"));
+            Assert.Equal("Appliqué : Titre", v.FormaterLigne("##GT|ok|a.b"));
+        }
+
+        [Fact]
         public async Task Lancer_transmet_la_selection_au_pipeline()
         {
             RunRequest recu = null;
