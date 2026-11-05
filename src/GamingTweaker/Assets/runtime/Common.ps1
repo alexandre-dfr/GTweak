@@ -18,13 +18,20 @@ function Skip-GTItem([string]$Reason) {
     throw ('GTSKIP:' + $Reason)
 }
 
+# Utilisable depuis un script d'application : joint une note au succes de l'option (##GT|ok|id|note), affichee dans le rapport.
+function Set-GTItemNote([string]$Note) {
+    $script:GT_ItemNote = $Note
+}
+
 # Execute une option : start / ok / fail / skip. $Apply s'execute dans sa propre portee.
 function Invoke-GTItem([string]$Id, [scriptblock]$Apply) {
     $script:GT_CurrentItem = $Id
+    $script:GT_ItemNote = $null
     Write-GTEvent 'start' $Id
     try {
         & $Apply
-        Write-GTEvent 'ok' $Id
+        if ([string]::IsNullOrWhiteSpace([string]$script:GT_ItemNote)) { Write-GTEvent 'ok' $Id }
+        else { Write-GTEvent 'ok' $Id ([string]$script:GT_ItemNote) }
     } catch {
         $msg = [string]$_.Exception.Message
         if ($msg.StartsWith('GTSKIP:')) { Write-GTEvent 'skip' $Id $msg.Substring(7) }
@@ -35,7 +42,7 @@ function Invoke-GTItem([string]$Id, [scriptblock]$Apply) {
 # ---------------------------------------------------------------------------
 # Journal d'annulation (journal.jsonl, une ligne JSON compacte par entree) et fonctions Set-Tweak*.
 # Chaque fonction ecrit puis vide son entree sur disque AVANT de modifier : si l'ecriture echoue, elle leve
-# une erreur et ne change rien. Kinds : registry, defender, service, task, power, bcd, hosts, app, quarantine.
+# une erreur et ne change rien. Kinds : registry, defender, service, task, power, bcd, hosts, app, quarantine, regkey, regkeynew.
 # ---------------------------------------------------------------------------
 
 function Add-GTJournalLine([string]$Line) {
@@ -128,6 +135,82 @@ function Set-TweakRegistry {
     }
     Write-GTJournal 'registry' ($Path + '|' + $Name) $cur.Existed $cur.Value $afterJson $(if ($cur.Existed) { $cur.Type } else { $Type })
     Set-GTRegRaw $Path $Name $Type $data
+}
+
+# ---- Cles de registre entieres ------------------------------------------------------------
+
+function ConvertTo-GTNativeKey([string]$Path) {
+    # « HKCU:\x » -> « HKEY_CURRENT_USER\x » (format de reg.exe et de [Registry]::SetValue).
+    if ($Path -match '^HKCU:\\?(.*)$') { return ('HKEY_CURRENT_USER\' + $Matches[1]) }
+    if ($Path -match '^HKLM:\\?(.*)$') { return ('HKEY_LOCAL_MACHINE\' + $Matches[1]) }
+    throw ('Chemin de registre non pris en charge : ' + $Path)
+}
+
+# reg.exe ecrit parfois son message de reussite sur la sortie d'erreur : sans ErrorActionPreference = Continue, 2>&1 leverait une erreur.
+function Invoke-GTRegExe([string[]]$Arguments) {
+    $old = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try { $o = & reg.exe @Arguments 2>&1 } finally { $ErrorActionPreference = $old }
+    return $o
+}
+
+function Export-GTRegistryKey([string]$Path, [string]$File) {
+    $o = Invoke-GTRegExe @('export', (ConvertTo-GTNativeKey $Path), $File, '/y')
+    if (($LASTEXITCODE -ne 0) -or -not (Test-Path -LiteralPath $File)) { throw ('Export de la clé ' + $Path + ' impossible : ' + ($o -join ' ')) }
+}
+
+function Import-GTRegistryFile([string]$File) {
+    $o = Invoke-GTRegExe @('import', $File)
+    if ($LASTEXITCODE -ne 0) { throw ('Import de ' + $File + ' impossible : ' + ($o -join ' ')) }
+}
+
+function Remove-GTRegistryKey([string]$Path) {
+    Remove-Item -LiteralPath $Path -Recurse -Force -ErrorAction Stop
+}
+
+# Vrai si la cle existe et possede une valeur par defaut.
+function Test-GTRegistryKeyDefault([string]$Path) {
+    $k = Get-Item -LiteralPath $Path -ErrorAction SilentlyContinue
+    if (-not $k) { return $false }
+    return [bool]($k.GetValueNames() -contains '')
+}
+
+# Supprime une cle entiere apres l'avoir exportee (.reg) dans le dossier de la session ; l'annulation la reimporte.
+# Renvoie $true si la cle existait (et a ete supprimee), $false sinon (rien n'est journalise).
+function Remove-TweakRegistryKey {
+    param([Parameter(Mandatory)][string]$Path)
+    if (-not (Test-Path -LiteralPath $Path)) { return $false }
+    if ([string]::IsNullOrEmpty($GT_JournalPath)) { throw 'Journal d''annulation non configuré.' }
+    $dir = Split-Path -Parent $GT_JournalPath
+    if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+    $file = Join-Path $dir ('regkey-' + [Guid]::NewGuid().ToString('N') + '.reg')
+    Export-GTRegistryKey $Path $file
+    try { Write-GTJournal 'regkey' $Path $true $file $null }
+    catch { Remove-Item -LiteralPath $file -Force -ErrorAction SilentlyContinue; throw }
+    Remove-GTRegistryKey $Path
+    return $true
+}
+
+# Cree une cle (et ses parents) avec une valeur par defaut vide. L'annulation retire la cle la plus haute creee,
+# ou seulement la valeur par defaut si la cle existait deja sans elle.
+# Renvoie $true si quelque chose a ete cree, $false si la cle avait deja sa valeur par defaut.
+function Add-TweakRegistryKey {
+    param([Parameter(Mandatory)][string]$Path)
+    if (Test-GTRegistryKeyDefault $Path) { return $false }
+    $existed = Test-Path -LiteralPath $Path
+    $target = $Path
+    if (-not $existed) {
+        # Plus haut ancetre absent : c'est lui qu'il faudra supprimer pour revenir a l'etat d'origine.
+        $cur = $Path
+        while ($true) {
+            $parent = Split-Path -Parent $cur
+            if ((-not $parent) -or ($parent -match '^HK(CU|LM):\\?$') -or (Test-Path -LiteralPath $parent)) { $target = $cur; break }
+            $cur = $parent
+        }
+    }
+    Write-GTJournal 'regkeynew' $target $existed $null $Path
+    [Microsoft.Win32.Registry]::SetValue((ConvertTo-GTNativeKey $Path), '', '', [Microsoft.Win32.RegistryValueKind]::String)
+    return $true
 }
 
 # ---- Defender ---------------------------------------------------------------
@@ -611,6 +694,23 @@ function Restore-GTEntry($E) {
             $dir = Split-Path -Parent $E.before
             if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
             Move-Item -LiteralPath $E.after -Destination $E.before
+        }
+        'regkey' {
+            # Cle supprimee : ce qui a pu etre recree depuis est remplace par la sauvegarde exportee.
+            if (-not (Test-Path -LiteralPath $E.before)) { throw ('Sauvegarde du registre introuvable : ' + $E.before) }
+            if (Test-Path -LiteralPath $E.target) { Remove-GTRegistryKey $E.target }
+            Import-GTRegistryFile $E.before
+        }
+        'regkeynew' {
+            if ($E.existed) {
+                # La cle existait sans valeur par defaut : seule celle-ci est retiree.
+                if (Test-GTRegistryKeyDefault $E.after) {
+                    $hive = if ($E.after -match '^HKLM:') { [Microsoft.Win32.Registry]::LocalMachine } else { [Microsoft.Win32.Registry]::CurrentUser }
+                    $sk = $hive.OpenSubKey(($E.after -replace '^HK(CU|LM):\\?', ''), $true)
+                    try { $sk.DeleteValue('', $false) } finally { $sk.Dispose() }
+                }
+            }
+            elseif (Test-Path -LiteralPath $E.target) { Remove-GTRegistryKey $E.target }
         }
         'app' { }
         default { throw ('Type d''entrée de journal inconnu : ' + $E.kind) }

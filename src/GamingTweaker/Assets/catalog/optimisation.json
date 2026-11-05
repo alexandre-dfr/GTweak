@@ -605,5 +605,586 @@
       "cpu": [],
       "gpu": []
     }
+  },
+  {
+    "id": "opt.delivery-opt-off",
+    "menu": "Optimisation",
+    "groupe": "Réseau et planificateur",
+    "titre": "Partage pair à pair des mises à jour désactivé",
+    "description": "Windows ne partage plus les mises à jour avec d'autres PC (réseau local ou Internet) : le téléchargement se fait uniquement depuis Microsoft, ce qui évite un débit montant utilisé en jeu. Écrit la stratégie DODownloadMode à 0. Le service d'optimisation de la distribution reste actif, car Windows Update en dépend. L'annulation rétablit l'état d'origine.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.ipv4-prefer",
+    "menu": "Optimisation",
+    "groupe": "Réseau et planificateur",
+    "titre": "IPv4 préféré à IPv6",
+    "description": "Quand un nom existe en IPv4 et en IPv6, Windows choisit l'IPv4 d'abord (DisabledComponents = 0x20) ; IPv6 reste actif. Utile si votre accès Internet gère mal l'IPv6 (connexions lentes ou jeux en ligne qui tardent à se connecter). Ignoré si « IPv6 désactivé » est aussi choisi. Effet après redémarrage de l'ordinateur. L'annulation rétablit l'état d'origine.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.teredo-off",
+    "menu": "Optimisation",
+    "groupe": "Réseau et planificateur",
+    "titre": "Teredo désactivé",
+    "description": "Désactive Teredo, le tunnel qui fait passer de l'IPv6 par un serveur Microsoft derrière un routeur NAT (stratégie « Définir l'état Teredo : désactivé »). Peu utile en jeu, mais Xbox Live et certains jeux en ligne peuvent en dépendre : risque de perdre le chat vocal ou le matchmaking. Effet après redémarrage de l'ordinateur. L'annulation rétablit l'état d'origine.",
+    "risque": "Risque",
+    "reversible": true,
+    "redemarrage": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.ipv6-off",
+    "menu": "Optimisation",
+    "groupe": "Réseau et planificateur",
+    "titre": "IPv6 désactivé",
+    "description": "Désactive entièrement IPv6 (DisabledComponents = 0xFF). Microsoft déconseille ce réglage : des composants de Windows et certains jeux en ligne utilisent IPv6, et la connectivité peut se dégrader. Si vous voulez seulement privilégier l'IPv4, préférez « IPv4 préféré à IPv6 ». Effet après redémarrage de l'ordinateur. L'annulation rétablit l'état d'origine.",
+    "risque": "Risque",
+    "reversible": true,
+    "redemarrage": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.svchost-split-off",
+    "menu": "Optimisation",
+    "groupe": "Arrière-plan",
+    "titre": "Séparation des processus svchost désactivée",
+    "description": "Regroupe les services Windows dans moins de processus svchost.exe en relevant le seuil de séparation (SvcHostSplitThresholdInKB) au niveau de la mémoire installée. Gain mesurable surtout sous 12 Go de RAM ; au-delà, l'effet est faible. WinUtil signale une gêne possible des services Xbox. Effet après redémarrage de l'ordinateur. L'annulation remet le seuil de Windows (0x380000).",
+    "risque": "Risque",
+    "reversible": true,
+    "redemarrage": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.storagesense-off",
+    "menu": "Optimisation",
+    "groupe": "Arrière-plan",
+    "titre": "Assistant de stockage désactivé",
+    "description": "Désactive l'Assistant de stockage de Windows, qui supprime de lui-même des fichiers temporaires, vide la corbeille et libère de l'espace en arrière-plan, avec des pics d'accès au disque pendant une partie. À vous de nettoyer le disque quand vous le voulez. L'annulation supprime le réglage (Windows reprend son comportement par défaut).",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.defender-scan-cpu",
+    "menu": "Optimisation",
+    "groupe": "Arrière-plan",
+    "titre": "Charge processeur des analyses Defender limitée",
+    "description": "Limite à 1 % la charge moyenne du processeur pendant les analyses de Defender (stratégie AvgCPULoadFactor, 50 % par défaut). Les analyses sont beaucoup plus lentes mais gênent moins en jeu ; elles restent actives. Si la protection contre les falsifications de Sécurité Windows est active, l'option échoue avec la marche à suivre : aucun contournement n'est tenté. L'annulation retire la stratégie.",
+    "risque": "Risque",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.bsod-detailed",
+    "menu": "Optimisation",
+    "groupe": "Confort Windows",
+    "titre": "Écran bleu détaillé",
+    "description": "Affiche sur l'écran bleu le code d'erreur et les paramètres détaillés du plantage, sans le smiley, ce qui aide à diagnostiquer un crash de jeu ou de pilote (DisplayParameters et DisableEmoticon à 1). L'annulation supprime ces deux valeurs.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.show-extensions",
+    "menu": "Optimisation",
+    "groupe": "Confort Windows",
+    "titre": "Extensions de fichiers affichées",
+    "description": "Affiche les extensions (.exe, .zip, .pdf…) dans l'Explorateur de fichiers. Utile aussi pour repérer un exécutable déguisé en document. Effet après redémarrage de l'Explorateur ou de la session (l'application ne ferme pas l'Explorateur). L'annulation rétablit l'état d'origine.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.longpaths",
+    "menu": "Optimisation",
+    "groupe": "Confort Windows",
+    "titre": "Chemins de plus de 260 caractères autorisés",
+    "description": "Autorise les chemins de fichiers de plus de 260 caractères (LongPathsEnabled = 1) pour les applications compatibles : dossiers de mods ou de jeux profondément imbriqués. Sans effet de bord pour les autres applications. L'annulation rétablit l'état d'origine.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.show-hidden",
+    "menu": "Optimisation",
+    "groupe": "Confort Windows",
+    "titre": "Fichiers cachés affichés",
+    "description": "Affiche les fichiers et dossiers cachés dans l'Explorateur (AppData, ProgramData…), pratique pour retrouver les sauvegardes et configurations de jeux. Effet après redémarrage de l'Explorateur ou de la session (l'application ne ferme pas l'Explorateur). L'annulation rétablit l'état d'origine.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.dark-mode",
+    "menu": "Optimisation",
+    "groupe": "Confort Windows",
+    "titre": "Thème sombre",
+    "description": "Active le thème sombre de Windows et des applications (AppsUseLightTheme et SystemUsesLightTheme à 0). Préférence de goût. Effet après redémarrage de l'Explorateur ou de la session (l'application ne ferme pas l'Explorateur). L'annulation rétablit l'état d'origine.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.verbose-logon",
+    "menu": "Optimisation",
+    "groupe": "Confort Windows",
+    "titre": "Messages détaillés au démarrage et à l'arrêt",
+    "description": "Affiche des messages détaillés (« Démarrage des services… », « Application des paramètres… ») pendant l'ouverture de session, l'arrêt et le redémarrage, ce qui aide à comprendre un démarrage lent (VerboseStatus = 1). L'annulation supprime la valeur.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.scrollbars-visible",
+    "menu": "Optimisation",
+    "groupe": "Confort Windows",
+    "titre": "Barres de défilement toujours visibles",
+    "description": "Garde les barres de défilement affichées en permanence au lieu de les masquer quand la souris est immobile (DynamicScrollbars = 0). L'annulation rétablit l'état d'origine.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.numlock-on",
+    "menu": "Optimisation",
+    "groupe": "Confort Windows",
+    "titre": "Verr. Num activé au démarrage",
+    "description": "Active le pavé numérique à l'ouverture de session (InitialKeyboardIndicators = 2 pour votre compte). Le réglage de l'écran de connexion n'est pas modifié. L'annulation rétablit l'état d'origine.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.snap-off",
+    "menu": "Optimisation",
+    "groupe": "Confort Windows",
+    "titre": "Ancrage des fenêtres désactivé",
+    "description": "Désactive l'ancrage des fenêtres sur les bords et les coins de l'écran (WindowArrangementActive = 0) : une fenêtre qu'on déplace ne se redimensionne plus d'elle-même. L'annulation rétablit l'état d'origine.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.settings-home-off",
+    "menu": "Optimisation",
+    "groupe": "Confort Windows",
+    "titre": "Page d'accueil des Paramètres masquée",
+    "description": "Masque la page « Accueil » de l'application Paramètres (Windows 11) en ajoutant « home » à la stratégie SettingsPageVisibility ; les pages déjà masquées sont conservées. L'annulation ne retire que « home ».",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.login-blur-off",
+    "menu": "Optimisation",
+    "groupe": "Confort Windows",
+    "titre": "Flou de l'écran de connexion désactivé",
+    "description": "Supprime l'effet de flou acrylique derrière la zone de connexion : l'image de fond de l'écran de connexion reste nette (stratégie DisableAcrylicBackgroundOnLogon = 1). L'annulation supprime la stratégie.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.lockscreen-off",
+    "menu": "Optimisation",
+    "groupe": "Confort Windows",
+    "titre": "Écran de verrouillage ignoré",
+    "description": "Passe directement de l'écran de démarrage à la saisie du mot de passe, sans l'écran de verrouillage avec l'image et l'heure (stratégie NoLockScreen = 1). L'annulation supprime la stratégie.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.start-reco-off",
+    "menu": "Optimisation",
+    "groupe": "Confort Windows",
+    "titre": "Section « Recommandé » du menu Démarrer masquée",
+    "description": "Masque la section « Recommandé » (fichiers récents, applications ajoutées) du menu Démarrer de Windows 11. Attention : Windows à la une est aussi coupé sur l'écran de verrouillage. Trois valeurs sont écrites (stratégies HideRecommendedSection et IsEducationEnvironment). Effet après redémarrage de l'Explorateur ou de la session (l'application ne ferme pas l'Explorateur). L'annulation supprime ces valeurs.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.taskbar-left",
+    "menu": "Optimisation",
+    "groupe": "Confort Windows",
+    "titre": "Icônes de la barre des tâches alignées à gauche",
+    "description": "Aligne les icônes de la barre des tâches de Windows 11 à gauche, comme sous Windows 10 (TaskbarAl = 0). Effet après redémarrage de l'Explorateur ou de la session (l'application ne ferme pas l'Explorateur). L'annulation rétablit l'état d'origine.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.taskbar-search-off",
+    "menu": "Optimisation",
+    "groupe": "Confort Windows",
+    "titre": "Bouton Rechercher de la barre des tâches masqué",
+    "description": "Masque le bouton ou le champ Rechercher de la barre des tâches (SearchboxTaskbarMode = 0). La recherche reste disponible avec la touche Windows. Effet après redémarrage de l'Explorateur ou de la session (l'application ne ferme pas l'Explorateur). L'annulation rétablit l'affichage par défaut (icône sous Windows 11, champ sous Windows 10).",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.taskview-off",
+    "menu": "Optimisation",
+    "groupe": "Confort Windows",
+    "titre": "Bouton Vue des tâches masqué",
+    "description": "Masque le bouton Vue des tâches de la barre des tâches (ShowTaskViewButton = 0) ; le raccourci Windows + Tab continue de fonctionner. Effet après redémarrage de l'Explorateur ou de la session (l'application ne ferme pas l'Explorateur). L'annulation rétablit l'état d'origine.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.endtask-taskbar",
+    "menu": "Optimisation",
+    "groupe": "Confort Windows",
+    "titre": "« Fin de tâche » dans le menu de la barre des tâches",
+    "description": "Ajoute la commande « Fin de tâche » au clic droit sur les icônes de la barre des tâches (Windows 11 22H2 et plus récent) : pratique pour fermer un jeu figé sans passer par le Gestionnaire des tâches. Effet après redémarrage de l'Explorateur ou de la session (l'application ne ferme pas l'Explorateur). L'annulation supprime la valeur.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.explorer-home-off",
+    "menu": "Optimisation",
+    "groupe": "Confort Windows",
+    "titre": "Accueil et Galerie retirés de l'Explorateur, ouverture sur Ce PC",
+    "description": "Retire les entrées Accueil et Galerie du volet de navigation de l'Explorateur de fichiers (Windows 11) et ouvre l'Explorateur sur « Ce PC » (LaunchTo = 1). Effet après redémarrage de l'Explorateur ou de la session (l'application ne ferme pas l'Explorateur). L'annulation supprime ces valeurs.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.classic-context-menu",
+    "menu": "Optimisation",
+    "groupe": "Confort Windows",
+    "titre": "Menu contextuel classique",
+    "description": "Rétablit le menu contextuel complet de Windows 10 au clic droit (au lieu du menu abrégé de Windows 11 avec « Afficher plus d'options »), en créant la clé InprocServer32 de l'identifiant {86ca1aa0-…} dans votre profil. Effet après redémarrage de l'Explorateur ou de la session (l'application ne ferme pas l'Explorateur). L'annulation supprime cette clé.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.notifications-off",
+    "menu": "Optimisation",
+    "groupe": "Confort Windows",
+    "titre": "Notifications et calendrier de la zone de notification désactivés",
+    "description": "Désactive le centre de notifications et les bannières (stratégie DisableNotificationCenter et ToastEnabled = 0) : plus de fenêtres qui interrompent une partie. Le calendrier de l'horloge n'est plus affiché non plus. Effet après redémarrage de l'Explorateur ou de la session (l'application ne ferme pas l'Explorateur). L'annulation rétablit l'état d'origine.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.explorer-autodiscovery-off",
+    "menu": "Optimisation",
+    "groupe": "Confort Windows",
+    "titre": "Détection automatique du type de dossier désactivée",
+    "description": "Empêche l'Explorateur de choisir lui-même la vue d'un dossier (Images, Vidéos, Musique…), ce qui le ralentit à l'ouverture de gros dossiers de jeux. Efface les vues de dossiers mémorisées (clés Bags et BagMRU) puis impose le type générique. Avant la suppression, les deux clés sont exportées en .reg dans le dossier de la session : l'annulation les réimporte et retrouve vos vues. Effet après redémarrage de l'Explorateur ou de la session (l'application ne ferme pas l'Explorateur). Le script de retour aux valeurs par défaut ne retire que le type générique.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.utc-time",
+    "menu": "Optimisation",
+    "groupe": "Confort Windows",
+    "titre": "Horloge matérielle en UTC (double démarrage avec Linux)",
+    "description": "Windows lit l'horloge de la carte mère en UTC (RealTimeIsUniversal = 1), comme Linux : utile en double démarrage pour que les deux systèmes affichent la même heure. Sans Linux sur ce PC, l'heure de Windows sera décalée de votre fuseau horaire (par exemple d'une ou deux heures) jusqu'à l'annulation. Effet après redémarrage de l'ordinateur. L'annulation supprime la valeur.",
+    "risque": "Risque",
+    "reversible": true,
+    "redemarrage": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.bitlocker-off",
+    "menu": "Optimisation",
+    "groupe": "Sécurité",
+    "titre": "BitLocker désactivé (déchiffrement du disque)",
+    "description": "Déchiffre le disque système (Disable-BitLocker) : plus de surcharge de chiffrement, mais plus de protection des données si le PC est volé. Le déchiffrement se poursuit en arrière-plan et peut prendre longtemps. Effet définitif : le disque est déchiffré ; le réactiver demande de refaire le chiffrement et de sauvegarder la clé de récupération. Elle n'a pas d'annulation et n'est jamais cochée par « Recommandé ». Ignorée si le disque n'est pas chiffré.",
+    "risque": "Risque",
+    "reversible": false,
+    "redemarrage": false,
+    "testable": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
   }
 ]

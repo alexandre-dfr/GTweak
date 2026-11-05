@@ -28,8 +28,8 @@ namespace GamingTweaker.Tests.Helpers
         public RiskLevel Risque { get; set; }
         /// <summary>Texte brut de la colonne « réversible » : « oui », « non » ou « partiel : … ».</summary>
         public string Reversible { get; set; }
-        /// <summary>Vrai si l'option a un script revert (réversible différent de « non »).</summary>
-        public bool EstReversible { get { return Reversible != "non"; } }
+        /// <summary>Vrai si l'option a un script revert (« oui » ou « partiel : … » ; faux pour « non » et « non : … »).</summary>
+        public bool EstReversible { get { return !Reversible.StartsWith("non", StringComparison.Ordinal); } }
     }
 
     /// <summary>Lit le tableau de couverture des sources (Task 7B).</summary>

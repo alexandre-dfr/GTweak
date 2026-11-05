@@ -67,7 +67,7 @@ namespace GamingTweaker.Core
                 }
                 if (kind != "ok" && kind != "fail" && kind != "skip") return;
                 var r = Get(id);
-                if (kind == "ok") { r.Status = OutcomeStatus.Ok; r.Message = null; }
+                if (kind == "ok") { r.Status = OutcomeStatus.Ok; r.Message = string.IsNullOrWhiteSpace(msg) ? null : msg; }   // note optionnelle (Set-GTItemNote)
                 else if (kind == "fail") { r.Status = OutcomeStatus.Failed; r.Message = msg; }
                 else { r.Status = OutcomeStatus.Skipped; r.Message = msg; }
                 finished.Add(id);

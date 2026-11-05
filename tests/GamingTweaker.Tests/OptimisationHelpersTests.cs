@@ -165,6 +165,17 @@ namespace GamingTweaker.Tests
             new[] { @"HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects", "VisualEffects" },
             new[] { @"HKCU:\Control Panel\Accessibility", "Accessibility" },
             new[] { @"HKCU:\Control Panel\Mouse", "Mouse" },
+            new[] { @"HKCU:\Control Panel\Keyboard", "Keyboard" },
+            new[] { @"HKCU:\Control Panel\Desktop", "Desktop" },
+            new[] { @"HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "ExplorerAdvanced" },
+            new[] { @"HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\StorageSense\Parameters\StoragePolicy", "StoragePolicy" },
+            new[] { @"HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize", "Personalize" },
+            new[] { @"HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer", "PoliciesExplorer" },
+            new[] { @"HKCU:\Software\Microsoft\Windows\CurrentVersion\Search", "Search" },
+            new[] { @"HKCU:\Software\Policies\Microsoft\Windows\Explorer", "PolicyWindowsExplorer" },
+            new[] { @"HKCU:\Software\Microsoft\Windows\CurrentVersion\PushNotifications", "PushNotifications" },
+            new[] { @"HKCU:\Software\Classes\CLSID", "CLSID" },
+            new[] { @"HKCU:\Software\Classes\Local Settings\Software\Microsoft\Windows\Shell", "Shell" },
         };
 
         private string Redirige(string script)
@@ -225,6 +236,206 @@ namespace GamingTweaker.Tests
             await Runner.RunAsync(ScriptBuilder.Build(new[] { it }, sel, Journal + "2"), null, CancellationToken.None, _ => 120);
             Assert.Equal(OutcomeStatus.Ok, (await svc.ExecuterRevertAsync(it)).Status);
             Assert.NotEqual(DetectState.Applied, (await Detection.RunAsync(new[] { it }))[id]);
+        }
+
+        [Theory]
+        [InlineData("opt.storagesense-off")] [InlineData("opt.show-extensions")] [InlineData("opt.show-hidden")] [InlineData("opt.dark-mode")]
+        [InlineData("opt.scrollbars-visible")] [InlineData("opt.numlock-on")] [InlineData("opt.snap-off")] [InlineData("opt.settings-home-off")]
+        [InlineData("opt.taskbar-left")] [InlineData("opt.taskbar-search-off")] [InlineData("opt.taskview-off")] [InlineData("opt.endtask-taskbar")]
+        [InlineData("opt.explorer-home-off")] [InlineData("opt.classic-context-menu")] [InlineData("opt.notifications-off")]
+        public async Task Les_options_confort_HKCU_s_appliquent_se_detectent_et_s_annulent_sous_la_cle_de_test(string id)
+        {
+            var cat = Catalogue.LoadEmbedded().Single(i => i.Id == id);
+            Assert.True(cat.Hkcu);
+            var it = Redirigee(cat);
+            Registry.CurrentUser.CreateSubKey(sub + @"\CLSID").Dispose();   // parent existant : l'annulation d'une clé créée ne remonte pas au-dessus
+            Assert.Empty(Instantane());
+            Assert.Equal(DetectState.NotApplied, (await Detection.RunAsync(new[] { it }))[id]);
+
+            var sel = new Selection { OptionIds = new HashSet<string> { id } };
+            var r = await Runner.RunAsync(ScriptBuilder.Build(new[] { it }, sel, Journal), null, CancellationToken.None, _ => 120);
+            Assert.Equal(OutcomeStatus.Ok, r.Items.Single().Status);
+            var applique = Instantane();
+            Assert.NotEmpty(applique);
+            Assert.Equal(DetectState.Applied, (await Detection.RunAsync(new[] { it }))[id]);
+
+            var lignes = File.ReadAllLines(Journal).Length;
+            await Runner.RunAsync(ScriptBuilder.Build(new[] { it }, sel, Journal), null, CancellationToken.None, _ => 120);
+            Assert.Equal(lignes, File.ReadAllLines(Journal).Length);   // idempotent
+            Assert.Equal(applique, Instantane());
+
+            var svc = Service();
+            Assert.Equal(OutcomeStatus.Ok, (await svc.AnnulerParJournalAsync(Journal, id)).Status);
+            Assert.Empty(Instantane());
+
+            await Runner.RunAsync(ScriptBuilder.Build(new[] { it }, sel, Journal + "2"), null, CancellationToken.None, _ => 120);
+            Assert.Equal(DetectState.Applied, (await Detection.RunAsync(new[] { it }))[id]);
+            Assert.Equal(OutcomeStatus.Ok, (await svc.ExecuterRevertAsync(it)).Status);
+            Assert.NotEqual(DetectState.Applied, (await Detection.RunAsync(new[] { it }))[id]);
+        }
+
+        private CatalogItem Redirigee(CatalogItem cat) => new CatalogItem
+        {
+            Id = cat.Id, Menu = "Optimisation", Groupe = "G", Titre = "T", Risque = RiskLevel.Avance, Reversible = true,
+            Apply = Redirige(cat.Apply), Detect = Redirige(cat.Detect), Revert = Redirige(cat.Revert),
+        };
+
+        private RestaurationService Service() =>
+            new RestaurationService(new DataPaths { SessionsDir = Path.Combine(tmp, "Sessions"), MachineDir = Path.Combine(tmp, "M") });
+
+        [Fact]
+        public async Task La_page_d_accueil_des_Parametres_garde_les_autres_pages_masquees()
+        {
+            var id = "opt.settings-home-off";
+            var it = Redirigee(Catalogue.LoadEmbedded().Single(i => i.Id == id));
+            using (var k = Registry.CurrentUser.CreateSubKey(sub + "\\PoliciesExplorer")) k.SetValue("SettingsPageVisibility", "hide:about;windowsupdate", RegistryValueKind.String);
+            var sel = new Selection { OptionIds = new HashSet<string> { id } };
+            Assert.Equal(DetectState.NotApplied, (await Detection.RunAsync(new[] { it }))[id]);
+            await Runner.RunAsync(ScriptBuilder.Build(new[] { it }, sel, Journal), null, CancellationToken.None, _ => 120);
+            using (var k = Registry.CurrentUser.OpenSubKey(sub + "\\PoliciesExplorer")) Assert.Equal("hide:about;windowsupdate;home", k.GetValue("SettingsPageVisibility"));
+            Assert.Equal(DetectState.Applied, (await Detection.RunAsync(new[] { it }))[id]);
+            Assert.Equal(OutcomeStatus.Ok, (await Service().ExecuterRevertAsync(it)).Status);   // le script revert ne retire que « home »
+            using (var k = Registry.CurrentUser.OpenSubKey(sub + "\\PoliciesExplorer")) Assert.Equal("hide:about;windowsupdate", k.GetValue("SettingsPageVisibility"));
+        }
+
+        [Fact]
+        public async Task La_decouverte_automatique_exporte_Bags_et_BagMRU_puis_l_annulation_les_reimporte()
+        {
+            var id = "opt.explorer-autodiscovery-off";
+            var it = Redirigee(Catalogue.LoadEmbedded().Single(i => i.Id == id));
+            using (var k = Registry.CurrentUser.CreateSubKey(sub + "\\Shell\\Bags\\5\\Shell\\{guid}"))
+            {
+                k.SetValue("Mode", 4, RegistryValueKind.DWord); k.SetValue("Texte", "é à", RegistryValueKind.String);
+                k.SetValue("Bin", new byte[] { 1, 2, 3 }, RegistryValueKind.Binary);
+            }
+            using (var k = Registry.CurrentUser.CreateSubKey(sub + "\\Shell\\BagMRU\\0")) k.SetValue("NodeSlot", 5, RegistryValueKind.DWord);
+            var avant = Instantane();
+            var sel = new Selection { OptionIds = new HashSet<string> { id } };
+            Assert.Equal(DetectState.NotApplied, (await Detection.RunAsync(new[] { it }))[id]);
+
+            var r = await Runner.RunAsync(ScriptBuilder.Build(new[] { it }, sel, Journal), null, CancellationToken.None, _ => 120);
+            Assert.Equal(OutcomeStatus.Ok, r.Items.Single().Status);
+            var apres = Instantane();
+            Assert.Single(apres);
+            Assert.Equal("NotSpecified/String", apres[@"\Shell\Bags\AllFolders\Shell|FolderType"]);
+            Assert.Equal(DetectState.Applied, (await Detection.RunAsync(new[] { it }))[id]);
+            // Deux exports .reg dans le dossier de la session, deux entrées « regkey » puis l'écriture de la valeur.
+            Assert.Equal(2, Directory.GetFiles(Path.GetDirectoryName(Journal), "*.reg").Length);
+            var kinds = File.ReadAllLines(Journal).Select(l => (string)Newtonsoft.Json.Linq.JObject.Parse(l)["kind"]).ToList();
+            Assert.Equal(new[] { "regkey", "regkey", "registry" }, kinds);
+
+            var lignes = File.ReadAllLines(Journal).Length;
+            await Runner.RunAsync(ScriptBuilder.Build(new[] { it }, sel, Journal), null, CancellationToken.None, _ => 120);
+            Assert.Equal(lignes, File.ReadAllLines(Journal).Length);   // idempotent
+            Assert.Equal(2, Directory.GetFiles(Path.GetDirectoryName(Journal), "*.reg").Length);
+
+            Assert.Equal(OutcomeStatus.Ok, (await Service().AnnulerParJournalAsync(Journal, id)).Status);
+            Assert.Equal(avant, Instantane());   // vues de dossiers d'origine rétablies à l'identique
+        }
+
+        [Fact]
+        public async Task Le_revert_de_la_decouverte_automatique_retire_seulement_le_type_generique()
+        {
+            var id = "opt.explorer-autodiscovery-off";
+            var it = Redirigee(Catalogue.LoadEmbedded().Single(i => i.Id == id));
+            var sel = new Selection { OptionIds = new HashSet<string> { id } };
+            await Runner.RunAsync(ScriptBuilder.Build(new[] { it }, sel, Journal), null, CancellationToken.None, _ => 120);
+            Assert.Equal(DetectState.Applied, (await Detection.RunAsync(new[] { it }))[id]);
+            Assert.Equal(OutcomeStatus.Ok, (await Service().ExecuterRevertAsync(it)).Status);
+            Assert.Equal(DetectState.NotApplied, (await Detection.RunAsync(new[] { it }))[id]);
+        }
+
+        // ---- clés entières : Remove-TweakRegistryKey et Add-TweakRegistryKey ------------------------------
+
+        private string Cle(string nom) => @"HKCU:\" + sub + "\\" + nom;
+
+        [Fact]
+        public async Task Remove_TweakRegistryKey_exporte_la_cle_puis_la_supprime_et_l_annulation_la_reimporte()
+        {
+            using (var k = Registry.CurrentUser.CreateSubKey(sub + "\\Victime\\Sous"))
+            {
+                k.SetValue("A", 7, RegistryValueKind.DWord); k.SetValue("B", "accentué é", RegistryValueKind.String);
+                k.SetValue("C", new[] { "x", "y" }, RegistryValueKind.MultiString);
+            }
+            using (var k = Registry.CurrentUser.OpenSubKey(sub + "\\Victime", true)) k.SetValue("", "defaut", RegistryValueKind.String);
+            var avant = Instantane();
+            var r = await Executer("opt.test", "Remove-TweakRegistryKey -Path '" + Cle("Victime") + "' | Out-Null");
+            Assert.Equal(OutcomeStatus.Ok, r.Items.Single().Status);
+            Assert.Empty(Instantane());
+            var reg = Directory.GetFiles(Path.GetDirectoryName(Journal), "*.reg").Single();
+            Assert.Contains("Victime", File.ReadAllText(reg));
+            var e = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllLines(Journal).Single());
+            Assert.Equal("regkey", (string)e["kind"]);
+            Assert.Equal(Cle("Victime"), (string)e["target"]);
+            Assert.Equal(reg, (string)e["before"]);
+
+            // Clé absente : rien n'est fait ni journalisé.
+            var lignes = File.ReadAllLines(Journal).Length;
+            await Executer("opt.test", "Remove-TweakRegistryKey -Path '" + Cle("Victime") + "' | Out-Null");
+            Assert.Equal(lignes, File.ReadAllLines(Journal).Length);
+            Assert.Single(Directory.GetFiles(Path.GetDirectoryName(Journal), "*.reg"));
+
+            Assert.Equal(OutcomeStatus.Ok, (await Service().AnnulerParJournalAsync(Journal, "opt.test")).Status);
+            Assert.Equal(avant, Instantane());
+        }
+
+        [Fact]
+        public async Task Remove_TweakRegistryKey_remplace_une_cle_recreee_depuis_par_la_sauvegarde()
+        {
+            using (var k = Registry.CurrentUser.CreateSubKey(sub + "\\V2")) k.SetValue("Orig", 1, RegistryValueKind.DWord);
+            var avant = Instantane();
+            await Executer("opt.test", "Remove-TweakRegistryKey -Path '" + Cle("V2") + "' | Out-Null\nSet-TweakRegistryIfNeeded -Path '" + Cle("V2") + "' -Name 'Nouveau' -Type DWord -Value 9");
+            Assert.Equal(OutcomeStatus.Ok, (await Service().AnnulerParJournalAsync(Journal, "opt.test")).Status);
+            Assert.Equal(avant, Instantane());   // la valeur « Nouveau » créée après la suppression disparaît aussi
+        }
+
+        [Fact]
+        public async Task Add_TweakRegistryKey_cree_la_cle_avec_une_valeur_par_defaut_vide_et_l_annulation_retire_les_cles_creees()
+        {
+            using (var k = Registry.CurrentUser.CreateSubKey(sub + "\\Existant")) k.SetValue("Garde", 1, RegistryValueKind.DWord);
+            var avant = Instantane();
+            var cible = Cle(@"Existant\{abc}\InprocServer32");
+            var r = await Executer("opt.test", "Add-TweakRegistryKey -Path '" + cible + "' | Out-Null");
+            Assert.Equal(OutcomeStatus.Ok, r.Items.Single().Status);
+            using (var k = Registry.CurrentUser.OpenSubKey(sub + @"\Existant\{abc}\InprocServer32"))
+            {
+                Assert.NotNull(k);
+                Assert.Contains("", k.GetValueNames());
+                Assert.Equal("", k.GetValue(""));
+            }
+            Assert.Equal("True", Un("Write-Output (Test-GTRegistryKeyDefault '" + cible + "').ToString()"));
+            var lignes = File.ReadAllLines(Journal).Length;
+            await Executer("opt.test", "Add-TweakRegistryKey -Path '" + cible + "' | Out-Null");   // idempotent
+            Assert.Equal(lignes, File.ReadAllLines(Journal).Length);
+
+            Assert.Equal(OutcomeStatus.Ok, (await Service().AnnulerParJournalAsync(Journal, "opt.test")).Status);
+            Assert.Equal(avant, Instantane());
+            using (var k = Registry.CurrentUser.OpenSubKey(sub + @"\Existant\{abc}")) Assert.Null(k);   // la clé parente créée est supprimée aussi
+            using (var k = Registry.CurrentUser.OpenSubKey(sub + @"\Existant")) Assert.NotNull(k);
+        }
+
+        [Fact]
+        public async Task Add_TweakRegistryKey_sur_une_cle_sans_valeur_par_defaut_ne_retire_que_cette_valeur()
+        {
+            using (var k = Registry.CurrentUser.CreateSubKey(sub + "\\SansDefaut")) k.SetValue("Autre", 3, RegistryValueKind.DWord);
+            var avant = Instantane();
+            await Executer("opt.test", "Add-TweakRegistryKey -Path '" + Cle("SansDefaut") + "' | Out-Null");
+            using (var k = Registry.CurrentUser.OpenSubKey(sub + "\\SansDefaut")) Assert.Contains("", k.GetValueNames());
+            Assert.Equal(OutcomeStatus.Ok, (await Service().AnnulerParJournalAsync(Journal, "opt.test")).Status);
+            Assert.Equal(avant, Instantane());
+        }
+
+        // ---- note de fin d'option -----------------------------------------------------------------------
+
+        [Fact]
+        public async Task Une_option_peut_joindre_une_note_a_son_succes()
+        {
+            var r = await Executer("opt.test", "Set-GTItemNote 'Déchiffrement lancé | en arrière-plan'");
+            var o = r.Items.Single();
+            Assert.Equal(OutcomeStatus.Ok, o.Status);
+            Assert.Equal("Déchiffrement lancé / en arrière-plan", o.Message);
+            var r2 = await Executer("opt.test", "$null = 1");
+            Assert.Null(r2.Items.Single().Message);
         }
 
         // ---- listes : refus des noms inconnus (aucune modification n'est possible dans ces cas) -----------
@@ -371,6 +582,8 @@ namespace GamingTweaker.Tests
         [InlineData("Set-TweakDevicePower", "Set-GTDevicePower")]
         [InlineData("Remove-TweakBcd", "bcdedit")]
         [InlineData("Set-TweakStartupDisabled", "Set-TweakRegistry")]
+        [InlineData("Remove-TweakRegistryKey", "Remove-GTRegistryKey")]
+        [InlineData("Add-TweakRegistryKey", "SetValue")]
         public void Les_nouvelles_fonctions_journalisent_avant_de_modifier(string fonction, string modification)
         {
             var f = Fonction(PsCommon.CommonText(), fonction);
@@ -382,7 +595,7 @@ namespace GamingTweaker.Tests
         }
 
         [Theory]
-        [InlineData("powerplan")] [InlineData("powerscheme")] [InlineData("hibernate")] [InlineData("devicepower")]
+        [InlineData("powerplan")] [InlineData("powerscheme")] [InlineData("hibernate")] [InlineData("devicepower")] [InlineData("regkey")] [InlineData("regkeynew")]
         public void L_annulation_connait_les_nouveaux_types_d_entree(string kind)
         {
             var restore = Fonction(PsCommon.CommonText(), "Restore-GTEntry");

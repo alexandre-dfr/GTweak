@@ -9,7 +9,7 @@ using Newtonsoft.Json.Linq;
 namespace GamingTweaker.Core
 {
     /// <summary>
-    /// Une entrée de journal.jsonl. kind : registry, defender, service, task, power, bcd, hosts, app, quarantine.
+    /// Une entrée de journal.jsonl. kind : registry, defender, service, task, power, bcd, hosts, app, quarantine, regkey (clé supprimée, export .reg), regkeynew (clé créée).
     /// Registry : target = « chemin|nom », valueType = DWord/QWord/String/ExpandString/MultiString/Binary (Binary en base64).
     /// </summary>
     public class JournalEntry

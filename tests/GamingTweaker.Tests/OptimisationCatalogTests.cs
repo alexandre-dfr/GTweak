@@ -63,29 +63,51 @@ namespace GamingTweaker.Tests
         }
 
         [Fact]
-        public void Le_catalogue_optimisation_ne_contient_que_le_tableau_et_le_recapitulatif()
+        public void Le_catalogue_optimisation_contient_exactement_le_tableau_et_le_recapitulatif()
         {
             var cat = Catalogue();
             var recap = Couverture.Recapitulatif(Menu);
-            Assert.NotEmpty(recap);
+            Assert.Equal(30, recap.Count);
             // Le tableau minimal et le récapitulatif ne se recouvrent pas.
             Assert.Empty(recap.Select(r => r.Id).Intersect(Minimum.Keys));
-            // La partie A couvre le tableau minimal ; les options du récapitulatif (partie B) peuvent venir plus tard.
-            var permis = new HashSet<string>(Minimum.Keys.Concat(recap.Select(r => r.Id)));
-            Assert.Empty(cat.Keys.Where(k => !permis.Contains(k)));
-            foreach (var r in recap.Where(r => cat.ContainsKey(r.Id)))
+            var attendu = new HashSet<string>(Minimum.Keys.Concat(recap.Select(r => r.Id)));
+            Assert.Empty(cat.Keys.Where(k => !attendu.Contains(k)));
+            Assert.Empty(attendu.Where(k => !cat.ContainsKey(k)));
+            foreach (var r in recap)
             {
-                Assert.True(cat[r.Id].Risque == r.Risque, r.Id + " : risque " + cat[r.Id].Risque + " au lieu de " + r.Risque);
-                Assert.True(cat[r.Id].Reversible == r.EstReversible, r.Id + " : réversible différent du récapitulatif");
-                Assert.Equal(r.Groupe, cat[r.Id].Groupe);
+                var it = cat[r.Id];
+                Assert.True(it.Risque == r.Risque, r.Id + " : risque " + it.Risque + " au lieu de " + r.Risque);
+                Assert.True(it.Reversible == r.EstReversible, r.Id + " : réversible différent du récapitulatif");
+                Assert.Equal(r.Groupe, it.Groupe);
+                Assert.False(string.IsNullOrWhiteSpace(it.Titre), r.Id + " : titre");
+                Assert.False(string.IsNullOrWhiteSpace(it.Description), r.Id + " : description");
+                Assert.False(string.IsNullOrWhiteSpace(it.Detect), r.Id + " : detect");
+                Assert.False(string.IsNullOrWhiteSpace(it.Apply), r.Id + " : apply");
+                Assert.Equal(it.Reversible, !string.IsNullOrWhiteSpace(it.Revert));
+                Assert.Equal(NouvellesRedemarrage.Contains(r.Id), it.Redemarrage);
+                Assert.Equal(NouvellesHkcu.Contains(r.Id), it.Hkcu);
+                Assert.Equal(NouvellesWindows11.Contains(r.Id) ? new[] { "11" } : new[] { "10", "11" }, it.Compatibilite.Windows);
+                Assert.Matches(@"^[a-z0-9][a-z0-9.\-]*$", r.Id);
             }
         }
 
-        [Fact]
-        public void La_couverture_cite_les_options_du_tableau_minimal_qui_existent()
+        private static readonly string[] NouvellesRedemarrage = { "opt.ipv4-prefer", "opt.teredo-off", "opt.ipv6-off", "opt.svchost-split-off", "opt.utc-time" };
+        private static readonly string[] NouvellesHkcu =
         {
-            var cites = Couverture.IdsCites().Where(id => Minimum.ContainsKey(id)).ToList();
-            Assert.NotEmpty(cites);
+            "opt.storagesense-off", "opt.show-extensions", "opt.show-hidden", "opt.dark-mode", "opt.scrollbars-visible", "opt.numlock-on", "opt.snap-off",
+            "opt.settings-home-off", "opt.taskbar-left", "opt.taskbar-search-off", "opt.taskview-off", "opt.endtask-taskbar", "opt.explorer-home-off",
+            "opt.classic-context-menu", "opt.notifications-off", "opt.explorer-autodiscovery-off",
+        };
+        private static readonly string[] NouvellesWindows11 =
+        {
+            "opt.settings-home-off", "opt.start-reco-off", "opt.taskbar-left", "opt.endtask-taskbar", "opt.explorer-home-off", "opt.classic-context-menu",
+        };
+
+        [Fact]
+        public void Toutes_les_options_opt_citees_par_la_couverture_existent_dans_le_catalogue()
+        {
+            var cites = Couverture.IdsCites().Where(id => id.StartsWith("opt.", StringComparison.Ordinal)).ToList();
+            Assert.True(cites.Count >= 35, "peu d'options citées : " + cites.Count);
             var cat = Catalogue();
             foreach (var id in cites) Assert.True(cat.ContainsKey(id), id + " cité par la couverture mais absent du catalogue");
         }
@@ -300,6 +322,141 @@ namespace GamingTweaker.Tests
             Assert.Contains("RealTimeProtectionEnabled", it.Apply);
             Assert.Contains("stratégie", it.Apply);
             Assert.True(it.Apply.IndexOf("Set-TweakDefenderRealtime", StringComparison.Ordinal) < it.Apply.LastIndexOf("RealTimeProtectionEnabled", StringComparison.Ordinal));
+        }
+
+        // ---- partie B : options du récapitulatif ---------------------------------------------------
+
+        [Fact]
+        public void BitLocker_est_definitif_sans_revert_et_ne_s_applique_que_si_le_disque_est_chiffre()
+        {
+            var it = Catalogue()["opt.bitlocker-off"];
+            Assert.Equal(RiskLevel.Risque, it.Risque);
+            Assert.False(it.Reversible);
+            Assert.True(string.IsNullOrWhiteSpace(it.Revert));
+            Assert.False(it.Testable);
+            Assert.Contains("définitif : le disque est déchiffré ; le réactiver demande de refaire le chiffrement et de sauvegarder la clé de récupération", it.Description);
+            Assert.Contains("Disable-BitLocker", it.Apply);
+            Assert.Contains("$env:SystemDrive", it.Apply);
+            Assert.Contains("Skip-GTItem", it.Apply);
+            Assert.Contains("Get-BitLockerVolume", it.Apply);
+            Assert.DoesNotContain("Enable-BitLocker", it.Apply);
+            Assert.True(it.Apply.IndexOf("Skip-GTItem", StringComparison.Ordinal) < it.Apply.IndexOf("Disable-BitLocker", StringComparison.Ordinal));
+            Assert.Contains("Get-BitLockerVolume", it.Detect);
+            Assert.DoesNotContain("Disable-BitLocker", it.Detect);
+            Assert.Contains("Set-GTItemNote", it.Apply);   // le déchiffrement continue en arrière-plan : signalé dans le rapport
+        }
+
+        [Fact]
+        public void Disable_BitLocker_n_apparait_que_dans_l_option_bitlocker()
+        {
+            foreach (var it in Catalogue().Values.Where(i => i.Id != "opt.bitlocker-off"))
+                foreach (var m in new[] { "Disable-BitLocker", "manage-bde", "Suspend-BitLocker", "Clear-BitLockerAutoUnlock" })
+                    Assert.DoesNotContain(m, it.Apply ?? "");
+        }
+
+        [Fact]
+        public void L_heure_UTC_ecrit_RealTimeIsUniversal_en_QWORD_et_previent_du_decalage()
+        {
+            var it = Catalogue()["opt.utc-time"];
+            Assert.Equal(RiskLevel.Risque, it.Risque);
+            Assert.Contains(@"HKLM:\SYSTEM\CurrentControlSet\Control\TimeZoneInformation", it.Apply);
+            Assert.Contains("RealTimeIsUniversal", it.Apply);
+            Assert.Contains("QWord", it.Apply);
+            Assert.Contains("décal", it.Description);
+            Assert.Contains("Linux", it.Description);
+            Assert.False(it.Hkcu);
+        }
+
+        [Fact]
+        public void L_exploration_automatique_des_dossiers_exporte_les_cles_avant_de_les_supprimer()
+        {
+            var it = Catalogue()["opt.explorer-autodiscovery-off"];
+            Assert.Equal(2, Regex.Matches(it.Apply, "Remove-TweakRegistryKey").Count);
+            Assert.Contains(@"\Shell\Bags'", it.Apply);
+            Assert.Contains(@"\Shell\BagMRU'", it.Apply);
+            Assert.Contains("NotSpecified", it.Apply);
+            Assert.Contains("FolderType", it.Detect);
+            Assert.Contains("Bags", it.Description);
+            Assert.Contains("annul", it.Description);
+            Assert.DoesNotContain("Remove-Item", it.Apply);
+            Assert.DoesNotContain("reg.exe", it.Apply);
+        }
+
+        [Fact]
+        public void Le_menu_contextuel_classique_passe_par_la_creation_journalisee_de_cle()
+        {
+            var it = Catalogue()["opt.classic-context-menu"];
+            Assert.Contains("Add-TweakRegistryKey", it.Apply);
+            Assert.Contains("{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}", it.Apply);
+            Assert.Contains("InprocServer32", it.Apply);
+            Assert.Contains("Explorateur", it.Description);
+        }
+
+        [Fact]
+        public void IPv4_prefere_et_IPv6_desactive_ne_s_ecrasent_pas()
+        {
+            var cat = Catalogue();
+            Assert.Contains("$GT_SelectedIds", cat["opt.ipv4-prefer"].Apply);
+            Assert.Contains("opt.ipv6-off", cat["opt.ipv4-prefer"].Apply);
+            Assert.Contains("Skip-GTItem", cat["opt.ipv4-prefer"].Apply);
+            Assert.Contains("255", cat["opt.ipv6-off"].Apply);
+            Assert.Contains("DisabledComponents", cat["opt.ipv4-prefer"].Apply);
+            Assert.Contains("0x20", cat["opt.ipv4-prefer"].Apply);
+            Assert.Contains("redémarrage", cat["opt.ipv6-off"].Description);
+        }
+
+        [Fact]
+        public void Les_options_explorateur_precisent_que_l_effet_vient_apres_redemarrage_de_l_explorateur_et_ne_le_tuent_pas()
+        {
+            var cat = Catalogue();
+            foreach (var id in new[] { "opt.show-extensions", "opt.show-hidden", "opt.dark-mode", "opt.taskbar-left", "opt.taskbar-search-off", "opt.taskview-off",
+                                       "opt.start-reco-off", "opt.endtask-taskbar", "opt.explorer-home-off", "opt.classic-context-menu", "opt.notifications-off", "opt.explorer-autodiscovery-off" })
+                Assert.Contains("Explorateur", cat[id].Description);
+            foreach (var it in cat.Values)
+            {
+                Assert.DoesNotContain("explorer.exe", it.Apply ?? "", StringComparison.OrdinalIgnoreCase);
+                Assert.DoesNotContain("Stop-Process", it.Apply ?? "");
+            }
+        }
+
+        [Fact]
+        public void Defender_limite_la_charge_par_la_strategie_et_echoue_si_la_protection_anti_falsification_est_active()
+        {
+            var it = Catalogue()["opt.defender-scan-cpu"];
+            Assert.Equal(RiskLevel.Risque, it.Risque);
+            Assert.Contains(@"HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Scan", it.Apply);
+            Assert.Contains("AvgCPULoadFactor", it.Apply);
+            Assert.Contains("IsTamperProtected", it.Apply);
+            Assert.Contains("throw", it.Apply);
+            Assert.DoesNotContain("Set-MpPreference", it.Apply);
+        }
+
+        [Fact]
+        public void Les_valeurs_des_options_confort_sont_celles_de_la_source()
+        {
+            var cat = Catalogue();
+            string[][] attendus =
+            {
+                new[] { "opt.delivery-opt-off", "DODownloadMode" }, new[] { "opt.svchost-split-off", "SvcHostSplitThresholdInKB" },
+                new[] { "opt.storagesense-off", "StoragePolicy" }, new[] { "opt.bsod-detailed", "DisplayParameters" }, new[] { "opt.bsod-detailed", "DisableEmoticon" },
+                new[] { "opt.show-extensions", "HideFileExt" }, new[] { "opt.longpaths", "LongPathsEnabled" }, new[] { "opt.show-hidden", "'Hidden'" },
+                new[] { "opt.dark-mode", "AppsUseLightTheme" }, new[] { "opt.dark-mode", "SystemUsesLightTheme" }, new[] { "opt.verbose-logon", "VerboseStatus" },
+                new[] { "opt.scrollbars-visible", "DynamicScrollbars" }, new[] { "opt.numlock-on", "InitialKeyboardIndicators" },
+                new[] { "opt.snap-off", "WindowArrangementActive" }, new[] { "opt.settings-home-off", "SettingsPageVisibility" },
+                new[] { "opt.login-blur-off", "DisableAcrylicBackgroundOnLogon" }, new[] { "opt.lockscreen-off", "NoLockScreen" },
+                new[] { "opt.start-reco-off", "HideRecommendedSection" }, new[] { "opt.start-reco-off", "IsEducationEnvironment" },
+                new[] { "opt.taskbar-left", "TaskbarAl" }, new[] { "opt.taskbar-search-off", "SearchboxTaskbarMode" }, new[] { "opt.taskview-off", "ShowTaskViewButton" },
+                new[] { "opt.endtask-taskbar", "TaskbarEndTask" }, new[] { "opt.explorer-home-off", "System.IsPinnedToNameSpaceTree" }, new[] { "opt.explorer-home-off", "LaunchTo" },
+                new[] { "opt.notifications-off", "DisableNotificationCenter" }, new[] { "opt.notifications-off", "ToastEnabled" },
+                new[] { "opt.teredo-off", "Teredo_State" }, new[] { "opt.ipv6-off", "DisabledComponents" },
+            };
+            foreach (var a in attendus)
+            {
+                Assert.Contains(a[1], cat[a[0]].Apply);
+                Assert.Contains(a[1], cat[a[0]].Detect);
+            }
+            Assert.Contains("{f874310e-b6b7-47dc-bc84-b9e6b38f5903}", cat["opt.explorer-home-off"].Apply);
+            Assert.Contains("{e88865ea-0e1c-4e20-9aa6-edcd0212c87c}", cat["opt.explorer-home-off"].Apply);
         }
     }
 }
