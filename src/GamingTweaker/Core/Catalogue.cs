@@ -22,6 +22,8 @@ namespace GamingTweaker.Core
         [JsonProperty("redemarrage")] public bool Redemarrage { get; set; }
         [JsonProperty("testable")] public bool Testable { get; set; } = true;
         [JsonProperty("hkcu")] public bool Hkcu { get; set; } = false;
+        /// <summary>Ordre d'exécution (croissant) ; à égalité, ordre du catalogue. Les plans d'alimentation passent avant les réglages de plan.</summary>
+        [JsonProperty("ordre")] public int Ordre { get; set; } = 100;
         [JsonProperty("delaiSec")] public int DelaiSec { get; set; } = 300;
         /// <summary>Identifiant optionnel d'un fournisseur de liste.</summary>
         [JsonProperty("liste")] public string Liste { get; set; }

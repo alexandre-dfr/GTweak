@@ -1,5 +1,5 @@
 try {
-    if ((Get-MpPreference).DisableRealtimeMonitoring) { 'Applied' } else { 'NotApplied' }
+    if ((Get-MpComputerStatus).RealTimeProtectionEnabled) { 'NotApplied' } else { 'Applied' }
 } catch {
     'Unknown'
 }

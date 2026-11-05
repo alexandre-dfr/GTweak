@@ -24,7 +24,10 @@ namespace GamingTweaker.Core
             sb.Append("$SkipIds = @($SkipIds | ForEach-Object { $_ -split ',' } | Where-Object { $_ })\r\n");
             sb.Append(Header(journalPath, quarantineDir));
 
-            var selected = items.Where(i => s.OptionIds.Contains(i.Id)).ToList();
+            // Tri stable par « ordre » puis par position dans le catalogue.
+            var selected = items.Where(i => s.OptionIds.Contains(i.Id)).OrderBy(i => i.Ordre).ToList();
+            // Options choisies, visibles de tous les scripts (exclusions entre options, ex. deux plans d'alimentation).
+            sb.Append("$GT_SelectedIds = [string[]]@(").Append(string.Join(", ", s.OptionIds.OrderBy(x => x, StringComparer.Ordinal).Select(Quote))).Append(")\r\n");
             // Plan : permet au runner de connaître toutes les options avant la première (annulation, arrêt brutal).
             foreach (var it in selected)
                 sb.Append("if ($SkipIds -notcontains ").Append(Quote(it.Id)).Append(") { Write-GTEvent 'plan' ").Append(Quote(it.Id)).Append(" }\r\n");

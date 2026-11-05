@@ -20,6 +20,7 @@ namespace GamingTweaker.Tests
             public bool Occupe;
             public bool MemeUser = true;
             public bool VerrouLibere;
+            public HashSet<string> RevertIgnore = new HashSet<string>();
 
             public IReadOnlyList<string> TrouverJournauxActifs(string id) { List<string> j; return Journaux.TryGetValue(id, out j) ? j : new List<string>(); }
 
@@ -32,7 +33,7 @@ namespace GamingTweaker.Tests
             public Task<ItemOutcome> ExecuterRevertAsync(CatalogItem item)
             {
                 Appels.Add("revert:" + item.Id);
-                return Task.FromResult(new ItemOutcome { Id = item.Id, Status = OutcomeStatus.Ok });
+                return Task.FromResult(new ItemOutcome { Id = item.Id, Status = RevertIgnore.Contains(item.Id) ? OutcomeStatus.Skipped : OutcomeStatus.Ok, Message = RevertIgnore.Contains(item.Id) ? "journal seul" : null });
             }
 
             public IDisposable PrendreVerrou() { return Occupe ? null : new Verrou(this); }
@@ -95,6 +96,22 @@ namespace GamingTweaker.Tests
             Assert.Equal(2, detections);                    // détection avant, puis nouvelle détection après
             Assert.Equal(new[] { "tel.a", "tel.b" }, faux.Oublies);   // plus « appliquées par l'outil » (last-applied.json)
             Assert.True(faux.VerrouLibere);
+        }
+
+        [Fact]
+        public async Task Un_revert_ignore_n_est_ni_compte_comme_restaure_ni_oublie()
+        {
+            etats["tel.a"] = DetectState.Applied; etats["tel.b"] = DetectState.Applied;
+            var faux = new Faux();
+            faux.RevertIgnore.Add("tel.a");
+            var vm = Cree(faux);
+
+            var r = await vm.ToutRestaurerAsync();
+
+            Assert.Equal(1, r.AnnuleesParRevert);
+            Assert.Contains("tel.a", r.Ignorees);
+            Assert.Equal(new[] { "tel.b" }, faux.Oublies);
+            Assert.Contains(r.Remarques, x => x.Contains("tel.a") && x.Contains("journal seul"));
         }
 
         [Fact]

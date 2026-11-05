@@ -269,8 +269,90 @@ namespace GamingTweaker.Tests
             var etats = await Detection.RunAsync(items, TimeSpan.FromSeconds(180));
             Assert.Equal(items.Count, etats.Count);
             // Registre HKCU et listes : toujours lisibles sans droits particuliers.
-            foreach (var id in new[] { "opt.mouse.precision-off", "opt.stickykeys-off", "opt.gamemode-on", "opt.gamedvr-off", "opt.fso-off", "opt.visualfx", "opt.startup", "opt.services", "opt.xbox-services", "opt.sysmain", "opt.wsearch" })
+            foreach (var id in new[] { "opt.mouse.precision-off", "opt.stickykeys-off", "opt.gamemode-on", "opt.gamedvr-off", "opt.fso-off", "opt.visualfx", "opt.sysmain", "opt.wsearch" })
                 Assert.NotEqual(DetectState.Unknown, etats[id]);
+        }
+
+
+        [Fact]
+        public async Task Les_detections_des_listes_renvoient_Unknown()
+        {
+            var items = Catalogue.LoadEmbedded().Where(i => new[] { "opt.services", "opt.xbox-services", "opt.startup" }.Contains(i.Id)).ToList();
+            var etats = await Detection.RunAsync(items, TimeSpan.FromSeconds(120));
+            Assert.All(etats.Values, e => Assert.Equal(DetectState.Unknown, e));
+        }
+
+        [Fact]
+        public void Les_reglages_d_alimentation_sont_lus_avec_qh_pour_inclure_les_reglages_caches()
+        {
+            Assert.Contains("/qh", Fonction(PsCommon.CommonText(), "Get-GTPowerValue"));
+        }
+
+        [Fact]
+        public void Un_reglage_cache_est_lu_dans_la_sortie_de_qh()
+        {
+            var qh = "GUID du mode de gestion de l’alimentation : 381b4222-f694-41f0-9685-ff5bb260df2e  (Utilisation normale)\n"
+                   + "  GUID du sous-groupe : 54533251-82be-4824-96c1-47b60b740d00  (Gestion de l’alimentation du processeur)\n"
+                   + "    GUID du paramètre d’alimentation : 0cc5b647-c1df-4637-891a-dec35c318583\n"
+                   + "      Alias de GUID : CPMINCORES\n"
+                   + "      Valeur minimale possible : 0x00000000\n"
+                   + "      Valeur maximale possible : 0x00000064\n"
+                   + "    Index actuel du paramètre de courant alternatif : 0x00000004\n"
+                   + "    Index actuel du paramètre de courant continu : 0x00000002\n";
+            var r = Un("$l = @'\n" + qh + "'@ -split \"`n\"\n$v = ConvertFrom-GTPowerQuery $l\nWrite-Output ($v.AC.ToString() + '|' + $v.DC.ToString())");
+            Assert.Equal("4|2", r);
+            Assert.Equal("True", Un("Write-Output ($null -ne (Get-GTPowerValueOrNull (Get-GTActiveScheme) '54533251-82be-4824-96c1-47b60b740d00' '0cc5b647-c1df-4637-891a-dec35c318583')).ToString()"));
+        }
+
+        [Theory]
+        [InlineData("$null", "$null", "True")]
+        [InlineData("$null", "0", "False")]
+        [InlineData("$null", "1", "True")]
+        [InlineData("0", "1", "False")]
+        [InlineData("1", "0", "True")]
+        public void La_veille_prolongee_se_replie_sur_la_valeur_par_defaut_puis_sur_active(string valeur, string defaut, string attendu)
+        {
+            Assert.Equal(attendu, Un("Write-Output (Resolve-GTHibernateEnabled " + valeur + " " + defaut + ").ToString()"));
+        }
+
+        [Fact]
+        public void La_detection_de_la_veille_prolongee_ne_leve_pas_d_erreur_si_la_valeur_est_absente()
+        {
+            var d = Catalogue.LoadEmbedded().Single(i => i.Id == "opt.hibernate-off").Detect;
+            Assert.Contains("Get-GTHibernateEnabled", d);
+            Assert.DoesNotContain("-ErrorAction Stop", d);
+        }
+
+        [Fact]
+        public void Un_peripherique_qui_disparait_en_cours_d_execution_n_echoue_pas_avec_le_marqueur_GTSKIP()
+        {
+            var r = Un("$script:n = 0\n"
+                     + "function Get-GTDevicePowerTargets { return @('A_0') }\n"
+                     + "function Get-GTPowerDevices { $script:n++; if ($script:n -eq 1) { return @([pscustomobject]@{ InstanceName = 'A_0'; Enable = $true }) }; return @() }\n"
+                     + "$ok = Set-TweakDevicePowerKind -Kind Usb -Enabled $false\nWrite-Output $ok.ToString()");
+            Assert.Equal("True", r);
+        }
+
+        [Theory]
+        [InlineData("SecurityHealth", true)] [InlineData("SecurityHealthSystray", true)] [InlineData("Windows Defender", true)]
+        [InlineData("WindowsDefender", true)] [InlineData("MSASCuiL", true)] [InlineData("Sophos UI", true)]
+        [InlineData("OneDrive", false)] [InlineData("Discord", false)] [InlineData("RtkAudUService", false)]
+        public void Les_entrees_de_securite_ne_sont_jamais_proposees_et_les_deux_implementations_concordent(string nom, bool securite)
+        {
+            Assert.Equal(securite, Lists.StartupSecurity.EstSecurite(nom));
+            Assert.Equal(securite.ToString(), Un("Write-Output (Test-GTStartupSecurity '" + nom + "').ToString()"));
+        }
+
+        [Fact]
+        public async Task Les_entrees_de_securite_sont_refusees_par_l_apply_et_exclues_de_l_etoile()
+        {
+            Assert.DoesNotContain(PsCommon.Eval("Get-GTStartupEntries | ForEach-Object { Write-Output $_.Name }"), n => Lists.StartupSecurity.EstSecurite(n));
+            var item = Catalogue.LoadEmbedded().Single(i => i.Id == "opt.startup");
+            var sel = new Selection { OptionIds = new HashSet<string> { "opt.startup" } };
+            sel.Listes["opt.startup"] = new List<string> { "HKLM:Run:SecurityHealth" };
+            var r = await Runner.RunAsync(ScriptBuilder.Build(new[] { item }, sel, Journal), null, CancellationToken.None, _ => 120);
+            Assert.Equal(OutcomeStatus.Skipped, r.Items.Single().Status);
+            Assert.False(File.Exists(Journal));
         }
 
         // ---- journalisation des nouvelles fonctions ---------------------------------------------------

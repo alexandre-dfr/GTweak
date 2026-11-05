@@ -226,5 +226,80 @@ namespace GamingTweaker.Tests
             Assert.Contains("4294967295", Catalogue()["opt.netthrottle-off"].Apply);
             Assert.DoesNotContain("0xFFFFFFFF", Catalogue()["opt.netthrottle-off"].Apply);
         }
+
+        [Fact]
+        public void Les_plans_d_alimentation_passent_avant_les_reglages_de_plan()
+        {
+            var cat = Catalogue();
+            foreach (var plan in new[] { "opt.plan-high", "opt.plan-ultimate" })
+                foreach (var reglage in new[] { "opt.usb-suspend-off", "opt.pcie-aspm-off", "opt.coreparking-off" })
+                    Assert.True(cat[plan].Ordre < cat[reglage].Ordre, plan + " doit précéder " + reglage);
+            Assert.Equal(100, cat["opt.mpo-off"].Ordre);
+            var ids = GamingTweaker.Core.Catalogue.LoadEmbedded().Where(i => i.Menu == Menu).Select(i => i.Id).ToList();
+            Assert.True(ids.IndexOf("opt.plan-ultimate") < ids.IndexOf("opt.usb-suspend-off"));
+        }
+
+        private static CatalogItem Factice(string id, int ordre) => new CatalogItem { Id = id, Menu = Menu, Groupe = "G", Titre = "T", Risque = RiskLevel.Sur, Ordre = ordre, Apply = "# " + id, Detect = "d" };
+
+        [Fact]
+        public void ScriptBuilder_trie_par_ordre_puis_par_position_dans_le_catalogue()
+        {
+            var items = new[] { Factice("opt.usb-suspend-off", 100), Factice("opt.autre", 100), Factice("opt.plan-high", 10) };
+            var sel = new Selection { OptionIds = new HashSet<string>(items.Select(i => i.Id)) };
+            var script = ScriptBuilder.Build(items, sel, "j.jsonl");
+            int plan = script.IndexOf("Invoke-GTItem 'opt.plan-high'", StringComparison.Ordinal);
+            int usb = script.IndexOf("Invoke-GTItem 'opt.usb-suspend-off'", StringComparison.Ordinal);
+            int autre = script.IndexOf("Invoke-GTItem 'opt.autre'", StringComparison.Ordinal);
+            Assert.True(plan > 0 && plan < usb && usb < autre);
+            Assert.True(script.IndexOf("'plan' 'opt.plan-high'", StringComparison.Ordinal) < script.IndexOf("'plan' 'opt.usb-suspend-off'", StringComparison.Ordinal));
+        }
+
+        [Fact]
+        public void Le_script_expose_les_options_choisies_a_toutes_les_options()
+        {
+            var items = new[] { Factice("opt.plan-high", 10) };
+            var sel = new Selection { OptionIds = new HashSet<string> { "opt.plan-high", "opt.plan-ultimate" } };
+            var script = ScriptBuilder.Build(items, sel, "j.jsonl");
+            Assert.Contains("$GT_SelectedIds", script);
+            Assert.Contains("'opt.plan-ultimate'", script);
+        }
+
+        [Fact]
+        public async System.Threading.Tasks.Task Performances_elevees_est_ignore_quand_performances_ultimes_est_choisi()
+        {
+            var high = Catalogue()["opt.plan-high"];
+            var sel = new Selection { OptionIds = new HashSet<string> { "opt.plan-high", "opt.plan-ultimate" } };
+            var journal = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "gt-excl-" + Guid.NewGuid().ToString("N"), "j.jsonl");
+            try
+            {
+                // Seule l'option « high » est exécutée : le refus se produit avant tout accès au plan d'alimentation.
+                var r = await Runner.RunAsync(ScriptBuilder.Build(new[] { high }, sel, journal), null, System.Threading.CancellationToken.None, _ => 120);
+                var o = r.Items.Single();
+                Assert.Equal(OutcomeStatus.Skipped, o.Status);
+                Assert.Contains("Performances ultimes", o.Message);
+                Assert.False(System.IO.File.Exists(journal));
+            }
+            finally { try { System.IO.Directory.Delete(System.IO.Path.GetDirectoryName(journal), true); } catch { } }
+        }
+
+        [Theory]
+        [InlineData("opt.services")] [InlineData("opt.xbox-services")] [InlineData("opt.startup")]
+        public void La_detection_des_listes_est_inconnue_car_elle_ignore_la_selection(string id)
+        {
+            var d = Catalogue()[id].Detect;
+            Assert.Contains("Unknown", d);
+            Assert.DoesNotContain("Applied", d);
+            Assert.StartsWith("#", d.TrimStart());
+        }
+
+        [Fact]
+        public void Defender_detecte_par_l_etat_reel_et_verifie_apres_application()
+        {
+            var it = Catalogue()["opt.defender-rt-off"];
+            Assert.Contains("RealTimeProtectionEnabled", it.Detect);
+            Assert.Contains("RealTimeProtectionEnabled", it.Apply);
+            Assert.Contains("stratégie", it.Apply);
+            Assert.True(it.Apply.IndexOf("Set-TweakDefenderRealtime", StringComparison.Ordinal) < it.Apply.LastIndexOf("RealTimeProtectionEnabled", StringComparison.Ordinal));
+        }
     }
 }

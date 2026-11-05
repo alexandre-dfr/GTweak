@@ -211,8 +211,9 @@ function ConvertFrom-GTPowerQuery([string[]]$Lines) {
 }
 
 function Get-GTPowerValue([string]$Scheme, [string]$Sub, [string]$Setting) {
-    $o = & powercfg.exe /query $Scheme $Sub $Setting
-    if ($LASTEXITCODE -ne 0) { throw ('powercfg /query a échoué pour ' + $Sub + ' ' + $Setting) }
+    # /qh : inclut les reglages caches (ex. CPMINCORES), que /query n'affiche pas.
+    $o = & powercfg.exe /qh $Scheme $Sub $Setting
+    if ($LASTEXITCODE -ne 0) { throw ('powercfg /qh a échoué pour ' + $Sub + ' ' + $Setting) }
     return (ConvertFrom-GTPowerQuery ([string[]]@($o)))
 }
 
@@ -316,11 +317,18 @@ function ConvertTo-GTHibernateEnabled($RegValue) {
     try { return ([int64]$RegValue -ne 0) } catch { return $false }
 }
 
-# Lu dans le registre (HibernateEnabled) : independant de la langue de « powercfg /a ».
+# Valeur lue ($null si absente) : repli sur HibernateEnabledDefault, puis consideree activee (l'application se poursuit).
+function Resolve-GTHibernateEnabled($Enabled, $Default) {
+    if ($null -ne $Enabled) { return (ConvertTo-GTHibernateEnabled $Enabled) }
+    if ($null -ne $Default) { return (ConvertTo-GTHibernateEnabled $Default) }
+    return $true
+}
+
+# Lu dans le registre (HibernateEnabled) : independant de la langue de « powercfg /a ». Ne leve jamais d'erreur.
 function Get-GTHibernateEnabled {
-    $p = Get-ItemProperty -LiteralPath 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power' -Name 'HibernateEnabled' -ErrorAction SilentlyContinue
-    if (-not $p) { return $false }
-    return (ConvertTo-GTHibernateEnabled $p.HibernateEnabled)
+    $p = Get-ItemProperty -LiteralPath 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power' -ErrorAction SilentlyContinue
+    if (-not $p) { return $true }
+    return (Resolve-GTHibernateEnabled $p.HibernateEnabled $p.HibernateEnabledDefault)
 }
 
 function Set-GTHibernate([bool]$Enabled) {
@@ -392,7 +400,11 @@ function Set-TweakDevicePowerKind {
     $errors = @()
     foreach ($t in $targets) {
         if ($state[$t] -eq $Enabled) { continue }
-        try { Set-TweakDevicePower -InstanceName $t -Enabled $Enabled } catch { $errors += ($t + ' : ' + $_.Exception.Message) }
+        try { Set-TweakDevicePower -InstanceName $t -Enabled $Enabled }
+        catch {
+            # Peripherique debranche en cours d'execution : ignore (le marqueur de skip ne doit pas devenir un echec).
+            if (-not ([string]$_.Exception.Message).StartsWith('GTSKIP:')) { $errors += ($t + ' : ' + $_.Exception.Message) }
+        }
     }
     if ($errors.Count -gt 0) { throw ($errors -join ' ; ') }
     return $true
@@ -824,6 +836,11 @@ function New-GTStartupDisabledValue {
     return ,$b
 }
 
+# Entrees de securite jamais proposees ni desactivees (meme regle que StartupSecurity cote C#).
+function Test-GTStartupSecurity([string]$Name) {
+    return [bool]($Name -match '^(SecurityHealth\w*|MSASCui\w*|Windows ?Defender\w*|WindowsSecurity\w*|Sophos\b.*|Avast\b.*|AVG\b.*|Bitdefender\b.*|Kaspersky\b.*|Norton\b.*|McAfee\b.*|ESET\b.*|Malwarebytes\b.*)$')
+}
+
 function Get-GTStartupEntries {
     $cv = '\SOFTWARE\Microsoft\Windows\CurrentVersion'
     $res = @()
@@ -836,13 +853,13 @@ function Get-GTStartupEntries {
         $k = Get-Item -LiteralPath $s[2] -ErrorAction SilentlyContinue
         if (-not $k) { continue }
         foreach ($n in $k.GetValueNames()) {
-            if ($n) { $res += [pscustomobject]@{ Key = (Get-GTStartupKey $s[0] $s[1] $n); Scope = $s[0]; Kind = $s[1]; Name = $n; ApprovedPath = ($s[0] + ':' + $cv + '\Explorer\StartupApproved\' + $s[1]) } }
+            if ($n -and -not (Test-GTStartupSecurity $n)) { $res += [pscustomobject]@{ Key = (Get-GTStartupKey $s[0] $s[1] $n); Scope = $s[0]; Kind = $s[1]; Name = $n; ApprovedPath = ($s[0] + ':' + $cv + '\Explorer\StartupApproved\' + $s[1]) } }
         }
     }
     foreach ($f in @(@('HKCU', [Environment]::GetFolderPath('Startup')), @('HKLM', [Environment]::GetFolderPath('CommonStartup')))) {
         if (-not $f[1] -or -not (Test-Path -LiteralPath $f[1])) { continue }
         foreach ($file in @(Get-ChildItem -LiteralPath $f[1] -File -Force -ErrorAction SilentlyContinue)) {
-            if ($file.Name -ieq 'desktop.ini') { continue }
+            if (($file.Name -ieq 'desktop.ini') -or (Test-GTStartupSecurity $file.Name)) { continue }
             $res += [pscustomobject]@{ Key = (Get-GTStartupKey $f[0] 'StartupFolder' $file.Name); Scope = $f[0]; Kind = 'StartupFolder'; Name = $file.Name; ApprovedPath = ($f[0] + ':' + $cv + '\Explorer\StartupApproved\StartupFolder') }
         }
     }

@@ -48,6 +48,16 @@ namespace GamingTweaker.Lists
         }
     }
 
+    /// <summary>Entrées de sécurité jamais proposées ni désactivées (Sécurité Windows, Defender, antivirus courants). Même règle que Test-GTStartupSecurity.</summary>
+    public static class StartupSecurity
+    {
+        private static readonly System.Text.RegularExpressions.Regex Motif = new System.Text.RegularExpressions.Regex(
+            @"^(SecurityHealth\w*|MSASCui\w*|Windows ?Defender\w*|WindowsSecurity\w*|Sophos\b.*|Avast\b.*|AVG\b.*|Bitdefender\b.*|Kaspersky\b.*|Norton\b.*|McAfee\b.*|ESET\b.*|Malwarebytes\b.*)$",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+        public static bool EstSecurite(string nom) => !string.IsNullOrEmpty(nom) && Motif.IsMatch(nom);
+    }
+
     public static class StartupApproved
     {
         /// <summary>Windows note une entrée désactivée par un premier octet impair (3 ou 7) ; activée : 2 ou 6, ou valeur absente.</summary>
@@ -136,6 +146,7 @@ namespace GamingTweaker.Lists
                     string s, k, n;
                     var cle = StartupKey.Make(r.Scope ?? "", r.Kind ?? "", r.Name ?? "");
                     if (!StartupKey.TryParse(cle, out s, out k, out n)) continue;
+                    if (StartupSecurity.EstSecurite(n)) continue;
                     var detail = Origine(s, k) + (string.IsNullOrWhiteSpace(r.Command) ? "" : " : " + r.Command.Trim());
                     if (StartupApproved.EstDesactive(r.Approved)) detail += " : désactivé";
                     res.Add(new ListEntry { Key = cle, Titre = n, Detail = detail, Risque = RiskLevel.Avance });

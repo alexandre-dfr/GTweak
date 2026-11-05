@@ -333,11 +333,16 @@ namespace GamingTweaker.Ui
 
                             if (o == null || o.Status == OutcomeStatus.Failed)
                                 res.Echecs.Add(it.Id + " : " + (o == null || string.IsNullOrWhiteSpace(o.Message) ? "échec de l'annulation" : o.Message.Trim()));
+                            else if (!parJournal && o.Status == OutcomeStatus.Skipped)
+                            {
+                                // Le script revert n'a rien restauré (ex. état d'origine connu du seul journal) : ni compté ni oublié.
+                                res.Ignorees.Add(it.Id);
+                                if (!string.IsNullOrWhiteSpace(o.Message)) res.Remarques.Add(it.Id + " : " + o.Message.Trim());
+                            }
                             else
                             {
                                 if (parJournal) res.AnnuleesParJournal++; else res.AnnuleesParRevert++;
                                 restaures.Add(it.Id);
-                                if (!parJournal && o.Status == OutcomeStatus.Skipped && !string.IsNullOrWhiteSpace(o.Message)) res.Remarques.Add(it.Id + " : " + o.Message.Trim());
                             }
                         }
                         catch (Exception ex) { res.Echecs.Add(it.Id + " : " + ex.Message); }

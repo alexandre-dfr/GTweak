@@ -80,6 +80,46 @@
     }
   },
   {
+    "id": "opt.plan-high",
+    "menu": "Optimisation",
+    "groupe": "Alimentation et processeur",
+    "titre": "Plan d'alimentation Performances élevées",
+    "description": "Active le plan « Performances élevées » (il est créé s'il manque). L'annulation réactive le plan qui était actif avant. Consommation plus élevée, surtout sur portable.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "ordre": 10,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "opt.plan-ultimate",
+    "menu": "Optimisation",
+    "groupe": "Alimentation et processeur",
+    "titre": "Plan d'alimentation Performances ultimes",
+    "description": "Crée une seule fois le plan « Performances ultimes » (caché par défaut) puis l'active : latence minimale, aucune économie d'énergie. À éviter sur portable. L'annulation réactive le plan qui était actif avant ; le plan créé reste disponible.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "ordre": 10,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
     "id": "opt.usb-suspend-off",
     "menu": "Optimisation",
     "groupe": "Alimentation et processeur",
@@ -124,44 +164,6 @@
     "groupe": "Alimentation et processeur",
     "titre": "Désactiver la mise en veille des cœurs du processeur",
     "description": "Règle « Nombre minimal de cœurs non mis en veille » sur 100 % : tous les cœurs restent disponibles, ce qui réduit les à-coups de charge dans certains jeux. Consommation et chaleur légèrement plus élevées au repos. S'applique au plan d'alimentation actif ; le réglage est ignoré s'il n'existe pas sur ce processeur. L'annulation rétablit les valeurs d'origine du plan.",
-    "risque": "Avance",
-    "reversible": true,
-    "redemarrage": false,
-    "compatibilite": {
-      "windows": [
-        "10",
-        "11"
-      ],
-      "editions": [],
-      "cpu": [],
-      "gpu": []
-    }
-  },
-  {
-    "id": "opt.plan-high",
-    "menu": "Optimisation",
-    "groupe": "Alimentation et processeur",
-    "titre": "Plan d'alimentation Performances élevées",
-    "description": "Active le plan « Performances élevées » (il est créé s'il manque). L'annulation réactive le plan qui était actif avant. Consommation plus élevée, surtout sur portable.",
-    "risque": "Sur",
-    "reversible": true,
-    "redemarrage": false,
-    "compatibilite": {
-      "windows": [
-        "10",
-        "11"
-      ],
-      "editions": [],
-      "cpu": [],
-      "gpu": []
-    }
-  },
-  {
-    "id": "opt.plan-ultimate",
-    "menu": "Optimisation",
-    "groupe": "Alimentation et processeur",
-    "titre": "Plan d'alimentation Performances ultimes",
-    "description": "Crée une seule fois le plan « Performances ultimes » (caché par défaut) puis l'active : latence minimale, aucune économie d'énergie. À éviter sur portable. L'annulation réactive le plan qui était actif avant ; le plan créé reste disponible.",
     "risque": "Avance",
     "reversible": true,
     "redemarrage": false,

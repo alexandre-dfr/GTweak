@@ -1,5 +1,2 @@
-try {
-    Get-GTServiceManualState @('Fax', 'RemoteRegistry', 'MapsBroker', 'PhoneSvc', 'RetailDemo', 'WpcMonSvc', 'lfsvc', 'Spooler', 'CscService', 'StorSvc', 'SharedAccess')
-} catch {
-    'Unknown'
-}
+# La détection ignore la sélection de l'utilisateur (liste) : état inconnu, l'application est idempotente.
+'Unknown'

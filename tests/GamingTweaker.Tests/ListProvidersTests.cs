@@ -194,5 +194,15 @@ namespace GamingTweaker.Tests
                 Assert.False(string.IsNullOrWhiteSpace(e.Titre));
             }
         }
+
+        [Fact]
+        public void Le_fournisseur_de_demarrage_exclut_les_entrees_de_securite()
+        {
+            var src = new FakeStartup();
+            src.Donnees.Add(new StartupRaw { Scope = "HKLM", Kind = "Run", Name = "SecurityHealth", Command = "x" });
+            src.Donnees.Add(new StartupRaw { Scope = "HKCU", Kind = "Run", Name = "Windows Defender", Command = "x" });
+            src.Donnees.Add(new StartupRaw { Scope = "HKCU", Kind = "Run", Name = "Discord", Command = "x" });
+            Assert.Equal(new[] { "HKCU:Run:Discord" }, Charger(new StartupProvider(src)).Select(e => e.Key));
+        }
     }
 }
