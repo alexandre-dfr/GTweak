@@ -51,14 +51,14 @@ namespace GamingTweaker.Tests
 
         private static void Pump(Dispatcher d) { d.Invoke(DispatcherPriority.ApplicationIdle, new Action(() => { })); }
 
-        private static void Capture(FrameworkElement fe, string nom)
+        private static void Capture(FrameworkElement fe, string nom, string dossier = null)
         {
             fe.UpdateLayout();
             var w = (int)Math.Ceiling(fe.ActualWidth); var h = (int)Math.Ceiling(fe.ActualHeight);
             var bmp = new RenderTargetBitmap(w, h, 96, 96, PixelFormats.Pbgra32);
             bmp.Render(fe);
             var enc = new PngBitmapEncoder(); enc.Frames.Add(BitmapFrame.Create(bmp));
-            using (var f = File.Create(Path.Combine(Dossier, nom + ".png"))) enc.Save(f);
+            using (var f = File.Create(Path.Combine(dossier ?? Dossier, nom + ".png"))) enc.Save(f);
         }
 
         private static void Prepare(Window w, int largeur, int hauteur)
@@ -81,6 +81,40 @@ namespace GamingTweaker.Tests
             t.SetApartmentState(ApartmentState.STA); t.Start(); t.Join();
             Assert.Empty(erreurs);
             Assert.Equal(12, Directory.GetFiles(Dossier, "*.png").Length);
+        }
+
+        /// <summary>Option à liste dépliée (éléments chargés, un absent du PC) : PNG dans le sous-dossier « liste ».</summary>
+        private static void CapturerOptionAListe(Dispatcher d)
+        {
+            var sousDossier = Path.Combine(Dossier, "liste");
+            Directory.CreateDirectory(sousDossier);
+            var f = new ListeSelectionTests.Fournisseur();
+            f.Entrees.Add(new GamingTweaker.Lists.ListEntry { Key = "HKCU:Run:Discord", Titre = "Discord", Detail = "Utilisateur (registre) : C:/Users/Moi/AppData/Local/Discord/Update.exe --processStart Discord.exe", Risque = RiskLevel.Sur });
+            f.Entrees.Add(new GamingTweaker.Lists.ListEntry { Key = "HKLM:Run32:Steam Client", Titre = "Steam Client", Detail = "Tous les utilisateurs (registre, 32 bits) : désactivé", Risque = RiskLevel.Avance });
+            var reg = new GamingTweaker.Lists.ListProviderRegistry(); reg.Register(f);
+            var items = new List<CatalogItem>
+            {
+                It("opt.mouse", "Optimisation", "Souris et clavier", "Désactiver la précision du pointeur", "Le déplacement du curseur devient proportionnel au mouvement de la souris.", RiskLevel.Sur),
+                new CatalogItem { Id = "opt.startup", Menu = "Optimisation", Groupe = "Démarrage", Titre = "Programmes de démarrage désactivés", Description = "Désactive les programmes choisis au lancement de Windows. Ils restent installés et peuvent être réactivés.", Risque = RiskLevel.Avance, Reversible = true, Liste = "startup" },
+                It("opt.usb", "Optimisation", "Démarrage", "Économie d'énergie USB désactivée", "Empêche Windows de couper l'alimentation des périphériques USB inactifs.", RiskLevel.Sur),
+            };
+            var tmp = Path.Combine(Path.GetTempPath(), "gt-shots-l-" + Guid.NewGuid().ToString("N"));
+            var paths = new DataPaths { ProfilsDir = Path.Combine(tmp, "Profils"), MachineDir = tmp, SessionsDir = Path.Combine(tmp, "S"), QuarantineDir = Path.Combine(tmp, "Q") };
+            var vm = new MainViewModel(items, new MachineFacts { WindowsMajor = "11", Edition = "Pro" }, paths,
+                its => Task.FromResult(its.ToDictionary(i => i.Id, i => DetectState.NotApplied)), null, o => true, reg);
+            var w = new MainWindow(vm);
+            Prepare(w, 1280, 720);
+            vm.MenuCourant = "Optimisation";
+            var o2 = vm.Options.Single(o => o.Id == "opt.startup");
+            o2.Liste.DepuisSelection(new[] { "HKCU:Run:Mon App", "HKCU:Run:Discord", "HKCU:Run:Ancien programme" });
+            o2.IsChecked = true;
+            w.Show(); Pump(d);
+            o2.BasculerListeCommand.Execute(null);
+            for (int i = 0; i < 20 && !o2.Liste.Charge; i++) { Thread.Sleep(50); Pump(d); }
+            Pump(d);
+            Capture(w, "12-option-liste-depliee", sousDossier);
+            if (!o2.Liste.Charge) throw new InvalidOperationException("La liste de l'option n'a pas été chargée.");
+            w.Close(); Pump(d);
         }
 
         private static void Run()
@@ -132,6 +166,8 @@ namespace GamingTweaker.Tests
             vm.MenuCourant = "Optimisation"; vm.Recherche = "windows"; Pump(d);
             Capture(win, "09-recherche");
             vm.Recherche = "";
+
+            CapturerOptionAListe(d);
 
             var prev = new PreviewWindow(vm); Prepare(prev, 1000, 680); prev.Show(); Pump(d);
             Capture(prev, "10-apercu"); prev.Close();

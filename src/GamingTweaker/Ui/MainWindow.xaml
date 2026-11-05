@@ -5,6 +5,36 @@
         Title="GamingTweaker" Width="1180" Height="720" MinWidth="1000" MinHeight="640"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolVis"/>
+
+        <DataTemplate x:Key="ListeElementTemplate">
+            <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}" Margin="0,3" HorizontalAlignment="Stretch">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding Titre}" FontSize="14" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                        <Border x:Name="badge" Style="{StaticResource Badge}" Background="{StaticResource SurBg}" Margin="10,0,0,0">
+                            <TextBlock x:Name="badgeText" Text="{Binding Risque}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource SurFg}"/>
+                        </Border>
+                        <TextBlock x:Name="absent" Text="absent de ce PC" Margin="10,0,0,0" FontSize="12" Foreground="{StaticResource AvanceFg}" VerticalAlignment="Center" Visibility="Collapsed"/>
+                    </StackPanel>
+                    <TextBlock Text="{Binding Detail}" FontSize="12" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap"/>
+                </StackPanel>
+            </CheckBox>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding Risque}" Value="Avancé">
+                    <Setter TargetName="badge" Property="Background" Value="{StaticResource AvanceBg}"/>
+                    <Setter TargetName="badgeText" Property="Foreground" Value="{StaticResource AvanceFg}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Risque}" Value="Risqué">
+                    <Setter TargetName="badge" Property="Background" Value="{StaticResource RisqueBg}"/>
+                    <Setter TargetName="badgeText" Property="Foreground" Value="{StaticResource RisqueFg}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Absent}" Value="True">
+                    <Setter TargetName="absent" Property="Visibility" Value="Visible"/>
+                    <Setter TargetName="badge" Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
         <CollectionViewSource x:Key="OptionsView" Source="{Binding Visibles}">
             <CollectionViewSource.GroupDescriptions>
                 <PropertyGroupDescription PropertyName="Groupe"/>
@@ -97,6 +127,7 @@
         </Style>
 
         <DataTemplate x:Key="OptionTemplate">
+            <StackPanel>
             <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}" HorizontalAlignment="Stretch">
                 <StackPanel>
                     <TextBlock Text="{Binding Titre}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap"/>
@@ -110,6 +141,40 @@
                     <TextBlock Text="{Binding Description}" Margin="0,4,0,0" FontSize="13" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap"/>
                 </StackPanel>
             </CheckBox>
+            <!-- Choix des éléments (options à liste) -->
+            <StackPanel Margin="26,6,0,0" Visibility="{Binding ALaListe, Converter={StaticResource BoolVis}}">
+                <Button Content="{Binding Liste.Resume}" Command="{Binding BasculerListeCommand}" HorizontalAlignment="Left" Cursor="Hand"
+                        Padding="10,4" ToolTip="Afficher ou masquer la liste des éléments"/>
+                <Border Margin="0,6,0,0" Padding="12,8" CornerRadius="6" Background="{StaticResource PanelHoverBrush}"
+                        Visibility="{Binding ListeOuverte, Converter={StaticResource BoolVis}}">
+                    <StackPanel>
+                        <TextBlock Text="Chargement…" Foreground="{StaticResource MutedBrush}"
+                                   Visibility="{Binding Liste.EnChargement, Converter={StaticResource BoolVis}}"/>
+                        <TextBlock Text="{Binding Liste.Erreur}" Foreground="{StaticResource RisqueFg}" TextWrapping="Wrap" Margin="0,0,0,4">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                                    <Style.Triggers><DataTrigger Binding="{Binding Liste.Erreur}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <StackPanel Visibility="{Binding Liste.Charge, Converter={StaticResource BoolVis}}">
+                            <CheckBox Content="Tout (y compris les éléments apparus plus tard)" IsChecked="{Binding Liste.Tous, Mode=TwoWay}" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <TextBlock Text="Aucun élément à proposer sur ce PC." Foreground="{StaticResource MutedBrush}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers><DataTrigger Binding="{Binding Liste.Elements.Count}" Value="0"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" PreviewMouseWheel="ListeScroll_PreviewMouseWheel">
+                                <ItemsControl ItemsSource="{Binding Liste.Elements}" ItemTemplate="{StaticResource ListeElementTemplate}"/>
+                            </ScrollViewer>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+            </StackPanel>
             <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding Risque}" Value="Avancé">
                     <Setter TargetName="badge" Property="Background" Value="{StaticResource AvanceBg}"/>

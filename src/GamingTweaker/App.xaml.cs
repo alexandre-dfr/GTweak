@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using GamingTweaker.Core;
+using GamingTweaker.Lists;
 using GamingTweaker.Ui;
 
 namespace GamingTweaker
@@ -28,9 +29,14 @@ namespace GamingTweaker
             var paths = DataPaths.Resolve(AppDomain.CurrentDomain.BaseDirectory, facts, DataPaths.DefaultProgramDataRoot);
             var pipeline = new RunPipeline(new RestorePoint(), ElevationCheck.SameUserAsDesktop);
 
+            var registre = new ListProviderRegistry();
+            registre.Register(ServicesProvider.Standard());
+            registre.Register(ServicesProvider.Xbox());
+            registre.Register(new StartupProvider());
+
             MainWindow fenetre = null;
             var vm = new MainViewModel(catalogue, facts, paths, its => Detection.RunAsync(its),
-                (req, log, ct) => pipeline.ExecuteAsync(req, log, ct), o => Ui.MainWindow.ConfirmerRisque(fenetre, o));
+                (req, log, ct) => pipeline.ExecuteAsync(req, log, ct), o => Ui.MainWindow.ConfirmerRisque(fenetre, o), registre);
             vm.ConfirmerProfilRisque = risques => MessageBox.Show(fenetre,
                 "Ce profil contient des options classées Risqué :\r\n\r\n- " + string.Join("\r\n- ", risques.Select(r => r.Titre))
                 + "\r\n\r\nLe charger plus tard les appliquera à nouveau. L'enregistrer quand même ?",

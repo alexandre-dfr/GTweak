@@ -1,7 +1,9 @@
 using System;
 using System.Text;
 using System.Threading;
+using System.Windows.Input;
 using GamingTweaker.Core;
+using GamingTweaker.Lists;
 
 namespace GamingTweaker.Ui
 {
@@ -11,15 +13,35 @@ namespace GamingTweaker.Ui
         private bool isChecked;
         private string etat = "Détection…";
 
-        public OptionViewModel(CatalogItem item, Func<OptionViewModel, bool> confirmer)
+        public OptionViewModel(CatalogItem item, Func<OptionViewModel, bool> confirmer, IListProvider fournisseurListe = null)
         {
             Item = item; this.confirmer = confirmer;
+            if (fournisseurListe != null)
+            {
+                Liste = new ListeSelectionViewModel(fournisseurListe);
+                BasculerListeCommand = new RelayCommand(_ => { ListeOuverte = !ListeOuverte; });
+            }
             NiveauRisque = item.Risque ?? RiskLevel.Sur;
             Risque = NiveauRisque == RiskLevel.Sur ? "Sûr" : NiveauRisque == RiskLevel.Avance ? "Avancé" : "Risqué";
             SearchText = MainViewModel.Normaliser(item.Titre + " " + item.Description + " " + item.Groupe);
         }
 
         public CatalogItem Item { get; private set; }
+
+        /// <summary>Choix des éléments (null pour une option sans liste ou sans fournisseur enregistré).</summary>
+        public ListeSelectionViewModel Liste { get; private set; }
+        public bool ALaListe { get { return Liste != null; } }
+        public ICommand BasculerListeCommand { get; private set; }
+        private bool listeOuverte;
+        public bool ListeOuverte
+        {
+            get { return listeOuverte; }
+            set
+            {
+                if (!Set(ref listeOuverte, value)) return;
+                if (value && Liste != null) { var _ = Liste.ChargerAsync(); }
+            }
+        }
         public string Id { get { return Item.Id; } }
         public string Titre { get { return Item.Titre; } }
         public string Description { get { return Item.Description; } }
@@ -53,6 +75,7 @@ namespace GamingTweaker.Ui
                     Confirme = true;
                 }
                 isChecked = value; Raise();
+                if (value && Liste != null && Liste.EstVide) Liste.AppliquerDefaut();
                 var h = CocheChanged; if (h != null) h();
             }
         }

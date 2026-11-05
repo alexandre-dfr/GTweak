@@ -56,13 +56,13 @@ namespace GamingTweaker
 
         private static int RunSilent(string profilePath)
         {
-            var load = Profils.Load(profilePath);
+            var catalogue = Catalogue.LoadEmbedded();
+            var load = Profils.Load(profilePath, catalogue.Where(c => !string.IsNullOrEmpty(c.Liste)).Select(c => c.Liste).Distinct());
             if (load.Erreur != null) { Console.Error.WriteLine(load.Erreur); return 2; }
 
             // Le verrou d'instance est pris par RunPipeline.ExecuteAsync (interface et routine).
             if (!IsAdministrator()) { Console.Error.WriteLine("Droits administrateur requis pour appliquer un profil."); return 2; }
 
-            var catalogue = Catalogue.LoadEmbedded();
             var facts = SystemInfo.Detect();
             var resolved = Profils.Resolve(load.Profil, catalogue, facts);
             var req = new RunRequest

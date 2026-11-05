@@ -38,6 +38,20 @@ namespace GamingTweaker.Ui
 
         private void ApercuPuisExecuter() { if (OuvrirApercu()) Executer(); }
 
+        /// <summary>La liste d'éléments défile seule tant qu'elle peut ; au bout, la molette fait défiler la page.</summary>
+        private void ListeScroll_PreviewMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+        {
+            var sv = (System.Windows.Controls.ScrollViewer)sender;
+            var versHaut = e.Delta > 0;
+            if ((versHaut && sv.VerticalOffset <= 0) || (!versHaut && sv.VerticalOffset >= sv.ScrollableHeight))
+            {
+                e.Handled = true;
+                var parent = sv.Parent as UIElement;
+                if (parent != null)
+                    parent.RaiseEvent(new System.Windows.Input.MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta) { RoutedEvent = UIElement.MouseWheelEvent, Source = sender });
+            }
+        }
+
         private void Recharger_Click(object sender, RoutedEventArgs e) { vm.RechargerProfil(); }
 
         private async void ToutRestaurer_Click(object sender, RoutedEventArgs e)

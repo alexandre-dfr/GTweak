@@ -38,6 +38,20 @@ namespace GamingTweaker.Core
 
         /// <summary>Clés non reconnues : ignorées, signalées au chargement.</summary>
         [JsonExtensionData] public IDictionary<string, JToken> Inconnues { get; set; }
+
+        /// <summary>Copie indépendante (les listes ne sont jamais partagées entre le profil chargé et celui qu'on enregistre).</summary>
+        public ProfilListes Cloner()
+        {
+            return new ProfilListes
+            {
+                Winget = Winget == null ? null : new ListeWinget { Mode = Winget.Mode, Exclusions = new List<string>(Winget.Exclusions ?? new List<string>()), Elements = new List<string>(Winget.Elements ?? new List<string>()) },
+                WindowsUpdate = WindowsUpdate == null ? null : new ListeWindowsUpdate { ExclusionsKb = new List<string>(WindowsUpdate.ExclusionsKb ?? new List<string>()) },
+                Bloatware = Bloatware == null ? null : new List<string>(Bloatware),
+                Services = Services == null ? null : new List<string>(Services),
+                Pilote = Pilote == null ? null : new ListePilote { Branche = Pilote.Branche },
+                Inconnues = Inconnues == null ? null : Inconnues.ToDictionary(kv => kv.Key, kv => kv.Value == null ? null : kv.Value.DeepClone()),
+            };
+        }
     }
 
     /// <summary>Profil : uniquement des identifiants, jamais de commandes.</summary>
@@ -67,7 +81,11 @@ namespace GamingTweaker.Core
     {
         public const int VersionCourante = 1;
 
-        public static ProfilLoad Load(string path)
+        /// <summary>
+        /// <paramref name="clesListes"/> : clés de listes génériques connues (les <c>Liste</c> du catalogue). Une telle clé doit contenir un tableau de
+        /// chaînes valides ; toute autre clé non typée est ignorée avec un avertissement.
+        /// </summary>
+        public static ProfilLoad Load(string path, IEnumerable<string> clesListes = null)
         {
             var nom = Path.GetFileName(path ?? "");
             try
@@ -99,9 +117,20 @@ namespace GamingTweaker.Core
                 var invalide = Valider(p);
                 if (invalide != null) return Echec($"Le profil « {nom} » est invalide : {invalide}");
 
+                var connues = new HashSet<string>(clesListes ?? new string[0], StringComparer.Ordinal);
                 var r = new ProfilLoad { Profil = p };
                 if (p.Listes.Inconnues != null)
                     foreach (var k in p.Listes.Inconnues.Keys)
+                    {
+                        if (!connues.Contains(k)) continue;
+                        var tab = p.Listes.Inconnues[k] as JArray;
+                        if (tab == null) return Echec($"Le profil « {nom} » est invalide : liste « {k} » : un tableau de chaînes est attendu.");
+                        foreach (var t in tab)
+                            if (t.Type != JTokenType.String || !ElementValide((string)t))
+                                return Echec($"Le profil « {nom} » est invalide : liste « {k} » : valeur « {(t.Type == JTokenType.String ? (string)t : t.ToString())} » invalide.");
+                    }
+                if (p.Listes.Inconnues != null)
+                    foreach (var k in p.Listes.Inconnues.Keys.Where(k => !connues.Contains(k)))
                         r.Avertissements.Add($"Liste « {k} » inconnue dans le profil « {nom} » : ignorée.");
                 return r;
             }
@@ -114,6 +143,9 @@ namespace GamingTweaker.Core
         private static readonly Regex ReOption = new Regex(@"^[a-z0-9][a-z0-9.\-]*\z", RegexOptions.CultureInvariant);
         private static readonly Regex ReWinget = new Regex(@"^[A-Za-z0-9][A-Za-z0-9.\-_+]*\z", RegexOptions.CultureInvariant);
         private static readonly Regex ReKb = new Regex(@"^KB\d{4,8}\z", RegexOptions.CultureInvariant);
+        /// <summary>Élément d'une liste générique : « * », ou un identifiant éventuellement précédé de « ! » (les deux-points servent aux clés de démarrage « HKCU:Run:Nom »).</summary>
+        private static readonly Regex ReGenerique = new Regex(@"^(\*|!?[A-Za-z0-9][A-Za-z0-9 _.\-+():]*)\z", RegexOptions.CultureInvariant);
+        public static bool ElementValide(string v) { return v != null && ReGenerique.IsMatch(v); }
         private static readonly Regex ReNom = new Regex(@"^[A-Za-z0-9][A-Za-z0-9_.\-]*\z", RegexOptions.CultureInvariant);
 
         /// <summary>Contenu invalide = erreur de chargement (jamais ignoré ni élargi). Renvoie le message, ou null.</summary>
@@ -203,7 +235,66 @@ namespace GamingTweaker.Core
             Attacher(res, catalogue, "bloatware", l.Bloatware);
             Attacher(res, catalogue, "services", l.Services);
             Attacher(res, catalogue, "pilote", l.Pilote == null || string.IsNullOrEmpty(l.Pilote.Branche) ? null : new List<string> { l.Pilote.Branche });
+            if (l.Inconnues != null)
+                foreach (var kv in l.Inconnues)
+                {
+                    var tab = kv.Value as JArray;
+                    if (tab == null || tab.Any(t => t.Type != JTokenType.String || !ElementValide((string)t))) continue;
+                    Attacher(res, catalogue, kv.Key, tab.Select(t => (string)t).ToList());
+                }
             return res;
+        }
+
+        private static readonly string[] ClesTypees = { "winget", "windowsUpdate", "bloatware", "services", "pilote" };
+
+        /// <summary>
+        /// Écrit la sélection d'une option à liste dans le profil : clé typée si elle existe, sinon clé générique (nom de <c>CatalogItem.Liste</c>).
+        /// Renvoie false si elle ne peut pas être représentée sans l'élargir (rien n'est écrit). Pour une liste explicite générique, les éléments
+        /// invalides sont écartés (la sélection ne fait que se réduire) et signalés dans <paramref name="ecartes"/>.
+        /// </summary>
+        public static bool AjouterListe(ProfilListes l, string cle, IReadOnlyList<string> valeurs, List<string> ecartes = null)
+        {
+            if (l == null || string.IsNullOrEmpty(cle) || valeurs == null) return false;
+            bool tous = valeurs.Contains("*");
+            var exclus = valeurs.Where(v => v != null && v.StartsWith("!", StringComparison.Ordinal)).Select(v => v.Substring(1)).ToList();
+            var positifs = valeurs.Where(v => v != null && v != "*" && !v.StartsWith("!", StringComparison.Ordinal)).ToList();
+            switch (cle)
+            {
+                case "winget":
+                {
+                    var src = tous ? exclus : positifs;
+                    if (src.Any(v => !ReWinget.IsMatch(v))) return false;
+                    l.Winget = tous ? new ListeWinget { Mode = "tout-sauf", Exclusions = exclus } : new ListeWinget { Mode = "liste", Elements = positifs };
+                    return true;
+                }
+                case "windowsUpdate":
+                    if (!tous || positifs.Count > 0 || exclus.Any(v => !ReKb.IsMatch(v))) return false;
+                    l.WindowsUpdate = new ListeWindowsUpdate { ExclusionsKb = exclus };
+                    return true;
+                case "bloatware":
+                case "services":
+                {
+                    if (tous || positifs.Any(v => !ReNom.IsMatch(v))) return false;
+                    if (cle == "services") l.Services = positifs; else l.Bloatware = positifs;
+                    return true;
+                }
+                case "pilote":
+                    if (tous || positifs.Count != 1 || (positifs[0] != "GameReady" && positifs[0] != "Studio")) return false;
+                    l.Pilote = new ListePilote { Branche = positifs[0] };
+                    return true;
+            }
+            if (tous && (exclus.Any(v => !ElementValide("!" + v)))) return false;
+            var ok = new List<string>();
+            if (tous) { ok.Add("*"); ok.AddRange(exclus.Select(v => "!" + v)); }
+            else
+                foreach (var v in positifs)
+                {
+                    if (ElementValide(v)) ok.Add(v);
+                    else if (ecartes != null) ecartes.Add(v);
+                }
+            if (l.Inconnues == null) l.Inconnues = new Dictionary<string, JToken>();
+            l.Inconnues[cle] = new JArray(ok);
+            return true;
         }
 
         private static List<string> WingetListe(ListeWinget w)

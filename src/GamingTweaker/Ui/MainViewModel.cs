@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using GamingTweaker.Core;
+using GamingTweaker.Lists;
 
 namespace GamingTweaker.Ui
 {
@@ -62,16 +63,17 @@ namespace GamingTweaker.Ui
         private string message = "";
         private string bannière = "";
         private bool chargementProfil;
+        private string avertissementProfil = "";
 
         public MainViewModel(IReadOnlyList<CatalogItem> items, MachineFacts facts, DataPaths paths,
             Func<IEnumerable<CatalogItem>, Task<Dictionary<string, DetectState>>> detect,
             Func<RunRequest, IProgress<string>, CancellationToken, Task<SessionReport>> run,
-            Func<OptionViewModel, bool> confirmerRisque)
+            Func<OptionViewModel, bool> confirmerRisque, ListProviderRegistry registre = null)
         {
             this.items = items; this.facts = facts; this.paths = paths; this.detect = detect; this.run = run;
 
             Options = items.Where(i => Compatibilite.IsCompatible(i.Compatibilite ?? new CompatRule(), facts))
-                           .Select(i => new OptionViewModel(i, confirmerRisque)).ToList();
+                           .Select(i => new OptionViewModel(i, confirmerRisque, string.IsNullOrEmpty(i.Liste) || registre == null ? null : registre.Get(i.Liste))).ToList();
             foreach (var o in Options) o.CocheChanged += () => { Raise("SelectedCount"); Raise("AUneSelection"); Raise("ResumeSelection"); };
 
             var menus = MenusOptions.Concat(new[] { "Informations" }).Select(n => new MenuEntry { Nom = n, EstEmplacement = n == "Informations" }).ToList();
@@ -171,6 +173,15 @@ namespace GamingTweaker.Ui
             var s = new Selection();
             foreach (var o in Options.Where(o => o.IsChecked))
             {
+                if (o.Liste != null)
+                {
+                    // Option à liste : sans élément choisi, elle n'est pas exécutée (signalé dans l'aperçu).
+                    var sel = o.Liste.VersSelection();
+                    if (sel.Count == 0) continue;
+                    s.OptionIds.Add(o.Id);
+                    s.Listes[o.Id] = sel;
+                    continue;
+                }
                 s.OptionIds.Add(o.Id);
                 List<string> l;
                 if (listesChargees.TryGetValue(o.Id, out l)) s.Listes[o.Id] = new List<string>(l);
@@ -181,13 +192,26 @@ namespace GamingTweaker.Ui
         public Profil ToProfil(string nom)
         {
             var p = new Profil { Nom = nom, Options = Options.Where(o => o.IsChecked).Select(o => o.Id).ToList() };
-            if (profilListes != null) p.Listes = profilListes;
+            p.Listes = profilListes == null ? new ProfilListes() : profilListes.Cloner();
+            avertissementProfil = "";
+            var perdues = new List<string>();
+            foreach (var o in Options.Where(o => o.IsChecked && o.Liste != null))
+            {
+                var ecartes = new List<string>();
+                var sel = o.Liste.VersSelection();
+                if (sel.Count == 0) continue;
+                if (!Profils.AjouterListe(p.Listes, o.Item.Liste, sel, ecartes)) perdues.Add(o.Titre);
+                else if (ecartes.Count > 0) perdues.Add(o.Titre + " (" + string.Join(", ", ecartes) + ")");
+            }
+            if (perdues.Count > 0)
+                avertissementProfil = "Éléments non enregistrés dans le profil (nom non pris en charge) : " + string.Join(" ; ", perdues) + ".";
             return p;
         }
 
         public void LoadProfil(Profil p)
         {
             foreach (var o in Options) o.ForceUnchecked();
+            foreach (var o in Options.Where(o => o.Liste != null)) o.Liste.DepuisSelection(null);
             listesChargees.Clear();
             profilListes = p.Listes;
             var res = Profils.Resolve(p, items, facts);
@@ -195,6 +219,8 @@ namespace GamingTweaker.Ui
             var refuses = new List<string>();
             foreach (var o in Options.Where(o => res.Selection.OptionIds.Contains(o.Id)))
             {
+                List<string> sel;
+                if (o.Liste != null && res.Selection.Listes.TryGetValue(o.Id, out sel)) o.Liste.DepuisSelection(sel);
                 o.IsChecked = true;
                 if (!o.IsChecked) refuses.Add(o.Titre);
             }
@@ -230,7 +256,7 @@ namespace GamingTweaker.Ui
 
         private void ChargerProfilNomme(string nom)
         {
-            var load = Profils.Load(CheminProfil(nom));
+            var load = Profils.Load(CheminProfil(nom), items.Where(c => !string.IsNullOrEmpty(c.Liste)).Select(c => c.Liste).Distinct());
             if (load.Erreur != null) { Message = load.Erreur; return; }
             LoadProfil(load.Profil);
             if (load.Avertissements.Count > 0) Message = (Message + " " + string.Join(" ", load.Avertissements)).Trim();
@@ -250,7 +276,7 @@ namespace GamingTweaker.Ui
             RafraichirProfils();
             chargementProfil = true;
             try { ProfilSelectionne = nom; } finally { chargementProfil = false; }
-            Message = "Profil « " + nom + " » enregistré.";
+            Message = ("Profil « " + nom + " » enregistré. " + avertissementProfil).Trim();
             return null;
         }
 
@@ -378,7 +404,7 @@ namespace GamingTweaker.Ui
         {
             return Options.Where(o => o.IsChecked).Select(o => new PreviewRow
             {
-                Titre = o.Titre, Risque = o.Risque,
+                Titre = o.Titre + (o.Liste != null && o.Liste.EstVide ? " : aucun élément choisi, non exécutée" : ""), Risque = o.Risque,
                 Reversibilite = o.Reversible ? "Annulable" : "définitif",
                 Redemarrage = o.Redemarrage ? "Redémarrage requis" : "",
                 Taille = "—",
