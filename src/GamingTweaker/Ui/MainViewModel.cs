@@ -21,14 +21,16 @@ namespace GamingTweaker.Ui
         public bool EstEmplacement { get; set; }
     }
 
-    public class PreviewRow
+    public class PreviewRow : ObservableObject
     {
+        private string taille = "—";
+        public string Id { get; set; }
         public string Titre { get; set; }
         public string Risque { get; set; }
         public string Reversibilite { get; set; }
         public string Redemarrage { get; set; }
-        /// <summary>Estimation de taille ; « — » tant qu'aucun script d'estimation n'existe.</summary>
-        public string Taille { get; set; }
+        /// <summary>Estimation de taille ; « — » tant qu'elle n'est pas connue ou si l'option n'en a pas.</summary>
+        public string Taille { get { return taille; } set { Set(ref taille, value); } }
     }
 
     /// <summary>Bilan de « Tout restaurer ».</summary>
@@ -55,6 +57,7 @@ namespace GamingTweaker.Ui
         private readonly DataPaths paths;
         private readonly Func<IEnumerable<CatalogItem>, Task<Dictionary<string, DetectState>>> detect;
         private readonly Func<RunRequest, IProgress<string>, CancellationToken, Task<SessionReport>> run;
+        private readonly Func<IEnumerable<CatalogItem>, Task<Dictionary<string, long?>>> estimate;
         private readonly Dictionary<string, List<string>> listesChargees = new Dictionary<string, List<string>>();
         private ProfilListes profilListes;
         private string menuCourant = MenusOptions[0];
@@ -68,8 +71,10 @@ namespace GamingTweaker.Ui
         public MainViewModel(IReadOnlyList<CatalogItem> items, MachineFacts facts, DataPaths paths,
             Func<IEnumerable<CatalogItem>, Task<Dictionary<string, DetectState>>> detect,
             Func<RunRequest, IProgress<string>, CancellationToken, Task<SessionReport>> run,
-            Func<OptionViewModel, bool> confirmerRisque, ListProviderRegistry registre = null)
+            Func<OptionViewModel, bool> confirmerRisque, ListProviderRegistry registre = null,
+            Func<IEnumerable<CatalogItem>, Task<Dictionary<string, long?>>> estimate = null)
         {
+            this.estimate = estimate ?? Estimation.RunAsync;
             this.items = items; this.facts = facts; this.paths = paths; this.detect = detect; this.run = run;
 
             Options = items.Where(i => Compatibilite.IsCompatible(i.Compatibilite ?? new CompatRule(), facts))
@@ -407,11 +412,38 @@ namespace GamingTweaker.Ui
         {
             return Options.Where(o => o.IsChecked).Select(o => new PreviewRow
             {
+                Id = o.Id,
                 Titre = o.Titre + (o.Liste == null ? "" : o.Liste.EstVide ? " : aucun élément choisi, non exécutée" : " (" + o.Liste.ResumeCourt + ")"), Risque = o.Risque,
                 Reversibilite = o.Reversible ? "Annulable" : "définitif",
                 Redemarrage = o.Redemarrage ? "Redémarrage requis" : "",
                 Taille = "—",
             }).ToList();
+        }
+
+        /// <summary>
+        /// Lance les estimations de taille des options de l'aperçu (scripts en lecture seule) et renseigne la colonne Taille.
+        /// Renvoie le texte du total (« Total estimé : 1,2 Go »), ou une chaîne vide si aucune estimation n'est disponible.
+        /// </summary>
+        public async Task<string> EstimerAsync(IReadOnlyList<PreviewRow> lignes)
+        {
+            var parId = items.GroupBy(i => i.Id).ToDictionary(g => g.Key, g => g.First());
+            var concernes = lignes.Where(l => l.Id != null && parId.ContainsKey(l.Id) && !string.IsNullOrWhiteSpace(parId[l.Id].Estimate))
+                                  .Select(l => parId[l.Id]).ToList();
+            if (concernes.Count == 0) return "";
+            Dictionary<string, long?> res;
+            try { res = await estimate(concernes); }
+            catch (Exception) { return ""; }
+            if (res == null) return "";
+            long total = 0; int connues = 0;
+            foreach (var l in lignes)
+            {
+                long? v;
+                if (l.Id == null || !res.TryGetValue(l.Id, out v) || v == null) continue;
+                l.Taille = Estimation.FormatTaille(v.Value);
+                total += v.Value; connues++;
+            }
+            if (connues == 0) return "";
+            return "Total estimé : " + Estimation.FormatTaille(total) + (connues < lignes.Count ? " (options sans estimation exclues)" : "");
         }
 
         /// <summary>Le script exact qui sera exécuté (le dossier de session réel n'existe qu'au lancement).</summary>

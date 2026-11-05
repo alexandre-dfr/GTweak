@@ -22,6 +22,19 @@ namespace GamingTweaker.Ui
             this.vm = vm;
             try { Script.Text = vm.BuildPreviewScript(); }
             catch (Exception ex) { Script.Text = "Le script n'a pas pu être généré : " + ex.Message; Exporter.IsEnabled = false; Lancer.IsEnabled = false; }
+            Loaded += async (s, e) => await EstimerAsync(rows);
+        }
+
+        // Les estimations (scripts en lecture seule) tournent après l'ouverture : la fenêtre reste utilisable, les tailles apparaissent au fur et à mesure.
+        private async System.Threading.Tasks.Task EstimerAsync(System.Collections.Generic.IReadOnlyList<PreviewRow> rows)
+        {
+            try
+            {
+                if (!rows.Any()) return;
+                Total.Text = "Estimation des tailles…";
+                Total.Text = await vm.EstimerAsync(rows);
+            }
+            catch (Exception) { Total.Text = ""; }
         }
 
         private void Exporter_Click(object sender, RoutedEventArgs e)

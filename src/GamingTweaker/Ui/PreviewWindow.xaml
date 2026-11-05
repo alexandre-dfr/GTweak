@@ -10,6 +10,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="2*" MinHeight="90"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="3*" MinHeight="120"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -65,11 +66,12 @@
             </Grid>
         </Border>
 
-        <TextBlock Grid.Row="3" Text="Script exact qui sera exécuté" Margin="0,16,0,6" Foreground="{StaticResource MutedBrush}"/>
-        <TextBox x:Name="Script" Grid.Row="4" IsReadOnly="True" FontFamily="Consolas" FontSize="12.5" AcceptsReturn="True" TextWrapping="NoWrap"
+        <TextBlock x:Name="Total" Grid.Row="3" Margin="12,6,12,0" TextAlignment="Right" Foreground="{StaticResource MutedBrush}"/>
+        <TextBlock Grid.Row="4" Text="Script exact qui sera exécuté" Margin="0,10,0,6" Foreground="{StaticResource MutedBrush}"/>
+        <TextBox x:Name="Script" Grid.Row="5" IsReadOnly="True" FontFamily="Consolas" FontSize="12.5" AcceptsReturn="True" TextWrapping="NoWrap"
                  HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"/>
 
-        <DockPanel Grid.Row="5" Margin="0,18,0,0" LastChildFill="False">
+        <DockPanel Grid.Row="6" Margin="0,18,0,0" LastChildFill="False">
             <Button x:Name="Exporter" DockPanel.Dock="Left" Content="Exporter en .ps1" Click="Exporter_Click"/>
             <Button x:Name="Lancer" DockPanel.Dock="Right" Content="LANCER" Style="{StaticResource PrimaryButton}" Click="Lancer_Click" IsDefault="True"/>
             <Button DockPanel.Dock="Right" Content="Annuler" IsCancel="True" Margin="0,0,12,0"/>

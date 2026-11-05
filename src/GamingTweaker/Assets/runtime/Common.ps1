@@ -1014,3 +1014,441 @@ function Get-GTTcpInterfaceKeys {
     $root = 'HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces'
     return @(Get-ChildItem -LiteralPath $root -ErrorAction SilentlyContinue | ForEach-Object { ConvertTo-GTHklmPath $_.Name })
 }
+
+# ---------------------------------------------------------------------------
+# Aides du menu Nettoyage.
+# Remove-TweakPath ne supprime que dans $AllowedRoots (chemins resolus, sans tenir compte de la casse, avec separateur : « C:\a » n'autorise pas « C:\ab »).
+# Il ne suit jamais une jonction ni un lien symbolique, ignore les fichiers verrouilles (en les comptant), ne touche pas aux donnees personnelles
+# (dossiers utilisateur, fichiers de profil des navigateurs) et conserve le dossier racine sauf -RemoveRoot. Aucune suppression n'est journalisee :
+# les options de nettoyage sont definitives (sauf les orphelins Windows Installer, deplaces en quarantaine, et le registre, exporte).
+# ---------------------------------------------------------------------------
+
+function Format-GTSize([long]$Bytes) {
+    if ($Bytes -lt 1024) { return ([string]$Bytes + ' o') }
+    $fr = [Globalization.CultureInfo]::GetCultureInfo('fr-FR')
+    $v = [double]$Bytes; $u = @('Ko', 'Mo', 'Go', 'To'); $i = -1
+    while ($v -ge 1024 -and $i -lt 3) { $v = $v / 1024; $i++ }
+    return ($v.ToString('0.0', $fr) + ' ' + $u[$i])
+}
+
+# Noms (a n'importe quel niveau du chemin) qui ne sont jamais supprimes, meme dans un dossier autorise.
+$script:GT_ProtectedSet = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+foreach ($gtName in @('Downloads', 'Documents', 'Desktop', 'Pictures', 'Videos', 'Music', 'Saved Games', 'Favorites', 'Contacts',
+                      'Login Data', 'History', 'Cookies', 'Bookmarks', 'Web Data')) { [void]$script:GT_ProtectedSet.Add($gtName) }
+
+function Test-GTProtectedName([string]$Name) {
+    if ([string]::IsNullOrEmpty($Name)) { return $false }
+    if ($script:GT_ProtectedSet.Contains($Name)) { return $true }
+    if ($Name.StartsWith('OneDrive', [StringComparison]::OrdinalIgnoreCase)) { return $true }
+    $i = $Name.IndexOf('-')    # « History-journal », « Login Data-journal »
+    return ($i -gt 0 -and $script:GT_ProtectedSet.Contains($Name.Substring(0, $i)))
+}
+
+function Test-GTProtectedPath([string]$FullPath) {
+    foreach ($seg in $FullPath.Split('\')) { if (Test-GTProtectedName $seg) { return $true } }
+    return $false
+}
+
+function Get-GTFullPath([string]$Path) {
+    $f = [IO.Path]::GetFullPath($Path)
+    if ($f.Length -gt 3) { $f = $f.TrimEnd('\') }
+    return $f
+}
+
+function Test-GTPathAllowed([string]$Path) {
+    try { $full = Get-GTFullPath $Path } catch { return $false }
+    if (Test-GTProtectedPath $full) { return $false }
+    foreach ($r in @($AllowedRoots)) {
+        if ([string]::IsNullOrWhiteSpace($r)) { continue }
+        try { $root = Get-GTFullPath $r } catch { continue }
+        if ($root.Length -le 3) { continue }   # jamais une racine de disque
+        if ($full -ieq $root -or $full.StartsWith($root + '\', [StringComparison]::OrdinalIgnoreCase)) { return $true }
+    }
+    return $false
+}
+
+# Dossier de Steam (registre, repli sur Program Files (x86)) ; $null s'il est introuvable.
+function Get-GTSteamDir {
+    $p = $null
+    try { $p = [string](Get-ItemProperty -LiteralPath 'HKCU:\Software\Valve\Steam' -Name 'SteamPath' -ErrorAction Stop).SteamPath } catch { }
+    if (-not $p) { $pf = ${env:ProgramFiles(x86)}; if ($pf) { $p = Join-Path $pf 'Steam' } }
+    if (-not $p) { return $null }
+    try { return (Get-GTFullPath $p) } catch { return $null }
+}
+
+function Get-GTDefaultAllowedRoots {
+    $roots = New-Object System.Collections.Generic.List[string]
+    $sr = [string]$env:SystemRoot; $la = [string]$env:LOCALAPPDATA; $ap = [string]$env:APPDATA; $pd = [string]$env:ProgramData; $up = [string]$env:USERPROFILE
+    # %TEMP% deregle (profil, racine d'un disque) : ignore. Un dossier temporaire s'appelle Temp ou Tmp (ou en est un sous-dossier : Temp\1).
+    $tmp = [string]$env:TEMP
+    if ($tmp) {
+        try {
+            $t = Get-GTFullPath $tmp
+            $leaf = Split-Path -Leaf $t
+            $parent = Split-Path -Leaf (Split-Path -Parent $t)
+            if ($t.Length -gt 3 -and ($t -ine $up) -and (($leaf -match '^(?i:temp|tmp)$') -or ($parent -match '^(?i:temp|tmp)$'))) { $roots.Add($t) }
+        } catch { }
+    }
+    if ($sr) {
+        foreach ($s in @('Temp', 'SoftwareDistribution\Download', 'ServiceProfiles\NetworkService\AppData\Local\Microsoft\Windows\DeliveryOptimization\Cache',
+                         'Minidump', 'MEMORY.DMP', 'Logs\CBS', 'Logs\DISM', 'Logs\WindowsUpdate', 'Traces\WindowsUpdate', 'Prefetch')) { $roots.Add((Join-Path $sr $s)) }
+    }
+    $sd = [string]$env:SystemDrive
+    if ($sd) { $roots.Add($sd + '\Windows.old') }
+    if ($pd) {
+        foreach ($s in @('Microsoft\Windows\WER', 'Microsoft\VSApplicationInsights', 'vstelemetry')) { $roots.Add((Join-Path $pd $s)) }
+    }
+    if ($la) {
+        foreach ($s in @('Microsoft\Windows\Explorer', 'CrashDumps', 'D3DSCache', 'NVIDIA\DXCache', 'NVIDIA\GLCache', 'AMD\DxCache',
+                         'Google\Chrome\User Data', 'Microsoft\Edge\User Data', 'Mozilla\Firefox\Profiles', 'Microsoft\Windows\INetCache\IE',
+                         'EpicGamesLauncher\Saved', 'Microsoft\VSCommon', 'Microsoft\VSApplicationInsights')) { $roots.Add((Join-Path $la $s)) }
+    }
+    if ($ap) {
+        foreach ($s in @('Microsoft\Windows\Recent', 'Sun\Java\Deployment\cache', 'vstelemetry')) { $roots.Add((Join-Path $ap $s)) }
+    }
+    if ($up) { $roots.Add((Join-Path $up '.dotnet\TelemetryStorageService')) }
+    $steam = Get-GTSteamDir
+    if ($steam) { foreach ($s in @('appcache\httpcache', 'dumps')) { $roots.Add((Join-Path $steam $s)) } }
+    return $roots.ToArray()
+}
+
+$AllowedRoots = @(Get-GTDefaultAllowedRoots)
+
+# Cumul par option du resultat des nettoyages (la note affichee dans le rapport).
+function Update-GTCleanNote($Stats, [string]$Detail) {
+    if ($script:GT_CleanItem -ne $script:GT_CurrentItem -or $null -eq $script:GT_CleanTotals) {
+        $script:GT_CleanItem = $script:GT_CurrentItem
+        $script:GT_CleanTotals = @{ Files = 0; Bytes = [long]0; Locked = 0; Links = 0 }
+        $script:GT_CleanDetails = @()
+    }
+    $t = $script:GT_CleanTotals
+    if ($Stats) { $t.Files += $Stats.Files; $t.Bytes += [long]$Stats.Bytes; $t.Locked += $Stats.Locked; $t.Links += $Stats.Links }
+    if ($Detail) { $script:GT_CleanDetails += $Detail }
+    $parts = @()
+    if ($t.Files -gt 0) { $parts += ((Format-GTSize $t.Bytes) + ' libérés (' + $t.Files + ' fichier' + $(if ($t.Files -gt 1) { 's' } else { '' }) + ')') }
+    $parts += @($script:GT_CleanDetails)
+    if ($parts.Count -eq 0 -and $t.Locked -eq 0) { $parts += 'Rien à supprimer' }
+    if ($t.Locked -gt 0) { $parts += ([string]$t.Locked + $(if ($t.Locked -gt 1) { ' fichiers verrouillés ignorés' } else { ' fichier verrouillé ignoré' })) }
+    if ($t.Links -gt 0) { $parts += ([string]$t.Links + $(if ($t.Links -gt 1) { ' liens ou jonctions non suivis' } else { ' lien ou jonction non suivi' })) }
+    Set-GTItemNote ($parts -join ' ; ')
+}
+
+function Add-GTCleanDetail([string]$Detail) { Update-GTCleanNote $null $Detail }
+
+# Parcours commun a la suppression et a l'estimation. $Stats : table (Files, Bytes, Locked, Links, Protected).
+function Invoke-GTWalk([string]$Dir, [string]$Filter, [bool]$Recurse, [bool]$Delete, [bool]$RemoveLinks, $Stats, $Exclude) {
+    try { $entries = (New-Object IO.DirectoryInfo($Dir)).GetFileSystemInfos() } catch { $Stats.Locked++; return }
+    foreach ($e in $entries) {
+        $full = $e.FullName
+        if ($null -ne $Exclude -and $Exclude.Contains($full)) { continue }
+        if (Test-GTProtectedName $e.Name) { $Stats.Protected++; continue }
+        $attr = $e.Attributes
+        if ($attr -band [IO.FileAttributes]::Directory) {
+            if ($attr -band [IO.FileAttributes]::ReparsePoint) {
+                # Jonction ou lien symbolique : jamais suivi. Seul le lien est retire, et seulement sur demande.
+                $Stats.Links++
+                if ($Delete -and $RemoveLinks) { try { [IO.Directory]::Delete($full, $false) } catch { } }
+                continue
+            }
+            if (-not $Recurse) { continue }
+            Invoke-GTWalk $full $Filter $Recurse $Delete $RemoveLinks $Stats $Exclude
+            # Un dossier vide est retire (jamais le dossier racine) ; un dossier non vide (fichiers verrouilles) reste.
+            if ($Delete -and $Filter -eq '*') { try { [IO.Directory]::Delete($full, $false) } catch { } }
+        } else {
+            if ($e.Name -notlike $Filter) { continue }
+            if (-not $Delete) { $Stats.Files++; $Stats.Bytes += [long]$e.Length; continue }
+            try {
+                if ($attr -band [IO.FileAttributes]::ReadOnly) { [IO.File]::SetAttributes($full, [IO.FileAttributes]::Normal) }
+                $len = [long]$e.Length
+                [IO.File]::Delete($full)
+                $Stats.Files++; $Stats.Bytes += $len
+            } catch { $Stats.Locked++ }
+        }
+    }
+}
+
+function New-GTCleanStats { return @{ Files = 0; Bytes = [long]0; Locked = 0; Links = 0; Protected = 0 } }
+
+function ConvertTo-GTExcludeSet([string[]]$ExcludePath) {
+    if (-not $ExcludePath -or $ExcludePath.Count -eq 0) { return $null }
+    $set = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($x in $ExcludePath) { if ($x) { [void]$set.Add((Get-GTFullPath $x)) } }
+    return $set
+}
+
+# Verifie tous les chemins avant de toucher a quoi que ce soit. Renvoie les chemins resolus.
+function Assert-GTCleanPaths([string[]]$Path) {
+    $res = @()
+    foreach ($p in $Path) {
+        if ([string]::IsNullOrWhiteSpace($p)) { continue }
+        if (-not (Test-GTPathAllowed $p)) { throw ('Chemin refusé (hors des dossiers autorisés ou protégé) : ' + $p) }
+        $full = Get-GTFullPath $p
+        if ([IO.Directory]::Exists($full) -and ([IO.File]::GetAttributes($full) -band [IO.FileAttributes]::ReparsePoint)) {
+            throw ('Dossier refusé (jonction ou lien symbolique, non suivi) : ' + $p)
+        }
+        $res += $full
+    }
+    return $res
+}
+
+function Remove-TweakPath {
+    param([string[]]$Path = @(), [string]$Filter = '*', [switch]$NoRecurse, [switch]$RemoveRoot, [switch]$RemoveLinks,
+          [switch]$TakeOwnership, [string[]]$ExcludePath = @())
+    $roots = @(Assert-GTCleanPaths $Path)
+    if ($TakeOwnership) {
+        foreach ($r in $roots) { if ((Split-Path -Leaf $r) -ine 'Windows.old') { throw ('-TakeOwnership est réservé à Windows.old : ' + $r) } }
+    }
+    $exclude = ConvertTo-GTExcludeSet $ExcludePath
+    $stats = New-GTCleanStats
+    foreach ($root in $roots) {
+        if ([IO.File]::Exists($root)) {
+            try { [IO.File]::SetAttributes($root, [IO.FileAttributes]::Normal); $len = (New-Object IO.FileInfo($root)).Length; [IO.File]::Delete($root); $stats.Files++; $stats.Bytes += [long]$len }
+            catch { $stats.Locked++ }
+            continue
+        }
+        if (-not [IO.Directory]::Exists($root)) { continue }
+        if ($TakeOwnership) {
+            # Les fichiers de Windows.old appartiennent a TrustedInstaller : propriete et droits aux administrateurs, sur ce seul dossier.
+            $null = Invoke-GTNative 'takeown.exe' @('/f', $root, '/r', '/a', '/d', 'Y')
+            $null = Invoke-GTNative 'icacls.exe' @($root, '/grant', '*S-1-5-32-544:(OI)(CI)F', '/t', '/c', '/q')
+        }
+        Invoke-GTWalk $root $Filter (-not $NoRecurse) $true ([bool]$RemoveLinks) $stats $exclude
+        if ($RemoveRoot) {
+            try { [IO.Directory]::Delete($root, $false) } catch { Add-GTCleanDetail ('Le dossier ' + $root + ' n''a pas pu être supprimé entièrement') }
+        }
+    }
+    Update-GTCleanNote $stats
+    return [pscustomobject]@{ Files = $stats.Files; Bytes = $stats.Bytes; Locked = $stats.Locked; Links = $stats.Links; Protected = $stats.Protected }
+}
+
+# Taille (octets) de ce que Remove-TweakPath supprimerait avec les memes parametres. Lecture seule.
+function Get-TweakPathSize {
+    param([string[]]$Path = @(), [string]$Filter = '*', [switch]$NoRecurse, [string[]]$ExcludePath = @())
+    $roots = @(Assert-GTCleanPaths $Path)
+    $exclude = ConvertTo-GTExcludeSet $ExcludePath
+    $stats = New-GTCleanStats
+    foreach ($root in $roots) {
+        if ([IO.File]::Exists($root)) { $stats.Bytes += [long](New-Object IO.FileInfo($root)).Length; continue }
+        if (-not [IO.Directory]::Exists($root)) { continue }
+        Invoke-GTWalk $root $Filter (-not $NoRecurse) $false $false $stats $exclude
+    }
+    return [long]$stats.Bytes
+}
+
+# Lance un programme natif sans que la sortie d'erreur ne leve d'exception. Renvoie ExitCode et Output (lignes).
+function Invoke-GTNative([string]$Exe, [string[]]$Arguments = @()) {
+    $old = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try { $o = & $Exe @Arguments 2>&1; $code = $LASTEXITCODE } finally { $ErrorActionPreference = $old }
+    return [pscustomobject]@{ ExitCode = $code; Output = @($o | ForEach-Object { [string]$_ }) }
+}
+
+# ---- DISM ----------------------------------------------------------------------------------
+
+# $GT_DismPath : remplacement pour les tests. 0 et 3010 (redemarrage conseille) sont des reussites.
+function Invoke-GTDism([string[]]$Arguments) {
+    $exe = if ($GT_DismPath) { $GT_DismPath } else { Join-Path $env:SystemRoot 'System32\dism.exe' }
+    $r = Invoke-GTNative $exe $Arguments
+    if ($r.ExitCode -ne 0 -and $r.ExitCode -ne 3010) {
+        $tail = @($r.Output | Where-Object { $_.Trim() } | Select-Object -Last 3) -join ' '
+        throw ('DISM a échoué (code ' + $r.ExitCode + ') : ' + $tail)
+    }
+    return [pscustomobject]@{ ExitCode = $r.ExitCode; RebootRequired = ($r.ExitCode -eq 3010); Output = $r.Output }
+}
+
+# ---- Orphelins de Windows Installer ------------------------------------------------------------
+
+# Chemins (LocalPackage) de tous les .msi et .msp references par Windows Installer : produits et correctifs de tous les contextes
+# (par machine, par utilisateur, geres), pour tous les utilisateurs. Leve une erreur si l'enumeration echoue.
+function Get-GTInstallerReferencedPackages {
+    $inst = New-Object -ComObject WindowsInstaller.Installer
+    $res = New-Object System.Collections.Generic.List[string]
+    $get = { param($o, $name, $argv) $o.GetType().InvokeMember($name, [Reflection.BindingFlags]::GetProperty, $null, $o, $argv) }
+    # Un produit ou un correctif sans LocalPackage (propriete absente) ne reference aucun fichier : lecture ignoree.
+    $pkg = { param($o, $name, $argv) try { [string](& $get $o $name $argv) } catch { '' } }
+    # s-1-1-0 (tout le monde) et contexte 7 (par utilisateur gere + non gere + machine) : necessite les droits administrateur
+    # ($GT_InstallerUserSid : remplacement pour les tests non eleves).
+    $sidAll = if ($null -ne $GT_InstallerUserSid) { [string]$GT_InstallerUserSid } else { 's-1-1-0' }
+    $products = & $get $inst 'ProductsEx' @('', $sidAll, 7)
+    foreach ($p in $products) {
+        $code = [string](& $get $p 'ProductCode' $null)
+        $sid = [string](& $get $p 'UserSid' $null)
+        $ctx = [int](& $get $p 'Context' $null)
+        $lp = & $pkg $p 'InstallProperty' @('LocalPackage')
+        if ($lp) { $res.Add($lp) }
+        foreach ($pt in (& $get $inst 'PatchesEx' @($code, $sid, $ctx, 15))) {
+            $lpp = & $pkg $pt 'PatchProperty' @('LocalPackage')
+            if ($lpp) { $res.Add($lpp) }
+        }
+    }
+    # Ancienne API (produits du contexte courant) : union, pour ne rien oublier.
+    foreach ($code in (& $get $inst 'Products' $null)) {
+        $lp = & $pkg $inst 'ProductInfo' @([string]$code, 'LocalPackage')
+        if ($lp) { $res.Add($lp) }
+        foreach ($pc in (& $get $inst 'Patches' @([string]$code))) {
+            $lpp = & $pkg $inst 'PatchInfo' @([string]$pc, 'LocalPackage')
+            if ($lpp) { $res.Add($lpp) }
+        }
+    }
+    return $res.ToArray()
+}
+
+# $GT_InstallerDir et $GT_InstallerEnumerator : remplacements pour les tests. Seuls les .msi et .msp a la racine du dossier sont examines
+# (jamais $PatchCache$ ni un autre sous-dossier). Si la lecture echoue ou ne renvoie rien alors que le dossier contient des paquets : erreur, rien n'est deplace.
+function Find-OrphanInstallerFiles {
+    $dir = if ($GT_InstallerDir) { [string]$GT_InstallerDir } else { Join-Path $env:SystemRoot 'Installer' }
+    if (-not (Test-Path -LiteralPath $dir -PathType Container)) { throw ('Dossier Windows Installer introuvable : ' + $dir) }
+    $files = @(Get-ChildItem -LiteralPath $dir -File -Force | Where-Object { $_.Extension -ieq '.msi' -or $_.Extension -ieq '.msp' })
+    try {
+        if ($GT_InstallerEnumerator) { $ref = @(& $GT_InstallerEnumerator) } else { $ref = @(Get-GTInstallerReferencedPackages) }
+    } catch {
+        throw ('Lecture de Windows Installer impossible, aucun fichier déplacé : ' + $_.Exception.Message)
+    }
+    $ref = @($ref | Where-Object { $_ })
+    if ($ref.Count -eq 0) {
+        if ($files.Count -gt 0) { throw 'Windows Installer ne renvoie aucun paquet alors que le dossier en contient : aucun fichier déplacé.' }
+        return @()
+    }
+    $used = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($r in $ref) { try { [void]$used.Add([IO.Path]::GetFullPath([string]$r)) } catch { } }
+    return @($files | Where-Object { -not $used.Contains($_.FullName) } | ForEach-Object { $_.FullName })
+}
+
+# ---- Anciens pilotes -----------------------------------------------------------------------------
+
+function ConvertTo-GTVersion([string]$Text) {
+    try { return [version]$Text } catch { return [version]'0.0' }
+}
+
+# Parmi des pilotes publies (objets de Get-WindowsDriver : Driver, OriginalFileName, ProviderName, ClassName, Version, Date, BootCritical),
+# ceux qu'on peut retirer : dans chaque groupe (meme fichier .inf d'origine, meme editeur, meme classe), tous sauf le plus recent
+# (date, version, puis numero oemN) et sauf ceux utilises ($InUse : noms oemN.inf). Un pilote critique pour le demarrage est toujours garde.
+function Select-GTOldDrivers {
+    param($Drivers, [string[]]$InUse = @())
+    $use = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($u in $InUse) { if ($u) { [void]$use.Add($u) } }
+    $groups = @($Drivers | Where-Object { $_.Driver } | Group-Object { ([string](Split-Path -Leaf ([string]$_.OriginalFileName))).ToLowerInvariant() + '|' + $_.ProviderName + '|' + $_.ClassName })
+    foreach ($g in $groups) {
+        $sorted = @($g.Group | Sort-Object -Descending @{ Expression = { [datetime]$_.Date } }, @{ Expression = { ConvertTo-GTVersion ([string]$_.Version) } }, @{ Expression = { [int]('0' + [regex]::Match([string]$_.Driver, '\d+').Value) } })
+        for ($i = 1; $i -lt $sorted.Count; $i++) {
+            $d = $sorted[$i]
+            if ($use.Contains([string]$d.Driver)) { continue }
+            if ($d.BootCritical) { continue }
+            $d
+        }
+    }
+}
+
+# ---- Registre : entrees orphelines -------------------------------------------------------------
+
+$GT_UninstallRoots = @('HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall',
+                       'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall',
+                       'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall')
+$GT_MuiCachePath = 'HKCU:\Software\Classes\Local Settings\Software\Microsoft\Windows\Shell\MuiCache'
+
+# Vrai si le chemin est sur un disque fixe pret : un disque amovible, reseau ou debranche ne permet pas de conclure qu'un fichier a disparu.
+function Test-GTFixedDrive([string]$Path) {
+    try { $d = New-Object IO.DriveInfo($Path.Substring(0, 1)); return ($d.DriveType -eq [IO.DriveType]::Fixed -and $d.IsReady) } catch { return $false }
+}
+
+# Programme designe par une commande de desinstallation : chemin absolu (lecteur:\...) ou $null (MsiExec, rundll32, chemin relatif, UNC...).
+function Get-GTUninstallTarget([string]$Command) {
+    if ([string]::IsNullOrWhiteSpace($Command)) { return $null }
+    $c = [Environment]::ExpandEnvironmentVariables($Command.Trim())
+    $p = $null
+    if ($c.StartsWith('"')) {
+        $e = $c.IndexOf('"', 1)
+        if ($e -lt 2) { return $null }
+        $p = $c.Substring(1, $e - 1)
+    }
+    elseif ($c -match '^(?<p>[A-Za-z]:\\.*?\.(?:exe|com|bat|cmd))(?:\s|$)') { $p = $Matches['p'] }
+    elseif ($c -match '^(?<p>[A-Za-z]:\\\S*)') { $p = $Matches['p'] }
+    if (-not $p -or $p -notmatch '^[A-Za-z]:\\') { return $null }
+    return $p
+}
+
+# Cles Uninstall dont le programme a disparu : cible absolue, sur un disque fixe pret, inexistante, et sans WindowsInstaller=1.
+function Get-GTStaleUninstallKeys {
+    foreach ($root in @($GT_UninstallRoots)) {
+        if (-not (Test-Path -LiteralPath $root)) { continue }
+        foreach ($k in @(Get-ChildItem -LiteralPath $root -ErrorAction SilentlyContinue)) {
+            try {
+                $wi = $k.GetValue('WindowsInstaller')
+                if ($null -ne $wi -and [int]$wi -eq 1) { continue }
+                $target = Get-GTUninstallTarget ([string]$k.GetValue('UninstallString'))
+                if (-not $target) { continue }
+                if (-not (Test-GTFixedDrive $target)) { continue }
+                if (Test-Path -LiteralPath $target) { continue }
+                [pscustomobject]@{ Path = ($root.TrimEnd('\') + '\' + $k.PSChildName); Target = $target }
+            } catch { continue }
+        }
+    }
+}
+
+# Valeurs MuiCache « <chemin>.FriendlyAppName » / « .ApplicationCompany » dont le fichier a disparu (disque fixe pret).
+function Get-GTStaleMuiValues {
+    if (-not (Test-Path -LiteralPath $GT_MuiCachePath)) { return @() }
+    $k = Get-Item -LiteralPath $GT_MuiCachePath
+    $res = @()
+    foreach ($n in $k.GetValueNames()) {
+        if ($n -notmatch '^(?<p>[A-Za-z]:\\.+)\.(?:FriendlyAppName|ApplicationCompany)$') { continue }
+        $p = $Matches['p']
+        if (-not (Test-GTFixedDrive $p)) { continue }
+        if (-not (Test-Path -LiteralPath $p)) { $res += $n }
+    }
+    return $res
+}
+
+# Supprime une valeur apres l'avoir journalisee (l'annulation la remet). Renvoie $true si elle existait.
+function Remove-TweakRegistryValue {
+    param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][string]$Name)
+    $cur = Get-GTRegValue $Path $Name
+    if (-not $cur.Existed) { return $false }
+    Write-GTJournal 'registry' ($Path + '|' + $Name) $true $cur.Value $null $cur.Type
+    Remove-ItemProperty -LiteralPath $Path -Name ([WildcardPattern]::Escape($Name)) -ErrorAction Stop
+    return $true
+}
+
+# Nettoyage limite du registre : cles Uninstall orphelines (exportees .reg puis supprimees) et valeurs MuiCache obsoletes (journalisees).
+# Tous les exports sont verifies avant la premiere suppression : si l'un echoue, rien n'est supprime.
+function Clear-TweakStaleRegistry {
+    $keys = @(Get-GTStaleUninstallKeys)
+    $vals = @(Get-GTStaleMuiValues)
+    if ($keys.Count -eq 0 -and $vals.Count -eq 0) { Skip-GTItem 'Aucune entrée de désinstallation orpheline ni valeur MuiCache obsolète.' }
+    if ([string]::IsNullOrEmpty($GT_JournalPath)) { throw 'Journal d''annulation non configuré.' }
+    $dir = Split-Path -Parent $GT_JournalPath
+    if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+    $checks = @()
+    try {
+        foreach ($k in $keys) {
+            $f = Join-Path $dir ('verif-' + [Guid]::NewGuid().ToString('N') + '.reg')
+            $checks += $f
+            Export-GTRegistryKey $k.Path $f
+        }
+    } finally {
+        foreach ($f in $checks) { Remove-Item -LiteralPath $f -Force -ErrorAction SilentlyContinue }
+    }
+    $nk = 0; $nv = 0
+    foreach ($k in $keys) { if (Remove-TweakRegistryKey -Path $k.Path) { $nk++ } }
+    foreach ($n in $vals) { if (Remove-TweakRegistryValue -Path $GT_MuiCachePath -Name $n) { $nv++ } }
+    Set-GTItemNote ([string]$nk + ' entrée(s) de désinstallation et ' + [string]$nv + ' valeur(s) MuiCache retirée(s) ; exportées dans le dossier de la session, annulables depuis Historique.')
+}
+
+# Vide les valeurs d'une cle HKCU (listes de fichiers recents, historiques). Definitif, sans journal. -Recurse : sous-cles comprises (les cles restent).
+function Clear-GTRegistryValues {
+    param([Parameter(Mandatory)][string]$Path, [switch]$Recurse)
+    if ($Path -notmatch '^HKCU:\\') { throw ('Clear-GTRegistryValues est limitée à HKCU : ' + $Path) }
+    if (-not (Test-Path -LiteralPath $Path)) { return 0 }
+    $n = 0
+    foreach ($name in (Get-Item -LiteralPath $Path).GetValueNames()) {
+        if ($name -eq '') { continue }
+        Remove-ItemProperty -LiteralPath $Path -Name ([WildcardPattern]::Escape($name)) -ErrorAction Stop
+        $n++
+    }
+    if ($Recurse) {
+        foreach ($c in @(Get-ChildItem -LiteralPath $Path -ErrorAction SilentlyContinue)) {
+            $n += (Clear-GTRegistryValues -Path ($Path.TrimEnd('\') + '\' + $c.PSChildName) -Recurse)
+        }
+    }
+    return $n
+}

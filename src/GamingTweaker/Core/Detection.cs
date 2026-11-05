@@ -83,7 +83,7 @@ namespace GamingTweaker.Core
             return sb.ToString();
         }
 
-        private static void Kill(Process p)
+        internal static void Kill(Process p)
         {
             try
             {
