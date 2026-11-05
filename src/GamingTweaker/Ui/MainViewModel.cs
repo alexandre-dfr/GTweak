@@ -100,7 +100,8 @@ namespace GamingTweaker.Ui
         public Func<IReadOnlyList<OptionViewModel>, bool> ConfirmerProfilRisque { get; set; }
 
         public int SelectedCount { get { return Options.Count(o => o.IsChecked); } }
-        public bool AUneSelection { get { return SelectedCount > 0; } }
+        /// <summary>Vrai si au moins une option sera réellement exécutée (une option à liste sans élément choisi ne compte pas).</summary>
+        public bool AUneSelection { get { return BuildSelection().OptionIds.Count > 0; } }
         public string ResumeSelection { get { var n = SelectedCount; return n + (n > 1 ? " cochés" : " coché"); } }
 
         public string MenuCourant
@@ -195,6 +196,8 @@ namespace GamingTweaker.Ui
             p.Listes = profilListes == null ? new ProfilListes() : profilListes.Cloner();
             avertissementProfil = "";
             var perdues = new List<string>();
+            // Le profil reflète exactement ce qui est coché : la clé de chaque option à liste est retirée puis réécrite si elle est cochée et non vide.
+            foreach (var o in Options.Where(o => o.Liste != null)) Profils.RetirerListe(p.Listes, o.Item.Liste);
             foreach (var o in Options.Where(o => o.IsChecked && o.Liste != null))
             {
                 var ecartes = new List<string>();
@@ -404,7 +407,7 @@ namespace GamingTweaker.Ui
         {
             return Options.Where(o => o.IsChecked).Select(o => new PreviewRow
             {
-                Titre = o.Titre + (o.Liste != null && o.Liste.EstVide ? " : aucun élément choisi, non exécutée" : ""), Risque = o.Risque,
+                Titre = o.Titre + (o.Liste == null ? "" : o.Liste.EstVide ? " : aucun élément choisi, non exécutée" : " (" + o.Liste.ResumeCourt + ")"), Risque = o.Risque,
                 Reversibilite = o.Reversible ? "Annulable" : "définitif",
                 Redemarrage = o.Redemarrage ? "Redémarrage requis" : "",
                 Taille = "—",

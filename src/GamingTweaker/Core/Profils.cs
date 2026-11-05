@@ -143,8 +143,11 @@ namespace GamingTweaker.Core
         private static readonly Regex ReOption = new Regex(@"^[a-z0-9][a-z0-9.\-]*\z", RegexOptions.CultureInvariant);
         private static readonly Regex ReWinget = new Regex(@"^[A-Za-z0-9][A-Za-z0-9.\-_+]*\z", RegexOptions.CultureInvariant);
         private static readonly Regex ReKb = new Regex(@"^KB\d{4,8}\z", RegexOptions.CultureInvariant);
-        /// <summary>Élément d'une liste générique : « * », ou un identifiant éventuellement précédé de « ! » (les deux-points servent aux clés de démarrage « HKCU:Run:Nom »).</summary>
-        private static readonly Regex ReGenerique = new Regex(@"^(\*|!?[A-Za-z0-9][A-Za-z0-9 _.\-+():]*)\z", RegexOptions.CultureInvariant);
+        /// <summary>
+        /// Élément d'une liste générique : « * », ou un nom éventuellement précédé de « ! » (lettres et chiffres Unicode, espaces, _ . - + ( ) : ' , &amp; ® ™ ;
+        /// les deux-points servent aux clés de démarrage « HKCU:Run:Nom »). Guillemets, $, accent grave, ; | &lt; &gt;, retours à la ligne et caractères de contrôle sont refusés.
+        /// </summary>
+        private static readonly Regex ReGenerique = new Regex(@"^(\*|!?[\p{L}\p{N}][\p{L}\p{M}\p{N} _.\-+():',&\u00AE\u2122]*)\z", RegexOptions.CultureInvariant);
         public static bool ElementValide(string v) { return v != null && ReGenerique.IsMatch(v); }
         private static readonly Regex ReNom = new Regex(@"^[A-Za-z0-9][A-Za-z0-9_.\-]*\z", RegexOptions.CultureInvariant);
 
@@ -243,6 +246,24 @@ namespace GamingTweaker.Core
                     Attacher(res, catalogue, kv.Key, tab.Select(t => (string)t).ToList());
                 }
             return res;
+        }
+
+        /// <summary>Faux si la clé de profil ne peut pas contenir « * » (services, bloatware, pilote).</summary>
+        public static bool CleSupporteTous(string cle) { return cle != "services" && cle != "bloatware" && cle != "pilote"; }
+
+        /// <summary>Retire la liste de cette clé (typée ou générique) du profil.</summary>
+        public static void RetirerListe(ProfilListes l, string cle)
+        {
+            if (l == null || string.IsNullOrEmpty(cle)) return;
+            switch (cle)
+            {
+                case "winget": l.Winget = null; return;
+                case "windowsUpdate": l.WindowsUpdate = null; return;
+                case "bloatware": l.Bloatware = null; return;
+                case "services": l.Services = null; return;
+                case "pilote": l.Pilote = null; return;
+            }
+            if (l.Inconnues != null) l.Inconnues.Remove(cle);
         }
 
         private static readonly string[] ClesTypees = { "winget", "windowsUpdate", "bloatware", "services", "pilote" };

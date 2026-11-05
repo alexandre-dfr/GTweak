@@ -18,7 +18,7 @@ namespace GamingTweaker.Ui
             Item = item; this.confirmer = confirmer;
             if (fournisseurListe != null)
             {
-                Liste = new ListeSelectionViewModel(fournisseurListe);
+                Liste = new ListeSelectionViewModel(fournisseurListe, () => { var h = CocheChanged; if (h != null) h(); });
                 BasculerListeCommand = new RelayCommand(_ => { ListeOuverte = !ListeOuverte; });
             }
             NiveauRisque = item.Risque ?? RiskLevel.Sur;

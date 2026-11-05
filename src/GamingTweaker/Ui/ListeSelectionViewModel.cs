@@ -60,6 +60,12 @@ namespace GamingTweaker.Ui
         public bool Charge { get { return charge; } private set { Set(ref charge, value); } }
         public bool EnChargement { get { return enCours; } private set { Set(ref enCours, value); } }
         public string Erreur { get { return erreur; } private set { Set(ref erreur, value ?? ""); } }
+        /// <summary>Message technique de l'erreur (secondaire).</summary>
+        public string ErreurDetail { get { return erreurDetail; } private set { Set(ref erreurDetail, value ?? ""); } }
+        private string erreurDetail = "";
+
+        /// <summary>Faux quand la clé de profil de cette liste ne peut pas stocker « Tout » : la case n'est alors pas proposée.</summary>
+        public bool SupporteTous { get { return Profils.CleSupporteTous(provider.ListId); } }
 
         public bool Tous
         {
@@ -67,6 +73,7 @@ namespace GamingTweaker.Ui
             set
             {
                 if (tous == value) return;
+                if (value && !SupporteTous) { Raise("Tous"); return; }
                 tous = value;
                 if (charge)
                 {
@@ -89,7 +96,10 @@ namespace GamingTweaker.Ui
         /// <summary>Vrai quand aucun élément n'est choisi.</summary>
         public bool EstVide { get { return VersSelection().Count == 0; } }
 
-        public string Resume
+        public string Resume { get { return "Choisir… (" + ResumeCourt + ")"; } }
+
+        /// <summary>« Tous », « Tous sauf 2 », « 3 sélectionnés ».</summary>
+        public string ResumeCourt
         {
             get
             {
@@ -101,13 +111,13 @@ namespace GamingTweaker.Ui
                     x = n == 0 ? "Tous" : "Tous sauf " + n;
                 }
                 else x = sel.Count + (sel.Count > 1 ? " sélectionnés" : " sélectionné");
-                return "Choisir… (" + x + ")";
+                return x;
             }
         }
 
         private void Notifier()
         {
-            Raise("Resume"); Raise("EstVide");
+            Raise("Resume"); Raise("ResumeCourt"); Raise("EstVide");
             if (changed != null) changed();
         }
 
@@ -121,7 +131,7 @@ namespace GamingTweaker.Ui
 
         private async Task ChargerInterneAsync()
         {
-            EnChargement = true; Erreur = "";
+            EnChargement = true; Erreur = ""; ErreurDetail = "";
             try
             {
                 var res = await provider.LoadAsync(CancellationToken.None);
@@ -131,7 +141,8 @@ namespace GamingTweaker.Ui
             }
             catch (Exception ex)
             {
-                Erreur = "Impossible de charger la liste : " + ex.Message;
+                Erreur = "Impossible de charger la liste des éléments. Repliez puis dépliez la liste pour réessayer.";
+                ErreurDetail = ex.Message;
             }
             finally { EnChargement = false; }
             Notifier();

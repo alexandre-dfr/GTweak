@@ -117,10 +117,10 @@ namespace GamingTweaker.Tests
             var vm = Cree(f, It("opt.start", "startup"));
             var l = vm.Options.Single().Liste;
             await l.ChargerAsync();
-            Assert.False(l.Charge); Assert.Contains("boum", l.Erreur); Assert.Contains("Impossible", l.Erreur);
+            Assert.False(l.Charge); Assert.Contains("Impossible", l.Erreur); Assert.DoesNotContain("boum", l.Erreur); Assert.Contains("boum", l.ErreurDetail);
             f.Echec = null;
             await l.ChargerAsync();
-            Assert.True(l.Charge); Assert.Equal("", l.Erreur); Assert.Equal(2, f.Appels);
+            Assert.True(l.Charge); Assert.Equal("", l.Erreur); Assert.Equal("", l.ErreurDetail); Assert.Equal(2, f.Appels);
         }
 
         [Fact]
@@ -207,6 +207,89 @@ namespace GamingTweaker.Tests
             Assert.Equal(new[] { "*", "!HKCU:Run:Autre" }, res.Selection.Listes["opt.start"]);
         }
 
+        private static Profil ProfilAvecServices()
+            => new Profil { Nom = "t", Options = new List<string> { "opt.svc" }, Listes = new ProfilListes { Services = new List<string> { "Fax" } } };
+
+        [Fact]
+        public async Task Valeur_perimee_d_un_profil_charge_ne_survit_pas_a_l_enregistrement()
+        {
+            var f = new Fournisseur { ListId = "services", Entrees = new List<ListEntry> { new ListEntry { Key = "Fax", Titre = "Fax", Risque = RiskLevel.Avance }, new ListEntry { Key = "Spooler", Titre = "Spooler", Risque = RiskLevel.Avance } } };
+            var vm = Cree(f, It("opt.svc", "services"));
+            vm.LoadProfil(ProfilAvecServices());
+            var o = vm.Options.Single();
+            Assert.Equal(new[] { "Fax" }, vm.ToProfil("p").Listes.Services);
+            await o.Liste.ChargerAsync();
+            foreach (var e in o.Liste.Elements) e.IsChecked = false;   // liste vide
+            Assert.Null(vm.ToProfil("p").Listes.Services);
+            o.Liste.Elements[0].IsChecked = true;
+            Assert.Equal(new[] { o.Liste.Elements[0].Key }, vm.ToProfil("p").Listes.Services);
+            o.IsChecked = false;                                         // option décochée : clé retirée aussi
+            Assert.Null(vm.ToProfil("p").Listes.Services);
+        }
+
+        [Fact]
+        public void Valeur_perimee_d_une_cle_generique_est_retiree_quand_la_liste_devient_vide()
+        {
+            var vm = Cree(new Fournisseur(), It("opt.start", "startup"));
+            var p = new Profil { Nom = "t", Options = new List<string> { "opt.start" }, Listes = new ProfilListes { Inconnues = new Dictionary<string, Newtonsoft.Json.Linq.JToken> { { "startup", new Newtonsoft.Json.Linq.JArray("HKCU:Run:Mon App") } } } };
+            vm.LoadProfil(p);
+            vm.Options.Single().Liste.DepuisSelection(new string[0]);
+            Assert.True(vm.ToProfil("p").Listes.Inconnues == null || !vm.ToProfil("p").Listes.Inconnues.ContainsKey("startup"));
+        }
+
+        [Fact]
+        public async Task Tout_n_est_pas_propose_quand_la_cle_de_profil_ne_peut_pas_le_contenir()
+        {
+            var vm = Cree(new Fournisseur { ListId = "services" }, It("opt.svc", "services"));
+            var l = vm.Options.Single().Liste;
+            Assert.False(l.SupporteTous);
+            await l.ChargerAsync();
+            l.Tous = true;
+            Assert.False(l.Tous);
+            Assert.DoesNotContain("*", l.VersSelection());
+            Assert.True(Cree(new Fournisseur(), It("opt.start", "startup")).Options.Single().Liste.SupporteTous);
+        }
+
+        [Fact]
+        public void Lancer_et_apercu_exigent_une_option_executable()
+        {
+            var vm = Cree(new Fournisseur(), It("opt.start", "startup"));
+            vm.Options.Single().IsChecked = true;                        // liste vide : rien à exécuter
+            Assert.False(vm.AUneSelection);
+            vm.Options.Single().Liste.DepuisSelection(new[] { "HKCU:Run:Autre" });
+            Assert.True(vm.AUneSelection);
+        }
+
+        [Fact]
+        public void Apercu_affiche_le_resume_de_la_liste()
+        {
+            var vm = Cree(new Fournisseur(), It("opt.start", "startup"));
+            var o = vm.Options.Single();
+            o.Liste.DepuisSelection(new[] { "*", "!a", "!b" });
+            o.IsChecked = true;
+            Assert.Contains("Tous sauf 2", vm.BuildPreview().Single().Titre);
+            o.Liste.DepuisSelection(new[] { "a", "b", "c" });
+            Assert.Contains("3 sélectionnés", vm.BuildPreview().Single().Titre);
+        }
+
+        [Fact]
+        public async Task Nom_non_ascii_survit_a_l_aller_retour_du_profil()
+        {
+            var f = new Fournisseur();
+            f.Entrees.Add(new ListEntry { Key = "HKCU:Run:Café d'Été & Cie, ®", Titre = "Café", Detail = "", Risque = RiskLevel.Sur });
+            var vm = Cree(f, It("opt.start", "startup"));
+            var o = vm.Options.Single(); await o.Liste.ChargerAsync();
+            o.Liste.Elements.Single(e => e.Key.Contains("Café")).IsChecked = true;
+            o.IsChecked = true;
+            Directory.CreateDirectory(tmp);
+            var chemin = Path.Combine(tmp, "p.json");
+            Profils.Save(vm.ToProfil("p"), chemin);
+            var load = Profils.Load(chemin, new[] { "startup" });
+            Assert.Null(load.Erreur);
+            var res = Profils.Resolve(load.Profil, vm.Catalogue, new MachineFacts { WindowsMajor = "10", Edition = "Pro" });
+            Assert.Equal(new[] { "HKCU:Run:Café d'Été & Cie, ®" }, res.Selection.Listes["opt.start"]);
+        }
+
         [Fact]
         public void Liste_typee_services_reste_enregistree_en_cle_typee()
         {
@@ -241,6 +324,24 @@ namespace GamingTweaker.Tests
         }
 
         [Theory]
+        [InlineData("[\"HKCU:Run:Café\"]")]
+        [InlineData("[\"HKCU:Run:L'appli\"]")]
+        [InlineData("[\"HKCU:Run:A & B, C\"]")]
+        [InlineData("[\"!HKCU:Run:Logitech®\"]")]
+        [InlineData("[\"HKCU:Run:Спутник 日本\"]")]
+        public void Element_unicode_est_accepte(string valeur)
+        {
+            Assert.Null(Profils.Load(Ecrire(Json("{\"startup\":" + valeur + "}")), Cles).Erreur);
+        }
+
+        [Theory]
+        [InlineData("[\"a\nb\"]")]
+        [InlineData("[\"a\u0000b\"]")]
+        [InlineData("[\"a`b\"]")]
+        [InlineData("[\"a<b\"]")]
+        [InlineData("[\"a>b\"]")]
+        [InlineData("[\"a\u202eb\"]")]
+        [InlineData("[\"\u0301a\"]")]
         [InlineData("[\"a;b\"]")]
         [InlineData("[\"$(x)\"]")]
         [InlineData("[\"a\\\"b\"]")]

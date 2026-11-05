@@ -157,8 +157,16 @@
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
+                        <TextBlock Text="{Binding Liste.ErreurDetail}" Foreground="{StaticResource MutedBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,4">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                                    <Style.Triggers><DataTrigger Binding="{Binding Liste.ErreurDetail}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
                         <StackPanel Visibility="{Binding Liste.Charge, Converter={StaticResource BoolVis}}">
-                            <CheckBox Content="Tout (y compris les éléments apparus plus tard)" IsChecked="{Binding Liste.Tous, Mode=TwoWay}" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <CheckBox Content="Tout (y compris les éléments apparus plus tard)" IsChecked="{Binding Liste.Tous, Mode=TwoWay}" FontWeight="SemiBold" Margin="0,0,0,6"
+                                      Visibility="{Binding Liste.SupporteTous, Converter={StaticResource BoolVis}}"/>
                             <TextBlock Text="Aucun élément à proposer sur ce PC." Foreground="{StaticResource MutedBrush}">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
