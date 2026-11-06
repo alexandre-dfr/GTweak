@@ -47,6 +47,15 @@ namespace GamingTweaker
                 + "\r\n\r\nLe charger plus tard les appliquera à nouveau. L'enregistrer quand même ?",
                 "Profil avec options risquées", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes;
 
+            var info = new InfoViewModel(() => Info.InfoCollector.Collect(), () => new Info.Capteurs())
+            {
+                ConfirmerCapteurs = t => MessageBox.Show(fenetre, t, "Activer les capteurs", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) == MessageBoxResult.Yes,
+                ConfirmerPawnIo = t => MessageBox.Show(fenetre, t, "Installer PawnIO", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) == MessageBoxResult.Yes,
+                InstallerPawnIo = Info.PawnIoInstaller.Install,
+            };
+            vm.Info = info;
+            Exit += (s, ev) => info.Dispose();
+
             vm.Restauration = new RestaurationService(paths, ElevationCheck.SameUserAsDesktop);
 
             fenetre = new Ui.MainWindow(vm);
