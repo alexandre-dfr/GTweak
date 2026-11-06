@@ -1,6 +1,7 @@
 <Window x:Class="GamingTweaker.Ui.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:GamingTweaker.Ui"
         Style="{StaticResource AppWindow}"
         Title="GamingTweaker" Width="1180" Height="720" MinWidth="1000" MinHeight="640"
         WindowStartupLocation="CenterScreen">
@@ -222,14 +223,23 @@
         </Grid.RowDefinitions>
 
         <!-- Avertissement d'élévation -->
-        <Border Grid.Row="0" Background="{StaticResource WarnBg}" Padding="20,10">
-            <Border.Style>
-                <Style TargetType="Border">
-                    <Style.Triggers><DataTrigger Binding="{Binding Bandeau}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
-                </Style>
-            </Border.Style>
-            <TextBlock Text="{Binding Bandeau}" TextWrapping="Wrap" Foreground="{StaticResource AvanceFg}"/>
-        </Border>
+        <StackPanel Grid.Row="0">
+            <Border Background="{StaticResource WarnBg}" Padding="20,10">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Style.Triggers><DataTrigger Binding="{Binding Bandeau}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <TextBlock Text="{Binding Bandeau}" TextWrapping="Wrap" Foreground="{StaticResource AvanceFg}"/>
+            </Border>
+            <!-- Mode Jeu laissé actif (arrêt brutal, redémarrage) -->
+            <Border Background="{StaticResource WarnBg}" Padding="20,8" Visibility="{Binding ModeJeu.EstActif, Converter={StaticResource BoolVis}, FallbackValue=Collapsed}">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Content="Rétablir" Command="{Binding ModeJeu.RetablirCommand}"/>
+                    <TextBlock Text="Mode Jeu encore actif : des services ou des processus sont toujours arrêtés." Foreground="{StaticResource AvanceFg}" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                </DockPanel>
+            </Border>
+        </StackPanel>
         <!-- Message d'information -->
         <Border Grid.Row="1" Background="{StaticResource PanelBrush}" Padding="20,8">
             <Border.Style>
@@ -348,6 +358,11 @@
                         </Style>
                     </TextBlock.Style>
                 </TextBlock>
+
+                <!-- Mode Jeu -->
+                <Border Grid.Row="1" Grid.RowSpan="2" Visibility="{Binding EstModeJeu, Converter={StaticResource BoolVis}}">
+                    <local:ModeJeuView DataContext="{Binding ModeJeu}"/>
+                </Border>
             </Grid>
         </Grid>
 

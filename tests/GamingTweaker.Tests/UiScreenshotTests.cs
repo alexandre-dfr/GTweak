@@ -117,6 +117,53 @@ namespace GamingTweaker.Tests
             w.Close(); Pump(d);
         }
 
+        /// <summary>Vues des tâches 14 à 16 avec des données d'exemple : PNG dans le sous-dossier « taches-14-16 ».</summary>
+        private static void CapturerVuesAvancees(Dispatcher d)
+        {
+            var sousDossier = Path.Combine(Dossier, "taches-14-16");
+            Directory.CreateDirectory(sousDossier);
+            var tmp = Path.Combine(Path.GetTempPath(), "gt-shots-v-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tmp);
+            var paths = new DataPaths { ProfilsDir = Path.Combine(tmp, "Profils"), MachineDir = tmp, SessionsDir = Path.Combine(tmp, "S"), QuarantineDir = Path.Combine(tmp, "Q") };
+            var vm = new MainViewModel(Exemples(), new MachineFacts { WindowsMajor = "11", Edition = "Pro" }, paths,
+                its => Task.FromResult(its.ToDictionary(i => i.Id, i => DetectState.NotApplied)), null, o => true);
+            vm.ModeJeu = new ModeJeuViewModel(new ModeJeu(tmp, new Faux14()),
+                () => new List<ServiceChoix>
+                {
+                    new ServiceChoix { Nom = "SysMain", Affichage = "SysMain (Superfetch)" },
+                    new ServiceChoix { Nom = "WSearch", Affichage = "Windows Search" },
+                    new ServiceChoix { Nom = "Spooler", Affichage = "Spouleur d'impression" },
+                    new ServiceChoix { Nom = "DiagTrack", Affichage = "Expériences des utilisateurs connectés et télémétrie" },
+                    new ServiceChoix { Nom = "XblGameSave", Affichage = "Jeux sauvegardés sur Xbox Live" },
+                },
+                () => new List<ProcessusChoix>
+                {
+                    new ProcessusChoix { Nom = "Discord", Chemin = @"C:\Users\Moi\AppData\Local\Discord\app-1.0.9\Discord.exe" },
+                    new ProcessusChoix { Nom = "OneDrive", Chemin = @"C:\Program Files\Microsoft OneDrive\OneDrive.exe" },
+                    new ProcessusChoix { Nom = "chrome", Chemin = @"C:\Program Files\Google\Chrome\Application\chrome.exe" },
+                    new ProcessusChoix { Nom = "Steam", Chemin = @"C:\Program Files (x86)\Steam\steam.exe" },
+                });
+            vm.ModeJeu.Actualiser();
+            for (int i = 0; i < 40 && vm.ModeJeu.Services.Count == 0; i++) { Thread.Sleep(25); Pump(d); }
+            vm.ModeJeu.Services[0].IsChecked = true; vm.ModeJeu.Services[1].IsChecked = true;
+            vm.ModeJeu.Processus[0].IsChecked = true; vm.ModeJeu.Processus[1].IsChecked = true;
+            var w = new MainWindow(vm); Prepare(w, 1280, 720);
+            vm.MenuCourant = "Mode Jeu";
+            w.Show(); Pump(d);
+            Capture(w, "14-mode-jeu", sousDossier);
+            w.Close(); Pump(d);
+            try { Directory.Delete(tmp, true); } catch (IOException) { }
+        }
+
+        private class Faux14 : IModeJeuActions
+        {
+            public ServiceState StopService(string n) { return ServiceState.Running; }
+            public void StartService(string n) { }
+            public bool KillProcess(string n) { return true; }
+            public void RestartProcess(string c) { }
+            public string SetPlan(string g) { return g; }
+        }
+
         private static void Run()
         {
             var app = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
@@ -168,6 +215,7 @@ namespace GamingTweaker.Tests
             vm.Recherche = "";
 
             CapturerOptionAListe(d);
+            CapturerVuesAvancees(d);
 
             var prev = new PreviewWindow(vm); Prepare(prev, 1000, 680); prev.Show(); Pump(d);
             Capture(prev, "10-apercu"); prev.Close();

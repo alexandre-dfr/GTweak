@@ -49,6 +49,11 @@ namespace GamingTweaker
 
             vm.Restauration = new RestaurationService(paths, ElevationCheck.SameUserAsDesktop);
 
+            vm.ModeJeu = new ModeJeuViewModel(new ModeJeu(paths.MachineDir, new ModeJeuSysteme()), ModeJeuListes.ListerServices, ModeJeuListes.ListerProcessus)
+            {
+                Confirmer = texte => MessageBox.Show(fenetre, texte, "Mode Jeu", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes,
+            };
+
             fenetre = new Ui.MainWindow(vm);
             fenetre.Show();
             fenetre.LancerControlesDemarrage(paths);
