@@ -10,3 +10,4 @@ publish/
 
 tools/**/__pycache__/
 tools/**/.venv/
+.claude/worktrees/
