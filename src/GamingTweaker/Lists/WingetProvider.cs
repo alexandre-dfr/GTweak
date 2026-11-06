@@ -1,0 +1,127 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
+using GamingTweaker.Core;
+
+namespace GamingTweaker.Lists
+{
+    /// <summary>
+    /// Mises à jour d'applications proposées par <c>winget upgrade</c>. La sortie est analysée par la position des colonnes lue sur la ligne
+    /// d'en-tête, au-dessus des tirets, donc sans dépendre de la langue ni des noms tronqués (« … »). Même algorithme que ConvertFrom-GTWingetUpgrade (Common.ps1).
+    /// </summary>
+    public class WingetProvider : IListProvider, IListInfo
+    {
+        private static readonly Regex Tirets = new Regex(@"^-{5,}$", RegexOptions.CultureInvariant);
+        private static readonly Regex IdValide = new Regex(@"^[A-Za-z0-9][A-Za-z0-9._+\-]*$", RegexOptions.CultureInvariant);
+
+        private readonly Func<CancellationToken, Task<string>> executer;
+
+        public WingetProvider(Func<CancellationToken, Task<string>> executer = null) { this.executer = executer ?? ExecuterWinget; }
+
+        public string ListId { get { return "winget"; } }
+
+        /// <summary>Message affiché sous la liste (winget absent, aucune mise à jour...) ; vide si tout va bien.</summary>
+        public string Message { get; private set; } = "";
+        public string Lien { get { return ""; } }
+
+        /// <summary>Sortie de « winget upgrade » → une entrée par application ayant une mise à jour (Key = identifiant winget).</summary>
+        public static IReadOnlyList<ListEntry> Parse(string output)
+        {
+            var res = new List<ListEntry>();
+            if (string.IsNullOrEmpty(output)) return res;
+            var lignes = output.Replace("\r\n", "\n").Split('\n').Select(l =>
+            {
+                var t = l;
+                var cr = t.LastIndexOf('\r');
+                if (cr >= 0) t = t.Substring(cr + 1);   // barre de progression écrite avec des retours chariot
+                return t.TrimStart('﻿').TrimEnd();
+            }).ToList();
+
+            int sep = -1;
+            for (int i = 1; i < lignes.Count; i++)
+                if (Tirets.IsMatch(lignes[i]) && lignes[i - 1].Trim().Length > 0) { sep = i; break; }
+            if (sep < 0) return res;
+
+            var entete = lignes[sep - 1];
+            var debuts = new List<int>();
+            for (int p = 0; p < entete.Length; p++)
+                if (entete[p] != ' ' && (p == 0 || (entete[p - 1] == ' ' && (p == 1 || entete[p - 2] == ' ')))) debuts.Add(p);
+            if (debuts.Count < 3) return res;
+
+            var vus = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            for (int i = sep + 1; i < lignes.Count; i++)
+            {
+                var ligne = lignes[i];
+                if (ligne.Trim().Length == 0) break;   // fin du tableau : le pied de page et les tableaux suivants sont ignorés
+                bool ok = true;
+                for (int k = 1; k < debuts.Count; k++)
+                    if (ligne.Length > debuts[k] - 1 && ligne[debuts[k] - 1] != ' ') ok = false;
+                if (!ok || ligne.Length <= debuts[1]) continue;
+                var cellules = new List<string>();
+                for (int k = 0; k < debuts.Count; k++)
+                {
+                    int de = debuts[k];
+                    int a = k + 1 < debuts.Count ? debuts[k + 1] : ligne.Length;
+                    cellules.Add(de >= ligne.Length ? "" : ligne.Substring(de, Math.Min(a, ligne.Length) - de).Trim());
+                }
+                var id = cellules[1];
+                if (!IdValide.IsMatch(id) || !vus.Add(id)) continue;
+                var nom = cellules[0];
+                var dispo = cellules.Count > 3 ? cellules[3] : "";
+                var source = cellules.Count > 4 ? cellules[4] : "";
+                res.Add(new ListEntry
+                {
+                    Key = id,
+                    Titre = (nom.Length == 0 ? id : nom) + " (" + id + ")",
+                    Detail = cellules[2] + " → " + dispo + (source.Length > 0 ? " — source : " + source : ""),
+                    Risque = RiskLevel.Sur,
+                });
+            }
+            return res;
+        }
+
+        public async Task<IReadOnlyList<ListEntry>> LoadAsync(CancellationToken ct)
+        {
+            string sortie;
+            try { sortie = await executer(ct); }
+            catch (Win32Exception)
+            {
+                Message = "winget est introuvable sur ce PC : les mises à jour d'applications seront ignorées. Installez « Programme d'installation d'application » depuis le Microsoft Store.";
+                return new List<ListEntry>();
+            }
+            var liste = Parse(sortie);
+            Message = liste.Count == 0 ? "Aucune mise à jour d'application disponible." : "";
+            return liste;
+        }
+
+        private static async Task<string> ExecuterWinget(CancellationToken ct)
+        {
+            return await Task.Run(() =>
+            {
+                var psi = new ProcessStartInfo("winget.exe", "upgrade --accept-source-agreements --disable-interactivity")
+                {
+                    UseShellExecute = false, CreateNoWindow = true,
+                    RedirectStandardOutput = true, RedirectStandardError = true,
+                    StandardOutputEncoding = Encoding.UTF8, StandardErrorEncoding = Encoding.UTF8,
+                };
+                using (var p = Process.Start(psi))
+                {
+                    var err = p.StandardError.ReadToEndAsync();
+                    var sortie = p.StandardOutput.ReadToEndAsync();
+                    using (ct.Register(() => { try { p.Kill(); } catch (Exception) { } }))
+                    {
+                        if (!p.WaitForExit(120000)) { try { p.Kill(); } catch (Exception) { } throw new TimeoutException("winget n'a pas répondu à temps."); }
+                    }
+                    ct.ThrowIfCancellationRequested();
+                    return sortie.Result;
+                }
+            }, ct);
+        }
+    }
+}

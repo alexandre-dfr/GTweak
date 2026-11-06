@@ -20,4 +20,12 @@ namespace GamingTweaker.Lists
         string ListId { get; }
         Task<IReadOnlyList<ListEntry>> LoadAsync(CancellationToken ct);
     }
+
+    /// <summary>Texte et lien affichés sous la liste (repli de l'interface).</summary>
+    public interface IListInfo
+    {
+        string Message { get; }
+        /// <summary>Adresse https à ouvrir par « Ouvrir la page officielle » ; vide si aucun lien.</summary>
+        string Lien { get; }
+    }
 }

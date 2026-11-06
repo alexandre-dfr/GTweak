@@ -13,7 +13,7 @@ namespace GamingTweaker.Tests
 
         [Fact] public void Toute_entree_source_a_une_decision() => Assert.Empty(Couverture.SansDecision());
 
-        [Fact(Skip = "réactivé après la Task 12")]
+        [Fact]
         public void Tout_id_cite_existe_dans_le_catalogue() => Assert.Empty(Couverture.IdsInconnus(Catalogue.LoadEmbedded()));
 
         [Fact] public void Toute_exclusion_a_une_raison() => Assert.Empty(Couverture.ExclusionsSansRaison());

@@ -64,6 +64,13 @@ namespace GamingTweaker.Ui
         public string ErreurDetail { get { return erreurDetail; } private set { Set(ref erreurDetail, value ?? ""); } }
         private string erreurDetail = "";
 
+        /// <summary>Texte d'information du fournisseur (winget absent, recherche NVIDIA en échec...), affiché sous la liste.</summary>
+        public string Message { get { return message; } private set { Set(ref message, value ?? ""); } }
+        private string message = "";
+        /// <summary>Adresse https de la page officielle (repli) ; vide si aucun lien.</summary>
+        public string Lien { get { return lien; } private set { Set(ref lien, value ?? ""); } }
+        private string lien = "";
+
         /// <summary>Faux quand la clé de profil de cette liste ne peut pas stocker « Tout » : la case n'est alors pas proposée.</summary>
         public bool SupporteTous { get { return Profils.CleSupporteTous(provider.ListId); } }
 
@@ -136,6 +143,8 @@ namespace GamingTweaker.Ui
             {
                 var res = await provider.LoadAsync(CancellationToken.None);
                 disponibles = res ?? new List<ListEntry>();
+                var info = provider as IListInfo;
+                if (info != null) { Message = info.Message; Lien = info.Lien; }
                 Appliquer(brut);
                 Charge = true;
             }

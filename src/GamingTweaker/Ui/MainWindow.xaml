@@ -165,6 +165,20 @@
                             </TextBlock.Style>
                         </TextBlock>
                         <StackPanel Visibility="{Binding Liste.Charge, Converter={StaticResource BoolVis}}">
+                            <TextBlock Text="{Binding Liste.Message}" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,6">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                                        <Style.Triggers><DataTrigger Binding="{Binding Liste.Message}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <Button Content="Ouvrir la page officielle" Click="OuvrirLien_Click" Tag="{Binding Liste.Lien}" HorizontalAlignment="Left" Cursor="Hand" Padding="10,4" Margin="0,0,0,6">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                        <Style.Triggers><DataTrigger Binding="{Binding Liste.Lien}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
                             <CheckBox Content="Tout (y compris les éléments apparus plus tard)" IsChecked="{Binding Liste.Tous, Mode=TwoWay}" FontWeight="SemiBold" Margin="0,0,0,6"
                                       Visibility="{Binding Liste.SupporteTous, Converter={StaticResource BoolVis}}"/>
                             <TextBlock Text="Aucun élément à proposer sur ce PC." Foreground="{StaticResource MutedBrush}">

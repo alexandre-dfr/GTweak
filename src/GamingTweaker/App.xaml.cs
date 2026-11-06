@@ -33,6 +33,11 @@ namespace GamingTweaker
             registre.Register(ServicesProvider.Standard());
             registre.Register(ServicesProvider.Xbox());
             registre.Register(new StartupProvider());
+            registre.Register(BloatwareProvider.Standard());
+            registre.Register(BloatwareProvider.Tierces());
+            registre.Register(new WingetProvider());
+            registre.Register(new WindowsUpdateProvider());
+            registre.Register(new GpuDriverProvider());
 
             MainWindow fenetre = null;
             var vm = new MainViewModel(catalogue, facts, paths, its => Detection.RunAsync(its),

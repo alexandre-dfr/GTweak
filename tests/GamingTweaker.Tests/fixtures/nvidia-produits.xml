@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?><LookupValueSearch><LookupValues><LookupValue ParentID="107">
+<Name>GeForce RTX 2080 Ti</Name>
+<Value>877</Value>
+</LookupValue><LookupValue ParentID="107">
+<Name>GeForce RTX 2080 SUPER</Name>
+<Value>904</Value>
+</LookupValue><LookupValue ParentID="107">
+<Name>GeForce RTX 2080</Name>
+<Value>879</Value>
+</LookupValue><LookupValue ParentID="107">
+<Name>GeForce RTX 2070 SUPER</Name>
+<Value>903</Value>
+</LookupValue><LookupValue ParentID="107">
+<Name>GeForce RTX 2070</Name>
+<Value>880</Value>
+</LookupValue><LookupValue ParentID="107">
+<Name>GeForce RTX 2060 SUPER</Name>
+<Value>902</Value>
+</LookupValue><LookupValue ParentID="107">
+<Name>GeForce RTX 2060</Name>
+<Value>887</Value>
+</LookupValue><LookupValue ParentID="111">
+<Name>GeForce RTX 2080 SUPER</Name>
+<Value>919</Value>
+</LookupValue><LookupValue ParentID="111">
+<Name>GeForce RTX 2080</Name>
+<Value>890</Value>
+</LookupValue><LookupValue ParentID="111">
+<Name>GeForce RTX 2070 SUPER</Name>
+<Value>920</Value>
+</LookupValue><LookupValue ParentID="111">
+<Name>GeForce RTX 2070</Name>
+<Value>889</Value>
+</LookupValue><LookupValue ParentID="111">
+<Name>GeForce RTX 2060</Name>
+<Value>888</Value>
+</LookupValue><LookupValue ParentID="111">
+<Name>GeForce RTX 2050</Name>
+<Value>978</Value>
+</LookupValue></LookupValues></LookupValueSearch>
