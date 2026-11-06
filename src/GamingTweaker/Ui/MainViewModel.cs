@@ -136,6 +136,10 @@ namespace GamingTweaker.Ui
         /// <summary>Vue-modèle du Mode Jeu (null tant qu'elle n'est pas configurée par l'application).</summary>
         public ModeJeuViewModel ModeJeu { get { return modeJeuVm; } set { Set(ref modeJeuVm, value); } }
 
+        private RoutineViewModel routineVm;
+        /// <summary>Planification de la routine (null tant qu'elle n'est pas configurée par l'application).</summary>
+        public RoutineViewModel Routine { get { return routineVm; } set { Set(ref routineVm, value); } }
+
         private HistoriqueViewModel historiqueVm;
         /// <summary>Vue-modèle de l'historique (null tant qu'elle n'est pas configurée par l'application).</summary>
         public HistoriqueViewModel Historique { get { return historiqueVm; } set { Set(ref historiqueVm, value); } }
@@ -273,7 +277,7 @@ namespace GamingTweaker.Ui
             if (!string.IsNullOrEmpty(profilSelectionne)) ChargerProfilNomme(profilSelectionne);
         }
 
-        private string CheminProfil(string nom) { return Path.Combine(paths.ProfilsDir, nom + ".json"); }
+        public string CheminProfil(string nom) { return Path.Combine(paths.ProfilsDir, nom + ".json"); }
 
         private void ChargerProfilNomme(string nom)
         {
