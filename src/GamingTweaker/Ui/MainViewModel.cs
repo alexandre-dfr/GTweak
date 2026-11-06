@@ -112,7 +112,7 @@ namespace GamingTweaker.Ui
         public string MenuCourant
         {
             get { return menuCourant; }
-            set { if (Set(ref menuCourant, value)) { Raise("EstEmplacement"); Raise("EstMenuTelemetrie"); Raise("EstModeJeu"); Raise("EstHistorique"); Raise("TitreAffiche"); Filtrer(); if (value == MenuModeJeu && modeJeuVm != null) modeJeuVm.ChargerSiBesoin(); } }
+            set { if (Set(ref menuCourant, value)) { Raise("EstEmplacement"); Raise("EstMenuTelemetrie"); Raise("EstModeJeu"); Raise("EstHistorique"); Raise("TitreAffiche"); Filtrer(); if (value == MenuModeJeu && modeJeuVm != null) modeJeuVm.ChargerSiBesoin(); if (value == MenuHistorique && historiqueVm != null) historiqueVm.Charger(); } }
         }
 
         public string Recherche
@@ -135,6 +135,10 @@ namespace GamingTweaker.Ui
         private ModeJeuViewModel modeJeuVm;
         /// <summary>Vue-modèle du Mode Jeu (null tant qu'elle n'est pas configurée par l'application).</summary>
         public ModeJeuViewModel ModeJeu { get { return modeJeuVm; } set { Set(ref modeJeuVm, value); } }
+
+        private HistoriqueViewModel historiqueVm;
+        /// <summary>Vue-modèle de l'historique (null tant qu'elle n'est pas configurée par l'application).</summary>
+        public HistoriqueViewModel Historique { get { return historiqueVm; } set { Set(ref historiqueVm, value); } }
 
         public string TitreAffiche { get { return EnRecherche ? "Résultats de la recherche" : menuCourant; } }
 

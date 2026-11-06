@@ -363,6 +363,11 @@
                 <Border Grid.Row="1" Grid.RowSpan="2" Visibility="{Binding EstModeJeu, Converter={StaticResource BoolVis}}">
                     <local:ModeJeuView DataContext="{Binding ModeJeu}"/>
                 </Border>
+
+                <!-- Historique -->
+                <Border Grid.Row="1" Grid.RowSpan="2" Visibility="{Binding EstHistorique, Converter={StaticResource BoolVis}}">
+                    <local:HistoriqueView DataContext="{Binding Historique}"/>
+                </Border>
             </Grid>
         </Grid>
 

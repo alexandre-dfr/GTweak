@@ -151,6 +151,46 @@ namespace GamingTweaker.Tests
             vm.MenuCourant = "Mode Jeu";
             w.Show(); Pump(d);
             Capture(w, "14-mode-jeu", sousDossier);
+
+            // Historique : sessions d'exemple (terminée avec un échec, interrompue), un fichier en quarantaine, deux relevés.
+            var sess = paths.SessionsDir;
+            Action<string, string, string, SessionReport, string[]> session = (nom, etat, debut, rapport, journal) =>
+            {
+                var dir = Path.Combine(sess, nom); Directory.CreateDirectory(dir);
+                File.WriteAllText(Path.Combine(dir, "state.json"), Newtonsoft.Json.JsonConvert.SerializeObject(new { etat, debut }));
+                if (rapport != null)
+                {
+                    File.WriteAllText(Path.Combine(dir, "report.json"), Newtonsoft.Json.JsonConvert.SerializeObject(rapport, new Newtonsoft.Json.Converters.StringEnumConverter()));
+                    File.WriteAllText(Path.Combine(dir, "report.txt"), "GamingTweaker - rapport du " + debut + "\r\n\r\n[Appliquée] Désactiver la précision du pointeur (opt.mouse)\r\n[ÉCHEC] Protections Spectre et Meltdown désactivées (opt.spectre) : Accès refusé à la clé de registre.\r\n[Ignorée] Économie d'énergie USB désactivée (opt.usb)\r\n\r\nCode de sortie : 1\r\n");
+                }
+                if (journal != null)
+                    File.WriteAllText(Path.Combine(dir, "journal.jsonl"), string.Join("\n", journal.Select(i =>
+                        Newtonsoft.Json.JsonConvert.SerializeObject(new { item = i, kind = "task", target = "\\X\\" + i, existed = true, before = "Enabled", after = "Disabled" }))) + "\n");
+            };
+            var rap = new SessionReport();
+            rap.Items.Add(new ItemOutcome { Id = "opt.mouse", Status = OutcomeStatus.Ok });
+            rap.Items.Add(new ItemOutcome { Id = "opt.spectre", Status = OutcomeStatus.Failed, Message = "Accès refusé à la clé de registre." });
+            rap.Items.Add(new ItemOutcome { Id = "opt.usb", Status = OutcomeStatus.Skipped });
+            var rap2 = new SessionReport(); rap2.Items.Add(new ItemOutcome { Id = "net.temp", Status = OutcomeStatus.Ok });
+            session("20260103-214500", "Done", "2026-01-03T21:45:00", rap, new[] { "opt.mouse" });
+            session("20260102-090000", "Done", "2026-01-02T09:00:00", rap2, new[] { "net.temp" });
+            session("20260101-180000", "Running", "2026-01-01T18:00:00", null, new[] { "opt.hags" });
+            Directory.CreateDirectory(paths.QuarantineDir);
+            File.WriteAllText(Path.Combine(paths.QuarantineDir, "0123456789abcdef0123456789abcdef_msvcr71.dll"), new string('x', 350000));
+            File.WriteAllText(Path.Combine(paths.QuarantineDir, "fedcba9876543210fedcba9876543210_ancien-pilote.sys"), new string('x', 2400000));
+            File.AppendAllText(Path.Combine(sess, "20260102-090000", "journal.jsonl"), Newtonsoft.Json.JsonConvert.SerializeObject(new { item = "net.temp", kind = "quarantine", target = @"C:\Windows\System32\msvcr71.dll", existed = true, before = @"C:\Windows\System32\msvcr71.dll", after = Path.Combine(paths.QuarantineDir, "0123456789abcdef0123456789abcdef_msvcr71.dll") }) + "\n");
+            Mesures.Save(new MesureSnapshot { Date = "2026-01-02T09:30:00", DureeSec = 30, DpcTime = 0.62, InterruptTime = 0.31, Services = 168, Processus = 214, RamDisponibleMo = 9120 }, tmp);
+            Mesures.Save(new MesureSnapshot { Date = "2026-01-03T22:10:00", DureeSec = 30, DpcTime = 0.41, InterruptTime = 0.28, Services = 151, Processus = 187, RamDisponibleMo = 10480 }, tmp);
+            vm.Historique = new HistoriqueViewModel(paths, new RestaurationService(paths), Exemples(), new QuarantineService(paths.QuarantineDir, paths.SessionsDir));
+            vm.MenuCourant = "Historique"; Pump(d);
+            vm.Historique.SessionSelectionnee = vm.Historique.Sessions[0]; Pump(d);
+            Capture(w, "15-historique-sessions", sousDossier);
+            vm.Historique.Section = "Quarantaine"; vm.Historique.Message = ""; Pump(d);
+            Capture(w, "16-historique-quarantaine", sousDossier);
+            vm.Historique.Section = "Mesures";
+            foreach (var r in vm.Historique.Releves) r.IsChecked = true;
+            vm.Historique.Comparer(); Pump(d);
+            Capture(w, "17-historique-mesures", sousDossier);
             w.Close(); Pump(d);
             try { Directory.Delete(tmp, true); } catch (IOException) { }
         }

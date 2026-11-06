@@ -47,7 +47,13 @@ namespace GamingTweaker
                 + "\r\n\r\nLe charger plus tard les appliquera à nouveau. L'enregistrer quand même ?",
                 "Profil avec options risquées", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes;
 
-            vm.Restauration = new RestaurationService(paths, ElevationCheck.SameUserAsDesktop);
+            var restauration = new RestaurationService(paths, ElevationCheck.SameUserAsDesktop);
+            vm.Restauration = restauration;
+            vm.Historique = new HistoriqueViewModel(paths, restauration, catalogue, new QuarantineService(paths.QuarantineDir, paths.SessionsDir))
+            {
+                Confirmer = texte => MessageBox.Show(fenetre, texte, "Historique", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes,
+                ApresAnnulation = () => { var _ = vm.DetectAsync(); },
+            };
 
             vm.ModeJeu = new ModeJeuViewModel(new ModeJeu(paths.MachineDir, new ModeJeuSysteme()), ModeJeuListes.ListerServices, ModeJeuListes.ListerProcessus)
             {
