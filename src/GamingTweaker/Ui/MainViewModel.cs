@@ -112,17 +112,23 @@ namespace GamingTweaker.Ui
         public string MenuCourant
         {
             get { return menuCourant; }
-            set { if (Set(ref menuCourant, value)) { Raise("EstEmplacement"); Raise("EstMenuTelemetrie"); Raise("TitreAffiche"); Filtrer(); } }
+            set { if (Set(ref menuCourant, value)) { Raise("EstEmplacement"); Raise("EstMenuTelemetrie"); Raise("TitreAffiche"); Raise("EstMenuInformations"); MajInfo(); Filtrer(); } }
         }
 
         public string Recherche
         {
             get { return recherche; }
-            set { if (Set(ref recherche, value ?? "")) { Raise("EnRecherche"); CommandManager.InvalidateRequerySuggested(); Raise("TitreAffiche"); Raise("EstMenuTelemetrie"); Filtrer(); } }
+            set { if (Set(ref recherche, value ?? "")) { Raise("EnRecherche"); CommandManager.InvalidateRequerySuggested(); Raise("TitreAffiche"); Raise("EstMenuTelemetrie"); Raise("EstMenuInformations"); MajInfo(); Filtrer(); } }
         }
 
         public bool EnRecherche { get { return Normaliser(recherche).Length > 0; } }
         public bool EstEmplacement { get { return !EnRecherche && Menus.Any(m => m.Nom == menuCourant && m.EstEmplacement); } }
+        public const string MenuInformations = "Informations";
+        /// <summary>Menu Informations (fiche matériel et capteurs) : null tant que l'application ne l'a pas branché.</summary>
+        private InfoViewModel info;
+        public InfoViewModel Info { get { return info; } set { if (Set(ref info, value)) MajInfo(); } }
+        public bool EstMenuInformations { get { return !EnRecherche && menuCourant == MenuInformations; } }
+        private void MajInfo() { if (Info != null) Info.SetVisible(EstMenuInformations); }
         public const string MenuTelemetrie = "Télémétrie";
         public const string UrlShutUp10 = "https://www.oo-software.com/fr/shutup10";
         /// <summary>Vrai quand le bandeau du menu Télémétrie (Tout restaurer, lien O&amp;O ShutUp10++) doit s'afficher.</summary>

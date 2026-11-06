@@ -79,7 +79,7 @@ namespace GamingTweaker.Tests
                 try { Run(); } catch (Exception ex) { erreurs.Add(ex.ToString()); }
             });
             t.SetApartmentState(ApartmentState.STA); t.Start(); t.Join();
-            Assert.Empty(erreurs);
+            Assert.True(erreurs.Count == 0, string.Join(Environment.NewLine, erreurs));
             Assert.Equal(12, Directory.GetFiles(Dossier, "*.png").Length);
         }
 
@@ -157,10 +157,35 @@ namespace GamingTweaker.Tests
             vm.Options.Single(o => o.Id == "opt.spectre").IsChecked = true;
             vm.Bandeau = "Les options du profil utilisateur seront ignorées : l'application est exécutée sous un autre compte administrateur.";
 
+            var echantillon = new GamingTweaker.Info.InfoReport();
+            Action<string, string[]> sec = (t, kv) => { var x = new GamingTweaker.Info.InfoSection { Titre = t }; for (int k = 0; k + 1 < kv.Length; k += 2) x.Lignes.Add(new KeyValuePair<string, string>(kv[k], kv[k + 1])); echantillon.Sections.Add(x); };
+            sec("Windows", new[] { "Système", "Microsoft Windows 11 Pro", "Version", "10.0.26200 (build 26200)", "Architecture", "64 bits" });
+            sec("CPU", new[] { "Processeur", "AMD Ryzen 7 7800X3D 8-Core Processor", "Cœurs / threads", "8 / 16", "Fréquence max", "4201 MHz" });
+            sec("Carte mère", new[] { "Fabricant", "ASUSTeK COMPUTER INC.", "Modèle", "ROG STRIX B650-A GAMING WIFI", "BIOS", "American Megatrends 3040" });
+            sec("RAM", new[] { "Total", "32 Go", "Barrette 1", "16 Go DDR5 6000 MHz (G.Skill F5-6000J3038F16G)", "Barrette 2", "16 Go DDR5 6000 MHz (G.Skill F5-6000J3038F16G)" });
+            sec("GPU", new[] { "NVIDIA GeForce RTX 4070", "pilote 32.0.15.6094", "nvidia-smi", "NVIDIA GeForce RTX 4070, 12282 MiB, 560.94" });
+            sec("Disques", new[] { "Samsung SSD 990 PRO 1TB", "SSD 931,5 Go - état : Sain", "SMART", "indisponible sans droits administrateur" });
+            sec("Réseau", new[] { "Ethernet", "Realtek PCIe 2.5GbE Family Controller - 2500 Mb/s" });
+            sec("Écrans", new[] { "DISPLAY1 (NVIDIA GeForce RTX 4070)", "2560x1440 à 165 Hz" });
+            sec("Pilotes", new[] { "Affichage : NVIDIA GeForce RTX 4070", "32.0.15.6094, 14/09/2024", "Réseau : Realtek PCIe 2.5GbE", "10.72.0.0, 02/05/2024" });
+            var info = new InfoViewModel(() => echantillon, () => null);
+            vm.Info = info;
+
             var noms = new[] { "Mises à jour", "Télémétrie", "Nettoyage", "Optimisation", "Bloatware", "Informations", "Mode Jeu", "Historique" };
             for (int i = 0; i < noms.Length; i++)
             {
                 vm.MenuCourant = noms[i]; Pump(d);
+                if (noms[i] == "Informations")
+                {
+                    for (int k = 0; k < 40 && info.Sections.Count == 0; k++) { Thread.Sleep(50); Pump(d); }
+                    if (info.Sections.Count == 0) throw new InvalidOperationException("La fiche d'informations n'a pas été chargée : " + info.Statut + " / " + info.EnCours);
+                    info.Appliquer(new[] {
+                        new GamingTweaker.Info.SensorReading { Materiel = "AMD Ryzen 7 7800X3D", Nom = "Core (Tctl/Tdie)", Type = "Temperature", Value = 54.5f },
+                        new GamingTweaker.Info.SensorReading { Materiel = "AMD Ryzen 7 7800X3D", Nom = "CPU Total", Type = "Load", Value = 12.3f },
+                        new GamingTweaker.Info.SensorReading { Materiel = "NVIDIA GeForce RTX 4070", Nom = "GPU Core", Type = "Temperature", Value = 47f },
+                        new GamingTweaker.Info.SensorReading { Materiel = "NVIDIA GeForce RTX 4070", Nom = "GPU Core", Type = "Clock", Value = 2490f } });
+                    Pump(d);
+                }
                 Capture(win, "0" + (i + 1) + "-" + noms[i].Replace(' ', '-').Replace("à", "a").Replace("é", "e"));
             }
             vm.MenuCourant = "Optimisation"; vm.Recherche = "windows"; Pump(d);
