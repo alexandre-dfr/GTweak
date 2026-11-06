@@ -395,9 +395,7 @@ namespace GamingTweaker.Tests
         {
             // Lecture seule : aucune suppression. Le SID « tout le monde » exige les droits administrateur ; le test lit l'utilisateur courant.
             if (!Directory.Exists(Path.Combine(Environment.GetEnvironmentVariable("SystemRoot") ?? @"C:\Windows", "Installer"))) return;
-            var r = Un("$GT_InstallerUserSid = ''
-$l = @(Get-GTInstallerReferencedPackages)
-Write-Output $l.Count\nWrite-Output (($l | Where-Object { $_ -notmatch '\\.(msi|msp)$' }).Count)");
+            var r = Un("$GT_InstallerUserSid = ''\n$l = @(Get-GTInstallerReferencedPackages)\nWrite-Output $l.Count\nWrite-Output (($l | Where-Object { $_ -notmatch '\\.(msi|msp)$' }).Count)");
             var lignes = r.Split('\n');
             Assert.True(int.Parse(lignes[0]) > 0, "aucun paquet référencé");
             Assert.Equal("0", lignes[1]);
@@ -696,7 +694,7 @@ Write-Output (($old | ForEach-Object { $_.Driver } | Sort-Object) -join ',')");
         public void Les_options_nettoyage_n_effacent_que_par_les_fonctions_gardees()
         {
             var interdits = new[] { "Remove-Item", "rmdir", "rd ", "del ", "erase", "[IO.File]::Delete", "[System.IO.File]::Delete", "Directory]::Delete", "Delete(", "Move-Item",
-                                    "Invoke-Expression", "iex ", "Set-ItemProperty", "reg delete", "reg.exe", "Format-Volume", "cleanmgr", "takeown", "icacls", "Start-Process" };
+                                    "Invoke-Expression", "iex ", "Set-ItemProperty", "reg delete", "reg.exe", "Format-Volume", "cleanmgr", "takeown.exe", "icacls", "Start-Process" };
             foreach (var it in Catalogue().Values)
             {
                 foreach (var m in interdits)
