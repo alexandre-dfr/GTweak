@@ -614,13 +614,29 @@ function Add-TweakHosts {
 
 # ---- Applications -----------------------------------------------------------
 
+# Paquets jamais retires, meme si un script le demande : Store, WebView2, superpositions Xbox, winget, bibliotheques, panneaux GPU/audio.
+function Test-GTProtectedApp([string]$Name) {
+    if ([string]::IsNullOrEmpty($Name)) { return $true }
+    if ($Name -match 'WebView') { return $true }
+    return [bool]($Name -match '(?i)^(Microsoft\.WindowsStore|Microsoft\.StorePurchaseApp|Microsoft\.Services\.Store|Microsoft\.DesktopAppInstaller|Microsoft\.Winget|Microsoft\.VCLibs|Microsoft\.UI\.Xaml|Microsoft\.NET\.Native|Microsoft\.WindowsAppRuntime|Microsoft\.WinAppRuntime|MicrosoftCorporationII\.WinAppRuntime|Microsoft\.Xbox(GamingOverlay|IdentityProvider|GameCallableUI|SpeechToTextOverlay|GameOverlay)|Microsoft\.MicrosoftEdge|NVIDIACorp\.|AdvancedMicroDevicesInc|RealtekSemiconductorCorp|Realtek|AppUp\.Intel)')
+}
+
+# -StoreId : identifiant Microsoft Store, ecrit dans le journal (champ after) pour la reinstallation a l'annulation.
 function Remove-TweakApp {
-    param([Parameter(Mandatory)][string]$Package)
+    param([Parameter(Mandatory)][string]$Package, [string]$StoreId)
+    if (Test-GTProtectedApp $Package) { throw ('Application protégée, jamais retirée : ' + $Package) }
     $pk = @(Get-AppxPackage -Name $Package -AllUsers -ErrorAction SilentlyContinue)
-    if ($pk.Count -eq 0) { Skip-GTItem ('Application ' + $Package + ' absente de cette machine.') }
+    $prov = @(Get-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -eq $Package })
+    if ($pk.Count -eq 0 -and $prov.Count -eq 0) { Skip-GTItem ('Application ' + $Package + ' absente de cette machine.') }
+    $after = $null; if (-not [string]::IsNullOrWhiteSpace($StoreId)) { $after = $StoreId }
     foreach ($p in $pk) {
-        Write-GTJournal 'app' $p.PackageFullName $true $p.PackageFullName $null
+        Write-GTJournal 'app' $p.PackageFullName $true $p.PackageFullName $after
         Remove-AppxPackage -Package $p.PackageFullName -AllUsers
+    }
+    foreach ($q in $prov) {
+        # Image provisionnee : retiree pour que l'application ne revienne pas aux nouveaux comptes.
+        if ($pk.Count -eq 0) { Write-GTJournal 'app' $q.PackageName $true $q.PackageName $after }
+        Remove-AppxProvisionedPackage -Online -PackageName $q.PackageName | Out-Null
     }
 }
 
@@ -713,6 +729,15 @@ function Restore-GTEntry($E) {
             elseif (Test-Path -LiteralPath $E.target) { Remove-GTRegistryKey $E.target }
         }
         'app' { }
+        'wingetapp' {
+            if (-not (Install-GTWingetPackage ([string]$E.target) ([string]$E.before))) { throw 'winget est introuvable : réinstallez-le à la main (winget install Microsoft.Edge).' }
+        }
+        'dismfeature' {
+            if ((Get-GTOptionalFeatureState ([string]$E.target)) -ne 'Enabled') { Invoke-GTDism -Arguments @('/Online', '/Enable-Feature', ('/FeatureName:' + $E.target), '/NoRestart') | Out-Null }
+        }
+        'dismcapability' {
+            if (@(Get-GTCapabilityInstalled ([string]$E.target)).Count -eq 0) { Invoke-GTDism -Arguments @('/Online', '/Add-Capability', ('/CapabilityName:' + $E.target)) | Out-Null }
+        }
         default { throw ('Type d''entrée de journal inconnu : ' + $E.kind) }
     }
 }
@@ -729,8 +754,19 @@ function Restore-GTItem([Parameter(Mandatory)][string]$Item) {
     if ($entries.Count -eq 0) { Skip-GTItem 'Option déjà annulée.' }
     [array]::Reverse($entries)
     $errors = @(); $manual = @()
+    $storeDone = @()
     foreach ($e in $entries) {
-        if ($e.kind -eq 'app') { $manual += $e.target; continue }
+        if ($e.kind -eq 'app') {
+            # Reinstallation depuis le Store par winget si l'identifiant est connu, sinon message pour la faire a la main.
+            $short = ([string]$e.target -split '_')[0]
+            $sid = [string]$e.after
+            if ([string]::IsNullOrWhiteSpace($sid)) { $manual += $short; continue }
+            if ($storeDone -contains $sid) { continue }
+            $storeDone += $sid
+            try { if (-not (Install-GTWingetPackage $sid 'msstore')) { $manual += $short } }
+            catch { $errors += ('app ' + $short + ' : ' + $_.Exception.Message) }
+            continue
+        }
         try { Restore-GTEntry $e } catch { $errors += ([string]$e.kind + ' ' + [string]$e.target + ' : ' + $_.Exception.Message) }
     }
     if ($errors.Count -gt 0) { throw ($errors -join ' ; ') }
@@ -1451,4 +1487,246 @@ function Clear-GTRegistryValues {
         }
     }
     return $n
+}
+
+# ---------------------------------------------------------------------------
+# Aides des menus Bloatware et Mises a jour.
+# ---------------------------------------------------------------------------
+
+# ---- winget --------------------------------------------------------------------------------
+
+# $GT_WingetPath : remplacement pour les tests. Renvoie $null si winget est absent.
+function Get-GTWingetPath {
+    if ($GT_WingetPath) { return $GT_WingetPath }
+    $c = Get-Command winget.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($c) { return [string]$c.Source }
+    return $null
+}
+
+# 0 = reussite ; -1978335135 (0x8A150061) = deja installe ; -1978335189 (0x8A15002B) = aucune mise a jour applicable.
+function Test-GTWingetOk([int]$Code) {
+    return ($Code -eq 0 -or $Code -eq -1978335135 -or $Code -eq -1978335189)
+}
+
+# Reinstalle un paquet. Renvoie $false si winget est absent (reinstallation a faire a la main), leve une erreur si winget echoue.
+function Install-GTWingetPackage([string]$Id, [string]$Source) {
+    $exe = Get-GTWingetPath
+    if (-not $exe) { return $false }
+    $r = Invoke-GTNative $exe @('install', '--source', $Source, '--id', $Id, '--exact', '--accept-package-agreements', '--accept-source-agreements', '--disable-interactivity', '--silent')
+    if (-not (Test-GTWingetOk $r.ExitCode)) {
+        $tail = @($r.Output | Where-Object { $_.Trim() } | Select-Object -Last 2) -join ' '
+        throw ('winget a échoué pour ' + $Id + ' (code ' + $r.ExitCode + ') : ' + $tail)
+    }
+    return $true
+}
+
+# Analyse la sortie de « winget upgrade » par la position des colonnes lues sur la ligne d'en-tete, au-dessus des tirets
+# (independant de la langue). Meme algorithme que WingetProvider.Parse. Renvoie des objets Id / Name / Version / Available / Source.
+function ConvertFrom-GTWingetUpgrade([string[]]$Lines) {
+    $clean = @()
+    foreach ($l in @($Lines)) {
+        $t = [string]$l
+        $cr = $t.LastIndexOf([char]13)
+        if ($cr -ge 0) { $t = $t.Substring($cr + 1) }
+        $clean += $t.TrimStart([char]0xFEFF).TrimEnd()
+    }
+    $sep = -1
+    for ($i = 1; $i -lt $clean.Count; $i++) {
+        if ($clean[$i] -match '^-{5,}$' -and $clean[$i - 1].Trim().Length -gt 0) { $sep = $i; break }
+    }
+    if ($sep -lt 0) { return @() }
+    $header = $clean[$sep - 1]
+    $starts = @()
+    for ($p = 0; $p -lt $header.Length; $p++) {
+        if ($header[$p] -ne ' ' -and ($p -eq 0 -or ($header[$p - 1] -eq ' ' -and ($p -eq 1 -or $header[$p - 2] -eq ' ')))) { $starts += $p }
+    }
+    if ($starts.Count -lt 3) { return @() }
+    $res = @()
+    for ($i = $sep + 1; $i -lt $clean.Count; $i++) {
+        $row = $clean[$i]
+        if ($row.Trim().Length -eq 0) { break }
+        $ok = $true
+        for ($k = 1; $k -lt $starts.Count; $k++) { if ($row.Length -gt $starts[$k] - 1 -and $row[$starts[$k] - 1] -ne ' ') { $ok = $false } }
+        if (-not $ok -or $row.Length -le $starts[1]) { continue }
+        $cells = @()
+        for ($k = 0; $k -lt $starts.Count; $k++) {
+            $from = $starts[$k]
+            $to = if ($k + 1 -lt $starts.Count) { $starts[$k + 1] } else { $row.Length }
+            if ($from -ge $row.Length) { $cells += ''; continue }
+            $cells += $row.Substring($from, [Math]::Min($to, $row.Length) - $from).Trim()
+        }
+        $id = $cells[1]
+        if ($id -notmatch '^[A-Za-z0-9][A-Za-z0-9._+\-]*$') { continue }
+        $res += [pscustomobject]@{
+            Id = $id; Name = $cells[0]; Version = $cells[2]
+            Available = $(if ($cells.Count -gt 3) { $cells[3] } else { '' }); Source = $(if ($cells.Count -gt 4) { $cells[4] } else { '' })
+        }
+    }
+    return $res
+}
+
+# ---- Applications : DISM ----------------------------------------------------------------------
+
+function Get-GTOptionalFeatureState([string]$Name) {
+    $f = Get-WindowsOptionalFeature -Online -FeatureName $Name -ErrorAction SilentlyContinue
+    if ($null -eq $f) { return $null }
+    return [string]$f.State
+}
+
+# Fonctionnalite facultative desactivee (journalisee). Renvoie $false si elle est absente ou deja desactivee.
+function Set-TweakDismFeatureOff {
+    param([Parameter(Mandatory)][string]$Name)
+    if ((Get-GTOptionalFeatureState $Name) -ne 'Enabled') { return $false }
+    Write-GTJournal 'dismfeature' $Name $true 'Enabled' 'Disabled'
+    $r = Invoke-GTDism -Arguments @('/Online', '/Disable-Feature', ('/FeatureName:' + $Name), '/NoRestart')
+    if ($r.RebootRequired) { $script:GT_DismReboot = $true }
+    return $true
+}
+
+# Noms complets (avec suffixe de version) des fonctionnalites a la demande installees dont le nom commence par $Prefix.
+function Get-GTCapabilityInstalled([string]$Prefix) {
+    if ($null -eq $script:GT_CapabilityCache) {
+        $script:GT_CapabilityCache = @(Get-WindowsCapability -Online -ErrorAction SilentlyContinue | Where-Object { [string]$_.State -eq 'Installed' } | ForEach-Object { [string]$_.Name })
+    }
+    return @($script:GT_CapabilityCache | Where-Object { $_ -like ($Prefix + '~~~~*') })
+}
+
+# Fonctionnalite a la demande retiree (journalisee). Renvoie le nombre de fonctionnalites retirees.
+function Set-TweakDismCapabilityOff {
+    param([Parameter(Mandatory)][string]$Prefix)
+    $n = 0
+    foreach ($name in @(Get-GTCapabilityInstalled $Prefix)) {
+        Write-GTJournal 'dismcapability' $name $true 'Installed' 'NotPresent'
+        $r = Invoke-GTDism -Arguments @('/Online', '/Remove-Capability', ('/CapabilityName:' + $name))
+        if ($r.RebootRequired) { $script:GT_DismReboot = $true }
+        $n++
+    }
+    return $n
+}
+
+# ---- Pilote NVIDIA -------------------------------------------------------------------------------
+
+# Vrai si la signature est valide ET delivree a NVIDIA Corporation.
+function Test-GTNvidiaSignature($Signature) {
+    if ($null -eq $Signature) { return $false }
+    if ([string]$Signature.Status -ne 'Valid') { return $false }
+    $subject = ''
+    if ($null -ne $Signature.SignerCertificate) { $subject = [string]$Signature.SignerCertificate.Subject }
+    return ($subject.IndexOf('NVIDIA Corporation', [StringComparison]::OrdinalIgnoreCase) -ge 0)
+}
+
+# Verifie l'installateur telecharge ; sinon le supprime et leve une erreur. -Signature : remplacement pour les tests.
+function Confirm-GTNvidiaInstaller {
+    param([Parameter(Mandatory)][string]$Path, $Signature)
+    if ($null -eq $Signature) { $Signature = Get-AuthenticodeSignature -LiteralPath $Path }
+    if (-not (Test-GTNvidiaSignature $Signature)) {
+        Remove-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+        throw 'La signature de l''installateur téléchargé n''est pas celle de NVIDIA Corporation : fichier supprimé, rien n''a été installé.'
+    }
+}
+
+# Adresse de telechargement acceptee : https, domaine nvidia.com.
+function Test-GTNvidiaUrl([string]$Url) {
+    return [bool]($Url -match '^https://([a-z0-9\-]+\.)*nvidia\.com/[^\s]+$')
+}
+
+# JSON de DriverManualLookup -> @{ Version; Url } ou $null (reponse inconnue, echec ou adresse refusee).
+function ConvertFrom-GTNvidiaLookup([string]$Json) {
+    try {
+        $o = ConvertFrom-Json -InputObject $Json -ErrorAction Stop
+        if ([string]$o.Success -ne '1') { return $null }
+        $d = @($o.IDS)[0].downloadInfo
+        if ($null -eq $d -or [string]$d.Success -ne '1') { return $null }
+        $v = [string]$d.Version; $u = [string]$d.DownloadURL
+        if ([string]::IsNullOrWhiteSpace($v) -or -not (Test-GTNvidiaUrl $u)) { return $null }
+        return @{ Version = $v.Trim(); Url = $u.Trim() }
+    } catch { return $null }
+}
+
+# Compare deux versions de pilote (« 621.01 », « 32.0.16.2101 ») ; renvoie -1, 0 ou 1.
+function Compare-GTDriverVersion([string]$A, [string]$B) {
+    $pa = @($A -split '\.' | ForEach-Object { [int64]($_ -replace '\D', '0') })
+    $pb = @($B -split '\.' | ForEach-Object { [int64]($_ -replace '\D', '0') })
+    $n = [Math]::Max($pa.Count, $pb.Count)
+    for ($i = 0; $i -lt $n; $i++) {
+        $x = if ($i -lt $pa.Count) { $pa[$i] } else { 0 }
+        $y = if ($i -lt $pb.Count) { $pb[$i] } else { 0 }
+        if ($x -lt $y) { return -1 }
+        if ($x -gt $y) { return 1 }
+    }
+    return 0
+}
+
+# ---- OneDrive ----------------------------------------------------------------------------------
+
+# Desinstalle OneDrive par son programme officiel. Les dossiers de l'utilisateur ne sont jamais touches.
+# Annulation : reinstallation par winget (Microsoft.OneDrive).
+function Remove-TweakOneDrive {
+    $exe = Join-Path $env:SystemRoot 'SysWOW64\OneDriveSetup.exe'
+    if (-not (Test-Path -LiteralPath $exe)) { $exe = Join-Path $env:SystemRoot 'System32\OneDriveSetup.exe' }
+    if (-not (Test-Path -LiteralPath $exe)) { Skip-GTItem 'OneDrive absent de cette machine.' }
+    Write-GTJournal 'wingetapp' 'Microsoft.OneDrive' $true 'winget' $null
+    Get-Process -Name 'OneDrive' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    $p = Start-Process -FilePath $exe -ArgumentList '/uninstall' -Wait -PassThru
+    if ($p.ExitCode -ne 0) { throw ('Le désinstalleur de OneDrive a échoué (code ' + $p.ExitCode + ').') }
+}
+
+# ---- Pilote NVIDIA : recherche et installation -------------------------------------------------------
+
+function Invoke-GTHttpText([string]$Url) {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    $ProgressPreference = 'SilentlyContinue'
+    $r = Invoke-WebRequest -UseBasicParsing -Uri $Url -TimeoutSec 30
+    return [string]$r.Content
+}
+
+function Get-GTNvidiaSmi {
+    foreach ($c in @((Join-Path $env:SystemRoot 'System32\nvidia-smi.exe'), (Join-Path $env:ProgramFiles 'NVIDIA Corporation\NVSMI\nvidia-smi.exe'))) {
+        if (Test-Path -LiteralPath $c) { return $c }
+    }
+    $g = Get-Command nvidia-smi.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($g) { return [string]$g.Source }
+    return $null
+}
+
+# Derniere version du pilote pour ce GPU (branche GameReady ou Studio) : @{ Version; Url } ou $null si la recherche echoue.
+function Get-GTNvidiaLatest([string]$GpuName, [string]$Branch) {
+    try {
+        $name = ($GpuName -replace '^NVIDIA\s+', '').Trim()
+        $os = if ((Get-GTWindowsBuild) -ge 22000) { 135 } else { 57 }
+        $crd = if ($Branch -eq 'Studio') { 1 } else { 0 }
+        $xml = [xml](Invoke-GTHttpText 'https://www.nvidia.com/Download/API/lookupValueSearch.aspx?TypeID=3')
+        foreach ($v in $xml.SelectNodes('//LookupValue')) {
+            if ($v.SelectSingleNode('Name').InnerText -ine $name) { continue }
+            $psid = $v.GetAttribute('ParentID'); $pfid = $v.SelectSingleNode('Value').InnerText
+            if ($psid -notmatch '^\d+$' -or $pfid -notmatch '^\d+$') { continue }
+            $json = Invoke-GTHttpText ('https://gfwsl.geforce.com/services_toolkit/services/com/nvidia/services/AjaxDriverService.php?func=DriverManualLookup&psid=' + $psid + '&pfid=' + $pfid +
+                '&osID=' + $os + '&languageCode=1033&beta=0&isWHQL=1&dltype=-1&dch=1&upCRD=' + $crd + '&qnf=0&sort1=1&numberOfResults=1')
+            $info = ConvertFrom-GTNvidiaLookup $json
+            if ($info) { return $info }
+        }
+    } catch { }
+    return $null
+}
+
+# Telecharge l'installateur, verifie sa signature (sinon suppression et erreur), l'installe en silencieux sans redemarrage, puis le supprime.
+function Install-TweakNvidiaDriver {
+    param([Parameter(Mandatory)][string]$Url)
+    if (-not (Test-GTNvidiaUrl $Url)) { throw 'Adresse de téléchargement refusée (ce n''est pas un domaine NVIDIA en https).' }
+    $leaf = [IO.Path]::GetFileName(([Uri]$Url).AbsolutePath)
+    if ($leaf -notmatch '^[A-Za-z0-9._\-]+\.exe$') { throw 'Nom de fichier du pilote inattendu.' }
+    $dir = Join-Path ([IO.Path]::GetTempPath()) ('GamingTweaker-nvidia-' + [Guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Force -Path $dir | Out-Null
+    $dest = Join-Path $dir $leaf
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        $ProgressPreference = 'SilentlyContinue'
+        Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $dest -TimeoutSec 3000
+        Confirm-GTNvidiaInstaller -Path $dest
+        $p = Start-Process -FilePath $dest -ArgumentList '-s', '-noreboot' -Wait -PassThru
+        if ($p.ExitCode -ne 0) { throw ('L''installateur NVIDIA a échoué (code ' + $p.ExitCode + ').') }
+        return $p.ExitCode
+    } finally {
+        Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue
+    }
 }

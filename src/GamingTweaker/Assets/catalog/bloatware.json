@@ -1,0 +1,166 @@
+[
+  {
+    "id": "blt.apps",
+    "menu": "Bloatware",
+    "groupe": "Applications",
+    "titre": "Retirer des applications préinstallées",
+    "description": "Retire pour tous les utilisateurs, et de l'image provisionnée, les applications cochées de la liste (seules celles présentes sur ce PC sont proposées) : actualités, météo, Solitaire, Clipchamp, Astuces, Teams personnel, Microsoft 365, OneDrive, application Xbox et d'autres. Chaque application porte son niveau de risque dans la liste. Le Microsoft Store, WebView2, winget, la Xbox Game Bar et les bibliothèques système ne sont jamais proposés. Réversibilité partielle : l'annulation réinstalle depuis le Microsoft Store quand l'identifiant est connu, sans garantie de retrouver l'état exact (données, réglages) ; sinon elle indique l'application à réinstaller à la main. OneDrive est désinstallé par son programme officiel, sans toucher à vos dossiers.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "delaiSec": 900,
+    "liste": "bloatware",
+    "annulationPartielle": "réinstallation depuis le Store quand l'identifiant est connu, sinon à la main, sans garantie du même état",
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "blt.apps-tierces",
+    "menu": "Bloatware",
+    "groupe": "Applications",
+    "titre": "Retirer des applications tierces promues",
+    "description": "Retire les applications tierces promues cochées (Spotify, Candy Crush, Duolingo, Shazam, Twitter, Photoshop Express...). Risqué : vous avez pu en installer vous-même. Seules les applications présentes sont listées, rien n'est coché d'office. Réversibilité partielle : l'annulation réinstalle depuis le Microsoft Store quand l'identifiant est connu, sans garantie de retrouver l'état exact ; sinon elle indique l'application à réinstaller à la main.",
+    "risque": "Risque",
+    "reversible": true,
+    "redemarrage": false,
+    "delaiSec": 900,
+    "liste": "bloatware-tierces",
+    "annulationPartielle": "réinstallation depuis le Store quand l'identifiant est connu, sinon à la main, sans garantie du même état",
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "blt.edge-remove",
+    "menu": "Bloatware",
+    "groupe": "Applications",
+    "titre": "Désinstaller Microsoft Edge",
+    "description": "Désinstalle Edge avec son désinstalleur officiel (méthode de WinUtil), sans supprimer le profil de l'utilisateur (favoris, mots de passe, historique) et en conservant le composant WebView2 dont d'autres applications ont besoin. Bloque aussi sa réinstallation automatique par Windows Update. Risque : Windows peut le réinstaller lors d'une mise à jour majeure, et certains liens ou applications s'attendent à trouver un navigateur : vérifiez qu'un autre navigateur est installé. Annulation : réinstallation par winget (Microsoft.Edge).",
+    "risque": "Risque",
+    "reversible": true,
+    "redemarrage": false,
+    "testable": false,
+    "delaiSec": 900,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "blt.features",
+    "menu": "Bloatware",
+    "groupe": "Fonctionnalités Windows",
+    "titre": "Désactiver des fonctionnalités facultatives inutilisées",
+    "description": "Désactive par DISM les fonctionnalités facultatives présentes et activées : Fax et numérisation, Gestion de la numérisation, Internet Explorer, imprimante et visionneuse XPS, Dossiers de travail, client d'impression Internet, services LPD et LPR. Les composants d'impression, DirectPlay, les composants hérités et le Lecteur Windows Media ne sont jamais touchés. Un redémarrage peut être nécessaire. Réversibilité partielle : l'annulation réactive chaque fonctionnalité par DISM, mais la réactivation est parfois impossible sans source (Windows Update ou image d'installation).",
+    "risque": "Risque",
+    "reversible": true,
+    "redemarrage": true,
+    "delaiSec": 1200,
+    "annulationPartielle": "réactivation par DISM, parfois impossible sans source",
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "blt.capabilities",
+    "menu": "Bloatware",
+    "groupe": "Fonctionnalités Windows",
+    "titre": "Retirer des fonctionnalités à la demande",
+    "description": "Retire par DISM les fonctionnalités à la demande présentes : Internet Explorer 11, reconnaissance mathématique, PowerShell ISE, gestion de l'impression, Assistance rapide, Enregistreur d'actions, Fax et numérisation. La configuration DirectX (jeux) et OpenSSH ne sont jamais touchés. Un redémarrage peut être nécessaire. Réversibilité partielle : l'annulation les réinstalle par Windows Update, ce qui demande une connexion Internet.",
+    "risque": "Risque",
+    "reversible": true,
+    "redemarrage": true,
+    "delaiSec": 1200,
+    "annulationPartielle": "réinstallation par Windows Update (connexion Internet requise)",
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "blt.wpbt-off",
+    "menu": "Bloatware",
+    "groupe": "Logiciels constructeur",
+    "titre": "Bloquer les programmes du micrologiciel (WPBT)",
+    "description": "Empêche Windows d'exécuter au démarrage les programmes que le micrologiciel (UEFI) dépose dans le système (Windows Platform Binary Table, valeur DisableWpbtExecution). Utile contre les logiciels constructeur réinstallés à chaque démarrage. Avancé : certains constructeurs installent ainsi des pilotes ou des utilitaires utiles. Prend effet au prochain démarrage. L'annulation rétablit l'état d'origine.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "blt.device-metadata-off",
+    "menu": "Bloatware",
+    "groupe": "Logiciels constructeur",
+    "titre": "Ne pas télécharger les applis compagnons des périphériques",
+    "description": "Empêche Windows de télécharger depuis Internet les informations et applications compagnons des périphériques branchés (valeur PreventDeviceMetadataFromNetwork). Les pilotes ne sont pas concernés. L'annulation rétablit l'état d'origine.",
+    "risque": "Sur",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "blt.vendor-autoinstall-off",
+    "menu": "Bloatware",
+    "groupe": "Logiciels constructeur",
+    "titre": "Bloquer les co-installeurs de pilotes",
+    "description": "Active DisableCoInstallers : les co-installeurs fournis avec les pilotes (qui installent par exemple les logiciels Razer ou Logitech) ne s'exécutent plus, pour tous les constructeurs et pour toute la machine. Avancé : certains pilotes peuvent alors s'installer sans leur logiciel complémentaire. Aucun dossier ni autorisation de fichier n'est modifié. L'annulation rétablit l'état d'origine.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  }
+]

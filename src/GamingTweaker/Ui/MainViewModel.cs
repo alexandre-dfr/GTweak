@@ -414,7 +414,7 @@ namespace GamingTweaker.Ui
             {
                 Id = o.Id,
                 Titre = o.Titre + (o.Liste == null ? "" : o.Liste.EstVide ? " : aucun élément choisi, non exécutée" : " (" + o.Liste.ResumeCourt + ")"), Risque = o.Risque,
-                Reversibilite = o.Reversible ? "Annulable" : "définitif",
+                Reversibilite = o.Reversible ? (string.IsNullOrWhiteSpace(o.Item.AnnulationPartielle) ? "Annulable" : "Annulable en partie : " + o.Item.AnnulationPartielle) : "définitif",
                 Redemarrage = o.Redemarrage ? "Redémarrage requis" : "",
                 Taille = "—",
             }).ToList();

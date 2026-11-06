@@ -28,12 +28,14 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Assets\catalog\*.json" LogicalName="catalog/%(Filename)%(Extension)" WithCulture="false" />
+    <EmbeddedResource Include="Assets\bloatware-list.json" LogicalName="bloatware-list.json" WithCulture="false" />
     <EmbeddedResource Include="Assets\scripts\*.ps1" LogicalName="scripts/%(Filename)%(Extension)" WithCulture="false" />
     <EmbeddedResource Include="Assets\runtime\*.ps1" LogicalName="runtime/%(Filename)%(Extension)" WithCulture="false" />
   </ItemGroup>
 
   <ItemGroup>
     <Reference Include="System.Management" />
+    <Reference Include="System.Net.Http" />
     <Reference Include="System.ServiceProcess" />
   </ItemGroup>
 
