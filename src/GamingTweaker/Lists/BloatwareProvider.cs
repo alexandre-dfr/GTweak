@@ -64,12 +64,18 @@ namespace GamingTweaker.Lists
 
     public class PowerShellInstalledApps : IInstalledAppsSource
     {
+        /// <summary>OneDriveSetup.exe reste dans Windows après la désinstallation : OneDrive est présent s'il est installé pour l'utilisateur ou pour la machine (même règle que Test-GTOneDriveInstalled).</summary>
+        public const string ScriptOneDrive = @"
+foreach ($d in @(@($env:LOCALAPPDATA, 'Microsoft\OneDrive\OneDrive.exe'), @($env:ProgramFiles, 'Microsoft OneDrive\OneDrive.exe'), @(${env:ProgramFiles(x86)}, 'Microsoft OneDrive\OneDrive.exe'))) {
+    if ($d[0] -and (Test-Path -LiteralPath (Join-Path $d[0] $d[1]))) { 'OneDrive'; break }
+}
+";
+
         private const string Script = @"
 $ErrorActionPreference = 'SilentlyContinue'
 Get-AppxPackage -AllUsers | ForEach-Object { $_.Name }
 Get-AppxProvisionedPackage -Online | ForEach-Object { $_.DisplayName }
-if ((Test-Path (Join-Path $env:SystemRoot 'SysWOW64\OneDriveSetup.exe')) -or (Test-Path (Join-Path $env:SystemRoot 'System32\OneDriveSetup.exe'))) { 'OneDrive' }
-";
+" + ScriptOneDrive;
 
         public async Task<IReadOnlyList<string>> LireAsync(CancellationToken ct)
         {
@@ -79,7 +85,7 @@ if ((Test-Path (Join-Path $env:SystemRoot 'SysWOW64\OneDriveSetup.exe')) -or (Te
     }
 
     /// <summary>Applications préinstallées : liste connue croisée avec ce qui est réellement présent. Le Store, WebView2, winget et les pilotes graphiques n'y figurent jamais.</summary>
-    public class BloatwareProvider : IListProvider
+    public class BloatwareProvider : IListProvider, IListLookup
     {
         private readonly IReadOnlyList<KnownApp> connues;
         private readonly IInstalledAppsSource source;
@@ -114,6 +120,13 @@ if ((Test-Path (Join-Path $env:SystemRoot 'SysWOW64\OneDriveSetup.exe')) -or (Te
                 });
             }
             return res;
+        }
+
+        /// <summary>Description d'une application de la liste connue (présente ou non sur ce PC).</summary>
+        public ListEntry Decrire(string key)
+        {
+            var a = connues.FirstOrDefault(k => string.Equals(k.Package, key, StringComparison.OrdinalIgnoreCase));
+            return a == null ? null : Match(new[] { a.Package }, new[] { a }).Single();
         }
 
         public async Task<IReadOnlyList<ListEntry>> LoadAsync(CancellationToken ct)

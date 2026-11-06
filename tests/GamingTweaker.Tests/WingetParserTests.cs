@@ -88,6 +88,25 @@ namespace GamingTweaker.Tests
             Assert.Contains("Aucune mise à jour", p.Message);
         }
 
+        [Fact] public async Task Un_code_de_sortie_winget_en_echec_leve_une_erreur_affichee_et_non_aucune_mise_a_jour()
+        {
+            var p = new WingetProvider(ct => { throw new WingetEchecException(-1978335231, "Échec de la mise à jour des sources"); });
+            var ex = await Assert.ThrowsAsync<WingetEchecException>(() => p.LoadAsync(CancellationToken.None));
+            Assert.Contains("winget a échoué", ex.Message);
+            Assert.Contains("-1978335231", ex.Message);
+            Assert.DoesNotContain("Aucune mise à jour", p.Message);
+            // Une sortie vide avec un code non nul accepté reste « aucune mise à jour ».
+            Assert.Equal("", p.Message);
+        }
+
+        [Theory]
+        [InlineData(0, true)]
+        [InlineData(-1978335189, true)]   // 0x8A15002B aucune mise à jour applicable
+        [InlineData(-1978335212, true)]   // 0x8A150014 aucun paquet trouvé
+        [InlineData(1, false)]
+        [InlineData(-1978335231, false)]
+        public void Seuls_certains_codes_winget_sont_acceptables_pour_la_liste(int code, bool attendu) => Assert.Equal(attendu, WingetProvider.CodeListeAcceptable(code));
+
         // ---- Windows Update ------------------------------------------------------------------------
 
         [Fact] public void Windows_Update_analyse_les_lignes_KB()

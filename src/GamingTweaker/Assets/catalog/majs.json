@@ -4,7 +4,7 @@
     "menu": "Mises à jour",
     "groupe": "Windows Update",
     "titre": "Installer les mises à jour de Windows",
-    "description": "Recherche par l'API de Windows Update les mises à jour logicielles non installées et non masquées, puis installe celles que vous cochez (les pilotes sont exclus). Par « Tout », les mises à jour apparues plus tard sont aussi installées, sauf celles que vous excluez par leur numéro KB. Un redémarrage peut être nécessaire ; l'appli ne redémarre jamais le PC. Non réversible : une mise à jour installée se désinstalle depuis Windows.",
+    "description": "Recherche par l'API de Windows Update les mises à jour logicielles non installées et non masquées, puis installe celles que vous cochez (les pilotes, les mises à jour facultatives et les mises à jour de fonctionnalités sont exclus). Par « Tout », les mises à jour apparues plus tard sont aussi installées, sauf celles que vous excluez par leur numéro KB. Un redémarrage peut être nécessaire ; l'appli ne redémarre jamais le PC. Non réversible : une mise à jour installée se désinstalle depuis Windows.",
     "risque": "Sur",
     "reversible": false,
     "redemarrage": true,

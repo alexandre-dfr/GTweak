@@ -104,6 +104,14 @@ namespace GamingTweaker.Ui
         /// <summary>Appelée avant d'enregistrer un profil contenant une option Risqué.</summary>
         public Func<IReadOnlyList<OptionViewModel>, bool> ConfirmerProfilRisque { get; set; }
 
+        private Func<OptionViewModel, string, string, bool> confirmerElementRisque;
+        /// <summary>Confirmation d'un élément Risqué d'une liste (option, titre, détail) ; à défaut, celle de l'option est réutilisée.</summary>
+        public Func<OptionViewModel, string, string, bool> ConfirmerElementRisque
+        {
+            get { return confirmerElementRisque; }
+            set { confirmerElementRisque = value; foreach (var o in Options) o.ConfirmerElement = value; }
+        }
+
         public int SelectedCount { get { return Options.Count(o => o.IsChecked); } }
         /// <summary>Vrai si au moins une option sera réellement exécutée (une option à liste sans élément choisi ne compte pas).</summary>
         public bool AUneSelection { get { return BuildSelection().OptionIds.Count > 0; } }
@@ -236,7 +244,9 @@ namespace GamingTweaker.Ui
                 List<string> sel;
                 if (o.Liste != null && res.Selection.Listes.TryGetValue(o.Id, out sel)) o.Liste.DepuisSelection(sel);
                 o.IsChecked = true;
-                if (!o.IsChecked) refuses.Add(o.Titre);
+                if (!o.IsChecked) { refuses.Add(o.Titre); continue; }
+                // Éléments Risqué du profil : même confirmation que pour une option Risqué ; les refusés sont retirés de la sélection.
+                if (o.Liste != null) refuses.AddRange(o.Liste.ConfirmerSelectionProfil().Select(x => o.Titre + " : " + x));
             }
             var infos = new List<string>();
             if (res.Inconnues.Count > 0) infos.Add(res.Inconnues.Count + " option(s) inconnue(s) ignorée(s).");
@@ -283,7 +293,7 @@ namespace GamingTweaker.Ui
             var invalides = Path.GetInvalidFileNameChars();
             nom = new string(nom.Where(c => !invalides.Contains(c)).ToArray()).Trim().TrimEnd('.');
             if (nom.Length == 0) return "Donnez un nom au profil (sans caractères spéciaux).";
-            var risques = Options.Where(o => o.IsChecked && o.NiveauRisque == RiskLevel.Risque).ToList();
+            var risques = Options.Where(o => o.IsChecked && (o.NiveauRisque == RiskLevel.Risque || (o.Liste != null && o.Liste.ElementsRisques().Count > 0))).ToList();
             if (risques.Count > 0 && (ConfirmerProfilRisque == null || !ConfirmerProfilRisque(risques))) return null;
             try { Profils.Save(ToProfil(nom), CheminProfil(nom)); }
             catch (Exception ex) { return "Le profil n'a pas pu être enregistré : " + ex.Message; }

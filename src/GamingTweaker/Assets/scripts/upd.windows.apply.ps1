@@ -1,9 +1,10 @@
 $session = New-Object -ComObject Microsoft.Update.Session
-$found = $session.CreateUpdateSearcher().Search("IsInstalled=0 and Type='Software' and IsHidden=0")
+$found = $session.CreateUpdateSearcher().Search("IsInstalled=0 and Type='Software' and IsHidden=0 and BrowseOnly=0")
 # Liste autorisée : les mises à jour logicielles trouvées (pilotes exclus par la requête), identifiées par leur numéro KB.
 $byKb = [ordered]@{}
 foreach ($u in $found.Updates) {
     if ($u.InstallationBehavior.CanRequestUserInput) { continue }
+    if (@($u.Categories | Where-Object { $_.CategoryID -eq '3689bdc8-b205-4af4-8d4a-a63924c5e9d5' }).Count -gt 0) { continue }
     $kbs = @($u.KBArticleIDs)
     if ($kbs.Count -eq 0) { continue }
     $key = 'KB' + $kbs[0]

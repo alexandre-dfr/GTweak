@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using GamingTweaker.Core;
+using GamingTweaker.Lists;
 using GamingTweaker.Tests.Helpers;
 using Xunit;
 
@@ -88,6 +89,17 @@ namespace GamingTweaker.Tests
             Assert.Contains("Tailscale.Tailscale (code 1)", r);
         }
 
+        [Fact] public void Le_code_winget_redemarrage_requis_est_un_succes_avec_une_note_de_redemarrage()
+        {
+            // 0x8A15010D : la mise à jour est faite, un redémarrage est nécessaire.
+            var r = Apply("upd.apps", new[] { "Git.Git" }, FauxWinget(codeInstall: -1978334963));
+            Assert.Contains("##GT|ok|upd.apps", r);
+            Assert.DoesNotContain("##GT|fail", r);
+            Assert.Contains("redémarrage", r);
+            Assert.Equal("OK", string.Join("", PsCommon.Eval("if (Test-GTWingetOk -1978334963) { 'OK' } else { 'KO' }")));
+            Assert.Equal("KO", string.Join("", PsCommon.Eval("if (Test-GTWingetReboot 0) { 'OK' } else { 'KO' }")));
+        }
+
         [Fact] public void Sans_winget_toute_l_option_est_ignoree_avec_un_message()
         {
             var r = Apply("upd.apps", new[] { "*" }, "function Get-GTWingetPath { $null }");
@@ -118,6 +130,17 @@ namespace GamingTweaker.Tests
             Assert.DoesNotContain("shutdown", a, StringComparison.OrdinalIgnoreCase);
         }
 
+        [Fact] public void Windows_Update_et_son_fournisseur_utilisent_la_meme_requete_sans_facultatives_ni_Upgrades()
+        {
+            var a = Catalogue()["upd.windows"].Apply;
+            Assert.Contains("IsInstalled=0 and Type='Software' and IsHidden=0 and BrowseOnly=0", WindowsUpdateProvider.Requete);
+            Assert.Contains("\"" + WindowsUpdateProvider.Requete + "\"", a);
+            Assert.Contains(WindowsUpdateProvider.FiltreUpgrades, a);
+            Assert.Contains("3689bdc8-b205-4af4-8d4a-a63924c5e9d5", WindowsUpdateProvider.FiltreUpgrades);
+            Assert.Contains(WindowsUpdateProvider.FiltreUpgrades, WindowsUpdateProvider.ScriptRecherche);
+            Assert.Contains(WindowsUpdateProvider.Requete, WindowsUpdateProvider.ScriptRecherche);
+        }
+
         [Fact] public void Le_pilote_NVIDIA_est_verifie_avant_installation_et_installe_sans_redemarrage()
         {
             var cat = Catalogue();
@@ -136,6 +159,71 @@ namespace GamingTweaker.Tests
             Assert.Contains("Get-AuthenticodeSignature", common);
             Assert.Contains("NVIDIA Corporation", common);
             Assert.Contains("'Valid'", common);
+        }
+
+        // ---- NVIDIA : dossier réservé aux administrateurs, verrou de la vérification au lancement ------------------
+
+        /// <summary>Doubles : téléchargement (écrit un faux exe), création de dossier (journalisée, sans ACL réelle), signature et lancement ; chacun tente d'écrire dans l'installateur pour vérifier le verrou.</summary>
+        private string FauxNvidia(string racine, string log, bool signatureValide)
+        {
+            var sub = "try { [IO.File]::OpenWrite($dest).Dispose(); 'ECRITURE-POSSIBLE' } catch { 'ECRITURE-REFUSEE' }";
+            return "$GT_DownloadRoot = " + Q(racine) + "\r\n"
+                + "function Initialize-GTAdminDir([string]$Path) { Add-Content -LiteralPath " + Q(log) + " -Value ('acl ' + $Path); New-Item -ItemType Directory -Force -Path $Path | Out-Null }\r\n"
+                + "function Invoke-WebRequest { [CmdletBinding()] param([switch]$UseBasicParsing, [string]$Uri, [string]$OutFile, [int]$TimeoutSec) Add-Content -LiteralPath " + Q(log) + " -Value 'download'; Set-Content -LiteralPath $OutFile -Value 'MZ' }\r\n"
+                + "function Get-AuthenticodeSignature { [CmdletBinding()] param([string]$LiteralPath) $dest = $LiteralPath; Add-Content -LiteralPath " + Q(log) + " -Value ('verif ' + $(" + sub + ")); "
+                + "[pscustomobject]@{ Status = " + (signatureValide ? "'Valid'" : "'NotSigned'") + "; SignerCertificate = [pscustomobject]@{ Subject = 'CN=NVIDIA Corporation' } } }\r\n"
+                + "function Start-Process { [CmdletBinding()] param([string]$FilePath, $ArgumentList, [switch]$Wait, [switch]$PassThru) $dest = $FilePath; Add-Content -LiteralPath " + Q(log) + " -Value ('lancement ' + $(" + sub + ") + ' ' + ($ArgumentList -join ' ')); [pscustomobject]@{ ExitCode = 0 } }\r\n";
+        }
+
+        [Fact] public void L_ACL_du_dossier_de_telechargement_est_reservee_aux_administrateurs_et_a_SYSTEM()
+        {
+            var r = PsCommon.Eval(@"$acl = New-GTAdminOnlyAcl
+'protege=' + $acl.AreAccessRulesProtected
+foreach ($rule in $acl.GetAccessRules($true, $false, [System.Security.Principal.SecurityIdentifier])) { 'regle=' + $rule.IdentityReference.Value + ':' + $rule.FileSystemRights + ':' + $rule.AccessControlType + ':' + $rule.InheritanceFlags }
+'racine=' + (Get-GTDownloadRoot)");
+            Assert.Contains("protege=True", r);
+            var regles = r.Where(l => l.StartsWith("regle=")).ToList();
+            Assert.Equal(2, regles.Count);
+            Assert.Contains(regles, l => l.StartsWith("regle=S-1-5-32-544:FullControl:Allow"));
+            Assert.Contains(regles, l => l.StartsWith("regle=S-1-5-18:FullControl:Allow"));
+            Assert.Contains(r, l => l.StartsWith("racine=") && l.EndsWith(@"GamingTweaker\Telechargements"));
+        }
+
+        [Fact] public void Le_pilote_NVIDIA_est_telecharge_dans_le_dossier_admin_verrouille_verifie_puis_lance_sous_verrou()
+        {
+            var racine = Path.Combine(tmp, "Telechargements"); var log = Path.Combine(tmp, "nv.log");
+            var r = PsCommon.Eval(FauxNvidia(racine, log, true) + "Install-TweakNvidiaDriver -Url 'https://us.download.nvidia.com/Windows/555.99/555.99-desktop-win10-win11-64bit-international-dch-whql.exe'\r\n'FIN'");
+            Assert.Contains("FIN", r);
+            var l = File.ReadAllLines(log);
+            Assert.Equal(new[] { "acl " + racine }, l.Take(1));
+            Assert.StartsWith("acl " + racine + Path.DirectorySeparatorChar, l[1]);
+            Assert.Equal(new[] { "download", "verif ECRITURE-REFUSEE", "lancement ECRITURE-REFUSEE -s -noreboot" }, l.Skip(2).ToArray());
+            Assert.Empty(Directory.GetDirectories(racine));   // dossier supprimé après l'installation
+        }
+
+        [Fact] public void Une_signature_invalide_arrete_avant_le_lancement_et_supprime_le_dossier()
+        {
+            var racine = Path.Combine(tmp, "Telechargements"); var log = Path.Combine(tmp, "nv.log");
+            var r = PsCommon.Eval(FauxNvidia(racine, log, false) + "try { Install-TweakNvidiaDriver -Url 'https://us.download.nvidia.com/Windows/1/pilote.exe'; 'PAS-D-ERREUR' } catch { 'ERREUR:' + $_.Exception.Message }");
+            Assert.Contains(r, x => x.StartsWith("ERREUR:") && x.Contains("signature"));
+            var l = File.ReadAllText(log);
+            Assert.Contains("verif ECRITURE-REFUSEE", l);
+            Assert.DoesNotContain("lancement", l);
+            Assert.Empty(Directory.GetDirectories(racine));
+        }
+
+        [Fact] public void Le_verrou_laisse_l_installateur_lisible_et_executable_par_un_vrai_processus()
+        {
+            // Copie d'un petit exécutable système, verrouillée comme dans Install-TweakNvidiaDriver, puis lancée : rien n'est installé.
+            var exe = Path.Combine(tmp, "faux-installateur.exe");
+            File.Copy(Path.Combine(Environment.GetEnvironmentVariable("SystemRoot"), "System32", "whoami.exe"), exe);
+            var r = PsCommon.Eval("$l = Open-GTLockedFile " + Q(exe) + "\r\ntry {\r\n"
+                + "try { [IO.File]::OpenWrite(" + Q(exe) + ").Dispose(); 'ECRITURE-POSSIBLE' } catch { 'ECRITURE-REFUSEE' }\r\n"
+                + "try { Remove-Item -LiteralPath " + Q(exe) + " -Force -ErrorAction Stop; 'SUPPRESSION-POSSIBLE' } catch { 'SUPPRESSION-REFUSEE' }\r\n"
+                + "$p = Start-Process -FilePath " + Q(exe) + " -ArgumentList '/?' -Wait -PassThru -WindowStyle Hidden; 'LANCE'\r\n"
+                + "} finally { $l.Dispose() }\r\n"
+                + "try { [IO.File]::OpenWrite(" + Q(exe) + ").Dispose(); 'LIBERE' } catch { 'ENCORE-VERROUILLE' }");
+            Assert.Equal(new[] { "ECRITURE-REFUSEE", "SUPPRESSION-REFUSEE", "LANCE", "LIBERE" }, r.ToArray());
         }
 
         // ---- catalogue ---------------------------------------------------------------------------------------

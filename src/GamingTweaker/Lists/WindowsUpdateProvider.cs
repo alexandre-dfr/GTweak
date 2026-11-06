@@ -16,13 +16,20 @@ namespace GamingTweaker.Lists
     {
         private static readonly Regex Kb = new Regex(@"^KB\d{4,8}$", RegexOptions.CultureInvariant);
 
-        // Même requête et même filtre que upd.windows.apply.ps1. Sortie : KB|titre|taille en Mo.
-        private const string Script = @"
+        /// <summary>Requête identique à celle de upd.windows.apply.ps1 : BrowseOnly=0 écarte les mises à jour facultatives ou préversions.</summary>
+        public const string Requete = "IsInstalled=0 and Type='Software' and IsHidden=0 and BrowseOnly=0";
+
+        /// <summary>Ligne identique dans upd.windows.apply.ps1 : exclut la catégorie Upgrades (mises à jour de fonctionnalités).</summary>
+        public const string FiltreUpgrades = "if (@($u.Categories | Where-Object { $_.CategoryID -eq '3689bdc8-b205-4af4-8d4a-a63924c5e9d5' }).Count -gt 0) { continue }";
+
+        // Sortie : KB|titre|taille en Mo.
+        public const string ScriptRecherche = @"
 $ErrorActionPreference = 'Stop'
 $s = New-Object -ComObject Microsoft.Update.Session
-$found = $s.CreateUpdateSearcher().Search(""IsInstalled=0 and Type='Software' and IsHidden=0"")
+$found = $s.CreateUpdateSearcher().Search(""" + Requete + @""")
 foreach ($u in $found.Updates) {
     if ($u.InstallationBehavior.CanRequestUserInput) { continue }
+    " + FiltreUpgrades + @"
     $kbs = @($u.KBArticleIDs)
     if ($kbs.Count -eq 0) { continue }
     $mb = [int][Math]::Round([double]$u.MaxDownloadSize / 1MB)
@@ -34,7 +41,7 @@ foreach ($u in $found.Updates) {
 
         public WindowsUpdateProvider(Func<CancellationToken, Task<string>> executer = null)
         {
-            this.executer = executer ?? (ct => PowerShellQuery.RunAsync(Script, ct, 300000));
+            this.executer = executer ?? (ct => PowerShellQuery.RunAsync(ScriptRecherche, ct, 300000));
         }
 
         public string ListId { get { return "windowsUpdate"; } }

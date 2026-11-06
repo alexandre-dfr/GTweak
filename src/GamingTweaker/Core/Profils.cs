@@ -248,8 +248,8 @@ namespace GamingTweaker.Core
             return res;
         }
 
-        /// <summary>Faux si la clé de profil ne peut pas contenir « * » (services, bloatware, pilote).</summary>
-        public static bool CleSupporteTous(string cle) { return cle != "services" && cle != "bloatware" && cle != "pilote"; }
+        /// <summary>Faux si la clé de profil ne peut pas contenir « * » (services, bloatware, bloatware-tierces, pilote).</summary>
+        public static bool CleSupporteTous(string cle) { return cle != "services" && cle != "bloatware" && cle != "bloatware-tierces" && cle != "pilote"; }
 
         /// <summary>Retire la liste de cette clé (typée ou générique) du profil.</summary>
         public static void RetirerListe(ProfilListes l, string cle)

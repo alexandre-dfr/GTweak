@@ -19,6 +19,8 @@ namespace GamingTweaker.Ui
             if (fournisseurListe != null)
             {
                 Liste = new ListeSelectionViewModel(fournisseurListe, () => { var h = CocheChanged; if (h != null) h(); });
+                // Un élément Risqué demande la même confirmation qu'une option Risqué (ConfirmerElement la remplace par un texte propre à l'élément).
+                Liste.ConfirmerRisque = (cle, titre, detail) => ConfirmerElement != null ? ConfirmerElement(this, titre, detail) : (this.confirmer != null && this.confirmer(this));
                 BasculerListeCommand = new RelayCommand(_ => { ListeOuverte = !ListeOuverte; });
             }
             NiveauRisque = item.Risque ?? RiskLevel.Sur;
@@ -54,6 +56,18 @@ namespace GamingTweaker.Ui
         internal string SearchText { get; private set; }
         internal event Action CocheChanged;
         internal bool Confirme { get; set; }
+        /// <summary>Confirmation d'un élément Risqué de la liste (option, titre, détail) ; à défaut, la confirmation de l'option est réutilisée.</summary>
+        internal Func<OptionViewModel, string, string, bool> ConfirmerElement { get; set; }
+
+        /// <summary>Titre suivi des éléments Risqué choisis (pour la confirmation d'un profil).</summary>
+        public string TitreRisque
+        {
+            get
+            {
+                var r = Liste == null ? new System.Collections.Generic.List<ListEntry>() : Liste.ElementsRisques();
+                return r.Count == 0 ? Titre : Titre + " (" + string.Join(", ", System.Linq.Enumerable.Select(r, x => x.Titre ?? x.Key)) + ")";
+            }
+        }
 
         public string Etat { get { return etat; } private set { Set(ref etat, value); } }
 

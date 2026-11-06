@@ -1,11 +1,11 @@
-$setup = Get-ChildItem -Path (Join-Path ${env:ProgramFiles(x86)} 'Microsoft\Edge\Application\*\Installer\setup.exe') -ErrorAction SilentlyContinue |
-    Sort-Object -Property FullName -Descending | Select-Object -First 1
+$setup = Get-GTEdgeSetup (Get-GTEdgeAppDir)
 if (-not $setup) { Skip-GTItem 'Microsoft Edge n''est pas installé (désinstalleur introuvable).' }
-# Autorise la désinstallation (valeur nécessaire dans l'Espace économique européen), puis désinstalle sans toucher au profil de l'utilisateur.
+# Méthode de WinUtil : un fichier factice MicrosoftEdge.exe dans le dossier de l'ancien Edge débloque le désinstalleur officiel.
+# Le fichier est journalisé avant sa création (supprimé à l'annulation) ; le profil de l'utilisateur n'est jamais supprimé.
+New-TweakEmptyFile -Path (Get-GTEdgeDummyPath) | Out-Null
+# Autorise la désinstallation (valeur nécessaire dans l'Espace économique européen), journalisée.
 Set-TweakRegistryIfNeeded -Path 'HKLM:\SOFTWARE\Microsoft\EdgeUpdateDev' -Name 'AllowUninstall' -Type String -Value ''
 Write-GTJournal 'wingetapp' 'Microsoft.Edge' $true 'winget' $null
-$p = Start-Process -FilePath $setup.FullName -ArgumentList '--uninstall --system-level --force-uninstall' -Wait -PassThru
-if (Test-Path -LiteralPath (Join-Path ${env:ProgramFiles(x86)} 'Microsoft\Edge\Application\msedge.exe')) { throw ('Edge est toujours installé (code de sortie ' + $p.ExitCode + ').') }
-# Empêche seulement la réinstallation automatique d'Edge par Windows Update.
-Set-TweakRegistryIfNeeded -Path 'HKLM:\SOFTWARE\Microsoft\EdgeUpdate' -Name 'DoNotUpdateToEdgeWithChromium' -Type DWord -Value 1
-Set-GTItemNote 'Edge désinstallé, profil conservé. Annulation : réinstallation par winget (Microsoft.Edge).'
+$p = Start-Process -FilePath $setup -ArgumentList '--uninstall --system-level --force-uninstall' -Wait -PassThru
+if (Test-Path -LiteralPath (Join-Path (Get-GTEdgeAppDir) 'msedge.exe')) { throw ('Edge est toujours installé (code de sortie ' + $p.ExitCode + ').') }
+Set-GTItemNote 'Edge désinstallé, profil conservé. Annulation : réinstallation par winget (Microsoft.Edge) et suppression du fichier factice.'

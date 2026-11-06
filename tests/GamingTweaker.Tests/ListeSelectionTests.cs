@@ -250,6 +250,101 @@ namespace GamingTweaker.Tests
             Assert.True(Cree(new Fournisseur(), It("opt.start", "startup")).Options.Single().Liste.SupporteTous);
         }
 
+        // ---- éléments Risqué : même confirmation qu'une option Risqué --------------------------------------
+
+        private MainViewModel CreeConf(Func<OptionViewModel, bool> confirmer, params CatalogItem[] items)
+        {
+            var reg = new ListProviderRegistry(); reg.Register(new Fournisseur());
+            var paths = new DataPaths { ProfilsDir = Path.Combine(tmp, "Profils"), MachineDir = Path.Combine(tmp, "M"), SessionsDir = Path.Combine(tmp, "M", "S"), QuarantineDir = Path.Combine(tmp, "Q") };
+            return new MainViewModel(items.ToList(), new MachineFacts { WindowsMajor = "10", Edition = "Pro" }, paths,
+                its => Task.FromResult(its.ToDictionary(i => i.Id, i => DetectState.NotApplied)), null, confirmer, reg);
+        }
+
+        [Fact]
+        public async Task Cocher_un_element_Risque_demande_une_confirmation_une_fois_par_session()
+        {
+            var appels = 0; var reponse = false;
+            var vm = CreeConf(o => { appels++; return reponse; }, It("opt.start", "startup"));
+            var liste = vm.Options.Single().Liste; await liste.ChargerAsync();
+            var risque = liste.Elements.Single(e => e.Key == "HKLM:Run:Tiers");
+            risque.IsChecked = true;
+            Assert.False(risque.IsChecked); Assert.Equal(1, appels);              // refusé : reste décoché
+            reponse = true;
+            risque.IsChecked = true;
+            Assert.True(risque.IsChecked); Assert.Equal(2, appels);               // accepté
+            risque.IsChecked = false; risque.IsChecked = true;
+            Assert.True(risque.IsChecked); Assert.Equal(2, appels);               // déjà confirmé dans la session
+            liste.Elements.Single(e => e.Key == "HKCU:Run:Mon App").IsChecked = true;
+            liste.Elements.Single(e => e.Key == "HKCU:Run:Autre").IsChecked = true;
+            Assert.Equal(2, appels);                                              // Avancé et Sûr : aucune confirmation
+        }
+
+        [Fact]
+        public async Task La_confirmation_propre_aux_elements_est_utilisee_quand_elle_est_fournie()
+        {
+            var textes = new List<string>();
+            var vm = CreeConf(o => { throw new InvalidOperationException("confirmation d'option inattendue"); }, It("opt.start", "startup"));
+            vm.ConfirmerElementRisque = (o, titre, detail) => { textes.Add(o.Id + "|" + titre + "|" + detail); return true; };
+            var liste = vm.Options.Single().Liste; await liste.ChargerAsync();
+            liste.Elements.Single(e => e.Key == "HKLM:Run:Tiers").IsChecked = true;
+            Assert.Equal(new[] { "opt.start|Tiers|Machine" }, textes);
+        }
+
+        [Fact]
+        public async Task Un_profil_avec_un_element_Risque_declenche_la_confirmation_et_retire_l_element_refuse()
+        {
+            var appels = 0; var reponse = false;
+            var vm = CreeConf(o => { appels++; return reponse; }, It("opt.start", "startup"));
+            var liste = vm.Options.Single().Liste; await liste.ChargerAsync();
+            var p = new Profil { Nom = "t", Options = new List<string> { "opt.start" }, Listes = new ProfilListes { Inconnues = new Dictionary<string, Newtonsoft.Json.Linq.JToken> { { "startup", new Newtonsoft.Json.Linq.JArray("HKCU:Run:Mon App", "HKLM:Run:Tiers") } } } };
+            vm.LoadProfil(p);
+            Assert.Equal(1, appels);
+            Assert.Equal(new[] { "HKCU:Run:Mon App" }, liste.VersSelection());
+            Assert.Contains("Tiers", vm.Message);
+            reponse = true;
+            vm.LoadProfil(p);
+            Assert.Equal(new[] { "HKCU:Run:Mon App", "HKLM:Run:Tiers" }, liste.VersSelection());
+        }
+
+        [Fact]
+        public async Task Enregistrer_un_profil_avec_un_element_Risque_demande_la_confirmation_de_profil()
+        {
+            var vm = CreeConf(o => true, It("opt.start", "startup"));
+            var liste = vm.Options.Single().Liste; await liste.ChargerAsync();
+            vm.Options.Single().IsChecked = true;
+            liste.Elements.Single(e => e.Key == "HKCU:Run:Mon App").IsChecked = true;
+            IReadOnlyList<OptionViewModel> vus = null;
+            vm.ConfirmerProfilRisque = r => { vus = r; return false; };
+            Assert.Null(vm.SauverProfil("sans-risque"));
+            Assert.Null(vus);                                                     // aucun élément Risqué : pas de confirmation
+            liste.Elements.Single(e => e.Key == "HKLM:Run:Tiers").IsChecked = true;
+            Assert.Null(vm.SauverProfil("avec-risque"));
+            Assert.Single(vus);
+            Assert.Contains("Tiers", vus.Single().TitreRisque);
+            Assert.False(File.Exists(Path.Combine(tmp, "Profils", "avec-risque.json")), "refusé : rien n'est enregistré");
+            vm.ConfirmerProfilRisque = r => true;
+            Assert.Null(vm.SauverProfil("avec-risque"));
+            Assert.True(File.Exists(Path.Combine(tmp, "Profils", "avec-risque.json")));
+        }
+
+        [Fact]
+        public async Task Le_fournisseur_bloatware_decrit_une_cle_connue_pour_connaitre_son_risque_sans_charger_la_liste()
+        {
+            var known = KnownApps.LoadEmbedded();
+            var r = known.First(a => a.Risque == RiskLevel.Risque && a.Liste == "bloatware");
+            var p = new BloatwareProvider("bloatware", known, null);
+            Assert.Equal(RiskLevel.Risque, p.Decrire(r.Package).Risque);
+            Assert.Null(p.Decrire("Inconnu.Paquet"));
+            await Task.FromResult(0);
+        }
+
+        [Theory]
+        [InlineData("services")]
+        [InlineData("bloatware")]
+        [InlineData("bloatware-tierces")]
+        [InlineData("pilote")]
+        public void Tout_n_est_jamais_accepte_pour_les_listes_dont_le_script_le_refuse(string cle) => Assert.False(Profils.CleSupporteTous(cle));
+
         [Fact]
         public void Lancer_et_apercu_exigent_une_option_executable()
         {

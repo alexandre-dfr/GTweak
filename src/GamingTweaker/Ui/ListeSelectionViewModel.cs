@@ -12,11 +12,13 @@ namespace GamingTweaker.Ui
     public class ListeElementViewModel : ObservableObject
     {
         private readonly Action changed;
+        private readonly Func<ListeElementViewModel, bool> confirmer;
         private bool isChecked;
 
-        public ListeElementViewModel(string key, string titre, string detail, RiskLevel risque, bool absent, bool coche, Action changed)
+        public ListeElementViewModel(string key, string titre, string detail, RiskLevel risque, bool absent, bool coche, Action changed, Func<ListeElementViewModel, bool> confirmer = null)
         {
-            Key = key; Titre = titre; Detail = detail; Absent = absent; isChecked = coche; this.changed = changed;
+            Key = key; Titre = titre; Detail = detail; Absent = absent; isChecked = coche; this.changed = changed; this.confirmer = confirmer;
+            NiveauRisque = risque;
             Risque = risque == RiskLevel.Sur ? "Sûr" : risque == RiskLevel.Avance ? "Avancé" : "Risqué";
         }
 
@@ -24,13 +26,25 @@ namespace GamingTweaker.Ui
         public string Titre { get; private set; }
         public string Detail { get; private set; }
         public string Risque { get; private set; }
+        public RiskLevel NiveauRisque { get; private set; }
         /// <summary>Présent dans la sélection (profil) mais introuvable sur ce PC.</summary>
         public bool Absent { get; private set; }
 
         public bool IsChecked
         {
             get { return isChecked; }
-            set { if (Set(ref isChecked, value) && changed != null) changed(); }
+            set
+            {
+                if (value == isChecked) return;
+                // Même règle qu'une option Risqué : confirmation avant de cocher un élément Risqué (une fois par session, mémorisée par la liste).
+                if (value && NiveauRisque == RiskLevel.Risque && confirmer != null && !confirmer(this))
+                {
+                    var ctx = SynchronizationContext.Current;
+                    if (ctx != null) ctx.Post(_ => Raise("IsChecked"), null); else Raise("IsChecked");
+                    return;
+                }
+                if (Set(ref isChecked, value) && changed != null) changed();
+            }
         }
 
         internal void SetSilencieux(bool v) { if (isChecked == v) return; isChecked = v; Raise("IsChecked"); }
@@ -49,6 +63,10 @@ namespace GamingTweaker.Ui
         private IReadOnlyList<ListEntry> disponibles;
         private Task chargement;
         private bool interne;
+        private readonly HashSet<string> confirmes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>Demande la confirmation d'un élément Risqué (clé, titre, détail). Sans délégué, rien ne le confirme : un élément Risqué ne peut pas être coché.</summary>
+        public Func<string, string, string, bool> ConfirmerRisque { get; set; }
 
         public ListeSelectionViewModel(IListProvider provider, Action changed = null)
         {
@@ -81,6 +99,7 @@ namespace GamingTweaker.Ui
             {
                 if (tous == value) return;
                 if (value && !SupporteTous) { Raise("Tous"); return; }
+                if (value && charge && Elements.Any(x => !x.Absent && !x.IsChecked && x.NiveauRisque == RiskLevel.Risque && !Confirme(x.Key, x.Titre, x.Detail))) { Raise("Tous"); return; }
                 tous = value;
                 if (charge)
                 {
@@ -187,12 +206,54 @@ namespace GamingTweaker.Ui
                 {
                     if (e == null || e.Key == null || !vus.Add(e.Key)) continue;
                     var coche = estTous ? !exclus.Contains(e.Key) : positifs.Contains(e.Key);
-                    Elements.Add(new ListeElementViewModel(e.Key, e.Titre ?? e.Key, e.Detail, e.Risque, false, coche, ElementChange));
+                    Elements.Add(new ListeElementViewModel(e.Key, e.Titre ?? e.Key, e.Detail, e.Risque, false, coche, ElementChange, ConfirmeElement));
                 }
                 foreach (var k in (estTous ? exclus : positifs).Where(k => !vus.Contains(k)))
                     Elements.Add(new ListeElementViewModel(k, k, "Absent de ce PC (conservé dans le profil)", RiskLevel.Avance, true, !estTous, ElementChange));
             }
             finally { interne = false; }
+        }
+
+        /// <summary>Confirmation d'un élément Risqué, une seule fois par session et par élément. Faux si refusée (ou si personne ne peut confirmer).</summary>
+        private bool Confirme(string key, string titre, string detail)
+        {
+            if (confirmes.Contains(key)) return true;
+            if (ConfirmerRisque == null || !ConfirmerRisque(key, titre, detail)) return false;
+            confirmes.Add(key);
+            return true;
+        }
+
+        private bool ConfirmeElement(ListeElementViewModel e) { return Confirme(e.Key, e.Titre, e.Detail); }
+
+        private ListEntry Decrire(string key)
+        {
+            var el = Elements.FirstOrDefault(x => string.Equals(x.Key, key, StringComparison.OrdinalIgnoreCase) && !x.Absent);
+            if (el != null) return new ListEntry { Key = el.Key, Titre = el.Titre, Detail = el.Detail, Risque = el.NiveauRisque };
+            var lk = provider as IListLookup;
+            return lk == null ? null : lk.Decrire(key);
+        }
+
+        /// <summary>Éléments Risqué de la sélection positive (liste chargée ou non : le fournisseur sait décrire une clé connue).</summary>
+        public List<ListEntry> ElementsRisques()
+        {
+            var res = new List<ListEntry>();
+            foreach (var k in VersSelection().Where(s => s != "*" && !s.StartsWith("!", StringComparison.Ordinal)))
+            {
+                var d = Decrire(k);
+                if (d != null && d.Risque == RiskLevel.Risque) res.Add(d);
+            }
+            return res;
+        }
+
+        /// <summary>Après le chargement d'un profil : confirme chaque élément Risqué choisi ; ceux qui sont refusés sont retirés de la sélection. Renvoie leurs titres.</summary>
+        public List<string> ConfirmerSelectionProfil()
+        {
+            var refuses = new List<string>();
+            var retirer = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var d in ElementsRisques())
+                if (!Confirme(d.Key, d.Titre, d.Detail)) { retirer.Add(d.Key); refuses.Add(d.Titre ?? d.Key); }
+            if (retirer.Count > 0) DepuisSelection(VersSelection().Where(s => !retirer.Contains(s)));
+            return refuses;
         }
 
         private void ElementChange() { if (!interne) Notifier(); }

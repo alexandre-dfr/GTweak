@@ -21,6 +21,12 @@ namespace GamingTweaker.Lists
         Task<IReadOnlyList<ListEntry>> LoadAsync(CancellationToken ct);
     }
 
+    /// <summary>Description d'un élément à partir de sa clé, sans charger la liste (null si inconnu) : permet de connaître le niveau de risque d'une sélection de profil non encore chargée.</summary>
+    public interface IListLookup
+    {
+        ListEntry Decrire(string key);
+    }
+
     /// <summary>Texte et lien affichés sous la liste (repli de l'interface).</summary>
     public interface IListInfo
     {

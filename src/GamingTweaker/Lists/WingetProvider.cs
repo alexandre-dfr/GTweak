@@ -15,12 +15,23 @@ namespace GamingTweaker.Lists
     /// Mises à jour d'applications proposées par <c>winget upgrade</c>. La sortie est analysée par la position des colonnes lue sur la ligne
     /// d'en-tête, au-dessus des tirets, donc sans dépendre de la langue ni des noms tronqués (« … »). Même algorithme que ConvertFrom-GTWingetUpgrade (Common.ps1).
     /// </summary>
+    /// <summary>winget a rendu un code de sortie d'échec : l'erreur est affichée, la liste n'est pas déclarée vide.</summary>
+    public class WingetEchecException : Exception
+    {
+        public int Code { get; private set; }
+        public WingetEchecException(int code, string sortie)
+            : base("winget a échoué (code " + code + ")" + (string.IsNullOrWhiteSpace(sortie) ? "" : " : " + sortie.Trim())) { Code = code; }
+    }
+
     public class WingetProvider : IListProvider, IListInfo
     {
         private static readonly Regex Tirets = new Regex(@"^-{5,}$", RegexOptions.CultureInvariant);
         private static readonly Regex IdValide = new Regex(@"^[A-Za-z0-9][A-Za-z0-9._+\-]*$", RegexOptions.CultureInvariant);
 
         private readonly Func<CancellationToken, Task<string>> executer;
+
+        /// <summary>0 ; 0x8A15002B (aucune mise à jour applicable) et 0x8A150014 (aucun paquet trouvé) comptent comme une liste vide, tout autre code est un échec.</summary>
+        public static bool CodeListeAcceptable(int code) { return code == 0 || code == -1978335189 || code == -1978335212; }
 
         public WingetProvider(Func<CancellationToken, Task<string>> executer = null) { this.executer = executer ?? ExecuterWinget; }
 
@@ -119,7 +130,13 @@ namespace GamingTweaker.Lists
                         if (!p.WaitForExit(120000)) { try { p.Kill(); } catch (Exception) { } throw new TimeoutException("winget n'a pas répondu à temps."); }
                     }
                     ct.ThrowIfCancellationRequested();
-                    return sortie.Result;
+                    var texte = sortie.Result;
+                    if (!CodeListeAcceptable(p.ExitCode))
+                    {
+                        var fin = string.Join(" ", texte.Replace('\r', '\n').Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0 && !l.All(c => "-/|".IndexOf(c) >= 0 || c == (char)92)).Reverse().Take(2).Reverse());
+                        throw new WingetEchecException(p.ExitCode, fin);
+                    }
+                    return texte;
                 }
             }, ct);
         }

@@ -618,7 +618,7 @@ function Add-TweakHosts {
 function Test-GTProtectedApp([string]$Name) {
     if ([string]::IsNullOrEmpty($Name)) { return $true }
     if ($Name -match 'WebView') { return $true }
-    return [bool]($Name -match '(?i)^(Microsoft\.WindowsStore|Microsoft\.StorePurchaseApp|Microsoft\.Services\.Store|Microsoft\.DesktopAppInstaller|Microsoft\.Winget|Microsoft\.VCLibs|Microsoft\.UI\.Xaml|Microsoft\.NET\.Native|Microsoft\.WindowsAppRuntime|Microsoft\.WinAppRuntime|MicrosoftCorporationII\.WinAppRuntime|Microsoft\.Xbox(GamingOverlay|IdentityProvider|GameCallableUI|SpeechToTextOverlay|GameOverlay)|Microsoft\.MicrosoftEdge|NVIDIACorp\.|AdvancedMicroDevicesInc|RealtekSemiconductorCorp|Realtek|AppUp\.Intel)')
+    return [bool]($Name -match '(?i)^(Microsoft\.WindowsStore|Microsoft\.StorePurchaseApp|Microsoft\.Services\.Store|Microsoft\.DesktopAppInstaller|Microsoft\.Winget|Microsoft\.VCLibs|Microsoft\.UI\.Xaml|Microsoft\.NET\.Native|Microsoft\.WindowsAppRuntime|Microsoft\.WinAppRuntime|MicrosoftCorporationII\.WinAppRuntime|Microsoft\.Xbox(GamingOverlay|IdentityProvider|GameCallableUI|SpeechToTextOverlay|GameOverlay)|Microsoft\.Xbox\.TCUI|Microsoft\.GamingServices|Microsoft\.MicrosoftEdge|NVIDIACorp\.|AdvancedMicroDevicesInc|RealtekSemiconductorCorp|Realtek|AppUp\.Intel)')
 }
 
 # -StoreId : identifiant Microsoft Store, ecrit dans le journal (champ after) pour la reinstallation a l'annulation.
@@ -729,14 +729,22 @@ function Restore-GTEntry($E) {
             elseif (Test-Path -LiteralPath $E.target) { Remove-GTRegistryKey $E.target }
         }
         'app' { }
+        'newfile' {
+            # Fichier cree par l'application : supprime ; son dossier aussi s'il a ete cree par elle et qu'il est vide.
+            if (Test-Path -LiteralPath $E.target) { Remove-Item -LiteralPath $E.target -Force -ErrorAction Stop }
+            if ([bool]$E.before) {
+                $d = Split-Path -Parent $E.target
+                if ((Test-Path -LiteralPath $d) -and @(Get-ChildItem -LiteralPath $d -Force -ErrorAction SilentlyContinue).Count -eq 0) { Remove-Item -LiteralPath $d -Force -ErrorAction Stop }
+            }
+        }
         'wingetapp' {
-            if (-not (Install-GTWingetPackage ([string]$E.target) ([string]$E.before))) { throw 'winget est introuvable : réinstallez-le à la main (winget install Microsoft.Edge).' }
+            if (-not (Install-GTWingetPackage ([string]$E.target) ([string]$E.before))) { throw ('winget est introuvable : réinstallez ' + [string]$E.target + ' à la main (winget install ' + [string]$E.target + ').') }
         }
         'dismfeature' {
             if ((Get-GTOptionalFeatureState ([string]$E.target)) -ne 'Enabled') { Invoke-GTDism -Arguments @('/Online', '/Enable-Feature', ('/FeatureName:' + $E.target), '/NoRestart') | Out-Null }
         }
         'dismcapability' {
-            if (@(Get-GTCapabilityInstalled ([string]$E.target)).Count -eq 0) { Invoke-GTDism -Arguments @('/Online', '/Add-Capability', ('/CapabilityName:' + $E.target)) | Out-Null }
+            if (@(Get-GTCapabilityInstalled (Get-GTCapabilityBaseName ([string]$E.target))).Count -eq 0) { Invoke-GTDism -Arguments @('/Online', '/Add-Capability', ('/CapabilityName:' + $E.target)) | Out-Null }
         }
         default { throw ('Type d''entrée de journal inconnu : ' + $E.kind) }
     }
@@ -1592,9 +1600,15 @@ function Get-GTWingetPath {
 }
 
 # 0 = reussite ; -1978335135 (0x8A150061) = deja installe ; -1978335189 (0x8A15002B) = aucune mise a jour applicable.
+# 0x8A15010D (-1978334963) = l'operation a abouti mais un redemarrage est requis : succes, avec une note de redemarrage.
 function Test-GTWingetOk([int]$Code) {
-    return ($Code -eq 0 -or $Code -eq -1978335135 -or $Code -eq -1978335189)
+    return ($Code -eq 0 -or $Code -eq -1978335135 -or $Code -eq -1978335189 -or (Test-GTWingetReboot $Code))
 }
+
+function Test-GTWingetReboot([int]$Code) { return ($Code -eq -1978334963) }
+
+# Code acceptable pour la LISTE « winget upgrade » : 0, aucune mise a jour applicable ou aucun paquet trouve (meme regle que WingetProvider.CodeListeAcceptable).
+function Test-GTWingetListOk([int]$Code) { return ($Code -eq 0 -or $Code -eq -1978335189 -or $Code -eq -1978335212) }
 
 # Reinstalle un paquet. Renvoie $false si winget est absent (reinstallation a faire a la main), leve une erreur si winget echoue.
 function Install-GTWingetPackage([string]$Id, [string]$Source) {
@@ -1670,6 +1684,9 @@ function Set-TweakDismFeatureOff {
     if ($r.RebootRequired) { $script:GT_DismReboot = $true }
     return $true
 }
+
+# Nom sans le suffixe de version (« App.StepsRecorder~~~~0.0.1.0 » -> « App.StepsRecorder »).
+function Get-GTCapabilityBaseName([string]$Name) { return ($Name -replace '~~~~.*$', '') }
 
 # Noms complets (avec suffixe de version) des fonctionnalites a la demande installees dont le nom commence par $Prefix.
 function Get-GTCapabilityInstalled([string]$Prefix) {
@@ -1747,12 +1764,66 @@ function Compare-GTDriverVersion([string]$A, [string]$B) {
 
 # ---- OneDrive ----------------------------------------------------------------------------------
 
+# Cree un fichier vide absent (et son dossier au besoin) apres l'avoir journalise (kind newfile ; before = dossier cree par nous).
+# L'annulation supprime le fichier. Renvoie $true si le fichier a ete cree, $false s'il existait deja (rien n'est alors journalise ni supprime plus tard).
+function New-TweakEmptyFile {
+    param([Parameter(Mandatory)][string]$Path)
+    if (Test-Path -LiteralPath $Path) { return $false }
+    $dir = Split-Path -Parent $Path
+    $dirNew = -not (Test-Path -LiteralPath $dir)
+    Write-GTJournal 'newfile' $Path $false $dirNew $null
+    if ($dirNew) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+    New-Item -ItemType File -Force -Path $Path | Out-Null
+    return $true
+}
+
+# Dossier d'installation d'Edge (Chromium) ; $GT_EdgeAppDir le remplace dans les tests.
+function Get-GTEdgeAppDir {
+    if ($GT_EdgeAppDir) { return $GT_EdgeAppDir }
+    return (Join-Path ${env:ProgramFiles(x86)} 'Microsoft\Edge\Application')
+}
+
+# setup.exe d'Edge de la version la plus recente (tri sur [version], pas sur le texte : 99.0 < 120.0). $null si absent.
+function Get-GTEdgeSetup([string]$AppDir) {
+    if (-not (Test-Path -LiteralPath $AppDir)) { return $null }
+    $best = $null; $bestV = $null
+    foreach ($d in @(Get-ChildItem -LiteralPath $AppDir -Directory -ErrorAction SilentlyContinue)) {
+        $v = $null
+        if (-not [version]::TryParse($d.Name, [ref]$v)) { continue }
+        $s = Join-Path $d.FullName 'Installer\setup.exe'
+        if (-not (Test-Path -LiteralPath $s)) { continue }
+        if ($null -eq $bestV -or $v -gt $bestV) { $best = $s; $bestV = $v }
+    }
+    return $best
+}
+
+# Fichier factice du dossier de l'ancien Edge : sa presence debloque le desinstalleur officiel (methode de WinUtil).
+function Get-GTEdgeDummyPath {
+    if ($GT_EdgeDummyPath) { return $GT_EdgeDummyPath }
+    return (Join-Path $env:SystemRoot 'SystemApps\Microsoft.MicrosoftEdge_8wekyb3d8bbwe\MicrosoftEdge.exe')
+}
+
 # Desinstalle OneDrive par son programme officiel. Les dossiers de l'utilisateur ne sont jamais touches.
 # Annulation : reinstallation par winget (Microsoft.OneDrive).
+# OneDriveSetup.exe reste dans Windows apres la desinstallation : la detection se fait sur OneDrive.exe installe (par utilisateur ou pour la machine).
+function Get-GTOneDriveExePaths {
+    $res = @()
+    foreach ($pair in @(@($env:LOCALAPPDATA, 'Microsoft\OneDrive\OneDrive.exe'), @($env:ProgramFiles, 'Microsoft OneDrive\OneDrive.exe'), @(${env:ProgramFiles(x86)}, 'Microsoft OneDrive\OneDrive.exe'))) {
+        if (-not [string]::IsNullOrEmpty($pair[0])) { $res += (Join-Path $pair[0] $pair[1]) }
+    }
+    return $res
+}
+
+function Test-GTOneDriveInstalled {
+    foreach ($p in @(Get-GTOneDriveExePaths)) { if (Test-Path -LiteralPath $p) { return $true } }
+    return $false
+}
+
 function Remove-TweakOneDrive {
+    if (-not (Test-GTOneDriveInstalled)) { Skip-GTItem 'OneDrive absent de cette machine (installation du profil de l''utilisateur courant).' }
     $exe = Join-Path $env:SystemRoot 'SysWOW64\OneDriveSetup.exe'
     if (-not (Test-Path -LiteralPath $exe)) { $exe = Join-Path $env:SystemRoot 'System32\OneDriveSetup.exe' }
-    if (-not (Test-Path -LiteralPath $exe)) { Skip-GTItem 'OneDrive absent de cette machine.' }
+    if (-not (Test-Path -LiteralPath $exe)) { throw 'Le désinstalleur de OneDrive (OneDriveSetup.exe) est introuvable.' }
     Write-GTJournal 'wingetapp' 'Microsoft.OneDrive' $true 'winget' $null
     Get-Process -Name 'OneDrive' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
     $p = Start-Process -FilePath $exe -ArgumentList '/uninstall' -Wait -PassThru
@@ -1797,24 +1868,65 @@ function Get-GTNvidiaLatest([string]$GpuName, [string]$Branch) {
     return $null
 }
 
-# Telecharge l'installateur, verifie sa signature (sinon suppression et erreur), l'installe en silencieux sans redemarrage, puis le supprime.
+# Dossier de telechargement reserve aux administrateurs : C:\ProgramData\GamingTweaker\Telechargements ($GT_DownloadRoot le remplace dans les tests).
+function Get-GTDownloadRoot {
+    if ($GT_DownloadRoot) { return $GT_DownloadRoot }
+    return (Join-Path $env:ProgramData 'GamingTweaker\Telechargements')
+}
+
+# ACL en memoire : Administrateurs et SYSTEM en controle total, heritage coupe sans copie des droits herites (donc aucun droit pour les utilisateurs).
+function New-GTAdminOnlyAcl {
+    $acl = New-Object System.Security.AccessControl.DirectorySecurity
+    $acl.SetAccessRuleProtection($true, $false)
+    foreach ($sid in @('S-1-5-32-544', 'S-1-5-18')) {
+        $id = New-Object System.Security.Principal.SecurityIdentifier($sid)
+        $acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule($id, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')))
+    }
+    return $acl
+}
+
+# Cree le dossier avec cette ACL, ou l'applique a un dossier existant. Remplacee par un double dans les tests.
+function Initialize-GTAdminDir([string]$Path) {
+    $acl = New-GTAdminOnlyAcl
+    if (Test-Path -LiteralPath $Path) { Set-Acl -LiteralPath $Path -AclObject $acl }
+    else { [IO.Directory]::CreateDirectory($Path, $acl) | Out-Null }
+}
+
+# <racine>\<guid>, racine et sous-dossier reserves aux administrateurs : un utilisateur standard ne peut pas y remplacer l'installateur.
+function New-GTSecureDownloadDir {
+    $root = Get-GTDownloadRoot
+    Initialize-GTAdminDir $root
+    $dir = Join-Path $root ([Guid]::NewGuid().ToString('N'))
+    Initialize-GTAdminDir $dir
+    return $dir
+}
+
+# Ouvre le fichier en lecture en interdisant a tout autre d'y ecrire, de le renommer ou de le supprimer, jusqu'a Dispose().
+function Open-GTLockedFile([string]$Path) {
+    return (New-Object System.IO.FileStream($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::Read))
+}
+
+# Telecharge l'installateur dans un dossier reserve aux administrateurs, le verrouille (aucune ecriture possible), verifie sa signature
+# (sinon suppression et erreur), l'installe en silencieux sans redemarrage, puis supprime le dossier. Le verrou est tenu de la verification au lancement.
 function Install-TweakNvidiaDriver {
     param([Parameter(Mandatory)][string]$Url)
     if (-not (Test-GTNvidiaUrl $Url)) { throw 'Adresse de téléchargement refusée (ce n''est pas un domaine NVIDIA en https).' }
     $leaf = [IO.Path]::GetFileName(([Uri]$Url).AbsolutePath)
     if ($leaf -notmatch '^[A-Za-z0-9._\-]+\.exe$') { throw 'Nom de fichier du pilote inattendu.' }
-    $dir = Join-Path ([IO.Path]::GetTempPath()) ('GamingTweaker-nvidia-' + [Guid]::NewGuid().ToString('N'))
-    New-Item -ItemType Directory -Force -Path $dir | Out-Null
+    $dir = New-GTSecureDownloadDir
     $dest = Join-Path $dir $leaf
+    $lock = $null
     try {
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
         $ProgressPreference = 'SilentlyContinue'
         Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $dest -TimeoutSec 3000
+        $lock = Open-GTLockedFile $dest
         Confirm-GTNvidiaInstaller -Path $dest
         $p = Start-Process -FilePath $dest -ArgumentList '-s', '-noreboot' -Wait -PassThru
         if ($p.ExitCode -ne 0) { throw ('L''installateur NVIDIA a échoué (code ' + $p.ExitCode + ').') }
         return $p.ExitCode
     } finally {
+        if ($null -ne $lock) { $lock.Dispose() }
         Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue
     }
 }

@@ -75,10 +75,10 @@ namespace GamingTweaker.Tests
         [Fact] public void Store_et_WebView2_jamais_proposes()
         {
             Assert.DoesNotContain(known, a => a.Package.Contains("WindowsStore") || a.Package.Contains("WebView"));
-            foreach (var interdit in new[] { "Store", "XboxGamingOverlay", "XboxIdentityProvider", "GameCallableUI", "DesktopAppInstaller", "VCLibs", "UI.Xaml", "NET.Native", "NVIDIA", "AdvancedMicroDevices", "Realtek", "Winget", "MicrosoftEdge" })
+            foreach (var interdit in new[] { "Store", "XboxGamingOverlay", "XboxIdentityProvider", "GameCallableUI", "GamingServices", "Xbox.TCUI", "DesktopAppInstaller", "VCLibs", "UI.Xaml", "NET.Native", "NVIDIA", "AdvancedMicroDevices", "Realtek", "Winget", "MicrosoftEdge" })
                 Assert.DoesNotContain(known, a => a.Package.IndexOf(interdit, StringComparison.OrdinalIgnoreCase) >= 0);
             // Défense en profondeur : Remove-TweakApp refuse aussi ces noms, même si un script les réclamait.
-            var refuses = PsCommon.Eval("foreach ($n in @('Microsoft.WindowsStore','Microsoft.DesktopAppInstaller','Microsoft.WebView2','Microsoft.XboxGamingOverlay','Microsoft.XboxIdentityProvider','Microsoft.VCLibs.140.00','Microsoft.UI.Xaml.2.8','NVIDIACorp.NVIDIAControlPanel','RealtekSemiconductorCorp.RealtekAudioControl','Microsoft.MicrosoftEdge.Stable')) { if (-not (Test-GTProtectedApp $n)) { 'AUTORISE:' + $n } }\r\n'FIN'");
+            var refuses = PsCommon.Eval("foreach ($n in @('Microsoft.WindowsStore','Microsoft.DesktopAppInstaller','Microsoft.WebView2','Microsoft.XboxGamingOverlay','Microsoft.XboxIdentityProvider','Microsoft.VCLibs.140.00','Microsoft.UI.Xaml.2.8','NVIDIACorp.NVIDIAControlPanel','RealtekSemiconductorCorp.RealtekAudioControl','Microsoft.MicrosoftEdge.Stable','Microsoft.GamingServices','Microsoft.Xbox.TCUI')) { if (-not (Test-GTProtectedApp $n)) { 'AUTORISE:' + $n } }\r\n'FIN'");
             Assert.Equal("FIN", string.Join("", refuses));
             Assert.Empty(PsCommon.Eval("foreach ($a in @(" + string.Join(",", known.Select(a => Q(a.Package))) + ")) { if (Test-GTProtectedApp $a) { 'PROTEGE:' + $a } }"));
         }
@@ -306,7 +306,8 @@ namespace GamingTweaker.Tests
                 Assert.Equal(it.Reversible, !string.IsNullOrWhiteSpace(it.Revert));
                 Assert.Equal(new[] { "10", "11" }, it.Compatibilite.Windows);
                 Assert.StartsWith("blt.", it.Id);
-                Assert.False(it.Hkcu, it.Id);
+                // OneDrive s'installe par utilisateur : blt.apps dépend du profil de l'utilisateur courant.
+                Assert.Equal(it.Id == "blt.apps", it.Hkcu);
             }
             Assert.Equal("bloatware", cat["blt.apps"].Liste);
             Assert.Equal("bloatware-tierces", cat["blt.apps-tierces"].Liste);
@@ -407,6 +408,198 @@ namespace GamingTweaker.Tests
             var rr = Restore("blt.capabilities", pre);
             Assert.Contains("##GT|ok|blt.capabilities", rr);
             Assert.Contains("/Online /Add-Capability /CapabilityName:App.StepsRecorder~~~~0.0.1.0", File.ReadAllText(Path.Combine(tmp, "dism.log")));
+        }
+
+        [Fact] public void La_restauration_d_une_capacite_se_compare_sans_le_numero_de_version()
+        {
+            var cmd = Path.Combine(tmp, "dism-cap2.cmd");
+            File.WriteAllText(cmd, "@echo off\r\necho %* >>\"" + Path.Combine(tmp, "dism.log") + "\"\r\nexit /b 0\r\n");
+            // Journal : retirée en version 0.0.1.0 ; la machine a maintenant la version 0.0.2.0 installée : rien à réinstaller.
+            File.WriteAllText(Jrn, "{\"item\":\"blt.capabilities\",\"kind\":\"dismcapability\",\"target\":\"App.StepsRecorder~~~~0.0.1.0\",\"existed\":true,\"before\":\"Installed\",\"after\":\"NotPresent\"}\r\n");
+            var pre = "$GT_DismPath = " + Q(cmd) + "\r\nfunction Get-WindowsCapability { [CmdletBinding()] param([switch]$Online) [pscustomobject]@{ Name = 'App.StepsRecorder~~~~0.0.2.0'; State = 'Installed' } }\r\n";
+            var rr = Restore("blt.capabilities", pre);
+            Assert.Contains("##GT|ok|blt.capabilities", rr);
+            Assert.False(File.Exists(Path.Combine(tmp, "dism.log")), "aucune réinstallation : la capacité est déjà présente (autre version)");
+        }
+
+        // ---- Nouvel Outlook : blocage de la réinstallation automatique -------------------------------------
+
+        private const string CleTest = @"HKCU:\Software\GamingTweakerTest\BltOutlook\OutlookUpdate";
+
+        private static void NettoyerCleTest()
+        {
+            try { Microsoft.Win32.Registry.CurrentUser.DeleteSubKeyTree(@"Software\GamingTweakerTest\BltOutlook", false); } catch { }
+        }
+
+        [Fact] public void Le_nouvel_Outlook_supprime_la_cle_de_reinstallation_avec_journal_et_la_restaure_a_l_annulation()
+        {
+            NettoyerCleTest();
+            try
+            {
+                Assert.Contains(@"HKLM:\SOFTWARE\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\OutlookUpdate", Catalogue()["blt.apps"].Apply);
+                using (var k = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(@"Software\GamingTweakerTest\BltOutlook\OutlookUpdate")) k.SetValue("Marqueur", 7, Microsoft.Win32.RegistryValueKind.DWord);
+                var pre = FauxAppx("Microsoft.OutlookForWindows") + "$GT_OutlookOobeKey = " + Q(CleTest) + "\r\n";
+                var r = string.Join("\n", Apply(Catalogue()["blt.apps"].Apply, "blt.apps", new[] { "Microsoft.OutlookForWindows" }, pre));
+                Assert.Contains("##GT|ok|blt.apps", r);
+                Assert.Contains("Outlook bloquée", r);
+                Assert.Null(Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\GamingTweakerTest\BltOutlook\OutlookUpdate"));
+                Assert.Contains(Journal.Read(Jrn), e => e.Kind == "regkey" && e.Target == CleTest);
+                // Annulation : la clé et sa valeur reviennent (le Store est laissé hors de portée par un winget factice).
+                var rr = Restore("blt.apps", FauxWinget());
+                Assert.Contains("##GT|", rr);
+                using (var k = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\GamingTweakerTest\BltOutlook\OutlookUpdate")) { Assert.NotNull(k); Assert.Equal(7, (int)k.GetValue("Marqueur")); }
+            }
+            finally { NettoyerCleTest(); }
+        }
+
+        [Fact] public void Sans_la_cle_Outlook_rien_n_est_journalise_et_sans_choix_d_Outlook_elle_est_intacte()
+        {
+            NettoyerCleTest();
+            try
+            {
+                var pre = FauxAppx("Microsoft.OutlookForWindows", "Microsoft.BingNews") + "$GT_OutlookOobeKey = " + Q(CleTest) + "\r\n";
+                var r = string.Join("\n", Apply(Catalogue()["blt.apps"].Apply, "blt.apps", new[] { "Microsoft.OutlookForWindows" }, pre));
+                Assert.Contains("##GT|ok|blt.apps", r);
+                Assert.DoesNotContain("Outlook bloquée", r);
+                Assert.DoesNotContain(Journal.Read(Jrn), e => e.Kind == "regkey");
+                using (var k = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(@"Software\GamingTweakerTest\BltOutlook\OutlookUpdate")) k.SetValue("Marqueur", 1);
+                File.Delete(Jrn);
+                Apply(Catalogue()["blt.apps"].Apply, "blt.apps", new[] { "Microsoft.BingNews" }, pre);
+                Assert.NotNull(Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\GamingTweakerTest\BltOutlook\OutlookUpdate"));
+            }
+            finally { NettoyerCleTest(); }
+        }
+
+        // ---- OneDrive : détection par OneDrive.exe, jamais par OneDriveSetup.exe ------------------------------
+
+        /// <summary>Dossiers factices (LOCALAPPDATA, ProgramFiles, SystemRoot) ; Start-Process et Get-Process sont remplacés.</summary>
+        private string FauxOneDrive(bool installe, bool setupPresent, out string lancements)
+        {
+            var local = Path.Combine(tmp, "local"); var pf = Path.Combine(tmp, "pf"); var win = Path.Combine(tmp, "win");
+            Directory.CreateDirectory(Path.Combine(win, "SysWOW64")); Directory.CreateDirectory(pf);
+            if (installe) { Directory.CreateDirectory(Path.Combine(local, "Microsoft", "OneDrive")); File.WriteAllText(Path.Combine(local, "Microsoft", "OneDrive", "OneDrive.exe"), "x"); }
+            else { try { Directory.Delete(local, true); } catch { } Directory.CreateDirectory(local); }
+            if (setupPresent) File.WriteAllText(Path.Combine(win, "SysWOW64", "OneDriveSetup.exe"), "x");
+            lancements = Path.Combine(tmp, "start.log");
+            return "$env:LOCALAPPDATA = " + Q(local) + "; $env:ProgramFiles = " + Q(pf) + "; ${env:ProgramFiles(x86)} = " + Q(Path.Combine(tmp, "pf86")) + "; $env:SystemRoot = " + Q(win) + "\r\n"
+                 + "function Get-Process { [CmdletBinding()] param([string]$Name) }\r\n"
+                 + "function Start-Process { [CmdletBinding()] param([string]$FilePath, [string]$ArgumentList, [switch]$Wait, [switch]$PassThru) Add-Content -LiteralPath " + Q(lancements) + " -Value ($FilePath + ' ' + $ArgumentList); [pscustomobject]@{ ExitCode = 0 } }\r\n";
+        }
+
+        [Fact] public void OneDriveSetup_exe_seul_ne_signifie_pas_que_OneDrive_est_installe()
+        {
+            string log;
+            var pre = FauxOneDrive(installe: false, setupPresent: true, out log);
+            Assert.Empty(PsCommon.Eval(pre + PowerShellInstalledApps.ScriptOneDrive));
+            var r = string.Join("\r\n", Apply("Remove-TweakOneDrive", "blt.apps", new string[0], pre));
+            Assert.Contains("##GT|skip|blt.apps|OneDrive absent", r);
+            Assert.False(File.Exists(log));
+            Assert.False(File.Exists(Jrn));
+        }
+
+        [Fact] public void OneDrive_installe_pour_l_utilisateur_est_detecte_puis_desinstalle_avec_journal()
+        {
+            string log;
+            var pre = FauxOneDrive(installe: true, setupPresent: true, out log);
+            Assert.Equal(new[] { "OneDrive" }, PsCommon.Eval(pre + PowerShellInstalledApps.ScriptOneDrive));
+            var r = string.Join("\r\n", Apply("Remove-TweakOneDrive", "blt.apps", new string[0], pre));
+            Assert.Contains("##GT|ok|blt.apps", r);
+            Assert.Contains("OneDriveSetup.exe /uninstall", File.ReadAllText(log));
+            Assert.Equal("Microsoft.OneDrive", Journal.Read(Jrn).Single().Target);
+        }
+
+        [Fact] public void La_detection_OneDrive_du_fournisseur_et_du_script_sont_les_memes()
+        {
+            string log;
+            var pre = FauxOneDrive(installe: true, setupPresent: false, out log);
+            Assert.Equal("OUI", string.Join("", PsCommon.Eval(pre + "if (Test-GTOneDriveInstalled) { 'OUI' } else { 'NON' }")));
+            pre = FauxOneDrive(installe: false, setupPresent: false, out log);
+            Assert.Equal("NON", string.Join("", PsCommon.Eval(pre + "if (Test-GTOneDriveInstalled) { 'OUI' } else { 'NON' }")));
+        }
+
+        [Fact] public void La_reinstallation_winget_impossible_cite_le_bon_identifiant()
+        {
+            File.WriteAllText(Jrn, "{\"item\":\"blt.apps\",\"kind\":\"wingetapp\",\"target\":\"Microsoft.OneDrive\",\"existed\":true,\"before\":\"winget\",\"after\":null}\r\n");
+            var r = Restore("blt.apps", "function Get-GTWingetPath { $null }\r\n");
+            Assert.Contains("##GT|fail|blt.apps", r);
+            Assert.Contains("winget install Microsoft.OneDrive", r);
+            Assert.DoesNotContain("Microsoft.Edge", r);
+        }
+
+        // ---- Edge : fichier factice journalisé, setup.exe choisi par version ------------------------------------
+
+        private string FauxEdge(out string app, out string dummy, out string lancements, params string[] versions)
+        {
+            app = Path.Combine(tmp, "edge", "Application");
+            dummy = Path.Combine(tmp, "sysapps", "Microsoft.MicrosoftEdge_8wekyb3d8bbwe", "MicrosoftEdge.exe");
+            lancements = Path.Combine(tmp, "edge-start.log");
+            foreach (var v in versions) { Directory.CreateDirectory(Path.Combine(app, v, "Installer")); File.WriteAllText(Path.Combine(app, v, "Installer", "setup.exe"), "x"); }
+            return "$GT_EdgeAppDir = " + Q(app) + "\r\n$GT_EdgeDummyPath = " + Q(dummy) + "\r\n"
+                 + "function Set-TweakRegistryIfNeeded { param($Path, $Name, $Type, $Value) Add-Content -LiteralPath " + Q(lancements) + " -Value ('reg ' + $Path + ' ' + $Name) }\r\n"
+                 + "function Start-Process { [CmdletBinding()] param([string]$FilePath, [string]$ArgumentList, [switch]$Wait, [switch]$PassThru) "
+                 + "Add-Content -LiteralPath " + Q(lancements) + " -Value ('start ' + $FilePath + ' ' + $ArgumentList + ' dummy=' + (Test-Path -LiteralPath $GT_EdgeDummyPath)); [pscustomobject]@{ ExitCode = 0 } }\r\n";
+        }
+
+        [Fact] public void Le_setup_d_Edge_est_choisi_par_version_et_non_par_ordre_alphabetique()
+        {
+            string app, dummy, log;
+            var pre = FauxEdge(out app, out dummy, out log, "99.0.1.0", "120.0.2.0", "9.5.0.0");
+            Directory.CreateDirectory(Path.Combine(app, "Dictionnaire")); File.WriteAllText(Path.Combine(app, "Dictionnaire", "x"), "x");
+            var r = PsCommon.Eval(pre + "Get-GTEdgeSetup (Get-GTEdgeAppDir)");
+            Assert.Equal(Path.Combine(app, "120.0.2.0", "Installer", "setup.exe"), r.Single());
+            Assert.Empty(PsCommon.Eval("if ($null -eq (Get-GTEdgeSetup " + Q(Path.Combine(tmp, "absent")) + ")) { }"));
+        }
+
+        [Fact] public void Edge_cree_le_fichier_factice_journalise_avant_le_lancement_puis_l_annulation_le_supprime()
+        {
+            string app, dummy, log;
+            var pre = FauxEdge(out app, out dummy, out log, "99.0.1.0", "120.0.2.0");
+            var r = string.Join("\n", Apply(Catalogue()["blt.edge-remove"].Apply, "blt.edge-remove", new string[0], pre));
+            Assert.Contains("##GT|ok|blt.edge-remove", r);
+            var l = File.ReadAllText(log);
+            Assert.Contains(Path.Combine("120.0.2.0", "Installer", "setup.exe") + " --uninstall --system-level --force-uninstall dummy=True", l);
+            Assert.DoesNotContain("--delete-profile", l);
+            Assert.True(File.Exists(dummy));
+            var j = Journal.Read(Jrn).ToList();
+            var iFichier = j.FindIndex(e => e.Kind == "newfile" && e.Target == dummy);
+            var iWinget = j.FindIndex(e => e.Kind == "wingetapp" && e.Target == "Microsoft.Edge");
+            Assert.True(iFichier >= 0 && iWinget > iFichier, "le fichier factice est journalisé avant le désinstalleur");
+            var rr = Restore("blt.edge-remove", FauxWinget());
+            Assert.Contains("##GT|ok|blt.edge-remove", rr);
+            Assert.False(File.Exists(dummy));
+            Assert.False(Directory.Exists(Path.GetDirectoryName(dummy)), "dossier créé par nous : supprimé aussi");
+            Assert.Contains("install --source winget --id Microsoft.Edge --exact", LogWinget());
+        }
+
+        [Fact] public void Un_fichier_factice_deja_present_n_est_ni_journalise_ni_supprime()
+        {
+            string app, dummy, log;
+            var pre = FauxEdge(out app, out dummy, out log, "120.0.2.0");
+            Directory.CreateDirectory(Path.GetDirectoryName(dummy)); File.WriteAllText(dummy, "existant");
+            var r = string.Join("\n", Apply(Catalogue()["blt.edge-remove"].Apply, "blt.edge-remove", new string[0], pre));
+            Assert.Contains("##GT|ok|blt.edge-remove", r);
+            Assert.DoesNotContain(Journal.Read(Jrn), e => e.Kind == "newfile");
+            Restore("blt.edge-remove", FauxWinget());
+            Assert.Equal("existant", File.ReadAllText(dummy));
+        }
+
+        [Fact] public void Edge_absent_est_ignore_sans_creer_de_fichier()
+        {
+            string app, dummy, log;
+            var pre = FauxEdge(out app, out dummy, out log);
+            var r = string.Join("\n", Apply(Catalogue()["blt.edge-remove"].Apply, "blt.edge-remove", new string[0], pre));
+            Assert.Contains("##GT|skip|blt.edge-remove", r);
+            Assert.False(File.Exists(dummy));
+            Assert.False(File.Exists(Jrn));
+        }
+
+        [Fact] public void La_description_d_Edge_ne_promet_plus_de_blocage_de_reinstallation()
+        {
+            var d = Catalogue()["blt.edge-remove"].Description;
+            Assert.DoesNotContain("Bloque aussi", d);
+            Assert.DoesNotContain("réinstallation automatique par Windows Update", d);
+            Assert.Contains("mise à jour majeure", d);
+            Assert.DoesNotContain("DoNotUpdateToEdgeWithChromium", Catalogue()["blt.edge-remove"].Apply);
         }
 
         [Fact] public void Les_fonctionnalites_protegees_ne_sont_jamais_visees()

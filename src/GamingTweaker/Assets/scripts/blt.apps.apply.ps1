@@ -56,5 +56,14 @@ foreach ($n in $r.Names) {
     }
 }
 if ($errors.Count -gt 0) { throw ('Échec pour : ' + ($errors -join ' ; ')) }
-if ($done -eq 0) { Skip-GTItem 'Aucune des applications choisies n''est présente sur cette machine.' }
-Set-GTItemNote ($done.ToString() + ' application(s) retirée(s). Réinstallation possible depuis le Microsoft Store (annulation).')
+# Nouvel Outlook : Windows le réinstalle seul par cette tâche d'orchestration ; sa clé est supprimée (exportée au journal, ignorée si absente).
+$outlookBlocked = $false
+if ($r.Names -contains 'Microsoft.OutlookForWindows') {
+    $outlookKey = 'HKLM:\SOFTWARE\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\OutlookUpdate'
+    if ($GT_OutlookOobeKey) { $outlookKey = $GT_OutlookOobeKey }
+    $outlookBlocked = [bool](Remove-TweakRegistryKey -Path $outlookKey)
+}
+if ($done -eq 0 -and -not $outlookBlocked) { Skip-GTItem 'Aucune des applications choisies n''est présente sur cette machine.' }
+$blocNote = ''
+if ($outlookBlocked) { $blocNote = ' Réinstallation automatique du nouvel Outlook bloquée.' }
+Set-GTItemNote ($done.ToString() + ' application(s) retirée(s). Réinstallation possible depuis le Microsoft Store (annulation).' + $blocNote)

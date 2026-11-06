@@ -42,8 +42,12 @@ namespace GamingTweaker
             MainWindow fenetre = null;
             var vm = new MainViewModel(catalogue, facts, paths, its => Detection.RunAsync(its),
                 (req, log, ct) => pipeline.ExecuteAsync(req, log, ct), o => Ui.MainWindow.ConfirmerRisque(fenetre, o), registre);
+            vm.ConfirmerElementRisque = (o, titre, detail) => MessageBox.Show(fenetre,
+                o.Titre + "\r\n\r\n" + titre + (string.IsNullOrEmpty(detail) ? "" : "\r\n" + detail)
+                + "\r\n\r\nCet élément est classé Risqué : le retirer peut gêner Windows ou d'autres applications. Le cocher quand même ?",
+                "Élément risqué", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes;
             vm.ConfirmerProfilRisque = risques => MessageBox.Show(fenetre,
-                "Ce profil contient des options classées Risqué :\r\n\r\n- " + string.Join("\r\n- ", risques.Select(r => r.Titre))
+                "Ce profil contient des options classées Risqué :\r\n\r\n- " + string.Join("\r\n- ", risques.Select(r => r.TitreRisque))
                 + "\r\n\r\nLe charger plus tard les appliquera à nouveau. L'enregistrer quand même ?",
                 "Profil avec options risquées", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes;
 
