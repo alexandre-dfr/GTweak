@@ -60,12 +60,32 @@ namespace GamingTweaker
             vm.Info = info;
             Exit += (s, ev) => info.Dispose();
 
-            vm.Restauration = new RestaurationService(paths, ElevationCheck.SameUserAsDesktop);
+            var restauration = new RestaurationService(paths, ElevationCheck.SameUserAsDesktop);
+            vm.Restauration = restauration;
+            vm.Historique = new HistoriqueViewModel(paths, restauration, catalogue, new QuarantineService(paths.QuarantineDir, paths.SessionsDir))
+            {
+                Confirmer = texte => MessageBox.Show(fenetre, texte, "Historique", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes,
+                ApresAnnulation = () => { var _ = vm.DetectAsync(); },
+            };
+
+            vm.ModeJeu = new ModeJeuViewModel(new ModeJeu(paths.MachineDir, new ModeJeuSysteme()), ModeJeuListes.ListerServices, ModeJeuListes.ListerProcessus)
+            {
+                Confirmer = texte => MessageBox.Show(fenetre, texte, "Mode Jeu", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes,
+            };
+
+            vm.Routine = new RoutineViewModel(vm, Planification.Install, Planification.Remove, Planification.Query)
+            {
+                ConfirmerRisque = titres => MessageBox.Show(fenetre,
+                    "Ce profil contient des options classées Risqué :\r\n\r\n- " + string.Join("\r\n- ", titres)
+                    + "\r\n\r\nLa routine les appliquera chaque semaine, sans interface ni confirmation. Planifier quand même ?",
+                    "Routine avec options risquées", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes,
+            };
 
             fenetre = new Ui.MainWindow(vm);
             fenetre.Show();
             fenetre.LancerControlesDemarrage(paths);
             var _ = vm.DetectAsync();
+            var __ = vm.Routine.ActualiserAsync();
         }
     }
 }

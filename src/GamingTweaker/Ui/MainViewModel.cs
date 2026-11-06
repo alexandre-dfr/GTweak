@@ -120,13 +120,13 @@ namespace GamingTweaker.Ui
         public string MenuCourant
         {
             get { return menuCourant; }
-            set { if (Set(ref menuCourant, value)) { Raise("EstEmplacement"); Raise("EstMenuTelemetrie"); Raise("TitreAffiche"); Raise("EstMenuInformations"); MajInfo(); Filtrer(); } }
+            set { if (Set(ref menuCourant, value)) { Raise("EstEmplacement"); Raise("EstMenuTelemetrie"); Raise("EstModeJeu"); Raise("EstHistorique"); Raise("TitreAffiche"); Raise("EstMenuInformations"); MajInfo(); Filtrer(); if (value == MenuModeJeu && modeJeuVm != null) modeJeuVm.ChargerSiBesoin(); if (value == MenuHistorique && historiqueVm != null) historiqueVm.Charger(); } }
         }
 
         public string Recherche
         {
             get { return recherche; }
-            set { if (Set(ref recherche, value ?? "")) { Raise("EnRecherche"); CommandManager.InvalidateRequerySuggested(); Raise("TitreAffiche"); Raise("EstMenuTelemetrie"); Raise("EstMenuInformations"); MajInfo(); Filtrer(); } }
+            set { if (Set(ref recherche, value ?? "")) { Raise("EnRecherche"); CommandManager.InvalidateRequerySuggested(); Raise("TitreAffiche"); Raise("EstMenuTelemetrie"); Raise("EstModeJeu"); Raise("EstHistorique"); Raise("EstMenuInformations"); MajInfo(); Filtrer(); } }
         }
 
         public bool EnRecherche { get { return Normaliser(recherche).Length > 0; } }
@@ -141,6 +141,23 @@ namespace GamingTweaker.Ui
         public const string UrlShutUp10 = "https://www.oo-software.com/fr/shutup10";
         /// <summary>Vrai quand le bandeau du menu Télémétrie (Tout restaurer, lien O&amp;O ShutUp10++) doit s'afficher.</summary>
         public bool EstMenuTelemetrie { get { return !EnRecherche && menuCourant == MenuTelemetrie; } }
+        public const string MenuModeJeu = "Mode Jeu";
+        public const string MenuHistorique = "Historique";
+        public bool EstModeJeu { get { return !EnRecherche && menuCourant == MenuModeJeu; } }
+        public bool EstHistorique { get { return !EnRecherche && menuCourant == MenuHistorique; } }
+
+        private ModeJeuViewModel modeJeuVm;
+        /// <summary>Vue-modèle du Mode Jeu (null tant qu'elle n'est pas configurée par l'application).</summary>
+        public ModeJeuViewModel ModeJeu { get { return modeJeuVm; } set { Set(ref modeJeuVm, value); } }
+
+        private RoutineViewModel routineVm;
+        /// <summary>Planification de la routine (null tant qu'elle n'est pas configurée par l'application).</summary>
+        public RoutineViewModel Routine { get { return routineVm; } set { Set(ref routineVm, value); } }
+
+        private HistoriqueViewModel historiqueVm;
+        /// <summary>Vue-modèle de l'historique (null tant qu'elle n'est pas configurée par l'application).</summary>
+        public HistoriqueViewModel Historique { get { return historiqueVm; } set { Set(ref historiqueVm, value); } }
+
         public string TitreAffiche { get { return EnRecherche ? "Résultats de la recherche" : menuCourant; } }
 
         public string Message { get { return message; } set { Set(ref message, value ?? ""); } }
@@ -276,7 +293,7 @@ namespace GamingTweaker.Ui
             if (!string.IsNullOrEmpty(profilSelectionne)) ChargerProfilNomme(profilSelectionne);
         }
 
-        private string CheminProfil(string nom) { return Path.Combine(paths.ProfilsDir, nom + ".json"); }
+        public string CheminProfil(string nom) { return Path.Combine(paths.ProfilsDir, nom + ".json"); }
 
         private void ChargerProfilNomme(string nom)
         {

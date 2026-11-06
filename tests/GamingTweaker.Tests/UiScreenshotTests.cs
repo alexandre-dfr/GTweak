@@ -117,6 +117,93 @@ namespace GamingTweaker.Tests
             w.Close(); Pump(d);
         }
 
+        /// <summary>Vues des tâches 14 à 16 avec des données d'exemple : PNG dans le sous-dossier « taches-14-16 ».</summary>
+        private static void CapturerVuesAvancees(Dispatcher d)
+        {
+            var sousDossier = Path.Combine(Dossier, "taches-14-16");
+            Directory.CreateDirectory(sousDossier);
+            var tmp = Path.Combine(Path.GetTempPath(), "gt-shots-v-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tmp);
+            var paths = new DataPaths { ProfilsDir = Path.Combine(tmp, "Profils"), MachineDir = tmp, SessionsDir = Path.Combine(tmp, "S"), QuarantineDir = Path.Combine(tmp, "Q") };
+            var vm = new MainViewModel(Exemples(), new MachineFacts { WindowsMajor = "11", Edition = "Pro" }, paths,
+                its => Task.FromResult(its.ToDictionary(i => i.Id, i => DetectState.NotApplied)), null, o => true);
+            vm.ModeJeu = new ModeJeuViewModel(new ModeJeu(tmp, new Faux14()),
+                () => new List<ServiceChoix>
+                {
+                    new ServiceChoix { Nom = "SysMain", Affichage = "SysMain (Superfetch)" },
+                    new ServiceChoix { Nom = "WSearch", Affichage = "Windows Search" },
+                    new ServiceChoix { Nom = "Spooler", Affichage = "Spouleur d'impression" },
+                    new ServiceChoix { Nom = "DiagTrack", Affichage = "Expériences des utilisateurs connectés et télémétrie" },
+                    new ServiceChoix { Nom = "XblGameSave", Affichage = "Jeux sauvegardés sur Xbox Live" },
+                },
+                () => new List<ProcessusChoix>
+                {
+                    new ProcessusChoix { Nom = "Discord", Chemin = @"C:\Users\Moi\AppData\Local\Discord\app-1.0.9\Discord.exe" },
+                    new ProcessusChoix { Nom = "OneDrive", Chemin = @"C:\Program Files\Microsoft OneDrive\OneDrive.exe" },
+                    new ProcessusChoix { Nom = "chrome", Chemin = @"C:\Program Files\Google\Chrome\Application\chrome.exe" },
+                    new ProcessusChoix { Nom = "Steam", Chemin = @"C:\Program Files (x86)\Steam\steam.exe" },
+                });
+            vm.ModeJeu.Actualiser();
+            for (int i = 0; i < 40 && vm.ModeJeu.Services.Count == 0; i++) { Thread.Sleep(25); Pump(d); }
+            vm.ModeJeu.Services[0].IsChecked = true; vm.ModeJeu.Services[1].IsChecked = true;
+            vm.ModeJeu.Processus[0].IsChecked = true; vm.ModeJeu.Processus[1].IsChecked = true;
+            var w = new MainWindow(vm); Prepare(w, 1280, 720);
+            vm.MenuCourant = "Mode Jeu";
+            w.Show(); Pump(d);
+            Capture(w, "14-mode-jeu", sousDossier);
+
+            // Historique : sessions d'exemple (terminée avec un échec, interrompue), un fichier en quarantaine, deux relevés.
+            var sess = paths.SessionsDir;
+            Action<string, string, string, SessionReport, string[]> session = (nom, etat, debut, rapport, journal) =>
+            {
+                var dir = Path.Combine(sess, nom); Directory.CreateDirectory(dir);
+                File.WriteAllText(Path.Combine(dir, "state.json"), Newtonsoft.Json.JsonConvert.SerializeObject(new { etat, debut }));
+                if (rapport != null)
+                {
+                    File.WriteAllText(Path.Combine(dir, "report.json"), Newtonsoft.Json.JsonConvert.SerializeObject(rapport, new Newtonsoft.Json.Converters.StringEnumConverter()));
+                    File.WriteAllText(Path.Combine(dir, "report.txt"), "GamingTweaker - rapport du " + debut + "\r\n\r\n[Appliquée] Désactiver la précision du pointeur (opt.mouse)\r\n[ÉCHEC] Protections Spectre et Meltdown désactivées (opt.spectre) : Accès refusé à la clé de registre.\r\n[Ignorée] Économie d'énergie USB désactivée (opt.usb)\r\n\r\nCode de sortie : 1\r\n");
+                }
+                if (journal != null)
+                    File.WriteAllText(Path.Combine(dir, "journal.jsonl"), string.Join("\n", journal.Select(i =>
+                        Newtonsoft.Json.JsonConvert.SerializeObject(new { item = i, kind = "task", target = "\\X\\" + i, existed = true, before = "Enabled", after = "Disabled" }))) + "\n");
+            };
+            var rap = new SessionReport();
+            rap.Items.Add(new ItemOutcome { Id = "opt.mouse", Status = OutcomeStatus.Ok });
+            rap.Items.Add(new ItemOutcome { Id = "opt.spectre", Status = OutcomeStatus.Failed, Message = "Accès refusé à la clé de registre." });
+            rap.Items.Add(new ItemOutcome { Id = "opt.usb", Status = OutcomeStatus.Skipped });
+            var rap2 = new SessionReport(); rap2.Items.Add(new ItemOutcome { Id = "net.temp", Status = OutcomeStatus.Ok });
+            session("20260103-214500", "Done", "2026-01-03T21:45:00", rap, new[] { "opt.mouse" });
+            session("20260102-090000", "Done", "2026-01-02T09:00:00", rap2, new[] { "net.temp" });
+            session("20260101-180000", "Running", "2026-01-01T18:00:00", null, new[] { "opt.hags" });
+            Directory.CreateDirectory(paths.QuarantineDir);
+            File.WriteAllText(Path.Combine(paths.QuarantineDir, "0123456789abcdef0123456789abcdef_msvcr71.dll"), new string('x', 350000));
+            File.WriteAllText(Path.Combine(paths.QuarantineDir, "fedcba9876543210fedcba9876543210_ancien-pilote.sys"), new string('x', 2400000));
+            File.AppendAllText(Path.Combine(sess, "20260102-090000", "journal.jsonl"), Newtonsoft.Json.JsonConvert.SerializeObject(new { item = "net.temp", kind = "quarantine", target = @"C:\Windows\System32\msvcr71.dll", existed = true, before = @"C:\Windows\System32\msvcr71.dll", after = Path.Combine(paths.QuarantineDir, "0123456789abcdef0123456789abcdef_msvcr71.dll") }) + "\n");
+            Mesures.Save(new MesureSnapshot { Date = "2026-01-02T09:30:00", DureeSec = 30, DpcTime = 0.62, InterruptTime = 0.31, Services = 168, Processus = 214, RamDisponibleMo = 9120 }, tmp);
+            Mesures.Save(new MesureSnapshot { Date = "2026-01-03T22:10:00", DureeSec = 30, DpcTime = 0.41, InterruptTime = 0.28, Services = 151, Processus = 187, RamDisponibleMo = 10480 }, tmp);
+            vm.Historique = new HistoriqueViewModel(paths, new RestaurationService(paths), Exemples(), new QuarantineService(paths.QuarantineDir, paths.SessionsDir));
+            vm.MenuCourant = "Historique"; Pump(d);
+            vm.Historique.SessionSelectionnee = vm.Historique.Sessions[0]; Pump(d);
+            Capture(w, "15-historique-sessions", sousDossier);
+            vm.Historique.Section = "Quarantaine"; vm.Historique.Message = ""; Pump(d);
+            Capture(w, "16-historique-quarantaine", sousDossier);
+            vm.Historique.Section = "Mesures";
+            foreach (var r in vm.Historique.Releves) r.IsChecked = true;
+            vm.Historique.Comparer(); Pump(d);
+            Capture(w, "17-historique-mesures", sousDossier);
+            w.Close(); Pump(d);
+            try { Directory.Delete(tmp, true); } catch (IOException) { }
+        }
+
+        private class Faux14 : IModeJeuActions
+        {
+            public ServiceState StopService(string n) { return ServiceState.Running; }
+            public void StartService(string n) { }
+            public bool KillProcess(string n) { return true; }
+            public void RestartProcess(string c) { }
+            public string SetPlan(string g) { return g; }
+        }
+
         private static void Run()
         {
             var app = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
@@ -188,11 +275,18 @@ namespace GamingTweaker.Tests
                 }
                 Capture(win, "0" + (i + 1) + "-" + noms[i].Replace(' ', '-').Replace("à", "a").Replace("é", "e"));
             }
+            // Barre de routine (tâche 16) : état simulé, aucune tâche réelle.
+            vm.Routine = new RoutineViewModel(vm, c => { }, () => { }, () => new RoutineEtat { Existe = true, Jour = DayOfWeek.Sunday, Heure = new TimeSpan(20, 0, 0), ProfilChemin = @"C:\ProgramData\GamingTweaker\Routine\gaming.json" });
+            vm.Routine.ActualiserAsync().Wait(2000); Pump(d);
+            vm.MenuCourant = "Optimisation"; Pump(d);
+            var dossierRoutine = Path.Combine(Dossier, "taches-14-16"); Directory.CreateDirectory(dossierRoutine);
+            Capture(win, "18-barre-routine", dossierRoutine);
             vm.MenuCourant = "Optimisation"; vm.Recherche = "windows"; Pump(d);
             Capture(win, "09-recherche");
             vm.Recherche = "";
 
             CapturerOptionAListe(d);
+            CapturerVuesAvancees(d);
 
             var prev = new PreviewWindow(vm); Prepare(prev, 1000, 680); prev.Show(); Pump(d);
             Capture(prev, "10-apercu"); prev.Close();

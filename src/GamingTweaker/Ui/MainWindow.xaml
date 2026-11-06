@@ -223,14 +223,23 @@
         </Grid.RowDefinitions>
 
         <!-- Avertissement d'élévation -->
-        <Border Grid.Row="0" Background="{StaticResource WarnBg}" Padding="20,10">
-            <Border.Style>
-                <Style TargetType="Border">
-                    <Style.Triggers><DataTrigger Binding="{Binding Bandeau}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
-                </Style>
-            </Border.Style>
-            <TextBlock Text="{Binding Bandeau}" TextWrapping="Wrap" Foreground="{StaticResource AvanceFg}"/>
-        </Border>
+        <StackPanel Grid.Row="0">
+            <Border Background="{StaticResource WarnBg}" Padding="20,10">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Style.Triggers><DataTrigger Binding="{Binding Bandeau}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <TextBlock Text="{Binding Bandeau}" TextWrapping="Wrap" Foreground="{StaticResource AvanceFg}"/>
+            </Border>
+            <!-- Mode Jeu laissé actif (arrêt brutal, redémarrage) -->
+            <Border Background="{StaticResource WarnBg}" Padding="20,8" Visibility="{Binding ModeJeu.EstActif, Converter={StaticResource BoolVis}, FallbackValue=Collapsed}">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Content="Rétablir" Command="{Binding ModeJeu.RetablirCommand}"/>
+                    <TextBlock Text="Mode Jeu encore actif : des services ou des processus sont toujours arrêtés." Foreground="{StaticResource AvanceFg}" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                </DockPanel>
+            </Border>
+        </StackPanel>
         <!-- Message d'information -->
         <Border Grid.Row="1" Background="{StaticResource PanelBrush}" Padding="20,8">
             <Border.Style>
@@ -360,11 +369,22 @@
                         </Style>
                     </TextBlock.Style>
                 </TextBlock>
+
+                <!-- Mode Jeu -->
+                <Border Grid.Row="1" Grid.RowSpan="2" Visibility="{Binding EstModeJeu, Converter={StaticResource BoolVis}}">
+                    <local:ModeJeuView DataContext="{Binding ModeJeu}"/>
+                </Border>
+
+                <!-- Historique -->
+                <Border Grid.Row="1" Grid.RowSpan="2" Visibility="{Binding EstHistorique, Converter={StaticResource BoolVis}}">
+                    <local:HistoriqueView DataContext="{Binding Historique}"/>
+                </Border>
             </Grid>
         </Grid>
 
         <!-- Barre du bas -->
         <Border Grid.Row="3" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="20,12">
+            <StackPanel>
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -385,6 +405,26 @@
                 <Button Grid.Column="5" Content="Aperçu" IsEnabled="{Binding AUneSelection}" Click="Apercu_Click" Margin="0,0,12,0"/>
                 <Button Grid.Column="6" Content="LANCER" Style="{StaticResource PrimaryButton}" IsEnabled="{Binding AUneSelection}" Click="Lancer_Click"/>
             </Grid>
+            <!-- Routine hebdomadaire du profil sélectionné -->
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,0" DataContext="{Binding Routine}">
+                <TextBlock Text="Routine" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" Margin="0,0,10,0"/>
+                <ComboBox Width="120" Height="34" ItemsSource="{Binding Jours}" SelectedValuePath="Jour" SelectedValue="{Binding Jour, Mode=TwoWay}"
+                          ToolTip="Jour de la semaine">
+                    <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Nom}"/></DataTemplate></ComboBox.ItemTemplate>
+                </ComboBox>
+                <TextBox Width="84" Margin="8,0,0,0" Text="{Binding Heure, UpdateSourceTrigger=PropertyChanged}" ToolTip="Heure, au format 20:00" VerticalContentAlignment="Center"/>
+                <Button Content="Planifier" Margin="8,0,0,0" Command="{Binding PlanifierCommand}" ToolTip="Applique chaque semaine le profil sélectionné, sans interface"/>
+                <Button Content="Supprimer la routine" Margin="8,0,0,0" Command="{Binding SupprimerCommand}"/>
+                <TextBlock Text="{Binding EtatTexte}" VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+            <TextBlock DataContext="{Binding Routine}" Text="{Binding Message}" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                        <Style.Triggers><DataTrigger Binding="{Binding Message}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+            </StackPanel>
         </Border>
     </Grid>
 </Window>
