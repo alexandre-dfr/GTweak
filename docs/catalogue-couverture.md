@@ -104,8 +104,8 @@ Copies dans `tools/inventaire/sources/`, hors exe. L'inventaire lisible par mach
 | privacy.sexy | Privacy cleanup > Clear third-party application data > Clear Visual Studio usage data > Clear Visual Studio telemetry and feedback data | standard | cln.apps-traces | Données de télémétrie de Visual Studio |
 | privacy.sexy | Privacy cleanup > Clear third-party application data > Clear Visual Studio usage data > Clear Visual Studio licenses | aucune | exclu | Efface les licences de Visual Studio : destructif, sans gain |
 | privacy.sexy | Privacy cleanup > Clear browser history | aucune | exclu | Données personnelles du navigateur (historique, cookies, profils) : jamais touchées (section 4.3) |
-| privacy.sexy | Privacy cleanup > Clear browser history > Clear Internet Explorer history | standard | cln.browsers | Seuls les caches (Temporary Internet Files, flux) sont repris ; cookies, DOMStore et URL tapées exclus (section 4.3) |
-| privacy.sexy | Privacy cleanup > Clear browser history > Clear Chrome history | standard | cln.browsers | Rapports de plantage et journaux du Software Reporter repris ; « Chrome user data » exclu (section 4.3) |
+| privacy.sexy | Privacy cleanup > Clear browser history > Clear Internet Explorer history | standard | cln.browsers | Seuls les caches (Temporary Internet Files) sont repris ; cookies, DOMStore et URL tapées exclus (section 4.3) |
+| privacy.sexy | Privacy cleanup > Clear browser history > Clear Chrome history | standard | cln.browsers | Rapports de plantage (Crashpad) repris ; « Chrome user data » exclu (section 4.3) |
 | privacy.sexy | Privacy cleanup > Clear browser history > Clear Firefox history | aucune | exclu | Données personnelles du navigateur (historique, cookies, profils) : jamais touchées (section 4.3) |
 | privacy.sexy | Privacy cleanup > Clear browser history > Clear Safari history | standard | exclu | Safari pour Windows n'existe plus ; cookies et données de profil exclus (section 4.3) |
 | privacy.sexy | Privacy cleanup > Clear temporary Windows files | standard | cln.temp | Dossiers temporaires système et utilisateur ; le dossier Prefetch relève de `cln.prefetch` (Risqué, section 4.10) |

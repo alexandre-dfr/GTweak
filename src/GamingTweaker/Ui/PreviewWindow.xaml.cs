@@ -25,7 +25,7 @@ namespace GamingTweaker.Ui
             Loaded += async (s, e) => await EstimerAsync(rows);
         }
 
-        // Les estimations (scripts en lecture seule) tournent après l'ouverture : la fenêtre reste utilisable, les tailles apparaissent au fur et à mesure.
+        // Les estimations (scripts en lecture seule) tournent après l'ouverture : la fenêtre reste utilisable, les tailles apparaissent toutes ensemble à la fin des estimations.
         private async System.Threading.Tasks.Task EstimerAsync(System.Collections.Generic.IReadOnlyList<PreviewRow> rows)
         {
             try

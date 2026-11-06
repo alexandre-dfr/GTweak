@@ -797,5 +797,236 @@ Write-Output (($old | ForEach-Object { $_.Driver } | Sort-Object) -join ',')");
                 if ((it.Apply ?? "").Contains("HKCU:") || (it.Apply ?? "").Contains("$env:TEMP") || (it.Apply ?? "").Contains("$env:LOCALAPPDATA") || (it.Apply ?? "").Contains("$env:APPDATA"))
                     Assert.True(it.Hkcu, it.Id + " : cible le profil de l'utilisateur mais hkcu=false");
         }
+
+        // ---- Correctifs de revue (Task 10) --------------------------------------------------------
+
+        [Theory]
+        [InlineData(@"Program Files (x86)\Amazon.com Music\Uninstall.exe", " /S")]
+        [InlineData(@"Program Files\Foo Bar\uninstall", "")]
+        [InlineData(@"Program Files\Mon Jeu.com\Outils\unins000.exe", " /SILENT")]
+        public async Task Registre_garde_une_entree_non_guillemetee_dont_le_chemin_contient_des_espaces(string relatif, string arguments)
+        {
+            var exe = Fichier(Path.GetDirectoryName(Path.Combine(tmp, relatif)), Path.GetFileName(relatif));
+            Entree("Espaces", exe + arguments);
+            Entree("Disparu", Path.Combine(tmp, "Program Files", "Gone App", "unins.exe") + " /S");
+            var o = await Lance(AvecPrefixe(Catalogue()["cln.registry"], PrefixeRegistre()));
+            Assert.Equal(OutcomeStatus.Ok, o.Status);
+            Assert.True(CleExiste("Espaces"), "le programme existe : l'entrée doit rester");
+            Assert.False(CleExiste("Disparu"));
+        }
+
+        [Fact]
+        public async Task Registre_ne_conclut_pas_sur_un_chemin_a_espaces_sans_extension_reconnue()
+        {
+            // Aucun fichier n'existe, mais « C:\...\Foo Bar\uninstall » peut désigner un programme : pas de suppression.
+            Entree("SansExtension", Path.Combine(tmp, "Program Files", "Foo Bar", "uninstall"));
+            Entree("SansExtensionArgs", Path.Combine(tmp, "Program Files", "Foo Bar", "uninstall") + " /S");
+            Entree("Disparu", Path.Combine(tmp, "Disparu", "remove.exe") + " /S");
+            var o = await Lance(AvecPrefixe(Catalogue()["cln.registry"], PrefixeRegistre()));
+            Assert.Equal(OutcomeStatus.Ok, o.Status);
+            Assert.True(CleExiste("SansExtension"));
+            Assert.True(CleExiste("SansExtensionArgs"));
+            Assert.False(CleExiste("Disparu"));
+        }
+
+        private static string FauxNatif() =>
+            "$script:GT_Calls = New-Object System.Collections.Generic.List[string]\n"
+          + "function Invoke-GTNative([string]$Exe, [string[]]$Arguments = @()) { $script:GT_Calls.Add($Exe + ' ' + ($Arguments -join ' ')); return [pscustomobject]@{ ExitCode = 0; Output = @() } }\n";
+
+        [Fact]
+        public void Windows_old_prise_de_possession_element_par_element_sans_recursion_et_jamais_sur_un_lien()
+        {
+            var wo = Dir("Windows.old"); var cible = Dir("cible"); var precieux = Fichier(cible, "precieux.txt");
+            Fichier(wo, "a.txt"); Fichier(Dir("Windows.old", "sub"), "b.txt"); var perso = Fichier(Dir("Windows.old", "Documents"), "perso.docx");
+            var lien = Path.Combine(wo, "Documents and Settings"); Jonction(lien, cible);
+            var r = Un(Roots(wo) + FauxNatif() + "$GT_OwnAlways = $true\n"
+                     + "Remove-TweakPath -Path " + Q(wo) + " -RemoveRoot -RemoveLinks -TakeOwnership | Out-Null\n"
+                     + "$GT_Calls | ForEach-Object { Write-Output $_ }");
+            var appels = r.Split('\n').Where(x => x.Length > 0).ToList();
+            Assert.True(File.Exists(precieux), "la cible de la jonction ne doit pas être touchée");
+            Assert.True(File.Exists(perso), "dossier personnel conservé");
+            Assert.False(File.Exists(Path.Combine(wo, "a.txt")));
+            Assert.False(Directory.Exists(Path.Combine(wo, "sub")));
+            Assert.False(Directory.Exists(lien), "le lien lui-même est retiré");
+            Assert.NotEmpty(appels);
+            foreach (var a in appels)
+            {
+                var jetons = a.Split(' ');
+                Assert.DoesNotContain("/r", jetons, StringComparer.OrdinalIgnoreCase);
+                Assert.DoesNotContain("/t", jetons, StringComparer.OrdinalIgnoreCase);
+                Assert.DoesNotContain("Documents and Settings", a);
+                Assert.DoesNotContain("precieux", a);
+                Assert.DoesNotContain(cible, a);
+                if (a.StartsWith("takeown.exe")) Assert.Contains("/f", jetons);
+                else { Assert.StartsWith("icacls.exe", a); Assert.Contains("/L", jetons); }
+            }
+            Assert.Contains(appels, a => a.Contains("a.txt"));
+            Assert.Contains(appels, a => a.Contains(Path.Combine(wo, "sub")));
+        }
+
+        [Fact]
+        public void Windows_old_ne_prend_la_propriete_que_des_elements_dont_l_acces_est_refuse()
+        {
+            var wo = Dir("Windows.old"); Fichier(wo, "a.txt"); Fichier(Dir("Windows.old", "sub"), "b.txt");
+            var r = Un(Roots(wo) + FauxNatif() + "Remove-TweakPath -Path " + Q(wo) + " -RemoveRoot -TakeOwnership | Out-Null\n"
+                     + "$GT_Calls | ForEach-Object { Write-Output $_ }");
+            Assert.False(Directory.Exists(wo));
+            var appels = r.Split('\n').Where(x => x.Length > 0).ToList();
+            Assert.Equal(2, appels.Count);   // la racine seulement (takeown + icacls) : aucun processus par fichier
+        }
+
+        [Fact]
+        public void Un_sous_dossier_devenu_jonction_avant_la_descente_n_est_pas_suivi()
+        {
+            var racine = Dir("racine"); var cible = Dir("cible"); var precieux = Fichier(cible, "precieux.txt");
+            Fichier(Dir("racine", "sub"), "b.tmp"); Fichier(racine, "a.tmp");
+            var hook = "$GT_WalkHook = { param($d) if ((Split-Path -Leaf $d) -eq 'sub') { Remove-Item -LiteralPath $d -Recurse -Force; "
+                     + "& cmd.exe /c ('mklink /J \"' + $d + '\" \"' + " + Q(cible) + " + '\"') | Out-Null } }\n";
+            var r = Un(Roots(racine) + hook + "$s = Remove-TweakPath -Path " + Q(racine) + "\nWrite-Output $s.Links");
+            Assert.True(File.Exists(precieux), "le dossier remplacé par une jonction ne doit pas être parcouru");
+            Assert.False(File.Exists(Path.Combine(racine, "a.tmp")));
+            Assert.Equal("1", r);
+        }
+
+        [Fact]
+        public void Une_racine_dont_un_parent_est_une_jonction_est_refusee()
+        {
+            var reel = Dir("reel"); var f = Fichier(Dir("reel", "cache"), "f.tmp");
+            var lien = Path.Combine(tmp, "lienparent"); Jonction(lien, reel);
+            var racine = Path.Combine(lien, "cache");
+            var r = Un(Roots(racine) + "try { Remove-TweakPath -Path " + Q(racine) + " | Out-Null; 'SUPPRIME' } catch { 'REFUSE' }");
+            Assert.Equal("REFUSE", r);
+            Assert.True(File.Exists(f));
+        }
+
+        [Fact]
+        public void Les_dossiers_autorises_par_defaut_se_limitent_aux_caches_nettoyes()
+        {
+            var la = @"C:\Users\Zed\AppData\Local";
+            string[] oui = { @"Google\Chrome\User Data\Default\Cache\f_1", @"Google\Chrome\User Data\Profile 3\Code Cache\js", @"Microsoft\Edge\User Data\Default\GPUCache",
+                             @"Google\Chrome\User Data\Crashpad\reports\a.dmp", @"Mozilla\Firefox\Profiles\ab12.default\cache2\entries", @"EpicGamesLauncher\Saved\webcache_4147\x",
+                             @"Microsoft\VSCommon\17.0\SQM\a", @"D3DSCache\x" };
+            string[] non = { @"Google\Chrome\User Data", @"Google\Chrome\User Data\Default", @"Google\Chrome\User Data\Default\Local Storage\leveldb", @"Google\Chrome\User Data\Local State",
+                             @"Google\Chrome\User Data\Defaultx\Cache", @"Mozilla\Firefox\Profiles\ab12.default\places.sqlite", @"Mozilla\Firefox\Profiles",
+                             @"EpicGamesLauncher\Saved", @"EpicGamesLauncher\Saved\Logs", @"Microsoft\VSCommon", @"Microsoft\VSCommon\17.0\Other", @"Microsoft\Edge\User Data\Default\Extensions" };
+            var snippet = "$env:LOCALAPPDATA = " + Q(la) + "\n$AllowedRoots = @(Get-GTDefaultAllowedRoots)\n";
+            foreach (var p in oui.Concat(non)) snippet += "Write-Output (Test-GTPathAllowed " + Q(Path.Combine(la, p)) + ")\n";
+            var r = Un(snippet).Split('\n');
+            for (int i = 0; i < oui.Length; i++) Assert.True(r[i] == "True", "doit être autorisé : " + oui[i]);
+            for (int i = 0; i < non.Length; i++) Assert.True(r[oui.Length + i] == "False", "doit être refusé : " + non[i]);
+        }
+
+        [Fact]
+        public void Login_Data_For_Account_et_Local_State_sont_proteges()
+        {
+            var racine = Dir("racine");
+            var gardes = new[] { Fichier(racine, "Login Data For Account"), Fichier(racine, "Login Data For Account-journal"), Fichier(racine, "Local State") };
+            var jetable = Fichier(racine, "f_000001");
+            Un(Roots(racine) + "Remove-TweakPath -Path " + Q(racine) + " | Out-Null");
+            foreach (var g in gardes) Assert.True(File.Exists(g), g + " doit rester");
+            Assert.False(File.Exists(jetable));
+        }
+
+        private const string ProduitsEx = "function New-GTInstallerObject { 'fake' }\n"
+            + "function Read-GTInstallerValue($Obj, [string]$Name, $Argv) {\n  switch ($Name) {\n"
+            + "    'ProductsEx' { return @('p1') }\n    'ProductCode' { return '{AAA}' }\n    'UserSid' { return '' }\n    'Context' { return 1 }\n"
+            + "    'PatchesEx' { return @() }\n    'Products' { return @() }\n    'Patches' { return @() }\n    'ProductState' { return 5 }\n";
+
+        private string Verdict(string inst, string lecteur) =>
+            Un("$GT_InstallerDir = " + Q(inst) + "\n" + lecteur + "\ntry { $r = @(Find-OrphanInstallerFiles); Write-Output ('OK' + $r.Count) } catch { Write-Output 'ECHEC' }");
+
+        [Fact]
+        public void Orphelins_une_lecture_de_LocalPackage_en_echec_sur_un_produit_installe_interrompt_tout()
+        {
+            string pc; var inst = InstallerFactice(out pc);
+            Assert.Equal("ECHEC", Verdict(inst, ProduitsEx + "    'InstallProperty' { throw 'acces refuse' }\n  }\n}"));
+            Assert.Equal("ECHEC", Verdict(inst, "function New-GTInstallerObject { 'fake' }\nfunction Read-GTInstallerValue($Obj, [string]$Name, $Argv) {\n  switch ($Name) {\n"
+                + "    'ProductsEx' { return @() }\n    'Products' { return @('{B}') }\n    'Patches' { return @() }\n    'ProductState' { return 5 }\n    'ProductInfo' { throw 'echec' }\n  }\n}"));
+            Assert.True(File.Exists(Path.Combine(inst, "bbbb2.msp")));
+        }
+
+        [Fact]
+        public void Orphelins_une_lecture_en_echec_sur_un_produit_non_installe_est_ignoree()
+        {
+            string pc; var inst = InstallerFactice(out pc);
+            var lecteur = "function New-GTInstallerObject { 'fake' }\nfunction Read-GTInstallerValue($Obj, [string]$Name, $Argv) {\n  switch ($Name) {\n"
+                + "    'ProductsEx' { return @() }\n    'Products' { return @('{B}', '{C}') }\n    'Patches' { return @() }\n"
+                + "    'ProductState' { if ($Argv[0] -eq '{B}') { return 1 } else { return 5 } }\n"
+                + "    'ProductInfo' { if ($Argv[0] -eq '{B}') { throw 'echec' } else { return " + Q(Path.Combine(inst, "aaaa1.msi")) + " } }\n  }\n}";
+            Assert.Equal("OK2", Verdict(inst, lecteur));
+        }
+
+        [Fact]
+        public void Orphelins_un_produit_annonce_non_installe_dont_la_lecture_echoue_est_ignore()
+        {
+            string pc; var inst = InstallerFactice(out pc);
+            var lecteur = "function New-GTInstallerObject { 'fake' }\nfunction Read-GTInstallerValue($Obj, [string]$Name, $Argv) {\n  switch ($Name) {\n"
+                + "    'ProductsEx' { return @('annonce', 'installe') }\n    'ProductCode' { if ($Obj -eq 'annonce') { return '{B}' } else { return '{C}' } }\n"
+                + "    'UserSid' { return '' }\n    'Context' { return 4 }\n    'PatchesEx' { return @() }\n    'Products' { return @() }\n"
+                + "    'ProductState' { if ($Argv[0] -eq '{B}') { return 1 } else { return 5 } }\n"
+                + "    'InstallProperty' { if ($Obj -eq 'annonce') { throw 'echec' } else { return " + Q(Path.Combine(inst, "aaaa1.msi")) + " } }\n  }\n}";
+            Assert.Equal("OK2", Verdict(inst, lecteur));
+        }
+
+        [Fact]
+        public void Orphelins_les_lectures_reussies_listent_les_fichiers_non_references()
+        {
+            string pc; var inst = InstallerFactice(out pc);
+            Assert.Equal("OK2", Verdict(inst, ProduitsEx + "    'InstallProperty' { return " + Q(Path.Combine(inst, "aaaa1.msi")) + " }\n  }\n}"));
+        }
+
+        private async Task<ItemOutcome> PilotesAvecCode(int code)
+        {
+            var prefixe =
+                "function Get-WindowsDriver { param([switch]$Online, [switch]$All)\n"
+              + "  [pscustomobject]@{ Driver = 'oem1.inf'; OriginalFileName = 'C:\\x\\a.inf'; ProviderName = 'P'; ClassName = 'C'; Version = '1.0.0.0'; Date = [datetime]'2020-01-01'; BootCritical = $false }\n"
+              + "  [pscustomobject]@{ Driver = 'oem2.inf'; OriginalFileName = 'C:\\x\\a.inf'; ProviderName = 'P'; ClassName = 'C'; Version = '2.0.0.0'; Date = [datetime]'2022-01-01'; BootCritical = $false } }\n"
+              + "function Get-CimInstance { param($ClassName) [pscustomobject]@{ InfName = 'oem2.inf' } }\n"
+              + "function Invoke-GTNative([string]$Exe, [string[]]$Arguments = @()) { return [pscustomobject]@{ ExitCode = " + code + "; Output = @('message') } }\n";
+            return await Lance(AvecPrefixe(Catalogue()["cln.old-drivers"], prefixe));
+        }
+
+        [Fact]
+        public async Task Anciens_pilotes_le_code_de_refus_pour_pilote_utilise_est_un_simple_refus()
+        {
+            var o = await PilotesAvecCode(-536870385);
+            Assert.Equal(OutcomeStatus.Ok, o.Status);
+        }
+
+        [Theory]
+        [InlineData(5)]
+        [InlineData(2)]
+        [InlineData(1)]
+        public async Task Anciens_pilotes_un_autre_code_d_erreur_est_un_echec_explicite(int code)
+        {
+            var o = await PilotesAvecCode(code);
+            Assert.Equal(OutcomeStatus.Failed, o.Status);
+            Assert.Contains("code " + code, o.Message ?? "");
+        }
+
+        [Fact]
+        public async Task Anciens_pilotes_un_code_de_reussite_est_ok()
+        {
+            Assert.Equal(OutcomeStatus.Ok, (await PilotesAvecCode(0)).Status);
+            Assert.Equal(OutcomeStatus.Ok, (await PilotesAvecCode(3010)).Status);
+        }
+
+        [Fact]
+        public void Corbeille_et_windows_old_ont_les_delais_et_textes_attendus()
+        {
+            var cat = Catalogue();
+            Assert.Equal(1800, cat["cln.recycle"].DelaiSec);
+            var d = cat["cln.windows-old"].Description;
+            Assert.Contains("dossiers personnels", d);
+            Assert.Contains("conservés", d);
+        }
+
+        [Fact]
+        public void La_couverture_des_navigateurs_ne_promet_ni_journaux_du_Software_Reporter_ni_flux()
+        {
+            var texte = File.ReadAllText(Couverture.Chemin(), System.Text.Encoding.UTF8);
+            Assert.DoesNotContain("Software Reporter", texte);
+            Assert.DoesNotContain("Temporary Internet Files, flux", texte);
+        }
     }
 }

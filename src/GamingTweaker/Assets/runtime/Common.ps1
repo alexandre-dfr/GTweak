@@ -1070,7 +1070,7 @@ function Format-GTSize([long]$Bytes) {
 # Noms (a n'importe quel niveau du chemin) qui ne sont jamais supprimes, meme dans un dossier autorise.
 $script:GT_ProtectedSet = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
 foreach ($gtName in @('Downloads', 'Documents', 'Desktop', 'Pictures', 'Videos', 'Music', 'Saved Games', 'Favorites', 'Contacts',
-                      'Login Data', 'History', 'Cookies', 'Bookmarks', 'Web Data')) { [void]$script:GT_ProtectedSet.Add($gtName) }
+                      'Login Data', 'Login Data For Account', 'Local State', 'History', 'Cookies', 'Bookmarks', 'Web Data')) { [void]$script:GT_ProtectedSet.Add($gtName) }
 
 function Test-GTProtectedName([string]$Name) {
     if ([string]::IsNullOrEmpty($Name)) { return $false }
@@ -1091,14 +1091,27 @@ function Get-GTFullPath([string]$Path) {
     return $f
 }
 
+# Une racine autorisee peut contenir « * » dans un segment (« Profile * », « webcache* ») : ce segment se compare par motif, les autres a l'identique.
+function Test-GTUnderRoot([string]$Full, [string]$Root) {
+    if ($Root.IndexOf('*') -lt 0) { return ($Full -ieq $Root -or $Full.StartsWith($Root + '\', [StringComparison]::OrdinalIgnoreCase)) }
+    $f = $Full.Split('\'); $r = $Root.Split('\')
+    if ($f.Count -lt $r.Count) { return $false }
+    for ($i = 0; $i -lt $r.Count; $i++) {
+        if ($r[$i].IndexOf('*') -ge 0) { if ($f[$i] -notlike $r[$i]) { return $false } }
+        elseif ($f[$i] -ine $r[$i]) { return $false }
+    }
+    return $true
+}
+
 function Test-GTPathAllowed([string]$Path) {
     try { $full = Get-GTFullPath $Path } catch { return $false }
     if (Test-GTProtectedPath $full) { return $false }
     foreach ($r in @($AllowedRoots)) {
         if ([string]::IsNullOrWhiteSpace($r)) { continue }
-        try { $root = Get-GTFullPath $r } catch { continue }
+        # GetFullPath refuse « * » : une racine a motif est deja absolue (construite par Join-Path), on la prend telle quelle.
+        if ($r.IndexOf('*') -ge 0) { $root = $r.TrimEnd([char]92) } else { try { $root = Get-GTFullPath $r } catch { continue } }
         if ($root.Length -le 3) { continue }   # jamais une racine de disque
-        if ($full -ieq $root -or $full.StartsWith($root + '\', [StringComparison]::OrdinalIgnoreCase)) { return $true }
+        if (Test-GTUnderRoot $full $root) { return $true }
     }
     return $false
 }
@@ -1135,9 +1148,16 @@ function Get-GTDefaultAllowedRoots {
         foreach ($s in @('Microsoft\Windows\WER', 'Microsoft\VSApplicationInsights', 'vstelemetry')) { $roots.Add((Join-Path $pd $s)) }
     }
     if ($la) {
+        # Uniquement les dossiers de cache reellement nettoyes (« * » : un segment quelconque, voir Test-GTUnderRoot).
         foreach ($s in @('Microsoft\Windows\Explorer', 'CrashDumps', 'D3DSCache', 'NVIDIA\DXCache', 'NVIDIA\GLCache', 'AMD\DxCache',
-                         'Google\Chrome\User Data', 'Microsoft\Edge\User Data', 'Mozilla\Firefox\Profiles', 'Microsoft\Windows\INetCache\IE',
-                         'EpicGamesLauncher\Saved', 'Microsoft\VSCommon', 'Microsoft\VSApplicationInsights')) { $roots.Add((Join-Path $la $s)) }
+                         'Microsoft\Windows\INetCache\IE', 'EpicGamesLauncher\Saved\webcache*', 'Microsoft\VSCommon\*\SQM', 'Microsoft\VSApplicationInsights')) { $roots.Add((Join-Path $la $s)) }
+        foreach ($b in @('Google\Chrome\User Data', 'Microsoft\Edge\User Data')) {
+            foreach ($prof in @('Default', 'Profile *')) {
+                foreach ($c in @('Cache', 'Code Cache', 'GPUCache')) { $roots.Add((Join-Path $la ($b + '\' + $prof + '\' + $c))) }
+            }
+            $roots.Add((Join-Path $la ($b + '\Crashpad\reports')))
+        }
+        $roots.Add((Join-Path $la 'Mozilla\Firefox\Profiles\*\cache2'))
     }
     if ($ap) {
         foreach ($s in @('Microsoft\Windows\Recent', 'Sun\Java\Deployment\cache', 'vstelemetry')) { $roots.Add((Join-Path $ap $s)) }
@@ -1171,34 +1191,66 @@ function Update-GTCleanNote($Stats, [string]$Detail) {
 
 function Add-GTCleanDetail([string]$Detail) { Update-GTCleanNote $null $Detail }
 
+# Vrai si l'element est (ou ne peut pas etre prouve ne pas etre) une jonction ou un lien symbolique.
+function Test-GTReparse([string]$Path) {
+    try { return [bool]([IO.File]::GetAttributes($Path) -band [IO.FileAttributes]::ReparsePoint) } catch { return $true }
+}
+
+# Propriete et droits aux administrateurs, sur cet element seulement (jamais /r ni /t ; /L : l'element lui-meme) et jamais sur un lien.
+function Grant-GTOwnership([string]$Path) {
+    if (Test-GTReparse $Path) { return }
+    $null = Invoke-GTNative 'takeown.exe' @('/f', $Path, '/a')
+    $null = Invoke-GTNative 'icacls.exe' @($Path, '/grant', '*S-1-5-32-544:F', '/c', '/q', '/L')
+}
+
 # Parcours commun a la suppression et a l'estimation. $Stats : table (Files, Bytes, Locked, Links, Protected).
-function Invoke-GTWalk([string]$Dir, [string]$Filter, [bool]$Recurse, [bool]$Delete, [bool]$RemoveLinks, $Stats, $Exclude) {
-    try { $entries = (New-Object IO.DirectoryInfo($Dir)).GetFileSystemInfos() } catch { $Stats.Locked++; return }
+# $Own : prise de possession element par element, seulement quand un acces est refuse ($GT_OwnAlways : test, la fait avant chaque element).
+# $GT_WalkHook : test, appele avant de descendre dans un sous-dossier.
+function Invoke-GTWalk([string]$Dir, [string]$Filter, [bool]$Recurse, [bool]$Delete, [bool]$RemoveLinks, $Stats, $Exclude, [bool]$Own = $false) {
+    if ($Own -and $GT_OwnAlways) { Grant-GTOwnership $Dir }
+    $entries = $null
+    try { $entries = (New-Object IO.DirectoryInfo($Dir)).GetFileSystemInfos() } catch {
+        if ($Own) { Grant-GTOwnership $Dir; try { $entries = (New-Object IO.DirectoryInfo($Dir)).GetFileSystemInfos() } catch { } }
+    }
+    if ($null -eq $entries) { $Stats.Locked++; return }
     foreach ($e in $entries) {
         $full = $e.FullName
         if ($null -ne $Exclude -and $Exclude.Contains($full)) { continue }
         if (Test-GTProtectedName $e.Name) { $Stats.Protected++; continue }
         $attr = $e.Attributes
         if ($attr -band [IO.FileAttributes]::Directory) {
-            if ($attr -band [IO.FileAttributes]::ReparsePoint) {
+            if (-not ($attr -band [IO.FileAttributes]::ReparsePoint)) {
+                if (-not $Recurse) { continue }
+                if ($GT_WalkHook) { & $GT_WalkHook $full }
+            }
+            # Verification juste avant de descendre : le dossier a pu devenir un lien depuis l'enumeration.
+            if ((Test-GTReparse $full) -or ($attr -band [IO.FileAttributes]::ReparsePoint)) {
                 # Jonction ou lien symbolique : jamais suivi. Seul le lien est retire, et seulement sur demande.
                 $Stats.Links++
                 if ($Delete -and $RemoveLinks) { try { [IO.Directory]::Delete($full, $false) } catch { } }
                 continue
             }
-            if (-not $Recurse) { continue }
-            Invoke-GTWalk $full $Filter $Recurse $Delete $RemoveLinks $Stats $Exclude
+            Invoke-GTWalk $full $Filter $Recurse $Delete $RemoveLinks $Stats $Exclude $Own
             # Un dossier vide est retire (jamais le dossier racine) ; un dossier non vide (fichiers verrouilles) reste.
-            if ($Delete -and $Filter -eq '*') { try { [IO.Directory]::Delete($full, $false) } catch { } }
+            if ($Delete -and $Filter -eq '*') {
+                try { [IO.Directory]::Delete($full, $false) } catch {
+                    if ($Own) { Grant-GTOwnership $full; try { [IO.Directory]::Delete($full, $false) } catch { } }
+                }
+            }
         } else {
             if ($e.Name -notlike $Filter) { continue }
             if (-not $Delete) { $Stats.Files++; $Stats.Bytes += [long]$e.Length; continue }
-            try {
-                if ($attr -band [IO.FileAttributes]::ReadOnly) { [IO.File]::SetAttributes($full, [IO.FileAttributes]::Normal) }
-                $len = [long]$e.Length
-                [IO.File]::Delete($full)
-                $Stats.Files++; $Stats.Bytes += $len
-            } catch { $Stats.Locked++ }
+            $len = [long]$e.Length
+            if ($Own -and $GT_OwnAlways) { Grant-GTOwnership $full }
+            $done = $false
+            for ($try = 0; $try -lt 2 -and -not $done; $try++) {
+                try {
+                    if ($attr -band [IO.FileAttributes]::ReadOnly) { [IO.File]::SetAttributes($full, [IO.FileAttributes]::Normal) }
+                    [IO.File]::Delete($full)
+                    $done = $true
+                } catch { if ($Own -and $try -eq 0) { Grant-GTOwnership $full } else { break } }
+            }
+            if ($done) { $Stats.Files++; $Stats.Bytes += $len } else { $Stats.Locked++ }
         }
     }
 }
@@ -1213,6 +1265,7 @@ function ConvertTo-GTExcludeSet([string[]]$ExcludePath) {
 }
 
 # Verifie tous les chemins avant de toucher a quoi que ce soit. Renvoie les chemins resolus.
+# Une racine, ou l'un de ses dossiers parents, qui est une jonction ou un lien symbolique est refusee.
 function Assert-GTCleanPaths([string[]]$Path) {
     $res = @()
     foreach ($p in $Path) {
@@ -1221,6 +1274,13 @@ function Assert-GTCleanPaths([string[]]$Path) {
         $full = Get-GTFullPath $p
         if ([IO.Directory]::Exists($full) -and ([IO.File]::GetAttributes($full) -band [IO.FileAttributes]::ReparsePoint)) {
             throw ('Dossier refusé (jonction ou lien symbolique, non suivi) : ' + $p)
+        }
+        $anc = Split-Path -Parent $full
+        while ($anc -and $anc.Length -gt 3) {
+            if ([IO.Directory]::Exists($anc) -and ([IO.File]::GetAttributes($anc) -band [IO.FileAttributes]::ReparsePoint)) {
+                throw ('Dossier refusé (un dossier parent est une jonction ou un lien symbolique : ' + $anc + ') : ' + $p)
+            }
+            $anc = Split-Path -Parent $anc
         }
         $res += $full
     }
@@ -1244,11 +1304,11 @@ function Remove-TweakPath {
         }
         if (-not [IO.Directory]::Exists($root)) { continue }
         if ($TakeOwnership) {
-            # Les fichiers de Windows.old appartiennent a TrustedInstaller : propriete et droits aux administrateurs, sur ce seul dossier.
-            $null = Invoke-GTNative 'takeown.exe' @('/f', $root, '/r', '/a', '/d', 'Y')
-            $null = Invoke-GTNative 'icacls.exe' @($root, '/grant', '*S-1-5-32-544:(OI)(CI)F', '/t', '/c', '/q')
+            # Les fichiers de Windows.old appartiennent a TrustedInstaller : propriete et droits repris element par element
+            # (racine ici, puis chaque element non lie lors du parcours, quand l'acces est refuse). Jamais recursif : une jonction n'est pas traversee.
+            Grant-GTOwnership $root
         }
-        Invoke-GTWalk $root $Filter (-not $NoRecurse) $true ([bool]$RemoveLinks) $stats $exclude
+        Invoke-GTWalk $root $Filter (-not $NoRecurse) $true ([bool]$RemoveLinks) $stats $exclude ([bool]$TakeOwnership)
         if ($RemoveRoot) {
             try { [IO.Directory]::Delete($root, $false) } catch { Add-GTCleanDetail ('Le dossier ' + $root + ' n''a pas pu être supprimé entièrement') }
         }
@@ -1294,35 +1354,53 @@ function Invoke-GTDism([string[]]$Arguments) {
 
 # ---- Orphelins de Windows Installer ------------------------------------------------------------
 
+# Acces COM : fonctions separees pour pouvoir les remplacer dans les tests.
+function New-GTInstallerObject { return (New-Object -ComObject WindowsInstaller.Installer) }
+function Read-GTInstallerValue($Obj, [string]$Name, $Argv) {
+    return $Obj.GetType().InvokeMember($Name, [Reflection.BindingFlags]::GetProperty, $null, $Obj, $Argv)
+}
+# LocalPackage d'un produit ou correctif. Une lecture qui echoue leve une erreur si $Required (produit installe : le fichier existe forcement),
+# sinon la propriete est consideree comme absente (aucun fichier reference).
+function Get-GTInstallerPackageProp($Obj, [string]$Name, $Argv, [bool]$Required) {
+    try { return [string](Read-GTInstallerValue $Obj $Name $Argv) }
+    catch {
+        if ($Required) { throw ('lecture de LocalPackage impossible pour un produit installé : ' + $_.Exception.Message) }
+        return ''
+    }
+}
+
 # Chemins (LocalPackage) de tous les .msi et .msp references par Windows Installer : produits et correctifs de tous les contextes
-# (par machine, par utilisateur, geres), pour tous les utilisateurs. Leve une erreur si l'enumeration echoue.
+# (par machine, par utilisateur, geres), pour tous les utilisateurs. Leve une erreur si l'enumeration echoue, ou si la lecture du
+# LocalPackage d'un produit installe echoue : sans cela, son fichier serait deplace a tort.
 function Get-GTInstallerReferencedPackages {
-    $inst = New-Object -ComObject WindowsInstaller.Installer
+    $inst = New-GTInstallerObject
     $res = New-Object System.Collections.Generic.List[string]
-    $get = { param($o, $name, $argv) $o.GetType().InvokeMember($name, [Reflection.BindingFlags]::GetProperty, $null, $o, $argv) }
-    # Un produit ou un correctif sans LocalPackage (propriete absente) ne reference aucun fichier : lecture ignoree.
-    $pkg = { param($o, $name, $argv) try { [string](& $get $o $name $argv) } catch { '' } }
     # s-1-1-0 (tout le monde) et contexte 7 (par utilisateur gere + non gere + machine) : necessite les droits administrateur
     # ($GT_InstallerUserSid : remplacement pour les tests non eleves).
     $sidAll = if ($null -ne $GT_InstallerUserSid) { [string]$GT_InstallerUserSid } else { 's-1-1-0' }
-    $products = & $get $inst 'ProductsEx' @('', $sidAll, 7)
+    $products = @(Read-GTInstallerValue $inst 'ProductsEx' @('', $sidAll, 7))
     foreach ($p in $products) {
-        $code = [string](& $get $p 'ProductCode' $null)
-        $sid = [string](& $get $p 'UserSid' $null)
-        $ctx = [int](& $get $p 'Context' $null)
-        $lp = & $pkg $p 'InstallProperty' @('LocalPackage')
+        $code = [string](Read-GTInstallerValue $p 'ProductCode' $null)
+        $sid = [string](Read-GTInstallerValue $p 'UserSid' $null)
+        $ctx = [int](Read-GTInstallerValue $p 'Context' $null)
+        # Produit annonce mais non installe (ProductState 1 ou 2) : pas de LocalPackage, la lecture peut echouer sans consequence.
+        $pstate = 5
+        try { $pstate = [int](Read-GTInstallerValue $inst 'ProductState' @($code)) } catch { }
+        $lp = Get-GTInstallerPackageProp $p 'InstallProperty' @('LocalPackage') ($pstate -ne 1 -and $pstate -ne 2)
         if ($lp) { $res.Add($lp) }
-        foreach ($pt in (& $get $inst 'PatchesEx' @($code, $sid, $ctx, 15))) {
-            $lpp = & $pkg $pt 'PatchProperty' @('LocalPackage')
+        foreach ($pt in @(Read-GTInstallerValue $inst 'PatchesEx' @($code, $sid, $ctx, 15))) {
+            $lpp = Get-GTInstallerPackageProp $pt 'PatchProperty' @('LocalPackage') $false
             if ($lpp) { $res.Add($lpp) }
         }
     }
     # Ancienne API (produits du contexte courant) : union, pour ne rien oublier.
-    foreach ($code in (& $get $inst 'Products' $null)) {
-        $lp = & $pkg $inst 'ProductInfo' @([string]$code, 'LocalPackage')
+    foreach ($code in @(Read-GTInstallerValue $inst 'Products' $null)) {
+        $state = 5
+        try { $state = [int](Read-GTInstallerValue $inst 'ProductState' @([string]$code)) } catch { }   # illisible : traite comme installe
+        $lp = Get-GTInstallerPackageProp $inst 'ProductInfo' @([string]$code, 'LocalPackage') ($state -ne 1 -and $state -ne 2)
         if ($lp) { $res.Add($lp) }
-        foreach ($pc in (& $get $inst 'Patches' @([string]$code))) {
-            $lpp = & $pkg $inst 'PatchInfo' @([string]$pc, 'LocalPackage')
+        foreach ($pc in @(Read-GTInstallerValue $inst 'Patches' @([string]$code))) {
+            $lpp = Get-GTInstallerPackageProp $inst 'PatchInfo' @([string]$pc, 'LocalPackage') $false
             if ($lpp) { $res.Add($lpp) }
         }
     }
@@ -1388,6 +1466,8 @@ function Test-GTFixedDrive([string]$Path) {
 }
 
 # Programme designe par une commande de desinstallation : chemin absolu (lecteur:\...) ou $null (MsiExec, rundll32, chemin relatif, UNC...).
+# Commande non guillemetee contenant des espaces : on essaie les prefixes se terminant par .exe, .com, .bat ou .cmd et on garde le premier qui existe ;
+# si aucun n'existe le programme est absent (premier prefixe). Sans extension reconnue et avec des espaces, on ne peut pas conclure : $null.
 function Get-GTUninstallTarget([string]$Command) {
     if ([string]::IsNullOrWhiteSpace($Command)) { return $null }
     $c = [Environment]::ExpandEnvironmentVariables($Command.Trim())
@@ -1397,8 +1477,16 @@ function Get-GTUninstallTarget([string]$Command) {
         if ($e -lt 2) { return $null }
         $p = $c.Substring(1, $e - 1)
     }
-    elseif ($c -match '^(?<p>[A-Za-z]:\\.*?\.(?:exe|com|bat|cmd))(?:\s|$)') { $p = $Matches['p'] }
-    elseif ($c -match '^(?<p>[A-Za-z]:\\\S*)') { $p = $Matches['p'] }
+    elseif ($c -match '^[A-Za-z]:\\') {
+        $cands = @()
+        foreach ($m in [regex]::Matches($c, '\.(?:exe|com|bat|cmd)(?=\s|$)', [Text.RegularExpressions.RegexOptions]::IgnoreCase)) { $cands += $c.Substring(0, $m.Index + $m.Length) }
+        if ($cands.Count -gt 0) {
+            $p = $cands[0]
+            foreach ($cand in $cands) { $ok = $false; try { $ok = Test-Path -LiteralPath $cand -PathType Leaf } catch { }; if ($ok) { $p = $cand; break } }
+        }
+        elseif ($c -match '\s') { return $null }
+        else { $p = $c }
+    }
     if (-not $p -or $p -notmatch '^[A-Za-z]:\\') { return $null }
     return $p
 }

@@ -30,6 +30,7 @@
     "reversible": false,
     "redemarrage": false,
     "hkcu": true,
+    "delaiSec": 1800,
     "compatibilite": {
       "windows": [
         "10",
@@ -207,7 +208,7 @@
     "menu": "Nettoyage",
     "groupe": "Windows",
     "titre": "Windows.old supprimé",
-    "description": "Supprime le dossier C:\\Windows.old laissé par la mise à niveau de Windows (plusieurs dizaines de Go). Après cela, le retour à la version précédente de Windows est impossible. Les anciens fichiers qu'il contient (profils, programmes de l'ancienne installation) ne pourront plus être récupérés. Windows le supprime de lui-même après quelques semaines. Définitif : les fichiers supprimés ne sont pas restaurables.",
+    "description": "Supprime le dossier C:\\Windows.old laissé par la mise à niveau de Windows (plusieurs dizaines de Go). Après cela, le retour à la version précédente de Windows est impossible. Les dossiers personnels de l'ancienne installation (Documents, Bureau, Images, Téléchargements, etc.) sont conservés et ne sont pas supprimés : le dossier Windows.old peut donc rester en partie ; le reste ne pourra plus être récupéré. Windows le supprime de lui-même après quelques semaines. Définitif : les fichiers supprimés ne sont pas restaurables.",
     "risque": "Avance",
     "reversible": false,
     "redemarrage": false,
