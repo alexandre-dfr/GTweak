@@ -73,8 +73,10 @@ namespace GamingTweaker
             var autresRacines = racines.Skip(1).ToList();
             var restauration = new RestaurationService(paths, ElevationCheck.SameUserAsDesktop, null, autresRacines);
             vm.Restauration = restauration;
+            // La quarantaine est unique (ProgramData\Quarantaine, partagée par les deux racines) ; les origines sont résolues via les journaux des deux racines.
+            var quarantineDir = racines.Select(r => r.QuarantineDir).Distinct(StringComparer.OrdinalIgnoreCase).First();
             vm.Historique = new HistoriqueViewModel(paths, restauration, catalogue,
-                new QuarantineService(paths.QuarantineDir, racines.Select(r => r.SessionsDir).ToArray()), null, autresRacines)
+                new QuarantineService(quarantineDir, racines.Select(r => r.SessionsDir).ToArray()), null, autresRacines)
             {
                 Confirmer = texte => MessageBox.Show(fenetre, texte, "Historique", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes,
                 ApresAnnulation = () => { var _ = vm.DetectAsync(); },

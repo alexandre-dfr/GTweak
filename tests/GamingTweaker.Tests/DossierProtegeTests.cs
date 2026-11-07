@@ -26,8 +26,8 @@ namespace GamingTweaker.Tests
 
         // ---------- Décision pure ----------
 
-        private static EntreeProtection E(bool racine = false, bool dossier = true, bool lien = false, int liens = 1, string proprio = Admins, bool daclSure = true)
-            => new EntreeProtection { EstRacine = racine, EstDossier = dossier, EstLien = lien, NombreLiens = liens, ProprietaireSid = proprio, DaclSure = daclSure };
+        private static EntreeProtection E(bool racine = false, bool dossier = true, bool lien = false, int liens = 1, string proprio = Admins, bool daclSure = true, bool volumeInattendu = false)
+            => new EntreeProtection { EstRacine = racine, EstDossier = dossier, EstLien = lien, NombreLiens = liens, ProprietaireSid = proprio, DaclSure = daclSure, EstVolumeInattendu = volumeInattendu };
 
         [Fact]
         public void Proprietaires_de_confiance_sont_system_et_administrateurs()
@@ -40,40 +40,54 @@ namespace GamingTweaker.Tests
         }
 
         [Fact]
-        public void Racine_est_toujours_reappliquee()
+        public void Racine_de_confiance_est_reappliquee()
         {
-            var d = DossierProtege.Decider(E(racine: true), @"C:\x");
+            var d = DossierProtege.Decider(E(racine: true), true, @"C:\x");
             Assert.Equal(ActionProtection.Appliquer, d.Action);
             Assert.Null(d.Avertissement);
         }
 
         [Fact]
-        public void Proprietaire_non_fiable_est_repris_avec_avertissement()
+        public void Proprietaire_non_fiable_est_supprime_en_mode_eleve()
         {
+            // Élevé : le propriétaire peut être fixé, donc un élément non fiable (y compris la racine) est supprimé, pas repris.
             foreach (var racine in new[] { true, false })
             {
-                var d = DossierProtege.Decider(E(racine: racine, proprio: Utilisateur), @"C:\x\Machines");
-                Assert.Equal(ActionProtection.Appliquer, d.Action);
+                var d = DossierProtege.Decider(E(racine: racine, proprio: Utilisateur), true, @"C:\x\Machines");
+                Assert.Equal(ActionProtection.Supprimer, d.Action);
                 Assert.Contains(Utilisateur, d.Avertissement);
                 Assert.Contains(@"C:\x\Machines", d.Avertissement);
             }
         }
 
         [Fact]
-        public void Lien_jonction_ou_lien_physique_est_supprime_sans_etre_suivi()
+        public void Hors_elevation_le_proprietaire_n_est_pas_applique()
         {
-            Assert.Equal(ActionProtection.Supprimer, DossierProtege.Decider(E(lien: true), "j").Action);
-            Assert.Equal(ActionProtection.Supprimer, DossierProtege.Decider(E(racine: true, lien: true), "j").Action);
-            Assert.Equal(ActionProtection.Supprimer, DossierProtege.Decider(E(dossier: false, liens: 2), "f").Action);
-            Assert.NotNull(DossierProtege.Decider(E(dossier: false, liens: 2), "f").Avertissement);
+            // Sans pouvoir prendre possession, on ne supprime pas sur le seul critère du propriétaire : on applique la DACL.
+            Assert.Equal(ActionProtection.Appliquer, DossierProtege.Decider(E(proprio: Utilisateur, daclSure: false), false, "d").Action);
+            Assert.Equal(ActionProtection.Aucune, DossierProtege.Decider(E(proprio: Utilisateur, daclSure: true), false, "d").Action);
+            // Un lien reste supprimé, élevé ou non.
+            Assert.Equal(ActionProtection.Supprimer, DossierProtege.Decider(E(lien: true, proprio: Utilisateur), false, "j").Action);
+        }
+
+        [Fact]
+        public void Lien_physique_volume_etranger_sont_supprimes_sans_etre_suivis()
+        {
+            Assert.Equal(ActionProtection.Supprimer, DossierProtege.Decider(E(lien: true), true, "j").Action);
+            Assert.Equal(ActionProtection.Supprimer, DossierProtege.Decider(E(racine: true, lien: true), true, "j").Action);
+            Assert.Equal(ActionProtection.Supprimer, DossierProtege.Decider(E(dossier: false, liens: 2), true, "f").Action);
+            Assert.NotNull(DossierProtege.Decider(E(dossier: false, liens: 2), true, "f").Avertissement);
+            var v = DossierProtege.Decider(E(volumeInattendu: true), true, "m");
+            Assert.Equal(ActionProtection.Supprimer, v.Action);
+            Assert.Contains("volume", v.Avertissement);
         }
 
         [Fact]
         public void Descendant_sain_est_laisse_tel_quel_sinon_normalise()
         {
-            Assert.Equal(ActionProtection.Aucune, DossierProtege.Decider(E(), "d").Action);
-            Assert.Equal(ActionProtection.Aucune, DossierProtege.Decider(E(dossier: false, proprio: Systeme), "f").Action);
-            Assert.Equal(ActionProtection.Appliquer, DossierProtege.Decider(E(daclSure: false), "d").Action);
+            Assert.Equal(ActionProtection.Aucune, DossierProtege.Decider(E(), true, "d").Action);
+            Assert.Equal(ActionProtection.Aucune, DossierProtege.Decider(E(dossier: false, proprio: Systeme), true, "f").Action);
+            Assert.Equal(ActionProtection.Appliquer, DossierProtege.Decider(E(daclSure: false), true, "d").Action);
         }
 
         private static AceInfo Ace(string sid, FileSystemRights r, bool autorise = true) => new AceInfo { Sid = sid, Masque = (int)r, Autorise = autorise };
@@ -173,10 +187,9 @@ namespace GamingTweaker.Tests
             }
             else
             {
-                // Non élevé : le propriétaire ne peut pas être fixé à BUILTIN\Administrators (privilège requis).
-                // La reprise du propriétaire est couverte par la décision pure ; ici seule la DACL est vérifiée.
-                sortie.WriteLine("Vérification du propriétaire ignorée : le lanceur de tests n'est pas élevé (SeTakeOwnership/SeRestore indisponibles).");
-                Assert.Contains(avert, a => a.Contains("Propriétaire"));
+                // Non élevé : le propriétaire ne peut pas être fixé à BUILTIN\Administrators (privilège requis), et la règle de propriétaire
+                // n'est pas appliquée (sinon tout le contenu créé par l'utilisateur de test serait supprimé). Seules la DACL et le retrait des liens sont vérifiés.
+                sortie.WriteLine("Vérification du propriétaire et de la suppression par propriétaire ignorée : le lanceur de tests n'est pas élevé (SeTakeOwnership/SeRestore indisponibles).");
             }
 
             // Idempotent : une seconde passe ne signale plus de lien.
@@ -228,6 +241,51 @@ namespace GamingTweaker.Tests
             Assert.Contains(r.Avertissements, a => a.Contains("lien"));
             if (EstEleve()) Assert.Contains("lien", File.ReadAllText(Path.Combine(racine, DossierProtege.NomJournal)));
             else sortie.WriteLine("Vérification de securite.log ignorée : non élevé, le dossier sécurisé n'est plus inscriptible par l'utilisateur de test (comportement voulu).");
+        }
+
+        [Fact]
+        public void Securiser_supprime_un_element_plante_au_proprietaire_non_fiable()
+        {
+            var racine = Path.Combine(tmp, "Plante");
+            Directory.CreateDirectory(Path.Combine(racine, "App"));
+            // Fichier simple planté (pas un lien) à côté de l'exe, par exemple un .config appDomainManager ou une DLL de détournement.
+            var plante = Path.Combine(racine, "App", "GamingTweaker.exe.config");
+            File.WriteAllText(plante, "<configuration/>");
+
+            if (!EstEleve())
+            {
+                sortie.WriteLine("Test de suppression réelle par propriétaire ignoré : non élevé, impossible de fixer le propriétaire à un compte non fiable (SeRestore requis). La décision est couverte par Proprietaire_non_fiable_est_supprime_en_mode_eleve.");
+                return;
+            }
+            try
+            {
+                var sec = new FileInfo(plante).GetAccessControl();
+                sec.SetOwner(new SecurityIdentifier(Users));
+                new FileInfo(plante).SetAccessControl(sec);
+            }
+            catch (Exception ex) { sortie.WriteLine("Impossible de fixer le propriétaire non fiable, test ignoré : " + ex.Message); return; }
+
+            var avert = DossierProtege.Securiser(racine, definirProprietaire: true);
+            Assert.False(File.Exists(plante), "le fichier planté au propriétaire non fiable aurait dû être supprimé");
+            Assert.Contains(avert, a => a.Contains("propriétaire non fiable") && a.Contains("GamingTweaker.exe.config"));
+            VerifierDacl(new DirectoryInfo(Path.Combine(racine, "App")).GetAccessControl(), Path.Combine(racine, "App"));
+        }
+
+        [Fact]
+        public void Securiser_refuse_si_un_element_est_ouvert_en_ecriture_par_un_autre()
+        {
+            var racine = Path.Combine(tmp, "Ouvert");
+            Directory.CreateDirectory(racine);
+            var f = Path.Combine(racine, "occupe.bin");
+            File.WriteAllText(f, "x");
+            // Poignée concurrente avec accès en écriture : l'ouverture en partage lecture seule de Securiser doit être refusée (pas de FILE_SHARE_WRITE).
+            using (new FileStream(f, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite))
+            {
+                var ex = Assert.ThrowsAny<Exception>(() => DossierProtege.Securiser(racine, definirProprietaire: EstEleve()));
+                Assert.Contains("partage", ex.Message);
+                var r = DossierProtege.SecuriserAuDemarrage(racine, () => true, definirProprietaire: EstEleve());
+                Assert.NotNull(r.Erreur);
+            }
         }
 
         /// <summary>Le propriétaire (utilisateur courant, ou Administrateurs si élevé) remet l'héritage par icacls pour pouvoir supprimer le dossier de test.</summary>

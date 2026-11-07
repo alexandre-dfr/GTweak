@@ -149,20 +149,29 @@ namespace GamingTweaker.Core
             // La tâche est enregistrée pour le compte courant : élevé par un autre administrateur, ce ne serait pas l'utilisateur du bureau.
             if (!ElevationCheck.SameUserAsDesktop()) throw new InvalidOperationException(MessageAutreCompte);
 
-            // Dossier sécurisé (propriétaire Administrateurs, DACL protégée) avant d'y copier l'exe lancé avec les droits élevés.
+            // Dossier sécurisé (propriétaire Administrateurs, DACL protégée, contenu non fiable supprimé) avant d'y copier l'exe lancé élevé.
             var avert = DossierProtege.Securiser(DossierCopie);
             DossierProtege.Journaliser(DossierCopie, avert);
 
+            // App\ est vidé et recréé : un .config (appDomainManager), une DLL de détournement ou un ancien exe pré-déposés ne doivent jamais
+            // survivre à côté de l'exe lancé élevé par la tâche. Un échec interrompt l'installation.
+            try
+            {
+                if (Directory.Exists(DossierApp)) Directory.Delete(DossierApp, true);
+                Directory.CreateDirectory(DossierApp);
+            }
+            catch (Exception ex) { throw new IOException("Le dossier " + DossierApp + " n'a pas pu être vidé avant la copie de l'exe : " + ex.Message, ex); }
+
             var source = Process.GetCurrentProcess().MainModule.FileName;
-            Directory.CreateDirectory(DossierApp);
-            if (!string.Equals(Path.GetFullPath(source), Path.GetFullPath(ExeCopie), StringComparison.OrdinalIgnoreCase))
-                File.Copy(source, ExeCopie, true);
+            File.Copy(source, ExeCopie, true);
             try { if (File.Exists(ExeCopieAncienne)) File.Delete(ExeCopieAncienne); } catch (Exception) { }
 
             if (Directory.Exists(DossierProfil)) Directory.Delete(DossierProfil, true);
             Directory.CreateDirectory(DossierProfil);
             var copieProfil = Path.Combine(DossierProfil, Path.GetFileName(c.Profil));
-            File.Copy(c.Profil, copieProfil, true); // les copies héritent de la DACL des dossiers sécurisés
+            File.Copy(c.Profil, copieProfil, true);
+            // L'exe et le profil fraîchement copiés reçoivent la DACL protégée explicite (plutôt que l'héritage seul).
+            DossierProtege.Journaliser(DossierCopie, DossierProtege.Securiser(DossierCopie));
 
             string user;
             using (var id = WindowsIdentity.GetCurrent()) user = id.User != null ? id.User.Value : id.Name;

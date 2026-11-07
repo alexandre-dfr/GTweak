@@ -22,6 +22,8 @@ namespace GamingTweaker.Core
         public bool EstLien { get; set; }
         /// <summary>Nombre de liens physiques du fichier.</summary>
         public int NombreLiens { get; set; }
+        /// <summary>L'élément est sur un autre volume que la racine (redirection possible).</summary>
+        public bool EstVolumeInattendu { get; set; }
         public string ProprietaireSid { get; set; }
         public bool DaclSure { get; set; }
     }
@@ -49,9 +51,11 @@ namespace GamingTweaker.Core
     /// <summary>
     /// Dossier de données utilisé avec des droits élevés (C:\ProgramData\GamingTweaker) : propriétaire BUILTIN\Administrators,
     /// DACL protégée (héritage coupé) SYSTEM et Administrateurs contrôle total, Utilisateurs lecture et exécution, appliquée à tout le contenu.
-    /// Les éléments sont ouverts par poignée sans suivre les points d'analyse : jonctions, liens symboliques et liens physiques sont supprimés
-    /// (jamais suivis), pour qu'un utilisateur standard ne puisse ni déposer de DLL à côté de l'exe lancé par la tâche, ni planter des journaux
-    /// rejoués par l'appli élevée, ni rediriger la modification des droits vers un fichier système.
+    /// Tout élément dont le propriétaire n'est ni SYSTEM ni Administrateurs — comme une jonction, un lien symbolique, un lien physique
+    /// ou un élément sur un autre volume — est SUPPRIMÉ (jamais repris ni suivi), pour qu'un utilisateur standard ne puisse ni déposer de DLL,
+    /// de .config ou de journaux à côté de l'exe lancé élevé par la tâche, ni rediriger la modification des droits vers un fichier système.
+    /// Les poignées sont ouvertes sans partage d'écriture ni de suppression (une poignée concurrente arrête l'application) et l'identité
+    /// de chaque élément (volume + index) est revérifiée avant toute suppression.
     /// </summary>
     public static class DossierProtege
     {
@@ -83,17 +87,21 @@ namespace GamingTweaker.Core
             return true;
         }
 
-        public static DecisionProtection Decider(EntreeProtection e, string chemin)
+        /// <param name="appliquerProprietaire">Vrai quand l'appli est élevée (le propriétaire peut être fixé) : un propriétaire non fiable fait supprimer l'élément.
+        /// Hors élévation (tests), on ne peut pas prendre possession : la règle de propriétaire n'est pas appliquée, seuls les liens et redirections sont supprimés.</param>
+        public static DecisionProtection Decider(EntreeProtection e, bool appliquerProprietaire, string chemin)
         {
             if (e.EstLien)
                 return new DecisionProtection { Action = ActionProtection.Supprimer, Avertissement = "Lien ou jonction supprimé (jamais suivi) : " + chemin };
             if (!e.EstDossier && e.NombreLiens > 1)
                 return new DecisionProtection { Action = ActionProtection.Supprimer, Avertissement = "Lien physique supprimé (la cible n'est pas modifiée) : " + chemin };
-            if (!ProprietaireDeConfiance(e.ProprietaireSid))
+            if (e.EstVolumeInattendu)
+                return new DecisionProtection { Action = ActionProtection.Supprimer, Avertissement = "Élément sur un autre volume supprimé (redirection) : " + chemin };
+            if (appliquerProprietaire && !ProprietaireDeConfiance(e.ProprietaireSid))
                 return new DecisionProtection
                 {
-                    Action = ActionProtection.Appliquer,
-                    Avertissement = "Propriétaire non fiable (" + (e.ProprietaireSid ?? "inconnu") + ") repris par les Administrateurs : " + chemin,
+                    Action = ActionProtection.Supprimer,
+                    Avertissement = "Élément au propriétaire non fiable (" + (e.ProprietaireSid ?? "inconnu") + ") supprimé : " + chemin,
                 };
             if (e.EstRacine || !e.DaclSure) return new DecisionProtection { Action = ActionProtection.Appliquer };
             return new DecisionProtection { Action = ActionProtection.Aucune };
@@ -134,7 +142,7 @@ namespace GamingTweaker.Core
             return r;
         }
 
-        /// <summary>Ajoute des avertissements à securite.log (dossier déjà sécurisé). Non bloquant.</summary>
+        /// <summary>Ajoute des avertissements à securite.log (dossier déjà sécurisé : son propriétaire et sa DACL interdisent à un utilisateur de le remplacer). Non bloquant.</summary>
         public static void Journaliser(string racine, IEnumerable<string> avertissements)
         {
             var l = avertissements.ToList();
@@ -159,65 +167,102 @@ namespace GamingTweaker.Core
             racine = Path.GetFullPath(racine).TrimEnd('\\');
             ActiverPrivileges();
             var avert = new List<string>();
+            // La racine doit finir en vrai dossier, propriétaire fiable (en mode élevé) et non lien. Un élément douteux est supprimé puis recréé vide.
             for (int essai = 0; ; essai++)
             {
                 if (!Existe(racine)) Directory.CreateDirectory(racine);
-                bool estDossier;
-                if (Traiter(racine, true, definirProprietaire, avert, out estDossier))
-                {
-                    if (!estDossier) throw new IOException(racine + " n'est pas un dossier.");
-                    break;
-                }
-                if (essai >= 2) throw new IOException("Le dossier " + racine + " est remplacé par un lien à chaque tentative.");
+                if (Traiter(racine, true, definirProprietaire, 0, avert)) break;
+                if (essai >= 3) throw new IOException("Le dossier " + racine + " est remplacé par un élément non fiable à chaque tentative.");
             }
-            Parcourir(racine, definirProprietaire, avert);
             return avert;
         }
 
-        /// <summary>Dossier déjà sécurisé : ses enfants ne peuvent plus être remplacés par un utilisateur standard ; chacun est traité puis parcouru.</summary>
-        private static void Parcourir(string dossier, bool definirProprietaire, List<string> avert)
+        /// <summary>
+        /// Traite un élément par sa poignée (ouverte sans partage d'écriture ni suppression). Renvoie faux si l'élément a été supprimé.
+        /// Pour un dossier conservé, applique la DACL protégée puis descend : la poignée est tenue pendant tout le parcours des enfants,
+        /// et le dossier étant alors sécurisé, aucun enfant ne peut être échangé.
+        /// </summary>
+        private static bool Traiter(string chemin, bool estRacine, bool definirProprietaire, uint volumeRacine, List<string> avert)
         {
-            foreach (var enfant in Directory.GetFileSystemEntries(dossier))
-            {
-                bool estDossier;
-                if (Traiter(enfant, false, definirProprietaire, avert, out estDossier) && estDossier)
-                    Parcourir(enfant, definirProprietaire, avert);
-            }
-        }
-
-        /// <summary>Faux si l'élément a été supprimé (lien).</summary>
-        private static bool Traiter(string chemin, bool estRacine, bool definirProprietaire, List<string> avert, out bool estDossier)
-        {
-            estDossier = false;
             DecisionProtection d;
-            using (var h = Ouvrir(chemin, definirProprietaire))
+            bool estDossier, estLien;
+            Identite id;
+            using (var h = Ouvrir(chemin, false, definirProprietaire))
             {
                 BY_HANDLE_FILE_INFORMATION info;
                 if (!GetFileInformationByHandle(h, out info)) throw new Win32Exception(Marshal.GetLastWin32Error(), "Lecture des attributs impossible : " + chemin);
                 estDossier = (info.FileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+                estLien = (info.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0;
+                id = new Identite { Volume = info.VolumeSerialNumber, IndexHaut = info.FileIndexHigh, IndexBas = info.FileIndexLow };
+                if (estRacine) volumeRacine = info.VolumeSerialNumber;
+
                 string proprio; List<AceInfo> aces;
                 LireSecurite(h, chemin, out proprio, out aces);
                 d = Decider(new EntreeProtection
                 {
-                    EstRacine = estRacine, EstDossier = estDossier, EstLien = (info.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0,
-                    NombreLiens = (int)info.NumberOfLinks, ProprietaireSid = proprio, DaclSure = DaclSure(aces),
-                }, chemin);
+                    EstRacine = estRacine, EstDossier = estDossier, EstLien = estLien, NombreLiens = (int)info.NumberOfLinks,
+                    EstVolumeInattendu = !estRacine && info.VolumeSerialNumber != volumeRacine,
+                    ProprietaireSid = proprio, DaclSure = DaclSure(aces),
+                }, definirProprietaire, chemin);
                 if (d.Avertissement != null) avert.Add(d.Avertissement);
-                if (d.Action == ActionProtection.Appliquer) Appliquer(h, chemin, estDossier, definirProprietaire);
+
+                bool conserve = d.Action != ActionProtection.Supprimer;
+                // On verrouille (propriétaire + DACL protégée) tout élément conservé, et, en mode élevé, un dossier à supprimer (pour que
+                // ses enfants deviennent non modifiables et que la suppression récursive soit sûre). Jamais un lien, ni un FICHIER à supprimer :
+                // écrire la DACL d'un lien physique modifierait aussi sa cible hors du dossier.
+                if (!estLien && (conserve || (definirProprietaire && estDossier)))
+                    Appliquer(h, chemin, estDossier, definirProprietaire);
+
+                if (estDossier && !estLien && (conserve || definirProprietaire))
+                    foreach (var enfant in Directory.GetFileSystemEntries(chemin))
+                        Traiter(enfant, false, definirProprietaire, volumeRacine, avert);
             }
             if (d.Action != ActionProtection.Supprimer) return true;
-            // Le parent est déjà sécurisé (ou c'est la racine) : le lien ne peut plus être échangé ; on supprime le lien lui-même.
-            bool ok = estDossier ? RemoveDirectory(chemin) : DeleteFile(chemin);
-            if (!ok) { int e = Marshal.GetLastWin32Error(); throw new Win32Exception(e, "Suppression du lien impossible (" + new Win32Exception(e).Message + ") : " + chemin); }
+            Supprimer(chemin, estDossier, id);
             return false;
         }
 
-        private static SafeFileHandle Ouvrir(string chemin, bool definirProprietaire)
+        /// <summary>
+        /// Rouvre l'élément (point d'analyse non suivi) avec le droit DELETE, vérifie que c'est bien le même objet (volume + index) que celui
+        /// examiné, puis demande sa suppression à la fermeture de la poignée. Un dossier conservé a déjà été vidé par la récursion.
+        /// </summary>
+        private static void Supprimer(string chemin, bool estDossier, Identite attendue)
         {
-            uint acces = READ_CONTROL | WRITE_DAC | FILE_READ_ATTRIBUTES | (definirProprietaire ? WRITE_OWNER : 0);
-            var h = CreateFile(@"\\?\" + chemin, acces, 7 /* lecture, écriture, suppression partagées */, IntPtr.Zero, 3 /* OPEN_EXISTING */,
+            using (var h = Ouvrir(chemin, true, false))
+            {
+                BY_HANDLE_FILE_INFORMATION info;
+                if (!GetFileInformationByHandle(h, out info)) throw new Win32Exception(Marshal.GetLastWin32Error(), "Lecture avant suppression impossible : " + chemin);
+                if (info.VolumeSerialNumber != attendue.Volume || info.FileIndexHigh != attendue.IndexHaut || info.FileIndexLow != attendue.IndexBas)
+                    throw new IOException("L'élément a changé d'identité pendant le traitement (remplacement) : " + chemin);
+                var disp = new FILE_DISPOSITION_INFO { DeleteFile = true };
+                if (!SetFileInformationByHandle(h, FileDispositionInfo, ref disp, Marshal.SizeOf(typeof(FILE_DISPOSITION_INFO))))
+                {
+                    int e = Marshal.GetLastWin32Error();
+                    throw new Win32Exception(e, "Suppression impossible (" + new Win32Exception(e).Message + ") : " + chemin);
+                }
+            }
+        }
+
+        private struct Identite { public uint Volume, IndexHaut, IndexBas; }
+
+        private static SafeFileHandle Ouvrir(string chemin, bool pourSuppression, bool definirProprietaire)
+        {
+            // FILE_READ_DATA (liste pour un dossier) est demandé pour que le contrôle de partage s'applique : une poignée concurrente détenant
+            // l'écriture ou la suppression (partage incompatible avec FILE_SHARE_READ) fait alors échouer l'ouverture.
+            uint acces = READ_CONTROL | FILE_READ_ATTRIBUTES | FILE_READ_DATA;
+            if (pourSuppression) acces |= DELETE;
+            else { acces |= WRITE_DAC; if (definirProprietaire) acces |= WRITE_OWNER; }
+            // Partage en lecture seule : ni écriture ni suppression partagées. Une poignée concurrente (ex. DELETE pré-ouvert) provoque un refus de partage.
+            var h = CreateFile(@"\\?\" + chemin, acces, FILE_SHARE_READ, IntPtr.Zero, 3 /* OPEN_EXISTING */,
                 FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, IntPtr.Zero);
-            if (h.IsInvalid) { int e = Marshal.GetLastWin32Error(); h.Dispose(); throw new Win32Exception(e, "Ouverture impossible : " + chemin); }
+            if (h.IsInvalid)
+            {
+                int e = Marshal.GetLastWin32Error();
+                h.Dispose();
+                if (e == ERROR_SHARING_VIOLATION || e == ERROR_LOCK_VIOLATION)
+                    throw new IOException("Le dossier de données est ouvert par un autre programme (partage refusé), impossible de le sécuriser : " + chemin);
+                throw new Win32Exception(e, "Ouverture impossible : " + chemin);
+            }
             return h;
         }
 
@@ -292,10 +337,12 @@ namespace GamingTweaker.Core
 
         // ---------- Win32 ----------
 
-        private const uint READ_CONTROL = 0x00020000, WRITE_DAC = 0x00040000, WRITE_OWNER = 0x00080000, FILE_READ_ATTRIBUTES = 0x0080;
+        private const uint FILE_READ_DATA = 0x0001, DELETE = 0x00010000, READ_CONTROL = 0x00020000, WRITE_DAC = 0x00040000, WRITE_OWNER = 0x00080000, FILE_READ_ATTRIBUTES = 0x0080;
+        private const uint FILE_SHARE_READ = 0x1;
         private const uint FILE_FLAG_BACKUP_SEMANTICS = 0x02000000, FILE_FLAG_OPEN_REPARSE_POINT = 0x00200000;
         private const uint FILE_ATTRIBUTE_DIRECTORY = 0x10, FILE_ATTRIBUTE_REPARSE_POINT = 0x400, INVALID_FILE_ATTRIBUTES = 0xFFFFFFFF;
-        private const int SE_FILE_OBJECT = 1;
+        private const int SE_FILE_OBJECT = 1, FileDispositionInfo = 4;
+        private const int ERROR_SHARING_VIOLATION = 32, ERROR_LOCK_VIOLATION = 33;
         private const uint OWNER_SECURITY_INFORMATION = 0x1, DACL_SECURITY_INFORMATION = 0x4;
 
         [StructLayout(LayoutKind.Sequential)]
@@ -306,6 +353,9 @@ namespace GamingTweaker.Core
             public uint VolumeSerialNumber, FileSizeHigh, FileSizeLow, NumberOfLinks, FileIndexHigh, FileIndexLow;
         }
 
+        [StructLayout(LayoutKind.Sequential)]
+        private struct FILE_DISPOSITION_INFO { [MarshalAs(UnmanagedType.U1)] public bool DeleteFile; }
+
         [StructLayout(LayoutKind.Sequential, Pack = 4)]
         private struct TOKEN_PRIVILEGES { public int PrivilegeCount; public long Luid; public int Attributes; }
 
@@ -313,12 +363,10 @@ namespace GamingTweaker.Core
         private static extern SafeFileHandle CreateFile(string nom, uint acces, uint partage, IntPtr sec, uint disposition, uint flags, IntPtr modele);
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern bool GetFileInformationByHandle(SafeFileHandle h, out BY_HANDLE_FILE_INFORMATION info);
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool SetFileInformationByHandle(SafeFileHandle h, int classe, ref FILE_DISPOSITION_INFO info, int taille);
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         private static extern uint GetFileAttributes(string nom);
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        private static extern bool RemoveDirectory(string nom);
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        private static extern bool DeleteFile(string nom);
         [DllImport("kernel32.dll")] private static extern IntPtr LocalFree(IntPtr p);
         [DllImport("kernel32.dll")] private static extern IntPtr GetCurrentProcess();
         [DllImport("kernel32.dll")] private static extern bool CloseHandle(IntPtr h);
