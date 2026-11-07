@@ -23,7 +23,7 @@ namespace GamingTweaker.Ui
         private readonly ModeJeu modeJeu;
         private readonly Func<List<ServiceChoix>> servicesSource;
         private readonly Func<List<ProcessusChoix>> processusSource;
-        private bool actif, enCours, utiliserPlan = true;
+        private bool actif, enCours, utiliserPlan = true, peutOublier;
         private string message = "";
 
         public ModeJeuViewModel(ModeJeu modeJeu, Func<List<ServiceChoix>> services, Func<List<ProcessusChoix>> processus)
@@ -33,6 +33,7 @@ namespace GamingTweaker.Ui
             ActiverCommand = new RelayCommand(_ => { var t = ActiverAsync(); }, _ => !enCours && !actif);
             RetablirCommand = new RelayCommand(_ => { var t = RetablirAsync(); }, _ => !enCours && actif);
             ActualiserCommand = new RelayCommand(_ => Actualiser(), _ => !enCours && !actif);
+            OublierCommand = new RelayCommand(_ => { var t = OublierAsync(); }, _ => !enCours && actif && peutOublier);
         }
 
         public ObservableCollection<ChoixModeJeu> Services { get; } = new ObservableCollection<ChoixModeJeu>();
@@ -40,6 +41,7 @@ namespace GamingTweaker.Ui
         public ICommand ActiverCommand { get; private set; }
         public ICommand RetablirCommand { get; private set; }
         public ICommand ActualiserCommand { get; private set; }
+        public ICommand OublierCommand { get; private set; }
 
         /// <summary>Confirmation avant d'activer (texte, renvoie vrai pour continuer).</summary>
         public Func<string, bool> Confirmer { get; set; }
@@ -47,6 +49,8 @@ namespace GamingTweaker.Ui
         public bool EstActif { get { return actif; } private set { if (Set(ref actif, value)) { Raise("PeutModifier"); CommandManager.InvalidateRequerySuggested(); } } }
         public bool EnCours { get { return enCours; } private set { if (Set(ref enCours, value)) { Raise("PeutModifier"); CommandManager.InvalidateRequerySuggested(); } } }
         public bool PeutModifier { get { return !enCours && !actif; } }
+        /// <summary>Proposé après un « Rétablir » qui n'a pas pu tout rétablir (ou un état illisible).</summary>
+        public bool PeutOublier { get { return peutOublier; } private set { if (Set(ref peutOublier, value)) CommandManager.InvalidateRequerySuggested(); } }
         public bool UtiliserPlan { get { return utiliserPlan; } set { Set(ref utiliserPlan, value); } }
         public string Message { get { return message; } set { Set(ref message, value ?? ""); } }
         public int NombreCoches { get { return Services.Count(s => s.IsChecked) + Processus.Count(p => p.IsChecked); } }
@@ -88,7 +92,7 @@ namespace GamingTweaker.Ui
             var cfg = ConstruireConfig();
             if (cfg.Services.Count + cfg.Processus.Count == 0 && cfg.PlanGuid == null) { Message = "Rien n'est coché : choisissez des services, des processus ou le plan d'alimentation."; return; }
             var texte = "Le Mode Jeu va arrêter " + cfg.Services.Count + " service(s) et fermer " + cfg.Processus.Count + " processus (travail non enregistré perdu)"
-                      + (cfg.PlanGuid != null ? ", et passer au plan Performances maximales" : "") + ".\r\nTout sera rétabli avec « Rétablir ».\r\n\r\nContinuer ?";
+                      + (cfg.PlanGuid != null ? ", et passer au plan Performances élevées" : "") + ".\r\nTout sera rétabli avec « Rétablir ».\r\n\r\nContinuer ?";
             if (Confirmer != null && !Confirmer(texte)) return;
             EnCours = true; Message = "Activation en cours…";
             try
@@ -109,9 +113,29 @@ namespace GamingTweaker.Ui
             {
                 var b = await Task.Run(() => modeJeu.Restore());
                 EstActif = modeJeu.IsActive;
-                Message = Resume("Mode Jeu rétabli", b);
+                PeutOublier = EstActif && !b.Verrouille;
+                Message = Resume("Mode Jeu rétabli", b) + (PeutOublier ? " Si le problème persiste, « Oublier l'état » abandonne le rétablissement." : "");
             }
-            catch (Exception ex) { EstActif = modeJeu.IsActive; Message = "Le rétablissement a échoué : " + ex.Message; }
+            catch (Exception ex) { EstActif = modeJeu.IsActive; PeutOublier = EstActif; Message = "Le rétablissement a échoué : " + ex.Message; }
+            finally { EnCours = false; }
+        }
+
+        /// <summary>Après confirmation, supprime l'état : ce qui reste arrêté devra être relancé à la main.</summary>
+        public async Task OublierAsync()
+        {
+            if (enCours || !actif || !peutOublier) return;
+            var texte = "Oublier l'état du Mode Jeu ?\r\n\r\nGamingTweaker ne tentera plus de rétablir ce qui a été arrêté : les services et processus encore arrêtés "
+                      + "devront être relancés à la main (ou au prochain redémarrage), et le plan d'alimentation vérifié dans les options d'alimentation.";
+            if (Confirmer == null || !Confirmer(texte)) return;
+            EnCours = true;
+            try
+            {
+                var b = await Task.Run(() => modeJeu.Oublier());
+                EstActif = modeJeu.IsActive;
+                if (!EstActif) PeutOublier = false;
+                Message = b.Verrouille ? (b.Avertissements.FirstOrDefault() ?? "") : "État du Mode Jeu oublié : vérifiez à la main les services et processus arrêtés.";
+            }
+            catch (Exception ex) { EstActif = modeJeu.IsActive; Message = "L'état n'a pas pu être oublié : " + ex.Message; }
             finally { EnCours = false; }
         }
 

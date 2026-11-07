@@ -30,12 +30,18 @@ namespace GamingTweaker.Core
     public class RestaurationService : IRestauration
     {
         private readonly DataPaths paths;
+        private readonly List<DataPaths> racines;
         private readonly Func<bool> sameUser;
         private readonly string lockName;
 
-        public RestaurationService(DataPaths paths, Func<bool> sameUser = null, string lockName = null)
+        /// <param name="autresRacines">Autres racines de données lues aussi (celle de la routine planifiée sous ProgramData).</param>
+        public RestaurationService(DataPaths paths, Func<bool> sameUser = null, string lockName = null, IEnumerable<DataPaths> autresRacines = null)
         {
             this.paths = paths; this.sameUser = sameUser; this.lockName = lockName;
+            racines = new List<DataPaths>();
+            if (paths != null) racines.Add(paths);
+            foreach (var r in autresRacines ?? Enumerable.Empty<DataPaths>())
+                if (r != null && !racines.Any(x => string.Equals(x.MachineDir, r.MachineDir, StringComparison.OrdinalIgnoreCase))) racines.Add(r);
         }
 
         public IDisposable PrendreVerrou() { return SingleInstance.TryAcquire(lockName); }
@@ -49,22 +55,42 @@ namespace GamingTweaker.Core
             catch (Exception) { /* non bloquant */ }
         }
 
+        /// <summary>Chaque racine garde son last-applied.json ; une option annulée n'est plus appliquée, elle est retirée de chacun.</summary>
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         private void Oublier(List<string> ids)
         {
-            var f = Path.Combine(paths.MachineDir, "last-applied.json");
-            if (!File.Exists(f)) return;
-            var liste = JsonConvert.DeserializeObject<List<string>>(File.ReadAllText(f, Encoding.UTF8)) ?? new List<string>();
-            var reste = liste.Except(ids, StringComparer.Ordinal).ToList();
-            File.WriteAllText(f, JsonConvert.SerializeObject(reste, Formatting.Indented), new UTF8Encoding(false));
+            foreach (var r in racines)
+            {
+                try
+                {
+                    if (string.IsNullOrEmpty(r.MachineDir)) continue;
+                    var f = Path.Combine(r.MachineDir, "last-applied.json");
+                    if (!File.Exists(f)) continue;
+                    var liste = JsonConvert.DeserializeObject<List<string>>(File.ReadAllText(f, Encoding.UTF8)) ?? new List<string>();
+                    var reste = liste.Except(ids, StringComparer.Ordinal).ToList();
+                    File.WriteAllText(f, JsonConvert.SerializeObject(reste, Formatting.Indented), new UTF8Encoding(false));
+                }
+                catch (Exception) { /* non bloquant, racine suivante */ }
+            }
+        }
+
+        /// <summary>Dossiers de session de toutes les racines, du plus récent au plus ancien (noms datés yyyyMMdd-HHmmss).</summary>
+        private IEnumerable<string> DossiersSessions()
+        {
+            var tous = new List<string>();
+            foreach (var r in racines)
+            {
+                var dir = r.SessionsDir;
+                if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir)) continue;
+                tous.AddRange(Directory.GetDirectories(dir));
+            }
+            return tous.OrderByDescending(x => Path.GetFileName(x), StringComparer.Ordinal);
         }
 
         public IReadOnlyList<string> TrouverJournauxActifs(string itemId)
         {
             var res = new List<string>();
-            var dir = paths == null ? null : paths.SessionsDir;
-            if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir)) return res;
-            foreach (var d in Directory.GetDirectories(dir).OrderByDescending(x => Path.GetFileName(x), StringComparer.Ordinal))
+            foreach (var d in DossiersSessions())
             {
                 var j = Path.Combine(d, "journal.jsonl");
                 if (!File.Exists(j)) continue;

@@ -9,6 +9,13 @@ namespace GamingTweaker.Core
 {
     public static class ElevationCheck
     {
+        /// <summary>Vrai si le processus tourne avec un jeton administrateur élevé.</summary>
+        public static bool EstAdministrateur()
+        {
+            try { using (var id = WindowsIdentity.GetCurrent()) return new WindowsPrincipal(id).IsInRole(WindowsBuiltInRole.Administrator); }
+            catch (Exception) { return false; }
+        }
+
         /// <summary>Vrai si le processus tourne sous le compte qui possède le bureau de SA session. Non confirmable : faux.</summary>
         public static bool SameUserAsDesktop()
         {

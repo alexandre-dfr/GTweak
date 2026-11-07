@@ -199,9 +199,10 @@ namespace GamingTweaker.Tests
         {
             public ServiceState StopService(string n) { return ServiceState.Running; }
             public void StartService(string n) { }
-            public bool KillProcess(string n) { return true; }
+            public bool KillProcess(string n, string c) { return true; }
             public void RestartProcess(string c) { }
             public string SetPlan(string g) { return g; }
+            public string GetPlan() { return ""; }
         }
 
         private static void Run()

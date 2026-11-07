@@ -18,6 +18,14 @@ namespace GamingTweaker
 
         private void OnStartup(object sender, StartupEventArgs e)
         {
+            // Avant toute lecture ou écriture de C:\ProgramData\GamingTweaker : propriétaire Administrateurs, DACL protégée, liens retirés.
+            var protection = DossierProtege.SecuriserAuDemarrage(DataPaths.DefaultProgramDataRoot, ElevationCheck.EstAdministrateur);
+            if (protection.Erreur != null)
+            {
+                MessageBox.Show(protection.Erreur + "\r\n\r\nPar sécurité, GamingTweaker s'arrête.", "GamingTweaker", MessageBoxButton.OK, MessageBoxImage.Error);
+                Shutdown(2); return;
+            }
+
             IReadOnlyList<CatalogItem> catalogue;
             try { catalogue = Catalogue.LoadEmbedded(); }
             catch (Exception ex)
@@ -60,9 +68,13 @@ namespace GamingTweaker
             vm.Info = info;
             Exit += (s, ev) => info.Dispose();
 
-            var restauration = new RestaurationService(paths, ElevationCheck.SameUserAsDesktop);
+            // Racine interactive et racine de la routine (ProgramData) : historique et « Tout restaurer » lisent les deux.
+            var racines = DataPaths.Racines(paths, facts, DataPaths.DefaultProgramDataRoot);
+            var autresRacines = racines.Skip(1).ToList();
+            var restauration = new RestaurationService(paths, ElevationCheck.SameUserAsDesktop, null, autresRacines);
             vm.Restauration = restauration;
-            vm.Historique = new HistoriqueViewModel(paths, restauration, catalogue, new QuarantineService(paths.QuarantineDir, paths.SessionsDir))
+            vm.Historique = new HistoriqueViewModel(paths, restauration, catalogue,
+                new QuarantineService(paths.QuarantineDir, racines.Select(r => r.SessionsDir).ToArray()), null, autresRacines)
             {
                 Confirmer = texte => MessageBox.Show(fenetre, texte, "Historique", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes,
                 ApresAnnulation = () => { var _ = vm.DetectAsync(); },
@@ -75,6 +87,7 @@ namespace GamingTweaker
 
             vm.Routine = new RoutineViewModel(vm, Planification.Install, Planification.Remove, Planification.Query)
             {
+                MemeUtilisateur = ElevationCheck.SameUserAsDesktop,
                 ConfirmerRisque = titres => MessageBox.Show(fenetre,
                     "Ce profil contient des options classées Risqué :\r\n\r\n- " + string.Join("\r\n- ", titres)
                     + "\r\n\r\nLa routine les appliquera chaque semaine, sans interface ni confirmation. Planifier quand même ?",
@@ -83,6 +96,10 @@ namespace GamingTweaker
 
             fenetre = new Ui.MainWindow(vm);
             fenetre.Show();
+            if (protection.Avertissements.Count > 0)
+                MessageBox.Show(fenetre, "Le dossier de données a été corrigé :\r\n\r\n- " + string.Join("\r\n- ", protection.Avertissements)
+                    + "\r\n\r\nDétails dans " + System.IO.Path.Combine(DataPaths.DefaultProgramDataRoot, DossierProtege.NomJournal) + ".",
+                    "Dossier de données", MessageBoxButton.OK, MessageBoxImage.Warning);
             fenetre.LancerControlesDemarrage(paths);
             var _ = vm.DetectAsync();
             var __ = vm.Routine.ActualiserAsync();

@@ -56,12 +56,16 @@ namespace GamingTweaker
 
         private static int RunSilent(string profilePath)
         {
+            // Le verrou d'instance est pris par RunPipeline.ExecuteAsync (interface et routine).
+            if (!IsAdministrator()) { Console.Error.WriteLine("Droits administrateur requis pour appliquer un profil."); return 2; }
+            // Avant toute lecture (profil copié par la routine) ou écriture sous C:\ProgramData\GamingTweaker.
+            var protection = DossierProtege.SecuriserAuDemarrage(DataPaths.DefaultProgramDataRoot, IsAdministrator);
+            if (protection.Erreur != null) { Console.Error.WriteLine(protection.Erreur); return 2; }
+            foreach (var w in protection.Avertissements) Console.Error.WriteLine("Avertissement : " + w);
+
             var catalogue = Catalogue.LoadEmbedded();
             var load = Profils.Load(profilePath, catalogue.Where(c => !string.IsNullOrEmpty(c.Liste)).Select(c => c.Liste).Distinct());
             if (load.Erreur != null) { Console.Error.WriteLine(load.Erreur); return 2; }
-
-            // Le verrou d'instance est pris par RunPipeline.ExecuteAsync (interface et routine).
-            if (!IsAdministrator()) { Console.Error.WriteLine("Droits administrateur requis pour appliquer un profil."); return 2; }
 
             var facts = SystemInfo.Detect();
             var resolved = Profils.Resolve(load.Profil, catalogue, facts);
@@ -70,6 +74,7 @@ namespace GamingTweaker
                 Selection = resolved.Selection, Silent = true, CatalogItems = catalogue.ToList(), Facts = facts,
                 Paths = DataPaths.Resolve(AppDomain.CurrentDomain.BaseDirectory, facts, DataPaths.DefaultProgramDataRoot),
             };
+            req.Avertissements.AddRange(protection.Avertissements.Select(w => "Dossier de données corrigé : " + w));
             req.Avertissements.AddRange(load.Avertissements);
             req.Avertissements.AddRange(resolved.Inconnues.Select(id => "Option inconnue ignorée : " + id));
             req.Avertissements.AddRange(resolved.Incompatibles.Select(id => "Option incompatible avec ce PC, ignorée : " + id));

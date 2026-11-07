@@ -751,14 +751,26 @@ function Restore-GTEntry($E) {
 }
 
 # Restaure une option : ses entrees posterieures au dernier marqueur « undone », en ordre inverse.
-# Une entree en echec n'empeche pas les suivantes ; l'option echoue a la fin (sans marqueur, donc rejouable).
+# Un marqueur « undone » avec une cible (fichier restaure ou supprime depuis la quarantaine) n'ecarte que les entrees
+# anterieures de cette cible. Une entree en echec n'empeche pas les suivantes ; l'option echoue a la fin (sans marqueur, donc rejouable).
 function Restore-GTItem([Parameter(Mandatory)][string]$Item) {
     $all = @(Read-GTJournal | Where-Object { $_.item -eq $Item })
     if ($all.Count -eq 0) { Skip-GTItem 'Rien à annuler : aucune entrée de journal pour cette option.' }
     $lastMarker = -1
-    for ($i = 0; $i -lt $all.Count; $i++) { if ($all[$i].kind -eq 'undone') { $lastMarker = $i } }
+    for ($i = 0; $i -lt $all.Count; $i++) { if ($all[$i].kind -eq 'undone' -and [string]::IsNullOrEmpty([string]$all[$i].target)) { $lastMarker = $i } }
     $entries = @()
-    for ($i = $lastMarker + 1; $i -lt $all.Count; $i++) { $entries += ,$all[$i] }
+    for ($i = $lastMarker + 1; $i -lt $all.Count; $i++) {
+        $e = $all[$i]
+        if ($e.kind -eq 'undone') { continue }
+        $cible = [string]$e.target
+        $traitee = $false
+        if (-not [string]::IsNullOrEmpty($cible)) {
+            for ($k = $i + 1; $k -lt $all.Count; $k++) {
+                if ($all[$k].kind -eq 'undone' -and [string]$all[$k].target -eq $cible) { $traitee = $true; break }
+            }
+        }
+        if (-not $traitee) { $entries += ,$e }
+    }
     if ($entries.Count -eq 0) { Skip-GTItem 'Option déjà annulée.' }
     [array]::Reverse($entries)
     $errors = @(); $manual = @()

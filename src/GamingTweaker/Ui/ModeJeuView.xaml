@@ -51,11 +51,12 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <CheckBox Content="Passer au plan Performances maximales" IsChecked="{Binding UtiliserPlan, Mode=TwoWay}" VerticalAlignment="Center" IsEnabled="{Binding PeutModifier}"/>
+                <CheckBox Content="Passer au plan Performances élevées" IsChecked="{Binding UtiliserPlan, Mode=TwoWay}" VerticalAlignment="Center" IsEnabled="{Binding PeutModifier}"/>
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                     <Button Content="Actualiser les listes" Command="{Binding ActualiserCommand}"/>
                     <Button Content="Activer le Mode Jeu" Style="{StaticResource PrimaryButton}" Command="{Binding ActiverCommand}" Margin="8,0,0,0"/>
                     <Button Content="Rétablir" Command="{Binding RetablirCommand}" Margin="8,0,0,0"/>
+                    <Button Content="Oublier l'état" Command="{Binding OublierCommand}" Margin="8,0,0,0" Visibility="{Binding PeutOublier, Converter={StaticResource BoolVis}}" ToolTip="Abandonner le rétablissement (après confirmation)"/>
                 </StackPanel>
             </Grid>
             <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" Margin="0,10,0,0"/>

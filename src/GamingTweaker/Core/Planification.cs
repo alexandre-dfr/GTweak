@@ -41,8 +41,29 @@ namespace GamingTweaker.Core
         private const string Ns = "http://schemas.microsoft.com/windows/2004/02/mit/task";
 
         public static string DossierCopie { get { return DataPaths.DefaultProgramDataRoot; } }
-        public static string ExeCopie { get { return Path.Combine(DossierCopie, "GamingTweaker.exe"); } }
+        /// <summary>Sous-dossier de l'exe lancé par la tâche : rien d'autre n'y est écrit.</summary>
+        public static string DossierApp { get { return Path.Combine(DossierCopie, "App"); } }
+        public static string ExeCopie { get { return Path.Combine(DossierApp, "GamingTweaker.exe"); } }
+        /// <summary>Emplacement de la copie des versions précédentes (racine de ProgramData), retirée par Install et Remove.</summary>
+        private static string ExeCopieAncienne { get { return Path.Combine(DossierCopie, "GamingTweaker.exe"); } }
         public static string DossierProfil { get { return Path.Combine(DossierCopie, "Routine"); } }
+
+        public const string MessageAutreCompte = "La routine n'a pas été planifiée : GamingTweaker tourne sous un autre compte que celui du bureau, la tâche serait enregistrée pour ce compte. Planifiez depuis la session de l'utilisateur, avec un compte administrateur.";
+        public const string MessagePourcent = "La routine n'a pas été planifiée : le nom du profil contient « % », que le Planificateur de tâches remplacerait par une variable d'environnement. Renommez le profil.";
+
+        /// <summary>Le Planificateur développe %VAR% dans les arguments : un nom de profil avec « % » est refusé.</summary>
+        public static bool NomProfilAccepte(string nomOuChemin)
+        {
+            return !string.IsNullOrEmpty(nomOuChemin) && nomOuChemin.IndexOf('%') < 0;
+        }
+
+        /// <summary>Résultat de « schtasks /Delete » : succès, ou tâche introuvable (déjà absente). Un refus (droits…) n'est pas un succès.</summary>
+        public static bool SuppressionReussie(int code, string sortie)
+        {
+            if (code == 0) return true;
+            var t = (sortie ?? "").ToLowerInvariant();
+            return t.Contains("introuvable") || t.Contains("cannot find") || t.Contains("n'existe pas") || t.Contains("does not exist");
+        }
 
         private static string E(string s) { return SecurityElement.Escape(s ?? ""); }
 
@@ -122,20 +143,26 @@ namespace GamingTweaker.Core
         public static void Install(RoutineConfig c)
         {
             if (c == null || string.IsNullOrWhiteSpace(c.Profil) || !File.Exists(c.Profil)) throw new InvalidOperationException("Profil introuvable : " + (c == null ? "" : c.Profil));
+            if (!NomProfilAccepte(Path.GetFileName(c.Profil))) throw new InvalidOperationException(MessagePourcent);
             var load = Profils.Load(c.Profil);
             if (load.Erreur != null) throw new InvalidOperationException(load.Erreur);
+            // La tâche est enregistrée pour le compte courant : élevé par un autre administrateur, ce ne serait pas l'utilisateur du bureau.
+            if (!ElevationCheck.SameUserAsDesktop()) throw new InvalidOperationException(MessageAutreCompte);
+
+            // Dossier sécurisé (propriétaire Administrateurs, DACL protégée) avant d'y copier l'exe lancé avec les droits élevés.
+            var avert = DossierProtege.Securiser(DossierCopie);
+            DossierProtege.Journaliser(DossierCopie, avert);
 
             var source = Process.GetCurrentProcess().MainModule.FileName;
-            Directory.CreateDirectory(DossierCopie);
+            Directory.CreateDirectory(DossierApp);
             if (!string.Equals(Path.GetFullPath(source), Path.GetFullPath(ExeCopie), StringComparison.OrdinalIgnoreCase))
                 File.Copy(source, ExeCopie, true);
-            Reserver(ExeCopie);
+            try { if (File.Exists(ExeCopieAncienne)) File.Delete(ExeCopieAncienne); } catch (Exception) { }
 
             if (Directory.Exists(DossierProfil)) Directory.Delete(DossierProfil, true);
             Directory.CreateDirectory(DossierProfil);
             var copieProfil = Path.Combine(DossierProfil, Path.GetFileName(c.Profil));
-            File.Copy(c.Profil, copieProfil, true);
-            Reserver(copieProfil);
+            File.Copy(c.Profil, copieProfil, true); // les copies héritent de la DACL des dossiers sécurisés
 
             string user;
             using (var id = WindowsIdentity.GetCurrent()) user = id.User != null ? id.User.Value : id.Name;
@@ -155,15 +182,13 @@ namespace GamingTweaker.Core
         /// <summary>Supprime la tâche, la copie de l'exe et celle du profil. Le dossier Machines (sessions, journaux, mesures) n'est jamais touché.</summary>
         public static void Remove()
         {
-            var etat = Query();
-            if (etat.Existe)
-            {
-                string sortie;
-                int code = Schtasks("/Delete /TN \"" + NomTache + "\" /F", out sortie);
-                if (code != 0) throw new InvalidOperationException("schtasks n'a pas supprimé la tâche (code " + code + ") : " + sortie.Trim());
-            }
+            // Toujours tenté (une lecture en échec ne doit pas laisser la tâche en place) ; « introuvable » vaut succès.
+            string sortie;
+            int code = Schtasks("/Delete /TN \"" + NomTache + "\" /F", out sortie);
+            if (!SuppressionReussie(code, sortie)) throw new InvalidOperationException("schtasks n'a pas supprimé la tâche (code " + code + ") : " + sortie.Trim());
             var erreurs = new List<string>();
             try { if (File.Exists(ExeCopie)) File.Delete(ExeCopie); } catch (Exception ex) { erreurs.Add(ExeCopie + " : " + ex.Message); }
+            try { if (File.Exists(ExeCopieAncienne)) File.Delete(ExeCopieAncienne); } catch (Exception ex) { erreurs.Add(ExeCopieAncienne + " : " + ex.Message); }
             try { if (Directory.Exists(DossierProfil)) Directory.Delete(DossierProfil, true); } catch (Exception ex) { erreurs.Add(DossierProfil + " : " + ex.Message); }
             if (erreurs.Count > 0) throw new IOException("La tâche est supprimée, mais des copies n'ont pas pu l'être : " + string.Join(" ; ", erreurs));
         }
@@ -198,17 +223,6 @@ namespace GamingTweaker.Core
                 sortie = p.ExitCode == 0 ? o : (err.Result + o);
                 return p.ExitCode;
             }
-        }
-
-        /// <summary>Fichier modifiable seulement par SYSTEM et les administrateurs : la tâche élevée ne doit pas lancer un fichier que tout utilisateur peut remplacer.</summary>
-        private static void Reserver(string fichier)
-        {
-            var sec = new FileSecurity();
-            sec.SetAccessRuleProtection(true, false);
-            sec.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null), FileSystemRights.FullControl, AccessControlType.Allow));
-            sec.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null), FileSystemRights.FullControl, AccessControlType.Allow));
-            sec.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null), FileSystemRights.ReadAndExecute, AccessControlType.Allow));
-            new FileInfo(fichier).SetAccessControl(sec);
         }
     }
 }

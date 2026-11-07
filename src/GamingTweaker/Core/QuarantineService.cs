@@ -17,16 +17,28 @@ namespace GamingTweaker.Core
         public DateTime Date { get; set; }
     }
 
-    /// <summary>Fichiers déplacés par Move-TweakQuarantine : liste, restauration, suppression définitive. Rien hors du dossier de quarantaine n'est jamais touché.</summary>
+    /// <summary>
+    /// Fichiers déplacés par Move-TweakQuarantine : liste, restauration, suppression définitive. Rien hors du dossier de quarantaine n'est jamais touché.
+    /// Après une restauration ou une suppression, l'entrée du journal est marquée annulée (marqueur ciblé) pour que l'historique et
+    /// l'annulation par le journal restent cohérents.
+    /// </summary>
     public class QuarantineService
     {
-        private readonly string racine;
-        private readonly string sessionsDir;
+        private class Origine
+        {
+            public string Avant;
+            public string Item;
+            public string Journal;
+        }
 
-        public QuarantineService(string quarantineDir, string sessionsDir)
+        private readonly string racine;
+        private readonly List<string> sessionsDirs;
+
+        /// <param name="sessionsDirs">Dossiers de sessions dont les journaux sont lus (racine interactive et racine de la routine).</param>
+        public QuarantineService(string quarantineDir, params string[] sessionsDirs)
         {
             racine = Path.GetFullPath(quarantineDir);
-            this.sessionsDir = sessionsDir;
+            this.sessionsDirs = (sessionsDirs ?? new string[0]).Where(d => !string.IsNullOrEmpty(d)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         }
 
         /// <summary>Chemin complet de l'élément s'il est un enfant direct de la racine ; sinon InvalidOperationException.</summary>
@@ -49,10 +61,10 @@ namespace GamingTweaker.Core
             foreach (var f in Directory.GetFiles(racine))
             {
                 var fi = new FileInfo(f);
-                string origine; origines.TryGetValue(fi.FullName, out origine);
+                Origine o; origines.TryGetValue(fi.FullName, out o);
                 var nom = fi.Name; int u = nom.IndexOf('_');
                 if (u == 32) nom = nom.Substring(33);
-                res.Add(new QuarantineEntry { Id = fi.Name, Nom = nom, Origine = origine, Taille = fi.Length, Date = fi.LastWriteTime });
+                res.Add(new QuarantineEntry { Id = fi.Name, Nom = nom, Origine = o == null ? null : o.Avant, Taille = fi.Length, Date = fi.LastWriteTime });
             }
             return res.OrderByDescending(e => e.Date).ToList();
         }
@@ -61,13 +73,14 @@ namespace GamingTweaker.Core
         {
             var source = Resoudre(id);
             if (!File.Exists(source)) throw new InvalidOperationException("Fichier introuvable dans la quarantaine : " + id);
-            string origine;
-            if (!Origines().TryGetValue(source, out origine) || string.IsNullOrWhiteSpace(origine))
+            Origine o;
+            if (!Origines().TryGetValue(source, out o) || string.IsNullOrWhiteSpace(o.Avant))
                 throw new InvalidOperationException("L'emplacement d'origine n'est plus connu (journal absent) : restauration impossible pour " + id + ".");
-            if (File.Exists(origine) || Directory.Exists(origine))
-                throw new InvalidOperationException("Un fichier existe déjà à l'emplacement d'origine : " + origine);
-            Directory.CreateDirectory(Path.GetDirectoryName(origine));
-            File.Move(source, origine);
+            if (File.Exists(o.Avant) || Directory.Exists(o.Avant))
+                throw new InvalidOperationException("Un fichier existe déjà à l'emplacement d'origine : " + o.Avant);
+            Directory.CreateDirectory(Path.GetDirectoryName(o.Avant));
+            File.Move(source, o.Avant);
+            Marquer(o);
         }
 
         /// <summary>Suppression définitive d'un fichier de la quarantaine. Tout chemin qui en sort est refusé.</summary>
@@ -75,24 +88,38 @@ namespace GamingTweaker.Core
         {
             var chemin = Resoudre(id);
             if (!File.Exists(chemin)) throw new InvalidOperationException("Fichier introuvable dans la quarantaine : " + id);
+            Origine o; Origines().TryGetValue(chemin, out o);
             File.Delete(chemin);
+            if (o != null) Marquer(o);
         }
 
-        /// <summary>Chemin dans la quarantaine (« after ») vers l'emplacement d'origine (« before »), d'après tous les journaux.</summary>
-        private Dictionary<string, string> Origines()
+        /// <summary>Le fichier a quitté la quarantaine : son entrée n'est plus à annuler (les autres fichiers de l'option le restent).</summary>
+        private static void Marquer(Origine o)
+        {
+            try { Journal.MarquerAnnule(o.Journal, o.Item, o.Avant); }
+            catch (Exception ex) { throw new IOException("Le fichier a été traité, mais le journal n'a pas pu être mis à jour (" + o.Journal + ") : " + ex.Message, ex); }
+        }
+
+        /// <summary>Chemin dans la quarantaine (« after ») vers l'emplacement d'origine (« before »), l'option et le journal, d'après tous les journaux.</summary>
+        private Dictionary<string, Origine> Origines()
         {
             AssemblyLoader.Register();
             return OriginesCore();
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private Dictionary<string, string> OriginesCore()
+        private Dictionary<string, Origine> OriginesCore()
         {
-            var res = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            if (string.IsNullOrEmpty(sessionsDir) || !Directory.Exists(sessionsDir)) return res;
-            foreach (var d in Directory.GetDirectories(sessionsDir).OrderBy(x => Path.GetFileName(x), StringComparer.Ordinal))
+            var res = new Dictionary<string, Origine>(StringComparer.OrdinalIgnoreCase);
+            var journaux = new List<string>();
+            foreach (var dir in sessionsDirs)
             {
-                var j = Path.Combine(d, "journal.jsonl");
+                if (!Directory.Exists(dir)) continue;
+                journaux.AddRange(Directory.GetDirectories(dir).Select(d => Path.Combine(d, "journal.jsonl")));
+            }
+            // Ordre chronologique (noms de session datés), toutes racines confondues : la dernière entrée l'emporte.
+            foreach (var j in journaux.OrderBy(x => Path.GetFileName(Path.GetDirectoryName(x)), StringComparer.Ordinal))
+            {
                 if (!File.Exists(j)) continue;
                 try
                 {
@@ -101,7 +128,7 @@ namespace GamingTweaker.Core
                         var apres = e.After == null ? null : e.After.ToString();
                         var avant = e.Before == null ? null : e.Before.ToString();
                         if (string.IsNullOrEmpty(apres) || string.IsNullOrEmpty(avant)) continue;
-                        try { res[Path.GetFullPath(apres)] = avant; } catch (Exception) { }
+                        try { res[Path.GetFullPath(apres)] = new Origine { Avant = avant, Item = e.Item, Journal = j }; } catch (Exception) { }
                     }
                 }
                 catch (InvalidDataException) { }

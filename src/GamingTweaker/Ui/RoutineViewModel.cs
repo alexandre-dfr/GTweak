@@ -49,6 +49,8 @@ namespace GamingTweaker.Ui
 
         /// <summary>Confirmation d'un profil contenant des options Risqué (titres) : renvoie vrai pour planifier. Sans elle, la planification est refusée.</summary>
         public Func<IReadOnlyList<string>, bool> ConfirmerRisque { get; set; }
+        /// <summary>Faux si l'appli est élevée sous un autre compte que celui du bureau : la planification est alors refusée. Null : non vérifié.</summary>
+        public Func<bool> MemeUtilisateur { get; set; }
 
         public DayOfWeek Jour { get { return jour; } set { Set(ref jour, value); } }
         public string Heure { get { return heure; } set { Set(ref heure, value ?? ""); } }
@@ -88,6 +90,13 @@ namespace GamingTweaker.Ui
             var nom = main.ProfilSelectionne;
             if (string.IsNullOrEmpty(nom)) { Message = "Choisissez d'abord un profil dans la barre du bas (ou enregistrez la sélection avec « Sauver »)."; return; }
             var chemin = main.CheminProfil(nom);
+            if (!Planification.NomProfilAccepte(nom) || !Planification.NomProfilAccepte(Path.GetFileName(chemin))) { Message = Planification.MessagePourcent; return; }
+            if (MemeUtilisateur != null)
+            {
+                bool meme;
+                try { meme = await Task.Run(MemeUtilisateur); } catch (Exception) { meme = false; }
+                if (!meme) { Message = Planification.MessageAutreCompte; return; }
+            }
             var load = Profils.Load(chemin);
             if (load.Erreur != null) { Message = load.Erreur; return; }
             if (Profils.ContientRisque(load.Profil, main.Catalogue))

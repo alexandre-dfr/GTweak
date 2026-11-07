@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -174,6 +174,25 @@ namespace GamingTweaker.Tests
             Assert.Single(Directory.GetFiles(q));
             Assert.Equal(OutcomeStatus.Ok, (await Undo("a")).Items[0].Status);
             Assert.Equal("contenu", File.ReadAllText(f));
+        }
+
+        [Fact]
+        public async Task Quarantaine_un_fichier_purge_n_empeche_pas_d_annuler_les_autres()
+        {
+            var f1 = Path.Combine(_tmp, "un.msi"); File.WriteAllText(f1, "1");
+            var f2 = Path.Combine(_tmp, "deux.msi"); File.WriteAllText(f2, "2");
+            var q = Path.Combine(_tmp, "quarantaine");
+            Assert.Equal(OutcomeStatus.Ok, (await Apply("a", $"Move-TweakQuarantine -File '{f1}'; Move-TweakQuarantine -File '{f2}'", q)).Items[0].Status);
+            // QuarantineService lit les journaux des dossiers de sessions : copie du journal dans une session, marquage, puis retour.
+            var sessions = Path.Combine(_tmp, "Sessions"); var sess = Path.Combine(sessions, "20260101-100000"); Directory.CreateDirectory(sess);
+            File.Copy(Jrn, Path.Combine(sess, "journal.jsonl"));
+            var svc = new QuarantineService(q, sessions);
+            svc.Purge(svc.List().Single(e => e.Nom == "un.msi").Id);
+            File.Copy(Path.Combine(sess, "journal.jsonl"), Jrn, true);
+            var u = await Undo("a");
+            Assert.Equal(OutcomeStatus.Ok, u.Items[0].Status);
+            Assert.Equal("2", File.ReadAllText(f2));
+            Assert.False(File.Exists(f1));
         }
 
         [Fact]

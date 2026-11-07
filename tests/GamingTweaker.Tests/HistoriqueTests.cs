@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -160,9 +160,11 @@ namespace GamingTweaker.Tests
                     JsonConvert.SerializeObject(new { item = i, kind = "task", target = "\\X\\" + i, existed = true, before = "Enabled", after = "Disabled" }))) + "\n");
         }
 
-        private HistoriqueViewModel Vm(FauxRestauration f = null, IReadOnlyList<CatalogItem> cat = null)
+        private HistoriqueViewModel Vm(FauxRestauration f = null, IReadOnlyList<CatalogItem> cat = null, DataPaths routine = null)
         {
-            return new HistoriqueViewModel(paths, f ?? new FauxRestauration(), cat ?? new List<CatalogItem>(), new QuarantineService(paths.QuarantineDir, paths.SessionsDir));
+            var autres = routine == null ? null : new List<DataPaths> { routine };
+            var q = routine == null ? new QuarantineService(paths.QuarantineDir, paths.SessionsDir) : new QuarantineService(paths.QuarantineDir, paths.SessionsDir, routine.SessionsDir);
+            return new HistoriqueViewModel(paths, f ?? new FauxRestauration(), cat ?? new List<CatalogItem>(), q, null, autres);
         }
 
         [Fact]
@@ -205,14 +207,20 @@ namespace GamingTweaker.Tests
         private class FauxRestauration : IRestauration
         {
             public List<string> Appels = new List<string>(); public List<string> Oublies = new List<string>();
-            public bool Occupe; public bool MemeUser = true;
+            public bool Occupe; public bool MemeUser = true; public bool Tenu;
+            public Dictionary<string, OutcomeStatus> Statuts = new Dictionary<string, OutcomeStatus>();
             public IReadOnlyList<string> TrouverJournauxActifs(string id) { return new List<string>(); }
-            public Task<ItemOutcome> AnnulerParJournalAsync(string j, string id) { Appels.Add(id); return Task.FromResult(new ItemOutcome { Id = id, Status = OutcomeStatus.Ok }); }
+            public Task<ItemOutcome> AnnulerParJournalAsync(string j, string id)
+            {
+                Appels.Add(id);
+                OutcomeStatus st; if (!Statuts.TryGetValue(id, out st)) st = OutcomeStatus.Ok;
+                return Task.FromResult(new ItemOutcome { Id = id, Status = st, Message = st == OutcomeStatus.Skipped ? "Rien à annuler" : null });
+            }
             public Task<ItemOutcome> ExecuterRevertAsync(CatalogItem item) { throw new NotSupportedException(); }
-            public IDisposable PrendreVerrou() { return Occupe ? null : new Rien(); }
+            public IDisposable PrendreVerrou() { if (Occupe || Tenu) return null; Tenu = true; return new Rien(this); }
             public bool MemeUtilisateur() { return MemeUser; }
             public void OublierDernieresApplications(IEnumerable<string> ids) { Oublies.AddRange(ids); }
-            private class Rien : IDisposable { public void Dispose() { } }
+            private class Rien : IDisposable { private readonly FauxRestauration f; public Rien(FauxRestauration f) { this.f = f; } public void Dispose() { f.Tenu = false; } }
         }
 
         [Fact]
@@ -261,6 +269,182 @@ namespace GamingTweaker.Tests
             Assert.True(File.Exists(origine));
             Assert.Empty(vm.Quarantaine);
             await Task.CompletedTask;
+        }
+
+        // ---------- Revue lots 14-16 ----------
+
+        private DataPaths Routine()
+        {
+            var r = Path.Combine(tmp, "ProgramData", "Machines", "PC-1");
+            var p = new DataPaths { ProfilsDir = Path.Combine(tmp, "ProgramData", "Profils"), MachineDir = r, SessionsDir = Path.Combine(r, "Sessions"), QuarantineDir = paths.QuarantineDir };
+            Directory.CreateDirectory(p.SessionsDir);
+            return p;
+        }
+
+        private static void SessionDans(string sessionsDir, string nom, string etat, string debut, SessionReport rapport = null, string[] journalItems = null)
+        {
+            var d = Path.Combine(sessionsDir, nom); Directory.CreateDirectory(d);
+            File.WriteAllText(Path.Combine(d, "state.json"), JsonConvert.SerializeObject(new { etat, debut }));
+            if (rapport != null)
+                File.WriteAllText(Path.Combine(d, "report.json"), JsonConvert.SerializeObject(rapport, new Newtonsoft.Json.Converters.StringEnumConverter()));
+            if (journalItems != null)
+                File.WriteAllText(Path.Combine(d, "journal.jsonl"), string.Join("\n", journalItems.Select(i =>
+                    JsonConvert.SerializeObject(new { item = i, kind = "task", target = "\\X\\" + i, existed = true, before = "Enabled", after = "Disabled" }))) + "\n");
+        }
+
+        [Fact]
+        public void Sessions_de_la_routine_fusionnees_par_date_avec_celles_de_l_interface()
+        {
+            var routine = Routine();
+            Session("20260101-100000", "Done", "2026-01-01T10:00:00");
+            SessionDans(routine.SessionsDir, "20260102-100000", "Done", "2026-01-02T10:00:00");
+            Session("20260103-100000", "Done", "2026-01-03T10:00:00");
+            SessionDans(routine.SessionsDir, "20260101-100000", "Done", "2026-01-01T09:00:00"); // même nom de dossier, autre racine
+            var vm = Vm(routine: routine);
+            Assert.Equal(4, vm.Sessions.Count);
+            Assert.Equal(new[] { "2026-01-03", "2026-01-02", "2026-01-01", "2026-01-01" }, vm.Sessions.Select(x => x.Debut.ToString("yyyy-MM-dd")).ToArray());
+            Assert.True(vm.Sessions[1].DeLaRoutine);
+            Assert.False(vm.Sessions[0].DeLaRoutine);
+            Assert.Contains("routine", vm.Sessions[1].Resume);
+            Assert.Equal(2, vm.Sessions.Count(x => x.DeLaRoutine));
+        }
+
+        [Fact]
+        public async Task Session_de_la_routine_s_annule_depuis_l_historique()
+        {
+            var routine = Routine();
+            var r = new SessionReport(); r.Items.Add(new ItemOutcome { Id = "opt.a", Status = OutcomeStatus.Ok });
+            SessionDans(routine.SessionsDir, "20260102-100000", "Done", "2026-01-02T10:00:00", r, new[] { "opt.a" });
+            var f = new FauxRestauration(); var vm = Vm(f, routine: routine);
+            Assert.True(vm.Sessions[0].Annulable);
+            await vm.AnnulerSessionAsync(vm.Sessions[0]);
+            Assert.Equal(new[] { "opt.a" }, f.Appels.ToArray());
+        }
+
+        [Fact]
+        public async Task Une_annulation_ignoree_n_est_pas_un_succes()
+        {
+            var r = new SessionReport(); r.Items.Add(new ItemOutcome { Id = "opt.a", Status = OutcomeStatus.Ok }); r.Items.Add(new ItemOutcome { Id = "opt.b", Status = OutcomeStatus.Ok });
+            Session("a", "Done", "2026-01-01T10:00:00", r, new[] { "opt.a", "opt.b" });
+            var f = new FauxRestauration(); f.Statuts["opt.b"] = OutcomeStatus.Skipped;
+            var vm = Vm(f);
+            await vm.AnnulerSessionAsync(vm.Sessions[0]);
+            Assert.Equal(new[] { "opt.a" }, f.Oublies.ToArray());
+            Assert.StartsWith("1 option(s) annulée(s)", vm.Message);
+            Assert.Contains("opt.b", vm.Message);
+        }
+
+        [Fact]
+        public async Task Les_conflits_sont_calcules_sous_le_verrou()
+        {
+            var r = new SessionReport(); r.Items.Add(new ItemOutcome { Id = "opt.a", Status = OutcomeStatus.Ok });
+            Session("a", "Done", "2026-01-01T10:00:00", r, new[] { "opt.a" });
+            var f = new FauxRestauration(); var vm = Vm(f);
+            bool? tenu = null;
+            vm.TrouverConflits = (j, ids) => { tenu = f.Tenu; return new List<Conflict>(); };
+            vm.Confirmer = _ => true;
+            await vm.AnnulerSessionAsync(vm.Sessions[0]);
+            Assert.True(tenu);
+            Assert.Single(f.Appels);
+
+            f.Occupe = true; tenu = null; f.Appels.Clear();
+            Session("b", "Done", "2026-01-02T10:00:00", r, new[] { "opt.a" });
+            vm.Charger();
+            await vm.AnnulerSessionAsync(vm.Sessions.Single(x => x.Id == "b"));
+            Assert.Null(tenu); // verrou pris ailleurs : ni conflits ni annulation
+            Assert.Empty(f.Appels);
+        }
+
+        [Fact]
+        public void Session_running_affichee_en_cours_quand_le_verrou_est_pris()
+        {
+            var r = new SessionReport(); r.Items.Add(new ItemOutcome { Id = "opt.a", Status = OutcomeStatus.Ok });
+            Session("a", "Running", "2026-01-01T10:00:00", null, new[] { "opt.a" });
+            Session("b", "Running", "2026-01-02T10:00:00", null, new[] { "opt.a" });
+            var f = new FauxRestauration { Occupe = true };
+            var vm = Vm(f);
+            var b = vm.Sessions.Single(x => x.Id == "b");
+            Assert.Equal("en cours", b.EtatLibelle);
+            Assert.False(b.Anormale);
+            Assert.False(b.Annulable);
+            Assert.Contains("interrompue", vm.Sessions.Single(x => x.Id == "a").EtatLibelle); // seule la plus récente est en cours
+
+            f.Occupe = false; vm.Charger();
+            Assert.Contains("interrompue", vm.Sessions.Single(x => x.Id == "b").EtatLibelle);
+            Assert.True(vm.Sessions.Single(x => x.Id == "b").Annulable);
+        }
+
+        private string MettreDans(string session, string item, string nomOrigine, out string id)
+        {
+            var origine = Path.Combine(tmp, "Origine", nomOrigine);
+            id = Guid.NewGuid().ToString("N") + "_" + nomOrigine;
+            var dest = Path.Combine(paths.QuarantineDir, id);
+            File.WriteAllText(dest, "x");
+            var sess = Path.Combine(paths.SessionsDir, session);
+            Directory.CreateDirectory(sess);
+            File.AppendAllText(Path.Combine(sess, "journal.jsonl"), JsonConvert.SerializeObject(new { item, kind = "quarantine", target = origine, existed = true, before = origine, after = dest }) + "\n");
+            return origine;
+        }
+
+        [Fact]
+        public void Restaurer_ou_purger_marque_l_entree_du_journal()
+        {
+            string id1, id2;
+            MettreDans("20260101-100000", "cln.orphans", "a.msi", out id1);
+            MettreDans("20260101-100000", "cln.orphans", "b.msi", out id2);
+            var jf = Path.Combine(paths.SessionsDir, "20260101-100000", "journal.jsonl");
+            var svc = new QuarantineService(paths.QuarantineDir, paths.SessionsDir);
+            svc.Restore(id1);
+            var actives = Journal.Active(Journal.Read(jf));
+            Assert.Single(actives);                                   // b.msi reste à annuler
+            Assert.EndsWith("b.msi", actives[0].Target);
+            svc.Purge(id2);
+            Assert.Empty(Journal.Active(Journal.Read(jf)));           // plus rien : la session n'est plus annulable
+            var vm = Vm();
+            Assert.False(vm.Sessions.Single(x => x.Id == "20260101-100000").Annulable);
+        }
+
+        [Fact]
+        public void Marqueur_cible_n_annule_que_son_entree()
+        {
+            var e = new List<JournalEntry>
+            {
+                new JournalEntry { Item = "x", Kind = "quarantine", Target = "A" },
+                new JournalEntry { Item = "x", Kind = "quarantine", Target = "B" },
+                new JournalEntry { Item = "x", Kind = Journal.UndoneKind, Target = "A" },
+                new JournalEntry { Item = "x", Kind = "quarantine", Target = "A" }, // réécrite après le marqueur : active
+            };
+            Assert.Equal(new[] { "B", "A" }, Journal.Active(e).Select(x => x.Target).ToArray());
+            e.Add(new JournalEntry { Item = "x", Kind = Journal.UndoneKind });     // marqueur d'option : tout est annulé
+            Assert.Empty(Journal.Active(e));
+        }
+
+        [Fact]
+        public void Marquage_apres_une_ligne_finale_tronquee_garde_le_journal_lisible()
+        {
+            string id; MettreDans("20260101-100000", "cln.orphans", "c.msi", out id);
+            var jf = Path.Combine(paths.SessionsDir, "20260101-100000", "journal.jsonl");
+            File.AppendAllText(jf, "{\"item\":\"cln.orph");
+            new QuarantineService(paths.QuarantineDir, paths.SessionsDir).Purge(id);
+            Assert.Empty(Journal.Active(Journal.Read(jf)));
+        }
+
+        [Fact]
+        public void Tout_restaurer_lit_les_journaux_des_deux_racines_et_oublie_dans_chacune()
+        {
+            var routine = Routine();
+            var r = new SessionReport();
+            Session("20260101-100000", "Done", "2026-01-01T10:00:00", r, new[] { "tel.a" });
+            SessionDans(routine.SessionsDir, "20260102-100000", "Done", "2026-01-02T10:00:00", r, new[] { "tel.a" });
+            File.WriteAllText(Path.Combine(paths.MachineDir, "last-applied.json"), "[\"tel.a\",\"tel.b\"]");
+            File.WriteAllText(Path.Combine(routine.MachineDir, "last-applied.json"), "[\"tel.a\",\"tel.c\"]");
+            var svc = new RestaurationService(paths, null, null, new[] { routine });
+            var j = svc.TrouverJournauxActifs("tel.a");
+            Assert.Equal(2, j.Count);
+            Assert.StartsWith(routine.SessionsDir, j[0]);              // le plus récent d'abord, toutes racines confondues
+            svc.OublierDernieresApplications(new[] { "tel.a" });
+            Assert.Equal(new[] { "tel.b" }, JsonConvert.DeserializeObject<List<string>>(File.ReadAllText(Path.Combine(paths.MachineDir, "last-applied.json"))).ToArray());
+            Assert.Equal(new[] { "tel.c" }, JsonConvert.DeserializeObject<List<string>>(File.ReadAllText(Path.Combine(routine.MachineDir, "last-applied.json"))).ToArray());
         }
     }
 }

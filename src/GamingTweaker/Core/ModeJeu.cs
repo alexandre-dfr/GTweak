@@ -15,16 +15,24 @@ namespace GamingTweaker.Core
 
     /// <summary>
     /// Actions système du Mode Jeu. StopService renvoie l'état AVANT l'arrêt (Running : arrêté par l'appel ; Stopped : ne tournait pas ; Absent : inexistant)
-    /// et lève une exception si l'arrêt échoue. KillProcess prend le nom du processus ; RestartProcess le chemin de son exécutable.
-    /// SetPlan renvoie le GUID du plan actif avant le changement.
+    /// et lève une exception si l'arrêt échoue (ServiceRefuseException : refusé avant toute action, par exemple dépendants en cours d'exécution).
+    /// KillProcess prend le nom du processus et le chemin enregistré de son exécutable ; RestartProcess ce chemin.
+    /// SetPlan renvoie le GUID du plan actif avant le changement ; GetPlan le GUID du plan actif.
     /// </summary>
     public interface IModeJeuActions
     {
         ServiceState StopService(string nom);
         void StartService(string nom);
-        bool KillProcess(string nom);
+        bool KillProcess(string nom, string chemin);
         void RestartProcess(string chemin);
         string SetPlan(string guid);
+        string GetPlan();
+    }
+
+    /// <summary>Arrêt refusé avant toute action : rien n'a été arrêté.</summary>
+    public class ServiceRefuseException : InvalidOperationException
+    {
+        public ServiceRefuseException(string message) : base(message) { }
     }
 
     public class ProcessusChoix
@@ -66,6 +74,7 @@ namespace GamingTweaker.Core
         {
             "MsMpEng", "NisSrv", "MpDefenderCoreService", "SecurityHealthService", "SecurityHealthSystray", "audiodg",
             "nvcontainer", "NVDisplay.Container", "RtkAudUService", "RtkAudUService64", "atiesrxx", "atieclxx", "explorer", "System", "Registry", "svchost", "fontdrvhost", "GamingTweaker",
+            "sihost", "ctfmon", "ShellExperienceHost", "StartMenuExperienceHost", "TextInputHost", "SearchHost", "RuntimeBroker", "conhost", "igfxEM", "RadeonSoftware",
         };
         /// <summary>Jamais proposés ni arrêtés : services dont dépend le système, la sécurité, l'audio, l'affichage et le réseau.</summary>
         public static readonly string[] ServicesProteges =
@@ -98,7 +107,7 @@ namespace GamingTweaker.Core
         {
             [JsonProperty("nom")] public string Nom { get; set; }
             [JsonProperty("chemin", NullValueHandling = NullValueHandling.Ignore)] public string Chemin { get; set; }
-            /// <summary>en-cours | arrete | deja-arrete | absent | echec | tue | non-lance | retabli</summary>
+            /// <summary>en-cours | arrete | deja-arrete | absent | refuse | echec | tue | non-lance | retabli</summary>
             [JsonProperty("etat")] public string Etat { get; set; }
         }
 
@@ -185,6 +194,11 @@ namespace GamingTweaker.Core
                         s.Etat = avant == ServiceState.Running ? "arrete" : avant == ServiceState.Absent ? "absent" : "deja-arrete";
                         if (avant == ServiceState.Running) bilan.Actions.Add("Service arrêté : " + s.Nom);
                     }
+                    catch (ServiceRefuseException ex)
+                    {
+                        s.Etat = "refuse";
+                        bilan.Avertissements.Add("Service " + s.Nom + " non arrêté : " + ex.Message);
+                    }
                     catch (Exception ex)
                     {
                         s.Etat = "echec";
@@ -197,7 +211,7 @@ namespace GamingTweaker.Core
                     p.Etat = "en-cours"; Ecrire(etat);
                     try
                     {
-                        if (actions.KillProcess(p.Nom)) { p.Etat = "tue"; bilan.Actions.Add("Processus fermé : " + p.Nom); }
+                        if (actions.KillProcess(p.Nom, p.Chemin)) { p.Etat = "tue"; bilan.Actions.Add("Processus fermé : " + p.Nom); }
                         else p.Etat = "non-lance";
                     }
                     catch (Exception ex)
@@ -273,7 +287,18 @@ namespace GamingTweaker.Core
                 }
                 if (etat.PlanEtat == "change" && !string.IsNullOrWhiteSpace(etat.PlanPrecedent))
                 {
-                    try { actions.SetPlan(etat.PlanPrecedent); etat.PlanEtat = "retabli"; bilan.Actions.Add("Plan d'alimentation rétabli."); }
+                    try
+                    {
+                        // Seulement si le plan actif est encore celui du Mode Jeu : un plan choisi depuis par l'utilisateur est conservé.
+                        var actuel = actions.GetPlan();
+                        if (string.Equals((actuel ?? "").Trim(), (etat.Plan ?? "").Trim(), StringComparison.OrdinalIgnoreCase))
+                        {
+                            actions.SetPlan(etat.PlanPrecedent);
+                            bilan.Actions.Add("Plan d'alimentation rétabli.");
+                        }
+                        else bilan.Avertissements.Add("Le plan d'alimentation a été changé depuis l'activation du Mode Jeu : il est conservé.");
+                        etat.PlanEtat = "retabli";
+                    }
                     catch (Exception ex) { echec = true; bilan.Avertissements.Add("Plan d'alimentation non rétabli : " + ex.Message); }
                 }
                 else if (etat.PlanEtat == "en-cours")
@@ -281,6 +306,27 @@ namespace GamingTweaker.Core
 
                 if (echec) { try { Ecrire(etat); } catch (Exception) { } }
                 else { try { File.Delete(Fichier); } catch (Exception ex) { bilan.Avertissements.Add("Fichier d'état non supprimé : " + ex.Message); } }
+            }
+            return bilan;
+        }
+
+        /// <summary>
+        /// Abandonne l'état enregistré (après un « Rétablir » en échec ou un état illisible) : ce qui reste arrêté ne sera plus rétabli par l'outil.
+        /// Sous le verrou d'instance.
+        /// </summary>
+        public ModeJeuBilan Oublier()
+        {
+            var bilan = new ModeJeuBilan();
+            using (var v = SingleInstance.TryAcquire(lockName))
+            {
+                if (v == null)
+                {
+                    bilan.Verrouille = true;
+                    bilan.Avertissements.Add("Une autre exécution de GamingTweaker est en cours : l'état du Mode Jeu n'a pas été oublié.");
+                    return bilan;
+                }
+                if (File.Exists(Fichier)) File.Delete(Fichier);
+                bilan.Actions.Add("État du Mode Jeu oublié.");
             }
             return bilan;
         }
@@ -345,6 +391,11 @@ namespace GamingTweaker.Core
             {
                 if (sc.Status == ServiceControllerStatus.Stopped) return ServiceState.Stopped;
                 if (sc.Status != ServiceControllerStatus.Running) throw new InvalidOperationException("le service n'est pas dans un état stable (" + sc.Status + ")");
+                // ServiceController.Stop arrête aussi les dépendants, qui ne seraient ni enregistrés ni redémarrés : refusé.
+                var deps = new List<Tuple<string, ServiceControllerStatus>>();
+                foreach (var d in sc.DependentServices) using (d) deps.Add(Tuple.Create(d.ServiceName, d.Status));
+                var actifs = DependantsActifs(deps);
+                if (actifs.Count > 0) throw new ServiceRefuseException("des services qui en dépendent sont en cours d'exécution (" + string.Join(", ", actifs) + ")");
                 sc.Stop();
                 sc.WaitForStatus(ServiceControllerStatus.Stopped, Delai); // TimeoutException si trop long : signalé, non redémarré automatiquement
                 return ServiceState.Running;
@@ -364,15 +415,35 @@ namespace GamingTweaker.Core
             }
         }
 
-        public bool KillProcess(string nom)
+        /// <summary>Dépendants qui ne sont pas arrêtés (en cours, en démarrage, en pause…).</summary>
+        public static List<string> DependantsActifs(IEnumerable<Tuple<string, ServiceControllerStatus>> dependants)
+        {
+            return dependants.Where(d => d.Item2 != ServiceControllerStatus.Stopped).Select(d => d.Item1).ToList();
+        }
+
+        /// <summary>Seul un processus de la session courante dont l'exécutable est exactement celui enregistré est fermé.</summary>
+        public static bool DoitTuer(int sessionProcessus, string cheminProcessus, int sessionCourante, string cheminEnregistre)
+        {
+            if (sessionProcessus != sessionCourante || string.IsNullOrWhiteSpace(cheminProcessus) || string.IsNullOrWhiteSpace(cheminEnregistre)) return false;
+            try { return string.Equals(Path.GetFullPath(cheminProcessus), Path.GetFullPath(cheminEnregistre), StringComparison.OrdinalIgnoreCase); }
+            catch (Exception) { return false; }
+        }
+
+        public bool KillProcess(string nom, string chemin)
         {
             if (ModeJeu.EstProcessusProtege(nom)) throw new InvalidOperationException("processus protégé");
+            if (string.IsNullOrWhiteSpace(chemin)) throw new InvalidOperationException("chemin de l'exécutable inconnu");
+            int session, moi;
+            using (var courant = Process.GetCurrentProcess()) { session = courant.SessionId; moi = courant.Id; }
             bool any = false;
             foreach (var p in Process.GetProcessesByName(nom))
             {
                 using (p)
                 {
-                    if (p.Id == Process.GetCurrentProcess().Id) continue;
+                    if (p.Id == moi) continue;
+                    string cheminP = null;
+                    try { cheminP = p.MainModule.FileName; } catch (Exception) { }
+                    if (!DoitTuer(p.SessionId, cheminP, session, chemin)) continue;
                     p.Kill(); p.WaitForExit(5000); any = true;
                 }
             }
@@ -389,10 +460,15 @@ namespace GamingTweaker.Core
         public string SetPlan(string guid)
         {
             if (!Regex.IsMatch(guid ?? "", @"^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$")) throw new ArgumentException("GUID de plan invalide.");
-            var avant = Powercfg("/getactivescheme");
-            var m = Regex.Match(avant, @"[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}");
-            if (!m.Success) throw new InvalidOperationException("plan actif illisible");
+            var avant = GetPlan();
             Powercfg("/setactive " + guid);
+            return avant;
+        }
+
+        public string GetPlan()
+        {
+            var m = Regex.Match(Powercfg("/getactivescheme"), @"[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}");
+            if (!m.Success) throw new InvalidOperationException("plan actif illisible");
             return m.Value;
         }
 

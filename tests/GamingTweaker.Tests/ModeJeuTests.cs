@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -20,19 +20,23 @@ namespace GamingTweaker.Tests
             public List<string> Restarted = new List<string>();
             public string PlanActif = "plan-initial";
             public HashSet<string> EchecArret = new HashSet<string>();
+            public HashSet<string> AvecDependants = new HashSet<string>();
+            public List<string> CheminsKill = new List<string>();
 
             public ServiceState StopService(string nom)
             {
                 if (Ordre != null) Ordre.Add("stop:" + nom);
                 if (EchecArret.Contains(nom)) throw new InvalidOperationException("refusé");
+                if (AvecDependants.Contains(nom)) throw new ServiceRefuseException("des services qui en dépendent sont en cours d'exécution : Enfant");
                 if (!Tournaient.Contains(nom)) return ServiceState.Stopped;
                 Stopped.Add(nom); Tournaient.Remove(nom);
                 return ServiceState.Running;
             }
             public void StartService(string nom) { Started.Add(nom); Tournaient.Add(nom); }
-            public bool KillProcess(string nom) { if (Ordre != null) Ordre.Add("kill:" + nom); Killed.Add(nom); return nom != "absent"; }
+            public bool KillProcess(string nom, string chemin) { if (Ordre != null) Ordre.Add("kill:" + nom); Killed.Add(nom); CheminsKill.Add(chemin); return nom != "absent"; }
             public void RestartProcess(string chemin) { Restarted.Add(chemin); }
             public string SetPlan(string guid) { var avant = PlanActif; PlanActif = guid; if (Ordre != null) Ordre.Add("plan"); return avant; }
+            public string GetPlan() { return PlanActif; }
         }
 
         private class FauxEchecDemarrage : IModeJeuActions
@@ -40,9 +44,10 @@ namespace GamingTweaker.Tests
             private readonly Faux f; public FauxEchecDemarrage(Faux f) { this.f = f; }
             public ServiceState StopService(string n) { return f.StopService(n); }
             public void StartService(string n) { throw new InvalidOperationException("échec"); }
-            public bool KillProcess(string n) { return f.KillProcess(n); }
+            public bool KillProcess(string n, string c) { return f.KillProcess(n, c); }
             public void RestartProcess(string c) { f.RestartProcess(c); }
             public string SetPlan(string g) { return f.SetPlan(g); }
+            public string GetPlan() { return f.GetPlan(); }
         }
 
         private readonly string dir = Path.Combine(Path.GetTempPath(), "gt-modejeu-" + Guid.NewGuid().ToString("N"));
@@ -187,6 +192,131 @@ namespace GamingTweaker.Tests
             var b = m.Activate(Config());
             Assert.NotEmpty(b.Avertissements);
             Assert.Single(a.Stopped);
+        }
+
+        // ---------- Revue lots 14-16 ----------
+
+        [Fact]
+        public void Service_avec_dependants_actifs_est_refuse_signale_et_jamais_redemarre()
+        {
+            var a = new Faux { Tournaient = new HashSet<string> { "parent", "tourne" }, AvecDependants = new HashSet<string> { "parent" } };
+            var c = new ModeJeuConfig(); c.Services.Add("parent"); c.Services.Add("tourne");
+            var m = Nouveau(a);
+            var bilan = m.Activate(c);
+            Assert.Contains(bilan.Avertissements, w => w.Contains("parent") && w.Contains("dépendent"));
+            Assert.Equal(new[] { "tourne" }, a.Stopped.ToArray());
+            var r = m.Restore();
+            Assert.DoesNotContain("parent", a.Started);
+            Assert.DoesNotContain(r.Avertissements, w => w.Contains("parent")); // refusé : rien d'incertain
+            Assert.False(m.IsActive);
+        }
+
+        [Fact]
+        public void Dependants_actifs_ignore_les_services_arretes()
+        {
+            var l = ModeJeuSysteme.DependantsActifs(new[]
+            {
+                Tuple.Create("A", System.ServiceProcess.ServiceControllerStatus.Running),
+                Tuple.Create("B", System.ServiceProcess.ServiceControllerStatus.Stopped),
+                Tuple.Create("C", System.ServiceProcess.ServiceControllerStatus.StartPending),
+            });
+            Assert.Equal(new[] { "A", "C" }, l.ToArray());
+        }
+
+        [Fact]
+        public void Seul_le_processus_de_la_session_courante_au_chemin_enregistre_est_tue()
+        {
+            Assert.True(ModeJeuSysteme.DoitTuer(2, @"C:\Apps\overlay.exe", 2, @"c:\apps\OVERLAY.exe"));
+            Assert.False(ModeJeuSysteme.DoitTuer(1, @"C:\Apps\overlay.exe", 2, @"C:\Apps\overlay.exe"));      // autre session
+            Assert.False(ModeJeuSysteme.DoitTuer(2, @"C:\Autre\overlay.exe", 2, @"C:\Apps\overlay.exe"));     // autre binaire du même nom
+            Assert.False(ModeJeuSysteme.DoitTuer(2, null, 2, @"C:\Apps\overlay.exe"));                         // chemin illisible
+            Assert.False(ModeJeuSysteme.DoitTuer(2, @"C:\Apps\overlay.exe", 2, null));                         // chemin enregistré inconnu
+        }
+
+        [Fact]
+        public void Le_chemin_enregistre_est_transmis_a_la_fermeture()
+        {
+            var a = new Faux();
+            Nouveau(a).Activate(Config());
+            Assert.Equal(new[] { @"C:\Apps\overlay.exe" }, a.CheminsKill.ToArray());
+        }
+
+        [Fact]
+        public void Plan_change_depuis_par_l_utilisateur_n_est_pas_ecrase()
+        {
+            var a = new Faux();
+            var m = Nouveau(a);
+            m.Activate(Config());
+            a.PlanActif = "plan-choisi-ensuite";
+            var b = m.Restore();
+            Assert.Equal("plan-choisi-ensuite", a.PlanActif);
+            Assert.Contains(b.Avertissements, w => w.Contains("plan"));
+            Assert.False(m.IsActive);
+        }
+
+        [Fact]
+        public void Oublier_l_etat_apres_un_retablissement_en_echec()
+        {
+            var a = new Faux();
+            Nouveau(a).Activate(Config());
+            var m2 = new ModeJeu(dir, new FauxEchecDemarrage(a), verrou);
+            m2.Restore();
+            Assert.True(m2.IsActive);
+            var b = m2.Oublier();
+            Assert.False(b.Verrouille);
+            Assert.False(m2.IsActive);
+        }
+
+        [Fact]
+        public void Etat_illisible_peut_etre_oublie()
+        {
+            File.WriteAllText(Path.Combine(dir, "modejeu.json"), "{ pas du json");
+            var m = new ModeJeu(dir, new Faux(), verrou);
+            Assert.NotEmpty(m.Restore().Avertissements);
+            Assert.True(m.IsActive);
+            m.Oublier();
+            Assert.False(m.IsActive);
+        }
+
+        [Fact]
+        public async System.Threading.Tasks.Task Vue_modele_propose_oublier_apres_echec_avec_confirmation()
+        {
+            var a = new Faux();
+            Nouveau(a).Activate(Config());
+            var vm = new GamingTweaker.Ui.ModeJeuViewModel(new ModeJeu(dir, new FauxEchecDemarrage(a), verrou), () => new List<ServiceChoix>(), () => new List<ProcessusChoix>());
+            Assert.False(vm.PeutOublier);
+            await vm.RetablirAsync();
+            Assert.True(vm.EstActif);
+            Assert.True(vm.PeutOublier);
+            string vu = null;
+            vm.Confirmer = t => { vu = t; return false; };
+            await vm.OublierAsync();
+            Assert.True(vm.EstActif);
+            Assert.NotNull(vu);
+            vm.Confirmer = t => true;
+            await vm.OublierAsync();
+            Assert.False(vm.EstActif);
+            Assert.False(vm.PeutOublier);
+        }
+
+        [Fact]
+        public async System.Threading.Tasks.Task Confirmation_annonce_le_plan_performances_elevees()
+        {
+            var vm = new GamingTweaker.Ui.ModeJeuViewModel(Nouveau(new Faux()), () => new List<ServiceChoix>(), () => new List<ProcessusChoix>());
+            string vu = null; vm.Confirmer = t => { vu = t; return false; };
+            await vm.ActiverAsync();
+            Assert.Contains("Performances élevées", vu);
+            Assert.DoesNotContain("maximales", vu);
+            var xaml = File.ReadAllText(Path.Combine(Helpers.PsCommon.Racine(), "src", "GamingTweaker", "Ui", "ModeJeuView.xaml"));
+            Assert.Contains("Performances élevées", xaml);
+            Assert.DoesNotContain("Performances maximales", xaml);
+        }
+
+        [Fact]
+        public void Processus_du_shell_et_des_pilotes_sont_proteges()
+        {
+            foreach (var n in new[] { "sihost", "ctfmon", "ShellExperienceHost", "StartMenuExperienceHost", "TextInputHost", "SearchHost", "RuntimeBroker", "conhost", "igfxEM", "RadeonSoftware", "ctfmon.exe" })
+                Assert.True(ModeJeu.EstProcessusProtege(n), n);
         }
     }
 }

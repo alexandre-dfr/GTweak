@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Xml.Linq;
 using GamingTweaker.Core;
@@ -10,14 +10,14 @@ namespace GamingTweaker.Tests
     /// <summary>Seul BuildTaskXml (pur) est testé : Install, Remove et Query créent, suppriment ou lisent une vraie tâche planifiée.</summary>
     public class PlanificationTests
     {
-        private const string Exe = @"C:\ProgramData\GamingTweaker\GamingTweaker.exe";
+        private const string Exe = @"C:\ProgramData\GamingTweaker\App\GamingTweaker.exe";
         private const string Profil = @"C:\ProgramData\GamingTweaker\Routine\profil.json";
         private static readonly XNamespace Ns = "http://schemas.microsoft.com/windows/2004/02/mit/task";
 
         private static RoutineConfig Cfg() { return new RoutineConfig { Jour = DayOfWeek.Sunday, Heure = new TimeSpan(20, 30, 0), Profil = "gaming" }; }
         private static string Xml() { return Planification.BuildTaskXml(Cfg(), Exe, Profil, @"PC\moi"); }
 
-        [Fact] public void Xml_utilise_la_copie_dans_programdata() => Assert.Contains(@"C:\ProgramData\GamingTweaker\GamingTweaker.exe", Xml());
+        [Fact] public void Xml_utilise_la_copie_dans_programdata() => Assert.Contains(@"C:\ProgramData\GamingTweaker\App\GamingTweaker.exe", Xml());
 
         [Fact]
         public void Xml_passe_le_profil_et_silent()
@@ -112,11 +112,11 @@ namespace GamingTweaker.Tests
 
         // ---------- Vue-modèle : delegués factices, aucune tâche réelle ----------
 
-        private static RoutineViewModel Vm(string optionsJson, System.Collections.Generic.List<RoutineConfig> installs, out string dossier, Func<System.Collections.Generic.IReadOnlyList<string>, bool> confirmer = null)
+        private static RoutineViewModel Vm(string optionsJson, System.Collections.Generic.List<RoutineConfig> installs, out string dossier, Func<System.Collections.Generic.IReadOnlyList<string>, bool> confirmer = null, string nomProfil = "gaming")
         {
             dossier = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "gt-routine-vm-" + Guid.NewGuid().ToString("N"));
             System.IO.Directory.CreateDirectory(dossier);
-            System.IO.File.WriteAllText(System.IO.Path.Combine(dossier, "gaming.json"), "{\"version\":1,\"nom\":\"gaming\",\"options\":" + optionsJson + "}");
+            System.IO.File.WriteAllText(System.IO.Path.Combine(dossier, nomProfil + ".json"), "{\"version\":1,\"nom\":\"gaming\",\"options\":" + optionsJson + "}");
             var cat = new System.Collections.Generic.List<CatalogItem>
             {
                 new CatalogItem { Id = "opt.sur", Menu = "Optimisation", Groupe = "G", Titre = "Sûr", Description = "d", Risque = RiskLevel.Sur },
@@ -124,7 +124,7 @@ namespace GamingTweaker.Tests
             };
             var paths = new DataPaths { ProfilsDir = dossier, MachineDir = dossier, SessionsDir = System.IO.Path.Combine(dossier, "S"), QuarantineDir = System.IO.Path.Combine(dossier, "Q") };
             var main = new GamingTweaker.Ui.MainViewModel(cat, new MachineFacts(), paths, its => System.Threading.Tasks.Task.FromResult(new System.Collections.Generic.Dictionary<string, DetectState>()), null, o => true);
-            main.ProfilSelectionne = "gaming";
+            main.ProfilSelectionne = nomProfil;
             return new RoutineViewModel(main, c => installs.Add(c), () => { }, () => new RoutineEtat { Existe = false }) { ConfirmerRisque = confirmer };
         }
 
@@ -182,7 +182,71 @@ namespace GamingTweaker.Tests
         public void Nom_de_tache_et_dossiers_sont_ceux_de_la_specification()
         {
             Assert.Equal(@"\GamingTweaker\Routine", Planification.NomTache);
-            Assert.Equal(@"C:\ProgramData\GamingTweaker\GamingTweaker.exe", Planification.ExeCopie);
+            Assert.Equal(@"C:\ProgramData\GamingTweaker\App\GamingTweaker.exe", Planification.ExeCopie);
+        }
+
+        // ---------- Revue lots 14-16 ----------
+
+        [Fact]
+        public void Suppression_introuvable_vaut_succes_mais_pas_un_refus()
+        {
+            Assert.True(Planification.SuppressionReussie(0, ""));
+            Assert.True(Planification.SuppressionReussie(1, "ERREUR : Le fichier spécifié est introuvable.\r\n"));
+            Assert.True(Planification.SuppressionReussie(1, "ERROR: The system cannot find the file specified.\r\n"));
+            Assert.True(Planification.SuppressionReussie(1, "ERREUR : La tâche spécifiée n'existe pas dans le système.\r\n"));
+            Assert.False(Planification.SuppressionReussie(1, "ERREUR : Accès refusé.\r\n"));
+            Assert.False(Planification.SuppressionReussie(1, ""));
+        }
+
+        [Fact]
+        public void Nom_de_profil_avec_pourcent_est_refuse()
+        {
+            Assert.False(Planification.NomProfilAccepte("jeu%USERPROFILE%"));
+            Assert.False(Planification.NomProfilAccepte(@"C:\Profils\a%b.json"));
+            Assert.True(Planification.NomProfilAccepte(@"C:\Profils\Zoé d'Arc.json"));
+        }
+
+        [Fact]
+        public async System.Threading.Tasks.Task Profil_avec_pourcent_n_est_pas_planifie()
+        {
+            var installs = new System.Collections.Generic.List<RoutineConfig>(); string dossier;
+            var vm = Vm("[\"opt.sur\"]", installs, out dossier, nomProfil: "jeu%TEMP%");
+            await vm.PlanifierAsync();
+            Assert.Empty(installs);
+            Assert.Contains("%", vm.Message);
+            try { System.IO.Directory.Delete(dossier, true); } catch (System.IO.IOException) { }
+        }
+
+        [Fact]
+        public async System.Threading.Tasks.Task Eleve_par_un_autre_administrateur_la_planification_est_refusee()
+        {
+            var installs = new System.Collections.Generic.List<RoutineConfig>(); string dossier;
+            var vm = Vm("[\"opt.sur\"]", installs, out dossier);
+            vm.MemeUtilisateur = () => false;
+            await vm.PlanifierAsync();
+            Assert.Empty(installs);
+            Assert.Contains("Planifiez depuis la session de l'utilisateur, avec un compte administrateur", vm.Message);
+            vm.MemeUtilisateur = () => true;
+            await vm.PlanifierAsync();
+            Assert.Single(installs);
+            try { System.IO.Directory.Delete(dossier, true); } catch (System.IO.IOException) { }
+        }
+
+        [Fact]
+        public void Exe_de_la_routine_dans_programdata_app_utilise_la_racine_programdata()
+        {
+            var pd = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "gt-pd-" + Guid.NewGuid().ToString("N"));
+            var app = System.IO.Path.Combine(pd, "App");
+            System.IO.Directory.CreateDirectory(app); // inscriptible : sans la règle, les données iraient dans App\Machines
+            try
+            {
+                var f = new MachineFacts { MachineName = "PC", MachineGuid = "12345678-aaaa" };
+                var p = DataPaths.Resolve(app, f, pd);
+                Assert.Equal(System.IO.Path.Combine(pd, "Machines", "PC-12345678"), p.MachineDir);
+                Assert.Equal(System.IO.Path.Combine(pd, "Profils"), p.ProfilsDir);
+                Assert.Equal(p.MachineDir, DataPaths.ResolveRoutine(f, pd).MachineDir);
+            }
+            finally { try { System.IO.Directory.Delete(pd, true); } catch (System.IO.IOException) { } }
         }
     }
 }

@@ -35,6 +35,10 @@ namespace GamingTweaker.Ui
         public string EtatLibelle { get; set; }
         /// <summary>Session interrompue (Running) ou en échec interne (Failed) : mise en évidence.</summary>
         public bool Anormale { get; set; }
+        /// <summary>Session écrite par la routine planifiée (racine ProgramData).</summary>
+        public bool DeLaRoutine { get; set; }
+        /// <summary>Session « Running » alors qu'une exécution tient le verrou : elle est en cours, pas interrompue.</summary>
+        public bool EnCoursExecution { get; set; }
         public int Appliquees { get; set; }
         public int Echecs { get; set; }
         public int Ignorees { get; set; }
@@ -76,6 +80,7 @@ namespace GamingTweaker.Ui
         public const string AvertissementMesures = "Ces mesures (temps DPC, interruptions, services, processus, mémoire libre) ne disent rien de l'input lag : elles ne mesurent pas la latence entre un clic et l'écran.";
 
         private readonly DataPaths paths;
+        private readonly List<DataPaths> autresRacines;
         private readonly IRestauration restauration;
         private readonly Dictionary<string, CatalogItem> catalogue;
         private readonly QuarantineService quarantaine;
@@ -88,10 +93,13 @@ namespace GamingTweaker.Ui
         private string rapportTexte = "";
         private string comparaison = "";
 
+        /// <param name="autresRacines">Autres racines dont les sessions sont aussi listées (routine planifiée sous ProgramData).</param>
         public HistoriqueViewModel(DataPaths paths, IRestauration restauration, IReadOnlyList<CatalogItem> catalogue, QuarantineService quarantaine,
-            Func<TimeSpan, IProgress<double>, CancellationToken, Task<MesureSnapshot>> prendreReleve = null)
+            Func<TimeSpan, IProgress<double>, CancellationToken, Task<MesureSnapshot>> prendreReleve = null, IEnumerable<DataPaths> autresRacines = null)
         {
             this.paths = paths; this.restauration = restauration; this.quarantaine = quarantaine;
+            this.autresRacines = (autresRacines ?? Enumerable.Empty<DataPaths>())
+                .Where(r => r != null && paths != null && !string.Equals(r.SessionsDir, paths.SessionsDir, StringComparison.OrdinalIgnoreCase)).ToList();
             this.catalogue = (catalogue ?? new List<CatalogItem>()).GroupBy(c => c.Id).ToDictionary(g => g.Key, g => g.First());
             prendre = prendreReleve ?? ((d, p, ct) => Mesures.TakeAsync(d, p, ct));
 
@@ -121,6 +129,8 @@ namespace GamingTweaker.Ui
         public Func<string, bool> Confirmer { get; set; }
         /// <summary>Appelée après une annulation (redétection des options par exemple).</summary>
         public Action ApresAnnulation { get; set; }
+        /// <summary>Valeurs modifiées depuis l'application (journal, options) ; appelée sous le verrou d'instance.</summary>
+        public Func<string, List<string>, List<Conflict>> TrouverConflits { get; set; } = (j, ids) => UndoService.FindConflicts(j, ids);
 
         public string Section { get { return section; } set { if (Set(ref section, value)) { Raise("EstSessions"); Raise("EstQuarantaine"); Raise("EstMesures"); } } }
         public bool EstSessions { get { return section == "Sessions"; } }
@@ -147,10 +157,28 @@ namespace GamingTweaker.Ui
 
         public void Charger()
         {
-            var id = sessionSelectionnee == null ? null : sessionSelectionnee.Id;
+            var dossier = sessionSelectionnee == null ? null : sessionSelectionnee.Dossier;
             Sessions.Clear();
-            foreach (var s in LireSessions()) Sessions.Add(s);
-            SessionSelectionnee = id == null ? null : Sessions.FirstOrDefault(s => s.Id == id);
+            var liste = LireSessions();
+            // Verrou d'instance tenu par une autre exécution (routine, autre instance) : la session « Running » la plus récente est en cours.
+            bool verrouPris = false;
+            if (restauration != null)
+            {
+                try { using (var v = restauration.PrendreVerrou()) verrouPris = v == null; } catch (Exception) { }
+            }
+            if (verrouPris)
+            {
+                var enCoursExec = liste.FirstOrDefault(x => x.Etat == "Running");
+                if (enCoursExec != null)
+                {
+                    enCoursExec.EnCoursExecution = true;
+                    enCoursExec.Anormale = false;
+                    enCoursExec.EtatLibelle = "en cours";
+                    foreach (var o in enCoursExec.Options) o.Annulable = false;
+                }
+            }
+            foreach (var s in liste) Sessions.Add(s);
+            SessionSelectionnee = dossier == null ? null : Sessions.FirstOrDefault(s => s.Dossier == dossier);
 
             Quarantaine.Clear();
             try { foreach (var e in quarantaine.List()) Quarantaine.Add(new QuarantaineLigne { Entree = e }); }
@@ -164,16 +192,28 @@ namespace GamingTweaker.Ui
             catch (Exception ex) { Message = "Mesures illisibles : " + ex.Message; }
         }
 
+        /// <summary>Sessions de la racine interactive et de la routine, fusionnées du plus récent au plus ancien (date de début).</summary>
         private List<SessionViewModel> LireSessions()
         {
             var res = new List<SessionViewModel>();
-            var dir = paths == null ? null : paths.SessionsDir;
-            if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir)) return res;
-            foreach (var d in Directory.GetDirectories(dir).OrderByDescending(x => Path.GetFileName(x), StringComparer.Ordinal))
+            var racines = new List<Tuple<string, bool>>();
+            if (paths != null) racines.Add(Tuple.Create(paths.SessionsDir, false));
+            foreach (var r in autresRacines) racines.Add(Tuple.Create(r.SessionsDir, true));
+            foreach (var r in racines)
             {
-                try { res.Add(LireSession(d)); } catch (Exception) { /* dossier illisible : ignoré */ }
+                if (string.IsNullOrEmpty(r.Item1) || !Directory.Exists(r.Item1)) continue;
+                foreach (var d in Directory.GetDirectories(r.Item1))
+                {
+                    try
+                    {
+                        var s = LireSession(d);
+                        if (r.Item2) { s.DeLaRoutine = true; s.Resume = "routine planifiée · " + s.Resume; }
+                        res.Add(s);
+                    }
+                    catch (Exception) { /* dossier illisible : ignoré */ }
+                }
             }
-            return res;
+            return res.OrderByDescending(s => s.Debut).ThenByDescending(s => s.Id, StringComparer.Ordinal).ToList();
         }
 
         private SessionViewModel LireSession(string d)
@@ -278,32 +318,38 @@ namespace GamingTweaker.Ui
         private async Task AnnulerAsync(SessionViewModel s, List<string> demandes, bool confirmerToujours)
         {
             if (enCours || s == null) return;
+            if (s.EnCoursExecution) { Message = "Cette session est en cours d'exécution : attendez sa fin pour l'annuler."; return; }
             var journal = Path.Combine(s.Dossier, "journal.jsonl");
-            List<string> ids;
-            try { ids = Journal.Active(Journal.Read(journal)).Select(e => e.Item).Distinct().Where(demandes.Contains).ToList(); }
-            catch (Exception ex) { Message = ex.Message; return; }
-            if (ids.Count == 0) { Message = "Rien à annuler : le journal de cette session n'a plus de modification active."; return; }
-
-            List<Conflict> conflits;
-            try { conflits = await Task.Run(() => UndoService.FindConflicts(journal, ids)); }
-            catch (Exception ex) { Message = "Vérification des conflits impossible, rien n'a été annulé : " + ex.Message; return; }
-            if (conflits.Count > 0)
-            {
-                var txt = "Ces valeurs ont été modifiées depuis l'application. L'annulation les remplacerait par l'état d'origine :\r\n\r\n"
-                        + string.Join("\r\n", conflits.Select(c => "- " + c.ItemId + " : " + c.Target + " (attendu " + c.Attendu + ", actuel " + c.Actuel + ")"))
-                        + "\r\n\r\nAnnuler quand même ?";
-                if (Confirmer == null || !Confirmer(txt)) { Message = "Annulation abandonnée."; return; }
-            }
-            else if (confirmerToujours && Confirmer != null && !Confirmer("Annuler " + ids.Count + " option(s) de la session du " + s.DebutTexte + " ?")) return;
-
             EnCours = true;
+            bool annule = false;
             try
             {
+                // Verrou pris avant de lire le journal et de calculer les conflits : rien ne change entre la vérification et l'annulation.
                 using (var verrou = restauration.PrendreVerrou())
                 {
                     if (verrou == null) { Message = "Une autre exécution de GamingTweaker est en cours : rien n'a été annulé."; return; }
+                    List<string> ids;
+                    try { ids = Journal.Active(Journal.Read(journal)).Select(e => e.Item).Distinct().Where(demandes.Contains).ToList(); }
+                    catch (Exception ex) { Message = ex.Message; return; }
+                    if (ids.Count == 0) { Message = "Rien à annuler : le journal de cette session n'a plus de modification active."; return; }
+
+                    List<Conflict> conflits;
+                    var trouver = TrouverConflits;
+                    try { conflits = await Task.Run(() => trouver(journal, ids)); }
+                    catch (Exception ex) { Message = "Vérification des conflits impossible, rien n'a été annulé : " + ex.Message; return; }
+                    if (conflits.Count > 0)
+                    {
+                        var txt = "Ces valeurs ont été modifiées depuis l'application. L'annulation les remplacerait par l'état d'origine :\r\n\r\n"
+                                + string.Join("\r\n", conflits.Select(c => "- " + c.ItemId + " : " + c.Target + " (attendu " + c.Attendu + ", actuel " + c.Actuel + ")"))
+                                + "\r\n\r\nAnnuler quand même ?";
+                        if (Confirmer == null || !Confirmer(txt)) { Message = "Annulation abandonnée."; return; }
+                    }
+                    else if (confirmerToujours && Confirmer != null && !Confirmer("Annuler " + ids.Count + " option(s) de la session du " + s.DebutTexte + " ?")) return;
+
+                    annule = true;
                     bool memeUtilisateur = restauration.MemeUtilisateur();
                     var reussies = new List<string>(); var echecs = new List<string>(); var ignorees = new List<string>(); var notes = new List<string>();
+                    var nonAnnulees = new List<string>();
                     foreach (var id in ids)
                     {
                         CatalogItem c;
@@ -312,35 +358,52 @@ namespace GamingTweaker.Ui
                         {
                             var o = await restauration.AnnulerParJournalAsync(journal, id);
                             if (o == null || o.Status == OutcomeStatus.Failed) echecs.Add(id + " : " + (o == null || string.IsNullOrWhiteSpace(o.Message) ? "échec de l'annulation" : o.Message.Trim()));
-                            else
-                            {
-                                reussies.Add(id);
-                                if (o.Status == OutcomeStatus.Skipped && !string.IsNullOrWhiteSpace(o.Message)) notes.Add(id + " : " + o.Message.Trim());
-                            }
+                            // Ignorée : rien n'a été restauré (ou restauration incomplète) ; ni comptée comme annulée ni retirée de last-applied.
+                            else if (o.Status == OutcomeStatus.Skipped) nonAnnulees.Add(id + (string.IsNullOrWhiteSpace(o.Message) ? "" : " : " + o.Message.Trim()));
+                            else reussies.Add(id);
                         }
                         catch (Exception ex) { echecs.Add(id + " : " + ex.Message); }
                     }
                     if (reussies.Count > 0) restauration.OublierDernieresApplications(reussies);
                     var sb = new StringBuilder(reussies.Count + " option(s) annulée(s)");
                     if (echecs.Count > 0) sb.Append(", ").Append(echecs.Count).Append(" échec(s) (").Append(string.Join(" ; ", echecs)).Append(')');
+                    if (nonAnnulees.Count > 0) sb.Append(", ").Append(nonAnnulees.Count).Append(" non annulée(s) (").Append(string.Join(" ; ", nonAnnulees)).Append(')');
                     if (ignorees.Count > 0) sb.Append(", ").Append(ignorees.Count).Append(" ignorée(s) car l'application tourne sous un autre compte que le bureau (").Append(string.Join(", ", ignorees)).Append(')');
                     sb.Append('.');
                     if (notes.Count > 0) sb.Append(' ').Append(string.Join(" ", notes));
                     Message = sb.ToString();
                 }
+            }
+            finally { EnCours = false; }
+            if (annule)
+            {
                 Charger();
                 if (ApresAnnulation != null) ApresAnnulation();
             }
-            finally { EnCours = false; }
         }
 
         // ---------- Quarantaine ----------
 
+        /// <summary>Sous le verrou d'instance : le journal (marqueur) n'est pas modifié pendant une exécution.</summary>
+        private void SousVerrou(Action a, string refus)
+        {
+            using (var v = restauration == null ? new Rien() : restauration.PrendreVerrou())
+            {
+                if (v == null) { Message = refus; return; }
+                a();
+            }
+        }
+
+        private class Rien : IDisposable { public void Dispose() { } }
+
         public void RestaurerQuarantaine(QuarantaineLigne l)
         {
             if (l == null) return;
-            try { quarantaine.Restore(l.Entree.Id); Message = "Fichier restauré : " + l.Entree.Origine; }
-            catch (Exception ex) { Message = "Restauration impossible : " + ex.Message; }
+            SousVerrou(() =>
+            {
+                try { quarantaine.Restore(l.Entree.Id); Message = "Fichier restauré : " + l.Entree.Origine; }
+                catch (Exception ex) { Message = "Restauration impossible : " + ex.Message; }
+            }, "Une autre exécution de GamingTweaker est en cours : rien n'a été restauré.");
             Charger();
         }
 
@@ -348,8 +411,11 @@ namespace GamingTweaker.Ui
         {
             if (l == null) return;
             if (Confirmer == null || !Confirmer("Supprimer définitivement « " + l.Nom + " » ?\r\nCette suppression est irréversible.")) return;
-            try { quarantaine.Purge(l.Entree.Id); Message = "Fichier supprimé définitivement : " + l.Nom; }
-            catch (Exception ex) { Message = "Suppression impossible : " + ex.Message; }
+            SousVerrou(() =>
+            {
+                try { quarantaine.Purge(l.Entree.Id); Message = "Fichier supprimé définitivement : " + l.Nom; }
+                catch (Exception ex) { Message = "Suppression impossible : " + ex.Message; }
+            }, "Une autre exécution de GamingTweaker est en cours : rien n'a été supprimé.");
             Charger();
         }
 
