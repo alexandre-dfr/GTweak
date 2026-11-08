@@ -11,3 +11,4 @@ publish/
 tools/**/__pycache__/
 tools/**/.venv/
 .claude/worktrees/
+tools/sandbox/resultats/

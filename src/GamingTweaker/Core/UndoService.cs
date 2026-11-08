@@ -89,7 +89,7 @@ namespace GamingTweaker.Core
             return res;
         }
 
-        private static string Norm(JToken t)
+        internal static string Norm(JToken t)
         {
             if (t == null || t.Type == JTokenType.Null) return Absent;
             if (t.Type == JTokenType.Array) return string.Join("\n", t.Select(x => x.ToString()));
@@ -102,7 +102,7 @@ namespace GamingTweaker.Core
             catch (Exception) { return null; }
         }
 
-        private static string ReadRegistry(string target)
+        internal static string ReadRegistry(string target)
         {
             int p = target.IndexOf('|');
             if (p < 0) return Absent;

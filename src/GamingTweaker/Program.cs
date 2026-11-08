@@ -41,6 +41,8 @@ namespace GamingTweaker
         private static int RunCommandLine(string[] args)
         {
             AttachParentConsole();
+            if (string.Equals(args[0], "--cycle-test", StringComparison.OrdinalIgnoreCase))
+                return args.Length == 2 ? CycleTest.Run(args[1]) : 2;
             string profile = null; bool silent = false;
             for (int i = 0; i < args.Length; i++)
             {
