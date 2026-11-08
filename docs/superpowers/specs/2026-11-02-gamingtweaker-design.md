@@ -48,8 +48,8 @@ Machines\<NomDuPC>-<id court>\  journaux d'annulation, rapports, mesures, état 
 ```
 
 - L'identifiant court est dérivé de `MachineGuid` (registre `HKLM\SOFTWARE\Microsoft\Cryptography`).
-- Si le dossier de l'exe n'est pas accessible en écriture, `Profils` et `Machines` sont placés dans `C:\ProgramData\GamingTweaker\`.
-- La quarantaine est toujours dans `C:\ProgramData\GamingTweaker\Quarantaine\`, pour ne pas remplir une clé USB.
+- Si le dossier de l'exe n'est pas accessible en écriture, `Profils` et `Machines` sont placés dans `%ProgramFiles%\GamingTweaker\` (racine protégée : un utilisateur standard ne peut rien y créer ; créée avec une DACL protégée, refus de démarrer si elle existe sans appartenir à SYSTEM, aux Administrateurs ou à TrustedInstaller, ou si c'est un lien). L'ancien `C:\ProgramData\GamingTweaker\` n'est plus utilisé.
+- La quarantaine est toujours dans `%ProgramFiles%\GamingTweaker\Quarantaine\`, pour ne pas remplir une clé USB.
 
 ### Composants
 
@@ -137,7 +137,7 @@ Une entrée JSON du catalogue, avec ses scripts `.ps1` intégrés en ressources 
 - Ligne de commande : `GamingTweaker.exe --profile <fichier> --silent`.
 - Codes de sortie : `0` tout a réussi, `1` échec partiel, `2` impossible de démarrer (profil invalide, droits insuffisants).
 - Jamais de redémarrage automatique, et jamais de chargement du pilote des capteurs.
-- La planification copie l'exe et le profil dans `C:\ProgramData\GamingTweaker\` et crée une tâche avec droits élevés, sous le compte de l'utilisateur et seulement quand il est connecté, car `winget` dépend du contexte utilisateur.
+- La planification copie l'exe et le profil dans `%ProgramFiles%\GamingTweaker\App\` et crée une tâche avec droits élevés, sous le compte de l'utilisateur et seulement quand il est connecté, car `winget` dépend du contexte utilisateur.
 - La suppression de la routine retire la tâche et cette copie.
 - Chaque routine compare aussi l'état des options du profil, ce qui réapplique celles qu'une mise à jour Windows a rétablies. Le rapport les liste.
 
@@ -305,7 +305,7 @@ Les éléments suivants ne seront pas inclus dans cette version :
 | Pas d'Internet ou `winget` absent | Options concernées marquées « ignorées » |
 | Redémarrage nécessaire | Signalé dans le rapport, jamais automatique |
 | Option incompatible dans un profil | Ignorée et signalée |
-| Dossier de l'exe en lecture seule | Données dans `C:\ProgramData\GamingTweaker\` |
+| Dossier de l'exe en lecture seule | Données dans `%ProgramFiles%\GamingTweaker\` |
 | Signature de l'installateur NVIDIA invalide | Fichier supprimé, installation refusée, échec au rapport |
 | Option sans fin | Délai maximal propre à l'option, puis échec au rapport |
 

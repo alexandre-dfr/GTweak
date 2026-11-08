@@ -5,18 +5,23 @@ using System.Linq;
 
 namespace GamingTweaker.Core
 {
-    /// <summary>Emplacements des données : à côté de l'exe si inscriptible, sinon sous ProgramData.</summary>
+    /// <summary>Emplacements des données : à côté de l'exe si inscriptible, sinon sous %ProgramFiles%\GamingTweaker (racine protégée).</summary>
     public class DataPaths
     {
         public string ProfilsDir { get; set; }
         public string MachineDir { get; set; }
         public string SessionsDir { get; set; }
-        /// <summary>Toujours sous ProgramData (jamais à côté de l'exe).</summary>
+        /// <summary>Toujours sous la racine protégée (jamais à côté de l'exe).</summary>
         public string QuarantineDir { get; set; }
 
-        public static string DefaultProgramDataRoot
+        /// <summary>
+        /// Racine protégée des données écrites avec des droits élevés et de la copie de la routine : %ProgramFiles%\GamingTweaker.
+        /// Un utilisateur standard ne peut rien créer sous Program Files (ni pré-créer ce dossier, ni y garder une poignée ouverte).
+        /// L'ancien emplacement C:\ProgramData\GamingTweaker n'est plus ni lu ni écrit.
+        /// </summary>
+        public static string RacineProtegeeParDefaut
         {
-            get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "GamingTweaker"); }
+            get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "GamingTweaker"); }
         }
 
         public static string MachineId(MachineFacts f)
@@ -30,26 +35,26 @@ namespace GamingTweaker.Core
         }
 
         /// <summary>
-        /// Racine des données : ProgramData si l'exe est dans le dossier ProgramData (copie lancée par la routine, App\),
-        /// sinon à côté de l'exe s'il est inscriptible, sinon ProgramData.
+        /// Racine des données : la racine protégée si l'exe est dedans (copie lancée par la routine, App\),
+        /// sinon à côté de l'exe s'il est inscriptible, sinon la racine protégée.
         /// </summary>
-        public static DataPaths Resolve(string exeDir, MachineFacts f, string programDataRoot)
+        public static DataPaths Resolve(string exeDir, MachineFacts f, string racineProtegee)
         {
-            var root = !EstSous(exeDir, programDataRoot) && IsWritable(exeDir) ? exeDir : programDataRoot;
-            return Build(root, f, programDataRoot);
+            var root = !EstSous(exeDir, racineProtegee) && IsWritable(exeDir) ? exeDir : racineProtegee;
+            return Build(root, f, racineProtegee);
         }
 
-        /// <summary>Emplacements utilisés par la routine planifiée (racine ProgramData).</summary>
-        public static DataPaths ResolveRoutine(MachineFacts f, string programDataRoot)
+        /// <summary>Emplacements utilisés par la routine planifiée (racine protégée).</summary>
+        public static DataPaths ResolveRoutine(MachineFacts f, string racineProtegee)
         {
-            return Build(programDataRoot, f, programDataRoot);
+            return Build(racineProtegee, f, racineProtegee);
         }
 
         /// <summary>Racines à lire par l'historique et « Tout restaurer » : la racine interactive puis celle de la routine (sans doublon).</summary>
-        public static List<DataPaths> Racines(DataPaths interactive, MachineFacts f, string programDataRoot)
+        public static List<DataPaths> Racines(DataPaths interactive, MachineFacts f, string racineProtegee)
         {
             var res = new List<DataPaths> { interactive };
-            var routine = ResolveRoutine(f, programDataRoot);
+            var routine = ResolveRoutine(f, racineProtegee);
             if (!MemeDossier(routine.MachineDir, interactive.MachineDir)) res.Add(routine);
             return res;
         }
@@ -72,7 +77,7 @@ namespace GamingTweaker.Core
             catch (Exception) { return false; }
         }
 
-        private static DataPaths Build(string root, MachineFacts f, string programDataRoot)
+        private static DataPaths Build(string root, MachineFacts f, string racineProtegee)
         {
             var machine = Path.Combine(root, "Machines", MachineId(f));
             return new DataPaths
@@ -80,7 +85,7 @@ namespace GamingTweaker.Core
                 ProfilsDir = Path.Combine(root, "Profils"),
                 MachineDir = machine,
                 SessionsDir = Path.Combine(machine, "Sessions"),
-                QuarantineDir = Path.Combine(programDataRoot, "Quarantaine"),
+                QuarantineDir = Path.Combine(racineProtegee, "Quarantaine"),
             };
         }
 

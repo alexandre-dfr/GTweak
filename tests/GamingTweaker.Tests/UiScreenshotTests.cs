@@ -277,7 +277,7 @@ namespace GamingTweaker.Tests
                 Capture(win, "0" + (i + 1) + "-" + noms[i].Replace(' ', '-').Replace("à", "a").Replace("é", "e"));
             }
             // Barre de routine (tâche 16) : état simulé, aucune tâche réelle.
-            vm.Routine = new RoutineViewModel(vm, c => { }, () => { }, () => new RoutineEtat { Existe = true, Jour = DayOfWeek.Sunday, Heure = new TimeSpan(20, 0, 0), ProfilChemin = @"C:\ProgramData\GamingTweaker\Routine\gaming.json" });
+            vm.Routine = new RoutineViewModel(vm, c => { }, () => { }, () => new RoutineEtat { Existe = true, Jour = DayOfWeek.Sunday, Heure = new TimeSpan(20, 0, 0), ProfilChemin = @"C:\Program Files\GamingTweaker\App\gaming.json" });
             vm.Routine.ActualiserAsync().Wait(2000); Pump(d);
             vm.MenuCourant = "Optimisation"; Pump(d);
             var dossierRoutine = Path.Combine(Dossier, "taches-14-16"); Directory.CreateDirectory(dossierRoutine);

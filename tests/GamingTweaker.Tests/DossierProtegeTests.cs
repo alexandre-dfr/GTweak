@@ -13,12 +13,13 @@ using Xunit.Abstractions;
 namespace GamingTweaker.Tests
 {
     /// <summary>
-    /// Sécurisation du dossier de données élevé. Logique de décision pure, puis application réelle sur un dossier sous %TEMP%
-    /// (jamais sur C:\ProgramData\GamingTweaker).
+    /// Racine protégée des données élevées. Logique de décision pure, puis création et vérification réelles sous %TEMP%
+    /// (jamais sous %ProgramFiles%\GamingTweaker). Un élément douteux fait échouer (refus), rien n'est repris ni supprimé.
     /// </summary>
     public class DossierProtegeTests : IDisposable
     {
         private const string Systeme = "S-1-5-18", Admins = "S-1-5-32-544", Users = "S-1-5-32-545", Utilisateur = "S-1-5-21-1-2-3-1001";
+        private const string TrustedInstaller = "S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464";
         private readonly ITestOutputHelper sortie;
         private readonly string tmp = Path.Combine(Path.GetTempPath(), "gt-protege-" + Guid.NewGuid().ToString("N"));
 
@@ -26,60 +27,71 @@ namespace GamingTweaker.Tests
 
         // ---------- Décision pure ----------
 
-        private static EntreeProtection E(bool racine = false, bool dossier = true, bool lien = false, int liens = 1, string proprio = Admins, bool daclSure = true)
-            => new EntreeProtection { EstRacine = racine, EstDossier = dossier, EstLien = lien, NombreLiens = liens, ProprietaireSid = proprio, DaclSure = daclSure };
+        private static EntreeProtection E(bool racine = false, bool dossier = true, bool lien = false, int liens = 1, string proprio = Admins, bool daclSure = true, bool volumeInattendu = false)
+            => new EntreeProtection { EstRacine = racine, EstDossier = dossier, EstLien = lien, NombreLiens = liens, ProprietaireSid = proprio, DaclSure = daclSure, EstVolumeInattendu = volumeInattendu };
 
         [Fact]
-        public void Proprietaires_de_confiance_sont_system_et_administrateurs()
+        public void Proprietaires_de_confiance_sont_system_administrateurs_et_trustedinstaller()
         {
             Assert.True(DossierProtege.ProprietaireDeConfiance(Systeme));
             Assert.True(DossierProtege.ProprietaireDeConfiance(Admins));
+            Assert.True(DossierProtege.ProprietaireDeConfiance(TrustedInstaller));
             Assert.False(DossierProtege.ProprietaireDeConfiance(Users));
             Assert.False(DossierProtege.ProprietaireDeConfiance(Utilisateur));
             Assert.False(DossierProtege.ProprietaireDeConfiance(null));
         }
 
         [Fact]
-        public void Racine_est_toujours_reappliquee()
+        public void Racine_de_confiance_est_acceptee_et_sa_dacl_reappliquee()
         {
-            var d = DossierProtege.Decider(E(racine: true), @"C:\x");
-            Assert.Equal(ActionProtection.Appliquer, d.Action);
-            Assert.Null(d.Avertissement);
-        }
-
-        [Fact]
-        public void Proprietaire_non_fiable_est_repris_avec_avertissement()
-        {
-            foreach (var racine in new[] { true, false })
+            foreach (var p in new[] { Systeme, Admins, TrustedInstaller })
             {
-                var d = DossierProtege.Decider(E(racine: racine, proprio: Utilisateur), @"C:\x\Machines");
+                var d = DossierProtege.Decider(E(racine: true, proprio: p), true, @"C:\x");
                 Assert.Equal(ActionProtection.Appliquer, d.Action);
-                Assert.Contains(Utilisateur, d.Avertissement);
-                Assert.Contains(@"C:\x\Machines", d.Avertissement);
+                Assert.Null(d.Raison);
             }
         }
 
         [Fact]
-        public void Lien_jonction_ou_lien_physique_est_supprime_sans_etre_suivi()
+        public void Racine_au_proprietaire_non_fiable_ou_lien_est_refusee_jamais_reprise()
         {
-            Assert.Equal(ActionProtection.Supprimer, DossierProtege.Decider(E(lien: true), "j").Action);
-            Assert.Equal(ActionProtection.Supprimer, DossierProtege.Decider(E(racine: true, lien: true), "j").Action);
-            Assert.Equal(ActionProtection.Supprimer, DossierProtege.Decider(E(dossier: false, liens: 2), "f").Action);
-            Assert.NotNull(DossierProtege.Decider(E(dossier: false, liens: 2), "f").Avertissement);
+            var d = DossierProtege.Decider(E(racine: true, proprio: Utilisateur), true, @"C:\x");
+            Assert.Equal(ActionProtection.Refuser, d.Action);
+            Assert.Contains("propriétaire non fiable", d.Raison);
+            Assert.Contains(Utilisateur, d.Raison);
+            Assert.Equal(ActionProtection.Refuser, DossierProtege.Decider(E(racine: true, lien: true), true, @"C:\x").Action);
+            Assert.Equal(ActionProtection.Refuser, DossierProtege.Decider(E(racine: true, lien: true), false, @"C:\x").Action);
+            Assert.Equal(ActionProtection.Refuser, DossierProtege.Decider(E(racine: true, dossier: false), true, @"C:\x").Action);
         }
 
         [Fact]
-        public void Descendant_sain_est_laisse_tel_quel_sinon_normalise()
+        public void Contenu_douteux_est_refuse()
         {
-            Assert.Equal(ActionProtection.Aucune, DossierProtege.Decider(E(), "d").Action);
-            Assert.Equal(ActionProtection.Aucune, DossierProtege.Decider(E(dossier: false, proprio: Systeme), "f").Action);
-            Assert.Equal(ActionProtection.Appliquer, DossierProtege.Decider(E(daclSure: false), "d").Action);
+            Assert.Equal(ActionProtection.Refuser, DossierProtege.Decider(E(lien: true), true, "j").Action);
+            Assert.Equal(ActionProtection.Refuser, DossierProtege.Decider(E(dossier: false, liens: 2), true, "f").Action);
+            Assert.Equal(ActionProtection.Refuser, DossierProtege.Decider(E(volumeInattendu: true), true, "m").Action);
+            Assert.Equal(ActionProtection.Refuser, DossierProtege.Decider(E(dossier: false, proprio: Utilisateur), true, "App\\x.dll").Action);
+        }
+
+        [Fact]
+        public void Hors_elevation_le_proprietaire_n_est_pas_verifie()
+        {
+            Assert.Equal(ActionProtection.Appliquer, DossierProtege.Decider(E(racine: true, proprio: Utilisateur), false, "r").Action);
+            Assert.Equal(ActionProtection.Aucune, DossierProtege.Decider(E(proprio: Utilisateur), false, "d").Action);
+        }
+
+        [Fact]
+        public void Descendant_sain_est_laisse_tel_quel_sinon_sa_dacl_est_reecrite()
+        {
+            Assert.Equal(ActionProtection.Aucune, DossierProtege.Decider(E(), true, "d").Action);
+            Assert.Equal(ActionProtection.Aucune, DossierProtege.Decider(E(dossier: false, proprio: Systeme), true, "f").Action);
+            Assert.Equal(ActionProtection.Appliquer, DossierProtege.Decider(E(daclSure: false), true, "d").Action);
         }
 
         private static AceInfo Ace(string sid, FileSystemRights r, bool autorise = true) => new AceInfo { Sid = sid, Masque = (int)r, Autorise = autorise };
 
         [Fact]
-        public void Dacl_sure_n_accorde_l_ecriture_qu_a_system_et_aux_administrateurs()
+        public void Dacl_sure_n_accorde_l_ecriture_qu_aux_comptes_de_confiance()
         {
             Assert.True(DossierProtege.DaclSure(new[] { Ace(Systeme, FileSystemRights.FullControl), Ace(Admins, FileSystemRights.FullControl), Ace(Users, FileSystemRights.ReadAndExecute) }));
             Assert.True(DossierProtege.DaclSure(new[] { Ace(Admins, FileSystemRights.FullControl), Ace(Users, FileSystemRights.Write, autorise: false) }));
@@ -87,21 +99,28 @@ namespace GamingTweaker.Tests
             Assert.False(DossierProtege.DaclSure(new[] { Ace(Users, FileSystemRights.AppendData) }));
             Assert.False(DossierProtege.DaclSure(new[] { Ace(Utilisateur, FileSystemRights.Modify) }));
             Assert.False(DossierProtege.DaclSure(new[] { new AceInfo { Sid = "S-1-3-0", Masque = 0x10000000, Autorise = true } })); // CREATOR OWNER GENERIC_ALL
-            Assert.False(DossierProtege.DaclSure(null)); // DACL nulle : tout le monde a tous les droits
+            Assert.False(DossierProtege.DaclSure(null));
         }
 
         [Fact]
         public void Dacl_attendue_system_admins_controle_total_users_lecture()
         {
-            var acl = DossierProtege.DaclAttendue(true);
-            var aces = acl.Cast<CommonAce>().ToList();
+            var aces = DossierProtege.DaclAttendue(true).Cast<CommonAce>().ToList();
             Assert.Equal(3, aces.Count);
-            Assert.All(aces, a => Assert.Equal(AceQualifier.AccessAllowed, a.AceQualifier));
             Assert.All(aces, a => Assert.Equal(AceFlags.ContainerInherit | AceFlags.ObjectInherit, a.AceFlags));
             Assert.Equal((int)FileSystemRights.FullControl, aces.Single(a => a.SecurityIdentifier.Value == Systeme).AccessMask);
             Assert.Equal((int)FileSystemRights.FullControl, aces.Single(a => a.SecurityIdentifier.Value == Admins).AccessMask);
             Assert.Equal((int)(FileSystemRights.ReadAndExecute | FileSystemRights.Synchronize), aces.Single(a => a.SecurityIdentifier.Value == Users).AccessMask);
             Assert.All(DossierProtege.DaclAttendue(false).Cast<CommonAce>(), a => Assert.Equal(AceFlags.None, a.AceFlags));
+        }
+
+        [Fact]
+        public void La_racine_protegee_est_sous_program_files_et_plus_sous_programdata()
+        {
+            var r = DataPaths.RacineProtegeeParDefaut;
+            Assert.Equal(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "GamingTweaker"), r);
+            Assert.DoesNotContain("ProgramData", r, StringComparison.OrdinalIgnoreCase);
+            Assert.StartsWith(r, Planification.ExeCopie);
         }
 
         // ---------- Application réelle sous %TEMP% ----------
@@ -132,79 +151,100 @@ namespace GamingTweaker.Tests
             Assert.Equal(FileSystemRights.ReadAndExecute | FileSystemRights.Synchronize, regles.Single(r => r.IdentityReference.Value == Users).FileSystemRights);
         }
 
+        private string Sddl(string chemin, bool dossier)
+            => (dossier ? (FileSystemSecurity)new DirectoryInfo(chemin).GetAccessControl() : new FileInfo(chemin).GetAccessControl()).GetSecurityDescriptorSddlForm(AccessControlSections.Access);
+
         [Fact]
-        public void Securiser_applique_la_dacl_protegee_recursivement_et_retire_liens_et_jonctions()
+        public void Dossier_absent_est_cree_de_facon_atomique_avec_la_dacl_protegee()
         {
+            bool eleve = EstEleve();
+            var racine = Path.Combine(tmp, "Neuf");
+            Directory.CreateDirectory(tmp);
+            DossierProtege.Securiser(racine, definirProprietaire: eleve);
+            VerifierDacl(new DirectoryInfo(racine).GetAccessControl(), racine);
+            // Création atomique d'un dossier (comme App\ à l'installation). Hors élévation, la racine protégée n'est plus inscriptible
+            // par l'utilisateur de test (voulu) : le dossier est créé à côté.
+            var app = eleve ? Path.Combine(racine, "App") : Path.Combine(tmp, "App");
+            DossierProtege.CreerDossier(app, eleve);
+            VerifierDacl(new DirectoryInfo(app).GetAccessControl(), app);
+            if (eleve) Assert.Equal(Admins, new DirectoryInfo(racine).GetAccessControl().GetOwner(typeof(SecurityIdentifier)).Value);
+            else sortie.WriteLine("Vérification du propriétaire ignorée : le lanceur de tests n'est pas élevé (le propriétaire Administrateurs ne peut être fixé qu'en élévation).");
+        }
+
+        [Fact]
+        public void Contenu_existant_recoit_la_dacl_protegee_sans_changer_de_proprietaire()
+        {
+            bool eleve = EstEleve();
             var racine = Path.Combine(tmp, "GamingTweaker");
-            var dehors = Path.Combine(tmp, "Dehors");
             Directory.CreateDirectory(Path.Combine(racine, "Machines", "PC-1", "Sessions"));
             Directory.CreateDirectory(Path.Combine(racine, "App"));
-            Directory.CreateDirectory(dehors);
             File.WriteAllText(Path.Combine(racine, "App", "GamingTweaker.exe"), "exe");
             File.WriteAllText(Path.Combine(racine, "Machines", "PC-1", "last-applied.json"), "[]");
-            var cibleDehors = Path.Combine(dehors, "cible.txt"); File.WriteAllText(cibleDehors, "dehors");
-            Jonction(Path.Combine(racine, "Machines", "piege"), dehors);
-            Assert.True(CreateHardLink(Path.Combine(racine, "App", "version.dll"), cibleDehors, IntPtr.Zero));
-            var avantDehors = new DirectoryInfo(dehors).GetAccessControl().GetSecurityDescriptorSddlForm(AccessControlSections.Access);
-            var avantCible = new FileInfo(cibleDehors).GetAccessControl().GetSecurityDescriptorSddlForm(AccessControlSections.Access);
+            var proprioAvant = new DirectoryInfo(racine).GetAccessControl().GetOwner(typeof(SecurityIdentifier)).Value;
 
-            bool eleve = EstEleve();
-            var avert = DossierProtege.Securiser(racine, definirProprietaire: eleve);
-
-            // Liens retirés, cibles intactes (ni suivies ni modifiées).
-            Assert.False(Directory.Exists(Path.Combine(racine, "Machines", "piege")));
-            Assert.False(File.Exists(Path.Combine(racine, "App", "version.dll")));
-            Assert.True(File.Exists(cibleDehors));
-            Assert.Equal(avantDehors, new DirectoryInfo(dehors).GetAccessControl().GetSecurityDescriptorSddlForm(AccessControlSections.Access));
-            Assert.Equal(avantCible, new FileInfo(cibleDehors).GetAccessControl().GetSecurityDescriptorSddlForm(AccessControlSections.Access));
-            Assert.Contains(avert, a => a.Contains("piege"));
-            Assert.Contains(avert, a => a.Contains("version.dll"));
+            DossierProtege.Securiser(racine, definirProprietaire: eleve);
 
             var dossiers = new[] { racine, Path.Combine(racine, "App"), Path.Combine(racine, "Machines"), Path.Combine(racine, "Machines", "PC-1"), Path.Combine(racine, "Machines", "PC-1", "Sessions") };
             foreach (var d in dossiers) VerifierDacl(new DirectoryInfo(d).GetAccessControl(), d);
             foreach (var f in new[] { Path.Combine(racine, "App", "GamingTweaker.exe"), Path.Combine(racine, "Machines", "PC-1", "last-applied.json") })
                 VerifierDacl(new FileInfo(f).GetAccessControl(), f);
-
-            if (eleve)
-            {
-                foreach (var d in dossiers)
-                    Assert.Equal(Admins, new DirectoryInfo(d).GetAccessControl().GetOwner(typeof(SecurityIdentifier)).Value);
-                Assert.Equal(Admins, new FileInfo(Path.Combine(racine, "App", "GamingTweaker.exe")).GetAccessControl().GetOwner(typeof(SecurityIdentifier)).Value);
-            }
-            else
-            {
-                // Non élevé : le propriétaire ne peut pas être fixé à BUILTIN\Administrators (privilège requis).
-                // La reprise du propriétaire est couverte par la décision pure ; ici seule la DACL est vérifiée.
-                sortie.WriteLine("Vérification du propriétaire ignorée : le lanceur de tests n'est pas élevé (SeTakeOwnership/SeRestore indisponibles).");
-                Assert.Contains(avert, a => a.Contains("Propriétaire"));
-            }
-
-            // Idempotent : une seconde passe ne signale plus de lien.
-            var avert2 = DossierProtege.Securiser(racine, definirProprietaire: eleve);
-            Assert.DoesNotContain(avert2, a => a.Contains("piege") || a.Contains("version.dll"));
+            Assert.Equal(proprioAvant, new DirectoryInfo(racine).GetAccessControl().GetOwner(typeof(SecurityIdentifier)).Value); // jamais repris
+            DossierProtege.Securiser(racine, definirProprietaire: eleve); // idempotent
         }
 
         [Fact]
-        public void Securiser_cree_le_dossier_absent()
-        {
-            var racine = Path.Combine(tmp, "Neuf");
-            DossierProtege.Securiser(racine, definirProprietaire: EstEleve());
-            Assert.True(Directory.Exists(racine));
-            VerifierDacl(new DirectoryInfo(racine).GetAccessControl(), racine);
-        }
-
-        [Fact]
-        public void Racine_jonction_est_remplacee_par_un_vrai_dossier()
+        public void Racine_jonction_est_refusee_et_sa_cible_n_est_pas_touchee()
         {
             var cible = Path.Combine(tmp, "Cible"); Directory.CreateDirectory(cible);
             File.WriteAllText(Path.Combine(cible, "garder.txt"), "x");
+            var avant = Sddl(cible, true);
             var racine = Path.Combine(tmp, "Racine");
             Jonction(racine, cible);
-            var avert = DossierProtege.Securiser(racine, definirProprietaire: EstEleve());
-            Assert.False(new DirectoryInfo(racine).Attributes.HasFlag(FileAttributes.ReparsePoint));
+            var ex = Assert.ThrowsAny<Exception>(() => DossierProtege.Securiser(racine, definirProprietaire: EstEleve()));
+            Assert.Contains("lien ou jonction", ex.Message);
+            Assert.True(new DirectoryInfo(racine).Attributes.HasFlag(FileAttributes.ReparsePoint)); // ni supprimée ni remplacée
             Assert.True(File.Exists(Path.Combine(cible, "garder.txt")));
-            Assert.False(new DirectoryInfo(cible).GetAccessControl().AreAccessRulesProtected);
-            Assert.NotEmpty(avert);
+            Assert.Equal(avant, Sddl(cible, true));
+        }
+
+        [Fact]
+        public void Jonction_ou_lien_physique_dans_le_contenu_est_refuse_sans_toucher_la_cible()
+        {
+            var dehors = Path.Combine(tmp, "Dehors"); Directory.CreateDirectory(dehors);
+            var cibleDehors = Path.Combine(dehors, "cible.txt"); File.WriteAllText(cibleDehors, "dehors");
+            var avantDehors = Sddl(dehors, true); var avantCible = Sddl(cibleDehors, false);
+
+            var r1 = Path.Combine(tmp, "R1");
+            Directory.CreateDirectory(Path.Combine(r1, "Machines"));
+            Jonction(Path.Combine(r1, "Machines", "piege"), dehors);
+            var ex1 = Assert.ThrowsAny<Exception>(() => DossierProtege.Securiser(r1, definirProprietaire: EstEleve()));
+            Assert.Contains("piege", ex1.Message);
+
+            var r2 = Path.Combine(tmp, "R2");
+            Directory.CreateDirectory(Path.Combine(r2, "App"));
+            Assert.True(CreateHardLink(Path.Combine(r2, "App", "version.dll"), cibleDehors, IntPtr.Zero));
+            var ex2 = Assert.ThrowsAny<Exception>(() => DossierProtege.Securiser(r2, definirProprietaire: EstEleve()));
+            Assert.Contains("lien physique", ex2.Message);
+
+            Assert.Equal(avantDehors, Sddl(dehors, true));
+            Assert.Equal(avantCible, Sddl(cibleDehors, false));
+            Assert.True(File.Exists(Path.Combine(r2, "App", "version.dll"))); // rien n'est supprimé : refus
+        }
+
+        [Fact]
+        public void Element_ouvert_en_ecriture_par_un_autre_provoque_un_refus()
+        {
+            var racine = Path.Combine(tmp, "Ouvert");
+            Directory.CreateDirectory(racine);
+            var f = Path.Combine(racine, "occupe.bin");
+            File.WriteAllText(f, "x");
+            using (new FileStream(f, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite))
+            {
+                var ex = Assert.ThrowsAny<Exception>(() => DossierProtege.Securiser(racine, definirProprietaire: EstEleve()));
+                Assert.Contains("partage", ex.Message);
+                var r = DossierProtege.SecuriserAuDemarrage(racine, () => true, definirProprietaire: EstEleve());
+                Assert.NotNull(r.Erreur);
+            }
         }
 
         [Fact]
@@ -217,17 +257,14 @@ namespace GamingTweaker.Tests
         }
 
         [Fact]
-        public void Au_demarrage_les_avertissements_sont_journalises_dans_le_dossier()
+        public void Au_demarrage_un_dossier_non_sur_arrete_l_application()
         {
-            var racine = Path.Combine(tmp, "Journal");
-            Directory.CreateDirectory(racine);
             var cible = Path.Combine(tmp, "C2"); Directory.CreateDirectory(cible);
-            Jonction(Path.Combine(racine, "lien"), cible);
+            var racine = Path.Combine(tmp, "Lien");
+            Jonction(racine, cible);
             var r = DossierProtege.SecuriserAuDemarrage(racine, () => true, definirProprietaire: EstEleve());
-            Assert.Null(r.Erreur);
-            Assert.Contains(r.Avertissements, a => a.Contains("lien"));
-            if (EstEleve()) Assert.Contains("lien", File.ReadAllText(Path.Combine(racine, DossierProtege.NomJournal)));
-            else sortie.WriteLine("Vérification de securite.log ignorée : non élevé, le dossier sécurisé n'est plus inscriptible par l'utilisateur de test (comportement voulu).");
+            Assert.NotNull(r.Erreur);
+            Assert.Contains("n'est pas sûr", r.Erreur);
         }
 
         /// <summary>Le propriétaire (utilisateur courant, ou Administrateurs si élevé) remet l'héritage par icacls pour pouvoir supprimer le dossier de test.</summary>
@@ -240,7 +277,12 @@ namespace GamingTweaker.Tests
                 using (var p = Process.Start(psi)) { p.StandardOutput.ReadToEnd(); p.WaitForExit(30000); }
             }
             catch (Exception) { }
-            try { Directory.Delete(tmp, true); } catch (Exception) { }
+            // Suppression parfois refusée un instant (analyse antivirus, indexation) : quelques nouvelles tentatives.
+            for (int i = 0; i < 10 && Directory.Exists(tmp); i++)
+            {
+                try { Directory.Delete(tmp, true); }
+                catch (Exception) { System.Threading.Thread.Sleep(300); }
+            }
         }
     }
 }

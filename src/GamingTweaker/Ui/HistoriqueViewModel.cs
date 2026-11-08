@@ -35,7 +35,7 @@ namespace GamingTweaker.Ui
         public string EtatLibelle { get; set; }
         /// <summary>Session interrompue (Running) ou en échec interne (Failed) : mise en évidence.</summary>
         public bool Anormale { get; set; }
-        /// <summary>Session écrite par la routine planifiée (racine ProgramData).</summary>
+        /// <summary>Session écrite par la routine planifiée (racine protégée %ProgramFiles%\GamingTweaker).</summary>
         public bool DeLaRoutine { get; set; }
         /// <summary>Session « Running » alors qu'une exécution tient le verrou : elle est en cours, pas interrompue.</summary>
         public bool EnCoursExecution { get; set; }
@@ -93,7 +93,7 @@ namespace GamingTweaker.Ui
         private string rapportTexte = "";
         private string comparaison = "";
 
-        /// <param name="autresRacines">Autres racines dont les sessions sont aussi listées (routine planifiée sous ProgramData).</param>
+        /// <param name="autresRacines">Autres racines dont les sessions sont aussi listées (routine planifiée, racine protégée %ProgramFiles%\GamingTweaker).</param>
         public HistoriqueViewModel(DataPaths paths, IRestauration restauration, IReadOnlyList<CatalogItem> catalogue, QuarantineService quarantaine,
             Func<TimeSpan, IProgress<double>, CancellationToken, Task<MesureSnapshot>> prendreReleve = null, IEnumerable<DataPaths> autresRacines = null)
         {
