@@ -18,8 +18,8 @@ namespace GamingTweaker
 
         private void OnStartup(object sender, StartupEventArgs e)
         {
-            // Avant toute lecture ou écriture de C:\ProgramData\GamingTweaker : propriétaire Administrateurs, DACL protégée, liens retirés.
-            var protection = DossierProtege.SecuriserAuDemarrage(DataPaths.DefaultProgramDataRoot, ElevationCheck.EstAdministrateur);
+            // Avant toute lecture ou écriture de %ProgramFiles%\GamingTweaker : créé avec sa DACL protégée, ou vérifié (refus s'il n'est pas sûr).
+            var protection = DossierProtege.SecuriserAuDemarrage(DataPaths.RacineProtegeeParDefaut, ElevationCheck.EstAdministrateur);
             if (protection.Erreur != null)
             {
                 MessageBox.Show(protection.Erreur + "\r\n\r\nPar sécurité, GamingTweaker s'arrête.", "GamingTweaker", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -34,7 +34,7 @@ namespace GamingTweaker
                 Shutdown(2); return;
             }
             var facts = SystemInfo.Detect();
-            var paths = DataPaths.Resolve(AppDomain.CurrentDomain.BaseDirectory, facts, DataPaths.DefaultProgramDataRoot);
+            var paths = DataPaths.Resolve(AppDomain.CurrentDomain.BaseDirectory, facts, DataPaths.RacineProtegeeParDefaut);
             var pipeline = new RunPipeline(new RestorePoint(), ElevationCheck.SameUserAsDesktop);
 
             var registre = new ListProviderRegistry();
@@ -68,12 +68,12 @@ namespace GamingTweaker
             vm.Info = info;
             Exit += (s, ev) => info.Dispose();
 
-            // Racine interactive et racine de la routine (ProgramData) : historique et « Tout restaurer » lisent les deux.
-            var racines = DataPaths.Racines(paths, facts, DataPaths.DefaultProgramDataRoot);
+            // Racine interactive et racine de la routine (racine protégée) : historique et « Tout restaurer » lisent les deux.
+            var racines = DataPaths.Racines(paths, facts, DataPaths.RacineProtegeeParDefaut);
             var autresRacines = racines.Skip(1).ToList();
             var restauration = new RestaurationService(paths, ElevationCheck.SameUserAsDesktop, null, autresRacines);
             vm.Restauration = restauration;
-            // La quarantaine est unique (ProgramData\Quarantaine, partagée par les deux racines) ; les origines sont résolues via les journaux des deux racines.
+            // La quarantaine est unique (%ProgramFiles%\GamingTweaker\Quarantaine, partagée par les deux racines) ; les origines sont résolues via les journaux des deux racines.
             var quarantineDir = racines.Select(r => r.QuarantineDir).Distinct(StringComparer.OrdinalIgnoreCase).First();
             vm.Historique = new HistoriqueViewModel(paths, restauration, catalogue,
                 new QuarantineService(quarantineDir, racines.Select(r => r.SessionsDir).ToArray()), null, autresRacines)
@@ -98,10 +98,6 @@ namespace GamingTweaker
 
             fenetre = new Ui.MainWindow(vm);
             fenetre.Show();
-            if (protection.Avertissements.Count > 0)
-                MessageBox.Show(fenetre, "Le dossier de données a été corrigé :\r\n\r\n- " + string.Join("\r\n- ", protection.Avertissements)
-                    + "\r\n\r\nDétails dans " + System.IO.Path.Combine(DataPaths.DefaultProgramDataRoot, DossierProtege.NomJournal) + ".",
-                    "Dossier de données", MessageBoxButton.OK, MessageBoxImage.Warning);
             fenetre.LancerControlesDemarrage(paths);
             var _ = vm.DetectAsync();
             var __ = vm.Routine.ActualiserAsync();

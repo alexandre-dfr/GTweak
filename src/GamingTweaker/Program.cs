@@ -58,10 +58,9 @@ namespace GamingTweaker
         {
             // Le verrou d'instance est pris par RunPipeline.ExecuteAsync (interface et routine).
             if (!IsAdministrator()) { Console.Error.WriteLine("Droits administrateur requis pour appliquer un profil."); return 2; }
-            // Avant toute lecture (profil copié par la routine) ou écriture sous C:\ProgramData\GamingTweaker.
-            var protection = DossierProtege.SecuriserAuDemarrage(DataPaths.DefaultProgramDataRoot, IsAdministrator);
+            // Avant toute lecture (profil copié par la routine) ou écriture sous %ProgramFiles%\GamingTweaker : refus (code 2) s'il n'est pas sûr.
+            var protection = DossierProtege.SecuriserAuDemarrage(DataPaths.RacineProtegeeParDefaut, IsAdministrator);
             if (protection.Erreur != null) { Console.Error.WriteLine(protection.Erreur); return 2; }
-            foreach (var w in protection.Avertissements) Console.Error.WriteLine("Avertissement : " + w);
 
             var catalogue = Catalogue.LoadEmbedded();
             var load = Profils.Load(profilePath, catalogue.Where(c => !string.IsNullOrEmpty(c.Liste)).Select(c => c.Liste).Distinct());
@@ -72,9 +71,8 @@ namespace GamingTweaker
             var req = new RunRequest
             {
                 Selection = resolved.Selection, Silent = true, CatalogItems = catalogue.ToList(), Facts = facts,
-                Paths = DataPaths.Resolve(AppDomain.CurrentDomain.BaseDirectory, facts, DataPaths.DefaultProgramDataRoot),
+                Paths = DataPaths.Resolve(AppDomain.CurrentDomain.BaseDirectory, facts, DataPaths.RacineProtegeeParDefaut),
             };
-            req.Avertissements.AddRange(protection.Avertissements.Select(w => "Dossier de données corrigé : " + w));
             req.Avertissements.AddRange(load.Avertissements);
             req.Avertissements.AddRange(resolved.Inconnues.Select(id => "Option inconnue ignorée : " + id));
             req.Avertissements.AddRange(resolved.Incompatibles.Select(id => "Option incompatible avec ce PC, ignorée : " + id));

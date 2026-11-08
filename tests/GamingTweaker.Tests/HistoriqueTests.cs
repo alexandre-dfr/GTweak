@@ -275,8 +275,8 @@ namespace GamingTweaker.Tests
 
         private DataPaths Routine()
         {
-            var r = Path.Combine(tmp, "ProgramData", "Machines", "PC-1");
-            var p = new DataPaths { ProfilsDir = Path.Combine(tmp, "ProgramData", "Profils"), MachineDir = r, SessionsDir = Path.Combine(r, "Sessions"), QuarantineDir = paths.QuarantineDir };
+            var r = Path.Combine(tmp, "RacineProtegee", "Machines", "PC-1");
+            var p = new DataPaths { ProfilsDir = Path.Combine(tmp, "RacineProtegee", "Profils"), MachineDir = r, SessionsDir = Path.Combine(r, "Sessions"), QuarantineDir = paths.QuarantineDir };
             Directory.CreateDirectory(p.SessionsDir);
             return p;
         }

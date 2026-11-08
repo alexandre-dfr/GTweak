@@ -1880,10 +1880,11 @@ function Get-GTNvidiaLatest([string]$GpuName, [string]$Branch) {
     return $null
 }
 
-# Dossier de telechargement reserve aux administrateurs : C:\ProgramData\GamingTweaker\Telechargements ($GT_DownloadRoot le remplace dans les tests).
+# Dossier de telechargement reserve aux administrateurs : %ProgramFiles%\GamingTweaker\Telechargements, ou un utilisateur standard
+# ne peut rien pre-creer ($GT_DownloadRoot le remplace dans les tests).
 function Get-GTDownloadRoot {
     if ($GT_DownloadRoot) { return $GT_DownloadRoot }
-    return (Join-Path $env:ProgramData 'GamingTweaker\Telechargements')
+    return (Join-Path $env:ProgramFiles 'GamingTweaker\Telechargements')
 }
 
 # ACL en memoire : Administrateurs et SYSTEM en controle total, heritage coupe sans copie des droits herites (donc aucun droit pour les utilisateurs).

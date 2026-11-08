@@ -17,7 +17,7 @@ namespace GamingTweaker.Core
     {
         public DayOfWeek Jour { get; set; }
         public TimeSpan Heure { get; set; }
-        /// <summary>Chemin du fichier de profil à appliquer ; Install en copie le contenu dans ProgramData.</summary>
+        /// <summary>Chemin du fichier de profil à appliquer ; Install le copie dans %ProgramFiles%\GamingTweaker\App.</summary>
         public string Profil { get; set; }
     }
 
@@ -33,20 +33,25 @@ namespace GamingTweaker.Core
 
     /// <summary>
     /// Routine hebdomadaire : tâche \GamingTweaker\Routine (droits élevés, compte interactif) qui lance la copie de l'exe
-    /// placée dans ProgramData avec « --profile &lt;copie du profil&gt; --silent ». Seule la construction du XML est pure.
+    /// placée dans %ProgramFiles%\GamingTweaker\App avec « --profile &lt;copie du profil&gt; --silent ». Seule la construction du XML est pure.
     /// </summary>
     public static class Planification
     {
         public const string NomTache = @"\GamingTweaker\Routine";
         private const string Ns = "http://schemas.microsoft.com/windows/2004/02/mit/task";
 
-        public static string DossierCopie { get { return DataPaths.DefaultProgramDataRoot; } }
-        /// <summary>Sous-dossier de l'exe lancé par la tâche : rien d'autre n'y est écrit.</summary>
+        /// <summary>Racine protégée %ProgramFiles%\GamingTweaker.</summary>
+        public static string DossierCopie { get { return DataPaths.RacineProtegeeParDefaut; } }
+        /// <summary>Sous-dossier de l'exe lancé par la tâche et de la copie du profil : rien d'autre n'y est écrit.</summary>
         public static string DossierApp { get { return Path.Combine(DossierCopie, "App"); } }
         public static string ExeCopie { get { return Path.Combine(DossierApp, "GamingTweaker.exe"); } }
-        /// <summary>Emplacement de la copie des versions précédentes (racine de ProgramData), retirée par Install et Remove.</summary>
-        private static string ExeCopieAncienne { get { return Path.Combine(DossierCopie, "GamingTweaker.exe"); } }
-        public static string DossierProfil { get { return Path.Combine(DossierCopie, "Routine"); } }
+
+        /// <summary>Vrai si l'exe en cours est déjà la copie de la routine (interface lancée depuis App\) : elle n'est alors ni supprimée ni recopiée.</summary>
+        public static bool DepuisLaCopie(string exeEnCours, string exeCopie)
+        {
+            try { return string.Equals(Path.GetFullPath(exeEnCours), Path.GetFullPath(exeCopie), StringComparison.OrdinalIgnoreCase); }
+            catch (Exception) { return false; }
+        }
 
         public const string MessageAutreCompte = "La routine n'a pas été planifiée : GamingTweaker tourne sous un autre compte que celui du bureau, la tâche serait enregistrée pour ce compte. Planifiez depuis la session de l'utilisateur, avec un compte administrateur.";
         public const string MessagePourcent = "La routine n'a pas été planifiée : le nom du profil contient « % », que le Planificateur de tâches remplacerait par une variable d'environnement. Renommez le profil.";
@@ -139,7 +144,7 @@ namespace GamingTweaker.Core
 
         // ---------- Effets système (jamais appelés par les tests) ----------
 
-        /// <summary>Copie l'exe et le profil dans ProgramData puis crée la tâche (schtasks /Create /XML ... /F, qui remplace l'existante).</summary>
+        /// <summary>Copie l'exe et le profil dans %ProgramFiles%\GamingTweaker\App puis crée la tâche (schtasks /Create /XML ... /F, qui remplace l'existante).</summary>
         public static void Install(RoutineConfig c)
         {
             if (c == null || string.IsNullOrWhiteSpace(c.Profil) || !File.Exists(c.Profil)) throw new InvalidOperationException("Profil introuvable : " + (c == null ? "" : c.Profil));
@@ -149,29 +154,29 @@ namespace GamingTweaker.Core
             // La tâche est enregistrée pour le compte courant : élevé par un autre administrateur, ce ne serait pas l'utilisateur du bureau.
             if (!ElevationCheck.SameUserAsDesktop()) throw new InvalidOperationException(MessageAutreCompte);
 
-            // Dossier sécurisé (propriétaire Administrateurs, DACL protégée, contenu non fiable supprimé) avant d'y copier l'exe lancé élevé.
-            var avert = DossierProtege.Securiser(DossierCopie);
-            DossierProtege.Journaliser(DossierCopie, avert);
-
-            // App\ est vidé et recréé : un .config (appDomainManager), une DLL de détournement ou un ancien exe pré-déposés ne doivent jamais
-            // survivre à côté de l'exe lancé élevé par la tâche. Un échec interrompt l'installation.
-            try
-            {
-                if (Directory.Exists(DossierApp)) Directory.Delete(DossierApp, true);
-                Directory.CreateDirectory(DossierApp);
-            }
-            catch (Exception ex) { throw new IOException("Le dossier " + DossierApp + " n'a pas pu être vidé avant la copie de l'exe : " + ex.Message, ex); }
+            // Racine protégée vérifiée (refus si elle n'est pas sûre) avant d'y copier l'exe lancé élevé.
+            DossierProtege.Securiser(DossierCopie);
 
             var source = Process.GetCurrentProcess().MainModule.FileName;
-            File.Copy(source, ExeCopie, true);
-            try { if (File.Exists(ExeCopieAncienne)) File.Delete(ExeCopieAncienne); } catch (Exception) { }
-
-            if (Directory.Exists(DossierProfil)) Directory.Delete(DossierProfil, true);
-            Directory.CreateDirectory(DossierProfil);
-            var copieProfil = Path.Combine(DossierProfil, Path.GetFileName(c.Profil));
-            File.Copy(c.Profil, copieProfil, true);
-            // L'exe et le profil fraîchement copiés reçoivent la DACL protégée explicite (plutôt que l'héritage seul).
-            DossierProtege.Journaliser(DossierCopie, DossierProtege.Securiser(DossierCopie));
+            if (DepuisLaCopie(source, ExeCopie))
+            {
+                // Interface lancée depuis la copie : l'exe en cours ne peut être ni supprimé ni recopié ; seules les anciennes copies de profil sont retirées.
+                foreach (var f in Directory.GetFiles(DossierApp))
+                    if (!DepuisLaCopie(f, ExeCopie)) File.Delete(f);
+            }
+            else
+            {
+                // App\ est vidé puis recréé de façon atomique avec la DACL protégée. Un échec interrompt l'installation.
+                try
+                {
+                    if (Directory.Exists(DossierApp)) Directory.Delete(DossierApp, true);
+                    DossierProtege.CreerDossier(DossierApp);
+                }
+                catch (Exception ex) { throw new IOException("Le dossier " + DossierApp + " n'a pas pu être vidé avant la copie de l'exe : " + ex.Message, ex); }
+                File.Copy(source, ExeCopie, true);
+            }
+            var copieProfil = Path.Combine(DossierApp, Path.GetFileName(c.Profil));
+            File.Copy(c.Profil, copieProfil, true); // hérite de la DACL protégée d'App\
 
             string user;
             using (var id = WindowsIdentity.GetCurrent()) user = id.User != null ? id.User.Value : id.Name;
@@ -188,17 +193,25 @@ namespace GamingTweaker.Core
             finally { try { File.Delete(tmp); } catch (Exception) { } }
         }
 
-        /// <summary>Supprime la tâche, la copie de l'exe et celle du profil. Le dossier Machines (sessions, journaux, mesures) n'est jamais touché.</summary>
+        /// <summary>Supprime la tâche, puis le dossier App\ (copies de l'exe et du profil). Machines (sessions, journaux, mesures) n'est jamais touché.</summary>
         public static void Remove()
         {
             // Toujours tenté (une lecture en échec ne doit pas laisser la tâche en place) ; « introuvable » vaut succès.
             string sortie;
             int code = Schtasks("/Delete /TN \"" + NomTache + "\" /F", out sortie);
             if (!SuppressionReussie(code, sortie)) throw new InvalidOperationException("schtasks n'a pas supprimé la tâche (code " + code + ") : " + sortie.Trim());
+            // Interface lancée depuis la copie : l'exe en cours ne peut pas être supprimé ; le profil copié l'est.
+            var source = Process.GetCurrentProcess().MainModule.FileName;
             var erreurs = new List<string>();
-            try { if (File.Exists(ExeCopie)) File.Delete(ExeCopie); } catch (Exception ex) { erreurs.Add(ExeCopie + " : " + ex.Message); }
-            try { if (File.Exists(ExeCopieAncienne)) File.Delete(ExeCopieAncienne); } catch (Exception ex) { erreurs.Add(ExeCopieAncienne + " : " + ex.Message); }
-            try { if (Directory.Exists(DossierProfil)) Directory.Delete(DossierProfil, true); } catch (Exception ex) { erreurs.Add(DossierProfil + " : " + ex.Message); }
+            try
+            {
+                if (DepuisLaCopie(source, ExeCopie))
+                {
+                    foreach (var f in Directory.GetFiles(DossierApp)) if (!DepuisLaCopie(f, ExeCopie)) File.Delete(f);
+                }
+                else if (Directory.Exists(DossierApp)) Directory.Delete(DossierApp, true);
+            }
+            catch (Exception ex) { erreurs.Add(DossierApp + " : " + ex.Message); }
             if (erreurs.Count > 0) throw new IOException("La tâche est supprimée, mais des copies n'ont pas pu l'être : " + string.Join(" ; ", erreurs));
         }
 

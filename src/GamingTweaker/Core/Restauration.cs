@@ -34,7 +34,7 @@ namespace GamingTweaker.Core
         private readonly Func<bool> sameUser;
         private readonly string lockName;
 
-        /// <param name="autresRacines">Autres racines de données lues aussi (celle de la routine planifiée sous ProgramData).</param>
+        /// <param name="autresRacines">Autres racines de données lues aussi (celle de la routine planifiée, racine protégée %ProgramFiles%\GamingTweaker).</param>
         public RestaurationService(DataPaths paths, Func<bool> sameUser = null, string lockName = null, IEnumerable<DataPaths> autresRacines = null)
         {
             this.paths = paths; this.sameUser = sameUser; this.lockName = lockName;

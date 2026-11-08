@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
 using System.Xml.Linq;
 using GamingTweaker.Core;
@@ -10,21 +11,21 @@ namespace GamingTweaker.Tests
     /// <summary>Seul BuildTaskXml (pur) est testé : Install, Remove et Query créent, suppriment ou lisent une vraie tâche planifiée.</summary>
     public class PlanificationTests
     {
-        private const string Exe = @"C:\ProgramData\GamingTweaker\App\GamingTweaker.exe";
-        private const string Profil = @"C:\ProgramData\GamingTweaker\Routine\profil.json";
+        private const string Exe = @"C:\Program Files\GamingTweaker\App\GamingTweaker.exe";
+        private const string Profil = @"C:\Program Files\GamingTweaker\App\profil.json";
         private static readonly XNamespace Ns = "http://schemas.microsoft.com/windows/2004/02/mit/task";
 
         private static RoutineConfig Cfg() { return new RoutineConfig { Jour = DayOfWeek.Sunday, Heure = new TimeSpan(20, 30, 0), Profil = "gaming" }; }
         private static string Xml() { return Planification.BuildTaskXml(Cfg(), Exe, Profil, @"PC\moi"); }
 
-        [Fact] public void Xml_utilise_la_copie_dans_programdata() => Assert.Contains(@"C:\ProgramData\GamingTweaker\App\GamingTweaker.exe", Xml());
+        [Fact] public void Xml_utilise_la_copie_dans_program_files() => Assert.Contains(@"C:\Program Files\GamingTweaker\App\GamingTweaker.exe", Xml());
 
         [Fact]
         public void Xml_passe_le_profil_et_silent()
         {
             var xml = Xml();
             Assert.Contains("--profile", xml); Assert.Contains("--silent", xml);
-            Assert.Contains(@"C:\ProgramData\GamingTweaker\Routine\profil.json", xml);
+            Assert.Contains(@"C:\Program Files\GamingTweaker\App\profil.json", xml);
         }
 
         [Fact]
@@ -182,7 +183,16 @@ namespace GamingTweaker.Tests
         public void Nom_de_tache_et_dossiers_sont_ceux_de_la_specification()
         {
             Assert.Equal(@"\GamingTweaker\Routine", Planification.NomTache);
-            Assert.Equal(@"C:\ProgramData\GamingTweaker\App\GamingTweaker.exe", Planification.ExeCopie);
+            Assert.Equal(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "GamingTweaker", "App", "GamingTweaker.exe"), Planification.ExeCopie);
+            Assert.Equal(@"C:\Program Files\GamingTweaker\App\GamingTweaker.exe", Planification.ExeCopie); // processus x64
+        }
+
+        [Fact]
+        public void Reinstallation_depuis_la_copie_ne_supprime_ni_ne_recopie_l_exe_en_cours()
+        {
+            Assert.True(Planification.DepuisLaCopie(Planification.ExeCopie, Planification.ExeCopie));
+            Assert.True(Planification.DepuisLaCopie(Planification.ExeCopie.ToUpperInvariant(), Planification.ExeCopie));
+            Assert.False(Planification.DepuisLaCopie(@"C:\Users\moi\Downloads\GamingTweaker.exe", Planification.ExeCopie));
         }
 
         // ---------- Revue lots 14-16 ----------
