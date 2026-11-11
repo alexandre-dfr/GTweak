@@ -1,7 +1,8 @@
 name: Build
 
-# Compile l'exe Release (net48, WPF) sur Windows, lance les tests et publie GamingTweaker.exe en artefact.
-# Téléchargement : onglet Actions, exécution du jour, section « Artifacts ».
+# Compile l'exe Release (net48, WPF) sur Windows, le publie dans la pré-version « test-build » du dépôt
+# (onglet Releases ; le quota de stockage des artefacts Actions du compte est épuisé, les releases n'y sont pas soumises),
+# puis lance les tests : un échec des tests fait échouer le job mais l'exe est déjà publié.
 on:
   push:
     branches: ['**']
@@ -9,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -28,41 +29,49 @@ jobs:
       - name: Compiler (Release, requireAdministrator)
         run: dotnet build src/GamingTweaker/GamingTweaker.csproj -c Release --no-restore
 
-      - name: Vérifier le manifeste de l'exe
+      - name: Vérifier l'exe et préparer la publication
+        id: exe
         shell: pwsh
         run: |
           $exe = 'src/GamingTweaker/bin/Release/net48/GamingTweaker.exe'
           if (-not (Test-Path $exe)) { throw "exe introuvable : $exe" }
-          $bytes = [IO.File]::ReadAllBytes($exe)
-          $txt = [Text.Encoding]::ASCII.GetString($bytes)
+          $txt = [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($exe))
           if ($txt -notmatch 'requireAdministrator') { throw 'Le manifeste requireAdministrator est absent de l''exe Release.' }
           if ($txt -notmatch 'PerMonitorV2') { throw 'Le manifeste DPI PerMonitorV2 est absent de l''exe Release.' }
-          Get-Item $exe | Select-Object Name, Length, @{n='Version';e={$_.VersionInfo.FileVersion}}
-          "SHA-256 : " + (Get-FileHash $exe -Algorithm SHA256).Hash
+          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash
+          $ver = (Get-Item $exe).VersionInfo.FileVersion
+          "version=$ver" >> $env:GITHUB_OUTPUT
+          "hash=$hash" >> $env:GITHUB_OUTPUT
+          New-Item -ItemType Directory -Force publication | Out-Null
+          Copy-Item $exe, 'src/GamingTweaker/bin/Release/net48/GamingTweaker.exe.config' publication/
+          "GamingTweaker.exe $ver`nSHA-256 : $hash`nCommit : $env:GITHUB_SHA`nBranche : $env:GITHUB_REF_NAME" | Set-Content publication/SHA256.txt -Encoding utf8
+          Get-Content publication/SHA256.txt
+
+      - name: Publier dans la pré-version test-build
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = 'test-build'
+          gh release delete $tag --yes --cleanup-tag 2>$null; if ($LASTEXITCODE -ne 0) { Write-Host 'aucune pré-version précédente' }
+          $notes = "Build de test automatique, non signé (SmartScreen avertira).`n`nBranche : $env:GITHUB_REF_NAME`nCommit : $env:GITHUB_SHA`nVersion : ${{ steps.exe.outputs.version }}`nSHA-256 : ${{ steps.exe.outputs.hash }}`n`nLancer GamingTweaker.exe (UAC), vérifier le hash avec ``Get-FileHash GamingTweaker.exe``."
+          gh release create $tag publication/GamingTweaker.exe publication/GamingTweaker.exe.config publication/SHA256.txt --prerelease --target $env:GITHUB_SHA --title "Build de test ($env:GITHUB_REF_NAME, ${{ steps.exe.outputs.version }})" --notes $notes
+          if ($LASTEXITCODE -ne 0) { throw 'Publication de la pré-version impossible.' }
+          Write-Host "::notice::Exe publié : https://github.com/$env:GITHUB_REPOSITORY/releases/tag/$tag"
 
       - name: Tests
-        id: tests
-        continue-on-error: true
         run: dotnet test tests/GamingTweaker.Tests/GamingTweaker.Tests.csproj -c Release --no-restore --logger "trx;LogFileName=tests.trx" --results-directory TestResults
 
-      - name: Publier l'exe
-        uses: actions/upload-artifact@v4
-        with:
-          name: GamingTweaker-exe
-          path: |
-            src/GamingTweaker/bin/Release/net48/GamingTweaker.exe
-            src/GamingTweaker/bin/Release/net48/GamingTweaker.exe.config
-          if-no-files-found: error
-
-      - name: Publier les résultats de tests
+      - name: Résumé des tests
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: resultats-tests
-          path: TestResults
-          if-no-files-found: ignore
-
-      - name: Bilan des tests
-        if: steps.tests.outcome == 'failure'
+        shell: pwsh
         run: |
-          echo "::warning::Des tests ont échoué : voir l'artefact resultats-tests. L'exe est publié malgré tout."
+          $trx = Get-ChildItem TestResults -Filter *.trx -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $trx) { "Aucun résultat de tests (compilation des tests en échec ?)." >> $env:GITHUB_STEP_SUMMARY; exit 0 }
+          [xml]$x = Get-Content $trx.FullName
+          $c = $x.TestRun.ResultSummary.Counters
+          "## Tests : $($c.passed) réussis, $($c.failed) échoués, $($c.total) au total" >> $env:GITHUB_STEP_SUMMARY
+          foreach ($r in $x.TestRun.Results.UnitTestResult | Where-Object { $_.outcome -eq 'Failed' }) {
+            "- **$($r.testName)** : " + (($r.Output.ErrorInfo.Message -split "`n")[0]) >> $env:GITHUB_STEP_SUMMARY
+          }
