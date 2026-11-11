@@ -8,5 +8,5 @@ $gtRoots = @(
 )
 foreach ($gtV in @('14.0', '15.0', '16.0', '17.0')) { $gtRoots += (Join-Path $env:LOCALAPPDATA ('Microsoft\VSCommon\' + $gtV + '\SQM')) }
 foreach ($gtT in @('Microsoft\VSApplicationInsights', 'VSFaultInfo', 'VSFeedbackPerfWatsonData', 'VSFeedbackVSRTCLogs', 'VSFeedbackIntelliCodeLogs',
-                   'VSRemoteControl', 'Microsoft\VSFeedbackCollector', 'VSTelem', 'VSTelem.Out')) { $gtRoots += (Join-Path $env:TEMP $gtT) }
+                   'VSRemoteControl', 'Microsoft\VSFeedbackCollector', 'VSTelem', 'VSTelem.Out')) { $gtU = Get-GTUserTemp; if ($gtU) { $gtRoots += (Join-Path $gtU $gtT) } }
 Remove-TweakPath -Path $gtRoots | Out-Null

@@ -11,11 +11,20 @@
     <Nullable>disable</Nullable>
     <StartupObject>GamingTweaker.Program</StartupObject>
     <SatelliteResourceLanguages>fr;en</SatelliteResourceLanguages>
+    <!-- Version visible dans les propriétés de l'exe et en tête de chaque report.txt (support). -->
+    <Version>0.9.0</Version>
+    <AssemblyVersion>0.9.0.0</AssemblyVersion>
+    <FileVersion>0.9.0.0</FileVersion>
+    <Product>GamingTweaker</Product>
+    <Company>GamingTweaker</Company>
+    <Deterministic>true</Deterministic>
   </PropertyGroup>
 
-  <!-- requireAdministrator en Release, asInvoker en Debug (voir global-constraints). -->
+  <!-- requireAdministrator en Release, asInvoker en Debug (voir global-constraints). Release : aucun symbole livré. -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' != 'Release'">
     <ApplicationManifest>app.debug.manifest</ApplicationManifest>

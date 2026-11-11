@@ -12,7 +12,8 @@ Rien n'est installé. Les capteurs matériels (menu Informations) ne sont charg�
 
 ## Sécurité
 
-- Seules les options cochées s'exécutent ; chaque option est classée Sûr, Avancé ou Risque.
+- Seules les options cochées s'exécutent ; chaque option est classée Sûr, Avancé ou Risque. « Recommandé » ne coche que des options Sûr, et jamais celles que le catalogue en exclut (plan d'alimentation sur portable).
+- Le catalogue ne touche à aucune protection de sécurité (Defender, Spectre/Meltdown, VBS, BitLocker, Windows Update) et ne contient que des réglages à effet réel en jeu ou sur l'allègement de Windows ; les réglages placebo ou de pure apparence ont été retirés (voir `docs/revue-code-2026-11-11.md`).
 - Un point de restauration Windows est créé avant les options réversibles (si Windows l'autorise ; sinon vous êtes prévenu).
 - Aucun redémarrage automatique : si un redémarrage est nécessaire, le rapport l'indique.
 - Les profils (`.json`) ne contiennent que des identifiants d'options, jamais de commande.

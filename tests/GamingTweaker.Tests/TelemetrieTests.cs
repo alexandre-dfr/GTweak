@@ -16,7 +16,7 @@ namespace GamingTweaker.Tests
             { "tel.diagtrack-off", RiskLevel.Sur }, { "tel.level-min", RiskLevel.Sur }, { "tel.tasks-off", RiskLevel.Sur },
             { "tel.adid-off", RiskLevel.Sur }, { "tel.suggestions-off", RiskLevel.Sur }, { "tel.activity-off", RiskLevel.Sur },
             { "tel.wer-off", RiskLevel.Sur }, { "tel.bing-off", RiskLevel.Sur }, { "tel.copilot-off", RiskLevel.Sur },
-            { "tel.recall-off", RiskLevel.Sur }, { "tel.hosts", RiskLevel.Avance },
+            { "tel.recall-off", RiskLevel.Sur },
         };
 
         private static Dictionary<string, CatalogItem> Catalogue() =>
@@ -95,7 +95,7 @@ namespace GamingTweaker.Tests
             var cat = Catalogue();
             foreach (var id in new[] { "tel.adid-off", "tel.suggestions-off", "tel.bing-off", "tel.copilot-off" })
                 Assert.True(cat[id].Hkcu, id + " écrit dans HKCU");
-            foreach (var id in new[] { "tel.diagtrack-off", "tel.activity-off", "tel.recall-off", "tel.hosts" })
+            foreach (var id in new[] { "tel.diagtrack-off", "tel.activity-off", "tel.recall-off" })
                 Assert.False(cat[id].Hkcu, id + " n'écrit pas dans HKCU");
             // Un script qui écrit dans HKCU: doit être marqué hkcu (sinon il serait exécuté sous un autre compte).
             foreach (var it in cat.Values)
@@ -120,12 +120,15 @@ namespace GamingTweaker.Tests
         }
 
         [Fact]
-        public void Les_descriptions_signalent_les_limites_de_hosts_et_de_diagtrack()
+        public void Les_descriptions_signalent_les_limites_de_diagtrack_et_le_fichier_hosts_n_est_plus_touche()
         {
             var cat = Catalogue();
-            Assert.Contains("HostsFileHijack", cat["tel.hosts"].Description);
-            Assert.Contains("Teams", cat["tel.hosts"].Description);
             Assert.Contains("prochain démarrage", cat["tel.diagtrack-off"].Description);
+            // tel.hosts retiré (Defender le détecte comme HostsFileHijack et défait la modification) : aucun script n'écrit dans hosts.
+            Assert.DoesNotContain("tel.hosts", cat.Keys);
+            foreach (var it in cat.Values) Assert.DoesNotContain("Add-TweakHosts", it.Apply ?? "");
+            Assert.Equal(RiskLevel.Avance, cat["tel.location-off"].Risque);
+            Assert.Equal(RiskLevel.Avance, cat["tel.app-access-off"].Risque);
         }
     }
 }

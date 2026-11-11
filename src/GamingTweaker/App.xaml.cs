@@ -33,7 +33,13 @@ namespace GamingTweaker
             }
 
             IReadOnlyList<CatalogItem> catalogue;
-            try { catalogue = Catalogue.LoadEmbedded(); }
+            try
+            {
+                catalogue = Catalogue.LoadEmbedded();
+                // Un catalogue incohérent (id en double, script manquant) ne doit jamais atteindre l'exécution.
+                var erreurs = Catalogue.Validate(catalogue);
+                if (erreurs.Count > 0) throw new InvalidOperationException(string.Join(" ", erreurs));
+            }
             catch (Exception ex)
             {
                 MessageBox.Show("Le catalogue des options est illisible : " + ex.Message, "GamingTweaker", MessageBoxButton.OK, MessageBoxImage.Error);

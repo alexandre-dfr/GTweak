@@ -72,8 +72,9 @@ namespace GamingTweaker.Lists
     /// </summary>
     public class ServicesProvider : IListProvider
     {
+        /// <summary>Spooler (impression) et StorSvc (stockage, Store) ne sont pas proposés : en manuel, ils ne redémarrent pas à la demande.</summary>
         public static readonly string[] Services =
-            { "Fax", "RemoteRegistry", "MapsBroker", "PhoneSvc", "RetailDemo", "WpcMonSvc", "lfsvc", "Spooler", "CscService", "StorSvc", "SharedAccess" };
+            { "Fax", "RemoteRegistry", "MapsBroker", "PhoneSvc", "RetailDemo", "WpcMonSvc", "lfsvc", "CscService", "SharedAccess" };
 
         public static readonly string[] XboxServices = { "XblAuthManager", "XblGameSave", "XboxGipSvc", "XboxNetApiSvc" };
 

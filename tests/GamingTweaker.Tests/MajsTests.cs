@@ -28,7 +28,7 @@ namespace GamingTweaker.Tests
 
         private static readonly Dictionary<string, RiskLevel> Minimum = new Dictionary<string, RiskLevel>
         {
-            { "upd.windows", RiskLevel.Sur }, { "upd.apps", RiskLevel.Sur }, { "upd.nvidia", RiskLevel.Avance }, { "upd.wu-auto-off", RiskLevel.Risque },
+            { "upd.windows", RiskLevel.Sur }, { "upd.apps", RiskLevel.Sur }, { "upd.nvidia", RiskLevel.Avance },
         };
 
         /// <summary>winget factice : « upgrade » sans --id affiche la fixture ; avec --id (ou « install »), journalise et réussit (ou renvoie le code demandé).</summary>
@@ -263,7 +263,6 @@ foreach ($rule in $acl.GetAccessRules($true, $false, [System.Security.Principal.
             Assert.Equal("windowsUpdate", cat["upd.windows"].Liste);
             Assert.Equal("winget", cat["upd.apps"].Liste);
             Assert.Equal("pilote", cat["upd.nvidia"].Liste);
-            Assert.Null(cat["upd.wu-auto-off"].Liste);
             Assert.False(cat["upd.windows"].Reversible);
             Assert.False(cat["upd.apps"].Reversible);
             Assert.False(cat["upd.nvidia"].Reversible);
@@ -271,17 +270,12 @@ foreach ($rule in $acl.GetAccessRules($true, $false, [System.Security.Principal.
             Assert.False(cat["upd.apps"].Redemarrage);
         }
 
-        [Fact] public void Le_blocage_des_mises_a_jour_automatiques_ne_touche_pas_aux_services()
+        [Fact] public void Les_mises_a_jour_automatiques_ne_sont_plus_bloquees_et_les_pilotes_restent_exclus()
         {
-            var it = Catalogue()["upd.wu-auto-off"];
-            Assert.Equal(RiskLevel.Risque, it.Risque);
-            Assert.Contains(@"HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU", it.Apply);
-            Assert.Contains("'NoAutoUpdate'", it.Apply);
-            Assert.Contains("-Value 1", it.Apply);
-            Assert.Contains("Set-TweakRegistryIfNeeded", it.Apply);
-            foreach (var interdit in new[] { "Service", "wuauserv", "UsoSvc", "sc.exe", "Stop-", "Disable-" }) Assert.DoesNotContain(interdit, it.Apply);
-            Assert.Contains("services restent actifs", it.Description);
-            var drv = Catalogue()["upd.wu-drivers-off"];
+            var cat = Catalogue();
+            Assert.DoesNotContain("upd.wu-auto-off", cat.Keys);
+            foreach (var it in cat.Values) Assert.DoesNotContain("NoAutoUpdate", it.Apply);
+            var drv = cat["upd.wu-drivers-off"];
             Assert.Equal(RiskLevel.Avance, drv.Risque);
             Assert.Contains("SearchOrderConfig", drv.Apply);
             Assert.Contains("ExcludeWUDriversInQualityUpdate", drv.Apply);

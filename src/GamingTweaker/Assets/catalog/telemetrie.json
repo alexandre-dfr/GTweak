@@ -139,8 +139,8 @@
     "menu": "Télémétrie",
     "groupe": "Collecte Windows",
     "titre": "Localisation désactivée",
-    "description": "Désactive la localisation de l'appareil : stratégie de localisation et de scripts de localisation, accès des applications à la position, capteur de localisation et service de géolocalisation (lfsvc).",
-    "risque": "Sur",
+    "description": "Désactive la localisation de l'appareil : stratégie de localisation et de scripts de localisation, accès des applications à la position, capteur de localisation et service de géolocalisation (lfsvc). Avancé : le fuseau horaire automatique, « Localiser mon appareil » et la météo cessent de fonctionner.",
+    "risque": "Avance",
     "reversible": true,
     "redemarrage": false,
     "compatibilite": {
@@ -217,8 +217,8 @@
     "menu": "Télémétrie",
     "groupe": "Autorisations des applis",
     "titre": "Accès des applis aux données personnelles bloqué (hors caméra et micro)",
-    "description": "Refuse aux applications du Store l'accès au nom et à l'image du compte, à l'activité, aux informations sur les autres applications, aux dossiers Documents, Images, Vidéos et Musique, aux fichiers, aux contacts, au calendrier, au téléphone et aux messages, aux e-mails, aux tâches, au Bluetooth et à l'activation vocale. La caméra, le micro, les notifications et l'activité en arrière-plan ne sont pas touchés. Réversible depuis Paramètres, Confidentialité.",
-    "risque": "Sur",
+    "description": "Refuse aux applications du Store l'accès au nom et à l'image du compte, à l'activité, aux informations sur les autres applications, aux dossiers Documents, Images, Vidéos et Musique, aux fichiers, aux contacts, au calendrier, au téléphone et aux messages, aux e-mails, aux tâches, au Bluetooth et à l'activation vocale. La caméra, le micro, les notifications et l'activité en arrière-plan ne sont pas touchés. Avancé : les applications du Store qui lisent des fichiers (application Xbox, Lien avec Windows, Courrier) peuvent cesser de fonctionner. Réversible depuis Paramètres, Confidentialité.",
+    "risque": "Avance",
     "reversible": true,
     "redemarrage": false,
     "hkcu": true,
@@ -576,25 +576,6 @@
     "delaiSec": 600,
     "compatibilite": {
       "windows": [
-        "11"
-      ],
-      "editions": [],
-      "cpu": [],
-      "gpu": []
-    }
-  },
-  {
-    "id": "tel.hosts",
-    "menu": "Télémétrie",
-    "groupe": "Blocage réseau",
-    "titre": "Bloquer les serveurs de télémétrie Microsoft (fichier hosts)",
-    "description": "Ajoute au fichier hosts des lignes « 0.0.0.0 » (marquées « # GamingTweaker ») pour les serveurs de télémétrie, de rapports d'erreurs, de configuration distante et de localisation de Microsoft. Avancé : les serveurs de cartes, de connectivité réseau et de Windows Update ne sont pas bloqués. L'annulation retire ces lignes. Windows Defender peut signaler ou nettoyer ces entrées du fichier hosts (HostsFileHijack) ; config.edge.skype.com sert aussi aux indicateurs de fonctionnalités de Teams et d'Office.",
-    "risque": "Avance",
-    "reversible": true,
-    "redemarrage": false,
-    "compatibilite": {
-      "windows": [
-        "10",
         "11"
       ],
       "editions": [],

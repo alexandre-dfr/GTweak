@@ -17,7 +17,7 @@ Copies dans `tools/inventaire/sources/`, hors exe. L'inventaire lisible par mach
 - **Niveau d'origine :** pour WinUtil, la catégorie (`Essential`, `Advanced`, `Customize Preferences`, `Performance Plans`). Pour privacy.sexy, la recommandation la plus fréquente parmi les scripts de la sous-catégorie (`standard`, `strict`, `aucune`), la plus prudente en cas d'égalité.
 - **Niveau GamingTweaker :** `standard` → Sûr, `strict` → Avancé, `aucune` → Risqué ou exclu ; WinUtil `Essential` → Sûr ou Avancé, `Advanced` → Avancé ou Risqué (section 4.9). Les préférences de goût du groupe « Confort Windows » sont classées Avancé pour que « Recommandé » ne les coche pas.
 - **Exclusions :** section 5, « Écartés » de la section 4.9, et tout réglage qui désactive une protection de sécurité au-delà de la section 4.10, casse la maintenance de Windows Update, ne concerne que les portables, ou supprime des données personnelles.
-- **Section 4.10 :** protection en temps réel de Defender (`opt.defender-rt-off`), mises à jour automatiques (`upd.wu-auto-off`), Edge (`blt.edge-remove`), Prefetch (`cln.prefetch`) et nettoyage limité du registre (`cln.registry`) sont repris en Risqué.
+- **Recentrage (revue du 11 novembre 2026) :** les options sans gain réel en jeu ni allègement de Windows, ou qui affaiblissent la sécurité (Defender, Spectre/Meltdown, VBS, BitLocker, IPv6, hosts, Edge, Prefetch, registre, mises à jour automatiques, préférences d'apparence), sont retirées du catalogue ; les lignes correspondantes passent en « exclu » avec la raison.
 - **Plancher de risque :** une ligne ne vise jamais une option plus sûre que son niveau d'origine ne le permet (`standard` → Sûr ou plus, `strict` et `Advanced` → Avancé ou plus, `aucune` → Risqué) ; pour les listes `blt.apps` et `blt.apps-tierces`, la règle s'applique appli par appli. Quand l'option correspondante est plus sûre, la ligne est exclue et la raison renvoie à l'option qui couvre déjà le besoin.
 - Plusieurs lignes peuvent viser le même identifiant. Une ligne qui vise un identifiant ne reprend que les scripts indiqués dans sa raison ; les autres scripts de la sous-catégorie sont écartés pour la raison indiquée.
 - Toutes les reprises sont réécrites avec les fonctions `Set-Tweak*` de `Common.ps1` ; aucun script source n'est exécuté ni intégré tel quel.
@@ -32,19 +32,19 @@ Copies dans `tools/inventaire/sources/`, hors exe. L'inventaire lisible par mach
 | WinUtil | Start Menu Previous Layout - Enable (`WPFTweaksRevertStartMenu`) | Essential | exclu | Bascule `FeatureManagement\Overrides` non documentée, inopérante sur les versions récentes selon WinUtil lui-même |
 | WinUtil | Microsoft Store Recommended Search Results - Disable (`WPFTweaksDisableStoreSearch`) | Essential | exclu | Repose sur un refus d'ACL sur `store.db` du Store : type de modification non journalisable (section 2, Annulation) et peut casser la recherche du Store ; les suggestions du Store sont couvertes par `tel.suggestions-off` |
 | WinUtil | Location Tracking - Disable (`WPFTweaksLocation`) | Essential | tel.location-off | Nouvelle option ; même domaine que la sous-catégorie privacy.sexy « Disable location access » |
-| WinUtil | Services - Set to Manual (`WPFTweaksServices`) | Essential | opt.services | Ajoute `CscService`, `StorSvc` et `SharedAccess` à la liste, en manuel et non en désactivé (section 4.4) ; `MapsBroker` y est déjà ; `DiagTrack` relève de `tel.diagtrack-off` |
-| WinUtil | svchost.exe Splitting - Disable (`WPFTweaksSvcHostSplitting`) | Advanced | opt.svchost-split-off | Advanced → Risqué : WinUtil signale une gêne possible des services Xbox ; gain seulement sous 12 Go de RAM ; redémarrage requis |
+| WinUtil | Services - Set to Manual (`WPFTweaksServices`) | Essential | opt.services | Ajoute `CscService` et `SharedAccess` à la liste, en manuel et non en désactivé (section 4.4) ; `Spooler` et `StorSvc` retirés le 11 novembre 2026 (impression et stockage cassés en manuel) ; `MapsBroker` y est déjà ; `DiagTrack` relève de `tel.diagtrack-off` |
+| WinUtil | svchost.exe Splitting - Disable (`WPFTweaksSvcHostSplitting`) | Advanced | exclu | Retiré : gain de mémoire négligeable au-delà de 8 Go, aucun effet sur les FPS, gêne possible des services Xbox. |
 | WinUtil | Brave Browser - Debloat (`WPFTweaksBraveDebloat`) | Advanced | tel.brave-debloat | Advanced → Avancé : stratégies Brave seulement, sans effet si Brave est absent |
 | WinUtil | RDP Unsigned File Warnings - Disable (`WPFTweaksDisableWarningForUnsignedRdp`) | Advanced | exclu | Avertissements RDP : sans rapport avec l'usage visé (section 4.9, Écartés) |
 | WinUtil | Microsoft Edge - Debloat (`WPFTweaksEdgeDebloat`) | Advanced | tel.edge-debloat | Advanced → Avancé ; la télémétrie d'Edge seule est dans `tel.edge-telemetry-off` (Sûr) |
 | WinUtil | ConsumerFeatures - Disable (`WPFTweaksConsumerFeatures`) | Essential | tel.suggestions-off | Enrichit l'option : `CloudContent\DisableWindowsConsumerFeatures`=1 |
 | WinUtil | Telemetry - Disable (`WPFTweaksTelemetry`) | Essential | tel.level-min | Enrichit l'option (`AllowTelemetry`, expériences personnalisées, Siuf) ; identifiant publicitaire → `tel.adid-off`, vocal et saisie → `tel.misc-off`, `WerSvc` → `tel.wer-off`, PowerShell 7 → `tel.apps-telemetry-off` ; `SubmitSamplesConsent` de Defender non repris (affaiblit la protection cloud, hors 4.10) |
 | WinUtil | Delivery Optimization - Disable (`WPFTweaksDeliveryOptimization`) | Essential | opt.delivery-opt-off | Nouvelle option : `DODownloadMode`=0 ; le service DoSvc n'est pas désactivé (Windows Update en dépend) |
-| WinUtil | Microsoft Edge - Remove (`WPFTweaksRemoveEdge`) | Advanced | blt.edge-remove | Section 4.10 : méthode de WinUtil sans `--delete-profile`, WebView2 conservé |
-| WinUtil | BitLocker - Disable (`WPFTweaksDisableBitLocker`) | Essential | opt.bitlocker-off | Risqué, définitif (déchiffrement), jamais coché par Recommandé, section 4.9 |
-| WinUtil | Date & Time - Set Time to UTC (`WPFTweaksUTC`) | Advanced | opt.utc-time | Advanced → Risqué : sans double démarrage Linux, l'heure de Windows est décalée (Confort Windows) |
+| WinUtil | Microsoft Edge - Remove (`WPFTweaksRemoveEdge`) | Advanced | exclu | Retiré : aucun gain en jeu ; casse Widgets, Outlook et les liens du Store ; Windows Update le réinstalle. |
+| WinUtil | BitLocker - Disable (`WPFTweaksDisableBitLocker`) | Essential | exclu | Retiré : déchiffrement définitif du disque sans gain mesurable en jeu. |
+| WinUtil | Date & Time - Set Time to UTC (`WPFTweaksUTC`) | Advanced | exclu | Retiré : hors sujet pour un PC de jeu (double démarrage Linux), heure décalée sinon. |
 | WinUtil | Microsoft OneDrive - Remove (`WPFTweaksRemoveOneDrive`) | Advanced | blt.apps | Entrée OneDrive de la liste (Avancé, section 4.5), désinstalleur officiel, dossier de l'utilisateur jamais touché |
-| WinUtil | File Explorer Home and Gallery - Disable (`WPFTweaksRemoveHomeAndGallery`) | Advanced | opt.explorer-home-off | Advanced → Avancé (Confort Windows, Windows 11) |
+| WinUtil | File Explorer Home and Gallery - Disable (`WPFTweaksRemoveHomeAndGallery`) | Advanced | exclu | Retiré : préférence d'apparence ou d'ergonomie sans gain FPS ni allègement de Windows (catalogue recentré). |
 | WinUtil | Visual Effects - Set to Best Performance (`WPFTweaksDisplay`) | Advanced | exclu | Advanced : ne peut viser `opt.visualfx` (Sûr) ; les effets visuels y sont déjà couverts par le tableau minimal (`VisualFXSetting`=2), les réglages fins de WinUtil (`MenuShowDelay`, `KeyboardDelay`, `UserPreferencesMask`) ne sont pas repris |
 | WinUtil | Disable Reserved Storage (`WPFTweaksReservedStorage`) | Advanced | exclu | Peut faire échouer les mises à jour de fonctionnalités (WinUtil le signale) : casse la maintenance de Windows Update |
 | WinUtil | Restore Point - Create (`WPFTweaksRestorePoint`) | Essential | exclu | L'appli crée déjà un point de restauration avant chaque lancement d'options réversibles (section 2, Flux) |
@@ -57,37 +57,37 @@ Copies dans `tools/inventaire/sources/`, hors exe. L'inventaire lisible par mach
 | WinUtil | Logitech Download Assistant Auto-Install - Disable (`WPFTweaksLogiBlock`) | Advanced | blt.vendor-autoinstall-off | Advanced → Avancé : même option (co-installeurs de tous les constructeurs) ; le refus d'ACL sur `LogiDownloadAssistant` n'est pas journalisable (Task 11) |
 | WinUtil | System Tray Notifications & Calendar - Disable (`WPFTweaksDisableNotifications`) | Advanced | opt.notifications-off | Advanced → Avancé (Confort Windows) |
 | WinUtil | Adobe URL Block List - Enable (`WPFTweaksBlockAdobeNet`) | Advanced | exclu | Section 4.9, Écartés : liste de blocage Adobe téléchargée à l'exécution, donc non contrôlée |
-| WinUtil | Right-Click Menu Previous Layout - Enable (`WPFTweaksRightClickMenu`) | Advanced | opt.classic-context-menu | Advanced → Avancé (Confort Windows, Windows 11) |
+| WinUtil | Right-Click Menu Previous Layout - Enable (`WPFTweaksRightClickMenu`) | Advanced | exclu | Retiré : préférence d'apparence ou d'ergonomie sans gain FPS ni allègement de Windows (catalogue recentré). |
 | WinUtil | Disk Cleanup - Run (`WPFTweaksDiskCleanup`) | Essential | cln.resetbase | Le DISM `/ResetBase` est repris ; `cleanmgr /VERYLOWDISK` non repris (supprime hors de la liste de dossiers autorisés, section 4.3) |
 | WinUtil | Temporary Files - Remove (`WPFTweaksDeleteTempFiles`) | Essential | cln.temp | Correspond au tableau minimal |
 | WinUtil | IPv6 - Set IPv4 as Preferred (`WPFTweaksIPv46`) | Advanced | opt.ipv4-prefer | Advanced → Avancé : `DisabledComponents`=0x20, IPv6 reste actif |
-| WinUtil | Teredo - Disable (`WPFTweaksTeredo`) | Advanced | opt.teredo-off | Advanced → Risqué : WinUtil signale des problèmes possibles avec certains jeux (Xbox Live) |
-| WinUtil | IPv6 - Disable (`WPFTweaksDisableIPv6`) | Advanced | opt.ipv6-off | Advanced → Risqué : Microsoft déconseille de désactiver IPv6 (composants Windows et jeux en ligne) |
+| WinUtil | Teredo - Disable (`WPFTweaksTeredo`) | Advanced | exclu | Retiré : aucun gain en jeu, casse le réseau Xbox Live derrière certains NAT. |
+| WinUtil | IPv6 - Disable (`WPFTweaksDisableIPv6`) | Advanced | exclu | Retiré : Microsoft déconseille DisabledComponents=0xFF (connectivité, +5 s au démarrage) ; aucun gain en jeu. `opt.ipv4-prefer` couvre le besoin. |
 | WinUtil | Background Apps - Disable (`WPFTweaksDisableBGapps`) | Advanced | exclu | Advanced : ne peut viser `opt.bgapps-off` (Sûr) ; la stratégie `LetAppsRunInBackground` y couvre déjà le besoin, `GlobalUserDisabled` n'est pas repris |
-| WinUtil | File Explorer Automatic Folder Discovery - Disable (`WPFTweaksDisableExplorerAutoDiscovery`) | Essential | opt.explorer-autodiscovery-off | Essential → Avancé : efface les vues de dossiers mémorisées (`Bags`, `BagMRU`) ; la Task 9 doit exporter ces clés avant suppression pour rester réversible |
+| WinUtil | File Explorer Automatic Folder Discovery - Disable (`WPFTweaksDisableExplorerAutoDiscovery`) | Essential | exclu | Retiré : supprime toutes les vues de dossiers mémorisées pour un gain marginal dans l'Explorateur. |
 | WinUtil | BSoD Verbose Mode (`WPFToggleDetailedBSoD`) | Customize Preferences | opt.bsod-detailed | Préférence sans effet de bord (Confort Windows) |
 | WinUtil | System Tray Battery Percentage (`WPFToggleBatteryPercentage`) | Customize Preferences | exclu | Section 4.9, Écartés : pourcentage de batterie, sans intérêt sur un PC fixe |
-| WinUtil | Dark Theme for Windows (`WPFToggleDarkMode`) | Customize Preferences | opt.dark-mode | Préférence de goût : Avancé pour ne pas être cochée par « Recommandé » (Confort Windows, cité en 4.9) |
+| WinUtil | Dark Theme for Windows (`WPFToggleDarkMode`) | Customize Preferences | exclu | Retiré : préférence d'apparence ou d'ergonomie sans gain FPS ni allègement de Windows (catalogue recentré). |
 | WinUtil | File Explorer File Extensions (`WPFToggleShowExt`) | Customize Preferences | opt.show-extensions | Confort Windows, cité en 4.9 ; Sûr (aide aussi à repérer les exécutables déguisés) |
-| WinUtil | File Explorer Hidden Files (`WPFToggleHiddenFiles`) | Customize Preferences | opt.show-hidden | Préférence : Avancé pour ne pas être cochée par « Recommandé » (Confort Windows) |
-| WinUtil | Logon Verbose Mode (`WPFToggleVerboseLogon`) | Customize Preferences | opt.verbose-logon | Préférence : Avancé pour ne pas être cochée par « Recommandé » (Confort Windows) |
+| WinUtil | File Explorer Hidden Files (`WPFToggleHiddenFiles`) | Customize Preferences | exclu | Retiré : préférence d'apparence ou d'ergonomie sans gain FPS ni allègement de Windows (catalogue recentré). |
+| WinUtil | Logon Verbose Mode (`WPFToggleVerboseLogon`) | Customize Preferences | exclu | Retiré : préférence d'apparence ou d'ergonomie sans gain FPS ni allègement de Windows (catalogue recentré). |
 | WinUtil | Microsoft Outlook New Version (`WPFToggleNewOutlook`) | Customize Preferences | exclu | Section 4.9, Écartés : basculement Outlook, sans rapport avec l'usage visé |
-| WinUtil | Scrollbars Always Visible (`WPFToggleScrollbars`) | Customize Preferences | opt.scrollbars-visible | Préférence : Avancé pour ne pas être cochée par « Recommandé » (Confort Windows) |
+| WinUtil | Scrollbars Always Visible (`WPFToggleScrollbars`) | Customize Preferences | exclu | Retiré : préférence d'apparence ou d'ergonomie sans gain FPS ni allègement de Windows (catalogue recentré). |
 | WinUtil | Multiplane Overlay (`WPFMultiplaneOverlay`) | Customize Preferences | opt.mpo-off | Correspond au tableau minimal (`OverlayTestMode`=5) |
 | WinUtil | Mouse Acceleration (`WPFToggleMouseAcceleration`) | Customize Preferences | opt.mouse.precision-off | Correspond au tableau minimal |
-| WinUtil | Num Lock on Startup (`WPFToggleNumLock`) | Customize Preferences | opt.numlock-on | Préférence : Avancé pour ne pas être cochée par « Recommandé » (Confort Windows) |
-| WinUtil | Window Snapping (`WPFToggleWindowSnapping`) | Customize Preferences | opt.snap-off | Préférence : Avancé pour ne pas être cochée par « Recommandé » (Confort Windows) |
+| WinUtil | Num Lock on Startup (`WPFToggleNumLock`) | Customize Preferences | exclu | Retiré : préférence d'apparence ou d'ergonomie sans gain FPS ni allègement de Windows (catalogue recentré). |
+| WinUtil | Window Snapping (`WPFToggleWindowSnapping`) | Customize Preferences | exclu | Retiré : préférence d'apparence ou d'ergonomie sans gain FPS ni allègement de Windows (catalogue recentré). |
 | WinUtil | S0 Sleep Network Connectivity (`WPFToggleStandbyFix`) | Customize Preferences | exclu | Section 4.9, Écartés : réglage de veille S0, sans intérêt sur un PC fixe |
 | WinUtil | S3 Sleep (`WPFToggleS3Sleep`) | Customize Preferences | exclu | Section 4.9, Écartés : réglage de veille S3, sans intérêt sur un PC fixe |
-| WinUtil | Settings Home Page (`WPFToggleHideSettingsHome`) | Customize Preferences | opt.settings-home-off | Préférence : Avancé pour ne pas être cochée par « Recommandé » (Confort Windows, Windows 11) |
+| WinUtil | Settings Home Page (`WPFToggleHideSettingsHome`) | Customize Preferences | exclu | Retiré : préférence d'apparence ou d'ergonomie sans gain FPS ni allègement de Windows (catalogue recentré). |
 | WinUtil | Start Menu Bing Search (`WPFToggleBingSearch`) | Customize Preferences | tel.bing-off | Enrichit l'option : `HKCU\...\Search` `BingSearchEnabled`=0 |
-| WinUtil | Logon Screen Acrylic Blur (`WPFToggleLoginBlur`) | Customize Preferences | opt.login-blur-off | Préférence : Avancé pour ne pas être cochée par « Recommandé » (Confort Windows) |
-| WinUtil | Lock Screen - Disable (`WPFToggleDisableLockscreen`) | Customize Preferences | opt.lockscreen-off | Préférence : Avancé pour ne pas être cochée par « Recommandé » (Confort Windows) |
-| WinUtil | Start Menu Recommendations (`WPFToggleStartMenuRecommendations`) | Customize Preferences | opt.start-reco-off | Avancé : WinUtil prévient que Windows à la une est aussi coupé sur l'écran de verrouillage (Confort Windows, Windows 11) |
+| WinUtil | Logon Screen Acrylic Blur (`WPFToggleLoginBlur`) | Customize Preferences | exclu | Retiré : préférence d'apparence ou d'ergonomie sans gain FPS ni allègement de Windows (catalogue recentré). |
+| WinUtil | Lock Screen - Disable (`WPFToggleDisableLockscreen`) | Customize Preferences | exclu | Retiré : préférence d'apparence ou d'ergonomie sans gain FPS ni allègement de Windows (catalogue recentré). |
+| WinUtil | Start Menu Recommendations (`WPFToggleStartMenuRecommendations`) | Customize Preferences | exclu | Retiré : préférence d'apparence ou d'ergonomie sans gain FPS ni allègement de Windows (catalogue recentré). |
 | WinUtil | Sticky Keys (`WPFToggleStickyKeys`) | Customize Preferences | opt.stickykeys-off | Correspond au tableau minimal |
-| WinUtil | Taskbar Centered Icons (`WPFToggleTaskbarAlignment`) | Customize Preferences | opt.taskbar-left | Préférence : Avancé pour ne pas être cochée par « Recommandé » (Confort Windows, barre des tâches citée en 4.9, Windows 11) |
-| WinUtil | Taskbar Search Icon (`WPFToggleTaskbarSearch`) | Customize Preferences | opt.taskbar-search-off | Préférence : Avancé pour ne pas être cochée par « Recommandé » (Confort Windows) |
-| WinUtil | Taskbar Task View Icon (`WPFToggleTaskView`) | Customize Preferences | opt.taskview-off | Préférence : Avancé pour ne pas être cochée par « Recommandé » (Confort Windows) |
+| WinUtil | Taskbar Centered Icons (`WPFToggleTaskbarAlignment`) | Customize Preferences | exclu | Retiré : préférence d'apparence ou d'ergonomie sans gain FPS ni allègement de Windows (catalogue recentré). |
+| WinUtil | Taskbar Search Icon (`WPFToggleTaskbarSearch`) | Customize Preferences | exclu | Retiré : préférence d'apparence ou d'ergonomie sans gain FPS ni allègement de Windows (catalogue recentré). |
+| WinUtil | Taskbar Task View Icon (`WPFToggleTaskView`) | Customize Preferences | exclu | Retiré : préférence d'apparence ou d'ergonomie sans gain FPS ni allègement de Windows (catalogue recentré). |
 | WinUtil | Game Mode (`WPFToggleGameMode`) | Customize Preferences | opt.gamemode-on | Correspond au tableau minimal |
 | WinUtil | Enable Long Paths (`WPFToggleLongPaths`) | Customize Preferences | opt.longpaths | `LongPathsEnabled`=1, sans effet de bord (Confort Windows) |
 | WinUtil | O&O ShutUp10++ - Run (`WPFOOSUbutton`) | Advanced | exclu | Télécharge et lance un exe tiers à chaque clic ; la Task 8 prévoit seulement un lien vers la page officielle d'O&O ShutUp10++ |
@@ -154,7 +154,7 @@ Copies dans `tools/inventaire/sources/`, hors exe. L'inventaire lisible par mach
 | privacy.sexy | Configure programs > Configure browsers > Configure Edge | strict | tel.edge-debloat | Nouvelle option Avancé (strict dominant) |
 | privacy.sexy | Configure programs > Configure browsers > Configure Edge > Disable Edge telemetry | standard | tel.edge-telemetry-off | Nouvelle option Sûr |
 | privacy.sexy | Configure programs > Configure browsers > Configure Edge > Disable Edge and WebView2 automatic updates | strict | exclu | Bloque les correctifs de sécurité d'Edge et de WebView2 ; WebView2 est conservé et doit rester à jour (section 4.10) |
-| privacy.sexy | Configure programs > Configure browsers > Configure Edge > Disable Edge and WebView2 automatic updates > Disable automatic installation of Edge and WebView | standard | blt.edge-remove | Seul le blocage de la réinstallation d'Edge est repris, après sa désinstallation ; WebView2 jamais bloqué |
+| privacy.sexy | Configure programs > Configure browsers > Configure Edge > Disable Edge and WebView2 automatic updates > Disable automatic installation of Edge and WebView | standard | exclu | Retiré : aucun gain en jeu ; casse Widgets, Outlook et les liens du Store ; Windows Update le réinstalle. |
 | privacy.sexy | Configure programs > Configure browsers > Configure Edge > Disable Copilot in Edge | aucune | exclu | Dominante sans recommandation ; barre latérale d'Edge, préférence du navigateur ; Copilot de Windows → `tel.copilot-off` |
 | privacy.sexy | Configure programs > Configure browsers > Configure Edge > Disable Edge ads | standard | tel.edge-telemetry-off | Publicités et pages promotionnelles d'Edge |
 | privacy.sexy | Configure programs > Configure browsers > Configure Edge > Harden Edge privacy | strict | tel.edge-debloat | Prévention du suivi, cookies tiers ; peut gêner certains sites |
@@ -177,8 +177,8 @@ Copies dans `tools/inventaire/sources/`, hors exe. L'inventaire lisible par mach
 | privacy.sexy | Security improvements > Improve network security > Disable insecure remote administration access | standard | exclu | Durcissement de sécurité sans rapport avec la télémétrie, l'optimisation, le nettoyage ou le bloatware : aucun menu de la spec ne l'accueille, et certains réglages cassent d'anciens jeux, serveurs ou réseaux locaux |
 | privacy.sexy | Security improvements > Improve network security > Disable non-essential network components | aucune | exclu | Durcissement de sécurité sans rapport avec la télémétrie, l'optimisation, le nettoyage ou le bloatware : aucun menu de la spec ne l'accueille, et certains réglages cassent d'anciens jeux, serveurs ou réseaux locaux |
 | privacy.sexy | Security improvements > Disable clipboard data collection | strict | tel.clipboard-off | Nouvelle option Avancé (strict dominant) ; casse la synchronisation et l'historique du presse-papiers |
-| privacy.sexy | Security improvements > Enable protection against Meltdown and Spectre | aucune | exclu | Contraire de `opt.spectre-off` ; l'état par défaut est rétabli par l'annulation de cette option |
-| privacy.sexy | Block tracking hosts | strict | tel.hosts | Enrichit la liste `hosts` (strict dominant, Avancé) ; hôtes de cartes, de connectivité et de Windows Update exclus, car ils cassent des fonctions |
+| privacy.sexy | Security improvements > Enable protection against Meltdown and Spectre | aucune | exclu | Les protections Spectre et Meltdown sont actives par défaut et l'outil ne les touche plus : rien à activer |
+| privacy.sexy | Block tracking hosts | strict | exclu | Retiré : Microsoft Defender détecte ce blocage comme SettingsModifier:Win32/HostsFileHijack et restaure le fichier ; les stratégies `tel.level-min`, `tel.wer-off` et `tel.diagtrack-off` couvrent les mêmes flux. |
 | privacy.sexy | Block tracking hosts > Block third-party app hosts | aucune | exclu | Hôtes Dropbox et Spotify : cassent ces applis, hors télémétrie de Windows |
 | privacy.sexy | Privacy over security > Disable Defender > Disable Defender data collection | strict | exclu | Rapports et envoi d'échantillons alimentent la protection cloud de Defender : l'affaiblir dépasse la section 4.10 |
 | privacy.sexy | Privacy over security > Disable Defender > Disable Defender data collection > Disable Defender Antivirus cloud protection | strict | exclu | Désactive une protection de Defender au-delà de la section 4.10 (seule la protection en temps réel est reprise, `opt.defender-rt-off`) |
@@ -186,7 +186,7 @@ Copies dans `tools/inventaire/sources/`, hors exe. L'inventaire lisible par mach
 | privacy.sexy | Privacy over security > Disable Defender > Disable system modification restrictions > Disable Defender System Guard | aucune | exclu | Désactive une protection de Defender au-delà de la section 4.10 (seule la protection en temps réel est reprise, `opt.defender-rt-off`) |
 | privacy.sexy | Privacy over security > Disable Defender > Disable Defender Antivirus | aucune | exclu | Désactive une protection de Defender au-delà de la section 4.10 (seule la protection en temps réel est reprise, `opt.defender-rt-off`) |
 | privacy.sexy | Privacy over security > Disable Defender > Disable Defender Antivirus > Disable network inspection | aucune | exclu | Désactive une protection de Defender au-delà de la section 4.10 (seule la protection en temps réel est reprise, `opt.defender-rt-off`) |
-| privacy.sexy | Privacy over security > Disable Defender > Disable Defender Antivirus > Disable real-time protection | aucune | opt.defender-rt-off | Section 4.10 : seul `Set-MpPreference -DisableRealtimeMonitoring $true` est repris, avec échec explicite si la protection anti-falsification est active ; IPS, IPC et stratégies non repris |
+| privacy.sexy | Privacy over security > Disable Defender > Disable Defender Antivirus > Disable real-time protection | aucune | exclu | Retiré : coupe l'antivirus sans gain mesurable en jeu ; motif AMSI dans chaque script généré. |
 | privacy.sexy | Privacy over security > Disable Defender > Disable Defender Antivirus > Disable real-time protection > Disable Defender monitoring of behavior | aucune | exclu | Désactive une protection de Defender au-delà de la section 4.10 (seule la protection en temps réel est reprise, `opt.defender-rt-off`) |
 | privacy.sexy | Privacy over security > Disable Defender > Disable Defender Antivirus > Disable real-time protection > Disable monitoring of downloads and attachments in Defender | aucune | exclu | Désactive une protection de Defender au-delà de la section 4.10 (seule la protection en temps réel est reprise, `opt.defender-rt-off`) |
 | privacy.sexy | Privacy over security > Disable Defender > Disable Defender Antivirus > Disable real-time protection > Disable Defender monitoring of file and program activity | aucune | exclu | Désactive une protection de Defender au-delà de la section 4.10 (seule la protection en temps réel est reprise, `opt.defender-rt-off`) |
@@ -228,11 +228,11 @@ Copies dans `tools/inventaire/sources/`, hors exe. L'inventaire lisible par mach
 | privacy.sexy | Privacy over security > Disable Defender > Disable Windows Security interface > Disable Security and Maintenance | aucune | exclu | Masque les alertes et l'interface de sécurité : protection de sécurité absente de la section 4.10 |
 | privacy.sexy | Privacy over security > Disable Defender > Disable Defender Exploit Guard | aucune | exclu | Désactive une protection de Defender au-delà de la section 4.10 (seule la protection en temps réel est reprise, `opt.defender-rt-off`) |
 | privacy.sexy | Privacy over security > Disable Defender > Disable outdated Defender Application Guard | strict | exclu | Application Guard est retiré de Windows, et c'est une protection de sécurité hors section 4.10 |
-| privacy.sexy | Privacy over security > Disable automatic updates | aucune | upd.wu-auto-off | Section 4.10 : seule la stratégie `NoAutoUpdate`=1 est reprise, les services restent actifs |
+| privacy.sexy | Privacy over security > Disable automatic updates | aucune | exclu | Retiré : prive le PC des correctifs de sécurité sans gain en jeu ; la pause de Windows Update dans les Paramètres suffit. |
 | privacy.sexy | Privacy over security > Disable automatic updates > Disable Windows Update automatic driver updates | strict | upd.wu-drivers-off | Nouvelle option Avancé (strict dominant) : évite que Windows Update remplace le pilote graphique ; les mises à jour logicielles continuent |
-| privacy.sexy | Privacy over security > Disable automatic updates > Disable Windows update services | aucune | exclu | Casse la maintenance de Windows Update ; le blocage des installations automatiques est couvert par `upd.wu-auto-off` (section 4.10) |
-| privacy.sexy | Privacy over security > Disable automatic updates > Disable Windows update scheduled tasks | aucune | exclu | Casse la maintenance de Windows Update ; le blocage des installations automatiques est couvert par `upd.wu-auto-off` (section 4.10) |
-| privacy.sexy | Privacy over security > Disable automatic updates > Maximize auto-update duration | aucune | exclu | Empêche la reprise des mises à jour (privacy.sexy l'indique) : casse la maintenance de Windows Update ; le blocage des installations automatiques est couvert par `upd.wu-auto-off` (section 4.10) |
+| privacy.sexy | Privacy over security > Disable automatic updates > Disable Windows update services | aucune | exclu | Casse la maintenance de Windows Update ; le blocage des installations automatiques n'est plus proposé (option retirée) (section 4.10) |
+| privacy.sexy | Privacy over security > Disable automatic updates > Disable Windows update scheduled tasks | aucune | exclu | Casse la maintenance de Windows Update ; le blocage des installations automatiques n'est plus proposé (option retirée) (section 4.10) |
+| privacy.sexy | Privacy over security > Disable automatic updates > Maximize auto-update duration | aucune | exclu | Empêche la reprise des mises à jour (privacy.sexy l'indique) : casse la maintenance de Windows Update ; le blocage des installations automatiques n'est plus proposé (option retirée) (section 4.10) |
 | privacy.sexy | Privacy over security > Configure how downloaded files are handled | aucune | exclu | Supprime la marque « fichier téléchargé » (Mark of the Web) et l'avertissement à l'antivirus : protection de sécurité hors section 4.10 |
 | privacy.sexy | UI for privacy | standard | tel.ui-privacy | Nouvelle option Sûr (standard dominant) ; hibernation → `opt.hibernate-off`, notifications des fournisseurs de synchronisation → `tel.suggestions-off`, fichiers récents de l'Accès rapide → `tel.recent-docs-off` |
 | privacy.sexy | UI for privacy > Disable online content in File Explorer | standard | tel.explorer-online-off | Nouvelle option Sûr |
@@ -254,7 +254,7 @@ Copies dans `tools/inventaire/sources/`, hors exe. L'inventaire lisible par mach
 | privacy.sexy | Remove bloatware > Remove Windows apps > Remove system apps > Remove Out-of-Box Experience (OOBE) apps | aucune | exclu | Casse l'installation, la réinitialisation et l'ajout de comptes |
 | privacy.sexy | Remove bloatware > Remove Windows apps > Remove system apps > Remove printing user interface | aucune | exclu | Casse l'impression |
 | privacy.sexy | Remove bloatware > Remove OneDrive | strict | blt.apps | Entrée OneDrive de la liste (Avancé, section 4.5) ; « Remove OneDrive user data and synced folders » jamais repris (données personnelles) |
-| privacy.sexy | Remove bloatware > Remove Edge | aucune | blt.edge-remove | Section 4.10 : méthode de WinUtil retenue, sans `--delete-profile`, WebView2 conservé |
+| privacy.sexy | Remove bloatware > Remove Edge | aucune | exclu | Retiré : aucun gain en jeu ; casse Widgets, Outlook et les liens du Store ; Windows Update le réinstalle. |
 | privacy.sexy | Remove bloatware > Remove Edge > Remove Edge associations | aucune | exclu | Les associations sont reprises par Windows après la désinstallation ; modifier `UserChoice` est protégé par un hachage et casse les choix par défaut |
 | privacy.sexy | Remove bloatware > Remove Xbox | standard | blt.apps | Appli Xbox (`Microsoft.GamingApp`, `Microsoft.XboxApp`) → Avancé (section 4.5) ; services Xbox Live → `opt.xbox-services` (Risqué) ; Game Bar, Identity Provider, Game Callable UI et overlays jamais retirés, car ils cassent le Game Pass et les jeux Xbox Live |
 | privacy.sexy | Remove bloatware > Disable built-in Windows features | aucune | blt.features | Sans recommandation → Risqué (DISM, redémarrage, réactivation parfois sans source) : Fax et numérisation, Scan Management, Internet Explorer ; DirectPlay, Legacy Components, Media Features et Lecteur Windows Media jamais (anciens jeux, codecs) ; Windows Search relève de `opt.wsearch` |
@@ -285,9 +285,9 @@ Nouvelles options à créer, en plus des tableaux minimaux du plan. Le titre est
 |---|---|---|---|---|---|
 | `tel.misc-off` | Collecte Windows | Collectes diverses désactivées (reconnaissance vocale en ligne, saisie, commentaires, capteurs, Wi-Fi Sense) | Sûr | oui | 1 |
 | `tel.compat-off` | Collecte Windows | Télémétrie de compatibilité des applications désactivée (AIT, PCA, enregistreur d'actions, inventaire) | Avancé | oui | 3 |
-| `tel.location-off` | Collecte Windows | Localisation désactivée | Sûr | oui | 2 |
+| `tel.location-off` | Collecte Windows | Localisation désactivée | Avancé | oui | 2 |
 | `tel.insider-off` | Collecte Windows | Programme Windows Insider et essais de fonctionnalités désactivés | Sûr | oui | 1 |
-| `tel.app-access-off` | Autorisations des applis | Accès des applis aux données personnelles bloqué (hors caméra et micro) | Sûr | oui | 5 |
+| `tel.app-access-off` | Autorisations des applis | Accès des applis aux données personnelles bloqué (hors caméra et micro) | Avancé | oui | 5 |
 | `tel.search-off` | Recherche | Collecte de la recherche Windows désactivée (données partagées, contenu cloud, indexation sensible) | Sûr | oui | 2 |
 | `tel.cortana-off` | Recherche | Cortana et sa collecte désactivées | Sûr | oui | 3 |
 | `tel.sync-off` | Synchronisation | Synchronisation des paramètres avec le compte Microsoft désactivée | Sûr | oui | 1 |
@@ -310,34 +310,13 @@ Nouvelles options à créer, en plus des tableaux minimaux du plan. Le titre est
 |---|---|---|---|---|---|
 | `opt.delivery-opt-off` | Réseau et planificateur | Partage pair à pair des mises à jour désactivé | Sûr | oui | 1 |
 | `opt.ipv4-prefer` | Réseau et planificateur | IPv4 préféré à IPv6 | Avancé | oui | 1 |
-| `opt.teredo-off` | Réseau et planificateur | Teredo désactivé | Risqué | oui | 1 |
-| `opt.ipv6-off` | Réseau et planificateur | IPv6 désactivé | Risqué | oui | 1 |
-| `opt.svchost-split-off` | Arrière-plan | Séparation des processus svchost désactivée | Risqué | oui | 1 |
 | `opt.storagesense-off` | Arrière-plan | Assistant de stockage désactivé | Avancé | oui | 1 |
 | `opt.defender-scan-cpu` | Arrière-plan | Charge processeur des analyses Defender limitée | Risqué | oui | 1 |
 | `opt.bsod-detailed` | Confort Windows | Écran bleu détaillé | Sûr | oui | 1 |
 | `opt.show-extensions` | Confort Windows | Extensions de fichiers affichées | Sûr | oui | 1 |
 | `opt.longpaths` | Confort Windows | Chemins de plus de 260 caractères autorisés | Sûr | oui | 1 |
-| `opt.show-hidden` | Confort Windows | Fichiers cachés affichés | Avancé | oui | 1 |
-| `opt.dark-mode` | Confort Windows | Thème sombre | Avancé | oui | 1 |
-| `opt.verbose-logon` | Confort Windows | Messages détaillés au démarrage et à l'arrêt | Avancé | oui | 1 |
-| `opt.scrollbars-visible` | Confort Windows | Barres de défilement toujours visibles | Avancé | oui | 1 |
-| `opt.numlock-on` | Confort Windows | Verr. Num activé au démarrage | Avancé | oui | 1 |
-| `opt.snap-off` | Confort Windows | Ancrage des fenêtres désactivé | Avancé | oui | 1 |
-| `opt.settings-home-off` | Confort Windows | Page d'accueil des Paramètres masquée | Avancé | oui | 1 |
-| `opt.login-blur-off` | Confort Windows | Flou de l'écran de connexion désactivé | Avancé | oui | 1 |
-| `opt.lockscreen-off` | Confort Windows | Écran de verrouillage ignoré | Avancé | oui | 1 |
-| `opt.start-reco-off` | Confort Windows | Section « Recommandé » du menu Démarrer masquée | Avancé | oui | 1 |
-| `opt.taskbar-left` | Confort Windows | Icônes de la barre des tâches alignées à gauche | Avancé | oui | 1 |
-| `opt.taskbar-search-off` | Confort Windows | Bouton Rechercher de la barre des tâches masqué | Avancé | oui | 1 |
-| `opt.taskview-off` | Confort Windows | Bouton Vue des tâches masqué | Avancé | oui | 1 |
 | `opt.endtask-taskbar` | Confort Windows | « Fin de tâche » dans le menu de la barre des tâches | Avancé | oui | 1 |
-| `opt.explorer-home-off` | Confort Windows | Accueil et Galerie retirés de l'Explorateur, ouverture sur Ce PC | Avancé | oui | 1 |
-| `opt.classic-context-menu` | Confort Windows | Menu contextuel classique | Avancé | oui | 1 |
 | `opt.notifications-off` | Confort Windows | Notifications et calendrier de la zone de notification désactivés | Avancé | oui | 1 |
-| `opt.explorer-autodiscovery-off` | Confort Windows | Détection automatique du type de dossier désactivée | Avancé | partiel : suppression des clés `Bags` : export `.reg` dans la session avant suppression | 1 |
-| `opt.utc-time` | Confort Windows | Horloge matérielle en UTC (double démarrage avec Linux) | Risqué | oui | 1 |
-| `opt.bitlocker-off` | Sécurité | BitLocker désactivé (déchiffrement du disque) | Risqué | non : définitif : déchiffrement du disque, à réactiver à la main | 1 |
 
 ### Nettoyage
 
@@ -376,7 +355,6 @@ Options des tableaux minimaux que des lignes sources complètent (voir la colonn
 - `opt.services` : 2 ligne(s)
 - `tel.suggestions-off` : 2 ligne(s)
 - `tel.level-min` : 3 ligne(s)
-- `blt.edge-remove` : 3 ligne(s)
 - `cln.resetbase` : 1 ligne(s)
 - `cln.temp` : 2 ligne(s)
 - `opt.mpo-off` : 1 ligne(s)
@@ -390,9 +368,6 @@ Options des tableaux minimaux que des lignes sources complètent (voir la colonn
 - `cln.logs` : 2 ligne(s)
 - `tel.tasks-off` : 4 ligne(s)
 - `tel.adid-off` : 1 ligne(s)
-- `tel.hosts` : 1 ligne(s)
-- `opt.defender-rt-off` : 1 ligne(s)
-- `upd.wu-auto-off` : 1 ligne(s)
 
 ## O&O ShutUp10++ : domaines couverts
 
@@ -412,17 +387,17 @@ O&O ShutUp10++ est un logiciel gratuit propriétaire : aucun code ni aucune list
 | Synchronisation des paramètres et presse-papiers cloud | `tel.sync-off`, `tel.clipboard-off` |
 | Copilot, Recall et fonctions IA | `tel.copilot-off`, `tel.recall-off`, `tel.ai-off` |
 | Microsoft Edge (télémétrie, publicités, fonctions promotionnelles) | `tel.edge-telemetry-off`, `tel.edge-debloat` |
-| Windows Update (pair à pair, pilotes, installations automatiques) | `opt.delivery-opt-off`, `upd.wu-drivers-off`, `upd.wu-auto-off` |
+| Windows Update (pair à pair, pilotes) | `opt.delivery-opt-off`, `upd.wu-drivers-off` ; les installations automatiques ne sont plus bloquées (option retirée) |
 | Programme Insider et essais de fonctionnalités | `tel.insider-off` |
 | Applis en arrière-plan et Widgets | `opt.bgapps-off`, `opt.widgets-off` |
-| Écran de verrouillage et interface (notifications, documents récents) | `tel.ui-privacy`, `tel.recent-docs-off`, `opt.lockscreen-off` |
-| Microsoft Defender et SmartScreen | Seule la protection en temps réel (`opt.defender-rt-off`, Risqué, section 4.10) ; le reste est exclu (voir le tableau) |
+| Écran de verrouillage et interface (notifications, documents récents) | `tel.ui-privacy`, `tel.recent-docs-off` |
+| Microsoft Defender et SmartScreen | Exclu : aucune protection n'est désactivée (seule la charge processeur des analyses est réglable par `opt.defender-scan-cpu`) |
 
 ## Comptes
 
 | Source | Lignes | Reprises | Exclues |
 |---|---|---|---|
-| WinUtil | 68 | 54 | 14 |
-| privacy.sexy | 180 | 75 | 105 |
+| WinUtil | 68 | 32 | 36 |
+| privacy.sexy | 180 | 70 | 110 |
 
-Identifiants : 60 nouveaux, 63 des tableaux minimaux (Tasks 8 à 12), 123 au total.
+Identifiants : 87 au total après le recentrage du 11 novembre 2026 (36 options retirées, voir docs/revue-code-2026-11-11.md).

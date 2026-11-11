@@ -45,27 +45,6 @@
     }
   },
   {
-    "id": "blt.edge-remove",
-    "menu": "Bloatware",
-    "groupe": "Applications",
-    "titre": "Désinstaller Microsoft Edge",
-    "description": "Désinstalle Edge avec son désinstalleur officiel, débloqué par la méthode de WinUtil (un fichier factice MicrosoftEdge.exe est créé dans le dossier SystemApps de Windows, puis supprimé à l'annulation), sans supprimer le profil de l'utilisateur (favoris, mots de passe, historique) et en conservant le composant WebView2 dont d'autres applications ont besoin. Risque : rien n'empêche Windows de le réinstaller lors d'une mise à jour majeure, et certains liens ou applications s'attendent à trouver un navigateur : vérifiez qu'un autre navigateur est installé. Annulation : réinstallation par winget (Microsoft.Edge).",
-    "risque": "Risque",
-    "reversible": true,
-    "redemarrage": false,
-    "testable": false,
-    "delaiSec": 900,
-    "compatibilite": {
-      "windows": [
-        "10",
-        "11"
-      ],
-      "editions": [],
-      "cpu": [],
-      "gpu": []
-    }
-  },
-  {
     "id": "blt.features",
     "menu": "Bloatware",
     "groupe": "Fonctionnalités Windows",

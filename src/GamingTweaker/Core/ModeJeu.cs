@@ -75,13 +75,18 @@ namespace GamingTweaker.Core
             "MsMpEng", "NisSrv", "MpDefenderCoreService", "SecurityHealthService", "SecurityHealthSystray", "audiodg",
             "nvcontainer", "NVDisplay.Container", "RtkAudUService", "RtkAudUService64", "atiesrxx", "atieclxx", "explorer", "System", "Registry", "svchost", "fontdrvhost", "GamingTweaker",
             "sihost", "ctfmon", "ShellExperienceHost", "StartMenuExperienceHost", "TextInputHost", "SearchHost", "RuntimeBroker", "conhost", "igfxEM", "RadeonSoftware",
+            // Anti-triche : les fermer déconnecte la partie en cours et peut valoir une sanction ; Vanguard exige un redémarrage pour repartir.
+            "vgtray", "vgc", "FACEITService", "FACEIT", "EasyAntiCheat", "EasyAntiCheat_EOS", "EasyAntiCheat_Setup", "BEService", "PnkBstrA", "PnkBstrB",
         };
-        /// <summary>Jamais proposés ni arrêtés : services dont dépend le système, la sécurité, l'audio, l'affichage et le réseau.</summary>
+        /// <summary>Jamais proposés ni arrêtés : services dont dépend le système, la sécurité, l'audio, l'affichage, le réseau, les anti-triche et le Game Pass.</summary>
         public static readonly string[] ServicesProteges =
         {
             "RpcSs", "RpcEptMapper", "DcomLaunch", "LSM", "SamSs", "EventLog", "PlugPlay", "Power", "ProfSvc", "UserManager", "Winmgmt", "CryptSvc", "BFE", "MpsSvc",
             "Dhcp", "Dnscache", "nsi", "Themes", "WinDefend", "WdNisSvc", "Sense", "SecurityHealthService", "wscsvc", "AudioSrv", "AudioEndpointBuilder",
             "NVDisplay.ContainerLocalSystem", "NvContainerLocalSystem", "RtkAudioUniversalService", "TrustedInstaller", "gpsvc",
+            // Anti-triche (Vanguard, Easy Anti-Cheat, BattlEye, FACEIT, ESEA, PunkBuster, nProtect, XIGNCODE) et services du Game Pass.
+            "vgc", "vgk", "EasyAntiCheat", "EasyAntiCheat_EOS", "BEService", "BEDaisy", "FACEIT", "ESEADriver2", "PnkBstrA", "PnkBstrB", "npggsvc", "xhunter1",
+            "GamingServices", "GamingServicesNet",
         };
 
         public static bool EstProcessusProtege(string nom)

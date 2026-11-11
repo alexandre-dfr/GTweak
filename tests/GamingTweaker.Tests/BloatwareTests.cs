@@ -83,16 +83,6 @@ namespace GamingTweaker.Tests
             Assert.Empty(PsCommon.Eval("foreach ($a in @(" + string.Join(",", known.Select(a => Q(a.Package))) + ")) { if (Test-GTProtectedApp $a) { 'PROTEGE:' + $a } }"));
         }
 
-        [Fact] public void Suppression_edge_conserve_le_profil_et_webview2()
-        {
-            var scriptEdge = Catalogue()["blt.edge-remove"].Apply;
-            Assert.DoesNotContain("--delete-profile", scriptEdge);
-            Assert.DoesNotContain("EdgeWebView", scriptEdge);
-            Assert.DoesNotContain("WebView", scriptEdge);
-            Assert.Contains("--uninstall --system-level --force-uninstall", scriptEdge);
-            Assert.Contains("Write-GTJournal 'wingetapp' 'Microsoft.Edge'", scriptEdge);
-        }
-
         [Fact] public void Annulation_indique_le_nom_du_paquet()
         {
             var r = Apply("Remove-TweakApp -Package 'Microsoft.BingNews' -StoreId '9WZDNCRFHVFW'", "blt.apps", new string[0], FauxAppx("Microsoft.BingNews"));
@@ -278,12 +268,14 @@ namespace GamingTweaker.Tests
             public Task<IReadOnlyList<string>> LireAsync(CancellationToken ct) => Task.FromResult<IReadOnlyList<string>>(noms);
         }
 
-        [Fact] public void Le_catalogue_bloatware_contient_exactement_le_recapitulatif_et_Edge()
+        [Fact] public void Le_catalogue_bloatware_contient_exactement_le_recapitulatif()
         {
             var cat = Catalogue();
             var recap = Couverture.Recapitulatif("Bloatware");
             Assert.Equal(7, recap.Count);
-            var attendu = new HashSet<string>(recap.Select(r => r.Id)) { "blt.edge-remove" };
+            // blt.edge-remove retiré le 11 novembre 2026 (aucun gain en jeu, Widgets et Store cassés, réinstallé par Windows Update).
+            var attendu = new HashSet<string>(recap.Select(r => r.Id));
+            Assert.DoesNotContain("blt.edge-remove", cat.Keys);
             Assert.Empty(cat.Keys.Where(k => !attendu.Contains(k)));
             Assert.Empty(attendu.Where(k => !cat.ContainsKey(k)));
             foreach (var r in recap)
@@ -294,10 +286,6 @@ namespace GamingTweaker.Tests
                 Assert.Equal(r.Groupe, it.Groupe);
                 if (r.Reversible.StartsWith("partiel", StringComparison.Ordinal)) { /* annulation partielle signalée dans l'aperçu : voir test dédié */ }
             }
-            var edge = cat["blt.edge-remove"];
-            Assert.Equal(RiskLevel.Risque, edge.Risque);
-            Assert.False(edge.Testable);
-            Assert.True(edge.Reversible);
             foreach (var it in cat.Values)
             {
                 Assert.False(string.IsNullOrWhiteSpace(it.Description), it.Id + " : description");
@@ -334,8 +322,7 @@ namespace GamingTweaker.Tests
             {
                 foreach (var m in interdits)
                     Assert.False(it.Apply.IndexOf(m, StringComparison.OrdinalIgnoreCase) >= 0, it.Id + " : apply contient « " + m + " »");
-                // Seul le désinstalleur officiel d'Edge est lancé directement.
-                if (it.Id != "blt.edge-remove") Assert.DoesNotContain("Start-Process", it.Apply);
+                Assert.DoesNotContain("Start-Process", it.Apply);
             }
         }
 
@@ -526,82 +513,6 @@ namespace GamingTweaker.Tests
             Assert.DoesNotContain("Microsoft.Edge", r);
         }
 
-        // ---- Edge : fichier factice journalisé, setup.exe choisi par version ------------------------------------
-
-        private string FauxEdge(out string app, out string dummy, out string lancements, params string[] versions)
-        {
-            app = Path.Combine(tmp, "edge", "Application");
-            dummy = Path.Combine(tmp, "sysapps", "Microsoft.MicrosoftEdge_8wekyb3d8bbwe", "MicrosoftEdge.exe");
-            lancements = Path.Combine(tmp, "edge-start.log");
-            foreach (var v in versions) { Directory.CreateDirectory(Path.Combine(app, v, "Installer")); File.WriteAllText(Path.Combine(app, v, "Installer", "setup.exe"), "x"); }
-            return "$GT_EdgeAppDir = " + Q(app) + "\r\n$GT_EdgeDummyPath = " + Q(dummy) + "\r\n"
-                 + "function Set-TweakRegistryIfNeeded { param($Path, $Name, $Type, $Value) Add-Content -LiteralPath " + Q(lancements) + " -Value ('reg ' + $Path + ' ' + $Name) }\r\n"
-                 + "function Start-Process { [CmdletBinding()] param([string]$FilePath, [string]$ArgumentList, [switch]$Wait, [switch]$PassThru) "
-                 + "Add-Content -LiteralPath " + Q(lancements) + " -Value ('start ' + $FilePath + ' ' + $ArgumentList + ' dummy=' + (Test-Path -LiteralPath $GT_EdgeDummyPath)); [pscustomobject]@{ ExitCode = 0 } }\r\n";
-        }
-
-        [Fact] public void Le_setup_d_Edge_est_choisi_par_version_et_non_par_ordre_alphabetique()
-        {
-            string app, dummy, log;
-            var pre = FauxEdge(out app, out dummy, out log, "99.0.1.0", "120.0.2.0", "9.5.0.0");
-            Directory.CreateDirectory(Path.Combine(app, "Dictionnaire")); File.WriteAllText(Path.Combine(app, "Dictionnaire", "x"), "x");
-            var r = PsCommon.Eval(pre + "Get-GTEdgeSetup (Get-GTEdgeAppDir)");
-            Assert.Equal(Path.Combine(app, "120.0.2.0", "Installer", "setup.exe"), r.Single());
-            Assert.Empty(PsCommon.Eval("if ($null -eq (Get-GTEdgeSetup " + Q(Path.Combine(tmp, "absent")) + ")) { }"));
-        }
-
-        [Fact] public void Edge_cree_le_fichier_factice_journalise_avant_le_lancement_puis_l_annulation_le_supprime()
-        {
-            string app, dummy, log;
-            var pre = FauxEdge(out app, out dummy, out log, "99.0.1.0", "120.0.2.0");
-            var r = string.Join("\n", Apply(Catalogue()["blt.edge-remove"].Apply, "blt.edge-remove", new string[0], pre));
-            Assert.Contains("##GT|ok|blt.edge-remove", r);
-            var l = File.ReadAllText(log);
-            Assert.Contains(Path.Combine("120.0.2.0", "Installer", "setup.exe") + " --uninstall --system-level --force-uninstall dummy=True", l);
-            Assert.DoesNotContain("--delete-profile", l);
-            Assert.True(File.Exists(dummy));
-            var j = Journal.Read(Jrn).ToList();
-            var iFichier = j.FindIndex(e => e.Kind == "newfile" && e.Target == dummy);
-            var iWinget = j.FindIndex(e => e.Kind == "wingetapp" && e.Target == "Microsoft.Edge");
-            Assert.True(iFichier >= 0 && iWinget > iFichier, "le fichier factice est journalisé avant le désinstalleur");
-            var rr = Restore("blt.edge-remove", FauxWinget());
-            Assert.Contains("##GT|ok|blt.edge-remove", rr);
-            Assert.False(File.Exists(dummy));
-            Assert.False(Directory.Exists(Path.GetDirectoryName(dummy)), "dossier créé par nous : supprimé aussi");
-            Assert.Contains("install --source winget --id Microsoft.Edge --exact", LogWinget());
-        }
-
-        [Fact] public void Un_fichier_factice_deja_present_n_est_ni_journalise_ni_supprime()
-        {
-            string app, dummy, log;
-            var pre = FauxEdge(out app, out dummy, out log, "120.0.2.0");
-            Directory.CreateDirectory(Path.GetDirectoryName(dummy)); File.WriteAllText(dummy, "existant");
-            var r = string.Join("\n", Apply(Catalogue()["blt.edge-remove"].Apply, "blt.edge-remove", new string[0], pre));
-            Assert.Contains("##GT|ok|blt.edge-remove", r);
-            Assert.DoesNotContain(Journal.Read(Jrn), e => e.Kind == "newfile");
-            Restore("blt.edge-remove", FauxWinget());
-            Assert.Equal("existant", File.ReadAllText(dummy));
-        }
-
-        [Fact] public void Edge_absent_est_ignore_sans_creer_de_fichier()
-        {
-            string app, dummy, log;
-            var pre = FauxEdge(out app, out dummy, out log);
-            var r = string.Join("\n", Apply(Catalogue()["blt.edge-remove"].Apply, "blt.edge-remove", new string[0], pre));
-            Assert.Contains("##GT|skip|blt.edge-remove", r);
-            Assert.False(File.Exists(dummy));
-            Assert.False(File.Exists(Jrn));
-        }
-
-        [Fact] public void La_description_d_Edge_ne_promet_plus_de_blocage_de_reinstallation()
-        {
-            var d = Catalogue()["blt.edge-remove"].Description;
-            Assert.DoesNotContain("Bloque aussi", d);
-            Assert.DoesNotContain("réinstallation automatique par Windows Update", d);
-            Assert.Contains("mise à jour majeure", d);
-            Assert.DoesNotContain("DoNotUpdateToEdgeWithChromium", Catalogue()["blt.edge-remove"].Apply);
-        }
-
         [Fact] public void Les_fonctionnalites_protegees_ne_sont_jamais_visees()
         {
             var cat = Catalogue();
@@ -612,15 +523,7 @@ namespace GamingTweaker.Tests
             }
         }
 
-        // ---- réinstallation d'Edge et valeurs de registre ------------------------------------------------
-
-        [Fact] public void L_annulation_d_Edge_passe_par_winget_install_Microsoft_Edge()
-        {
-            File.WriteAllText(Jrn, "{\"item\":\"blt.edge-remove\",\"kind\":\"wingetapp\",\"target\":\"Microsoft.Edge\",\"existed\":true,\"before\":\"winget\",\"after\":null}\n");
-            var r = Restore("blt.edge-remove", FauxWinget());
-            Assert.Contains("##GT|ok|blt.edge-remove", r);
-            Assert.Contains("install --source winget --id Microsoft.Edge --exact", LogWinget());
-        }
+        // ---- valeurs de registre ------------------------------------------------
 
         [Theory]
         [InlineData("blt.wpbt-off", @"HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager", "DisableWpbtExecution", 1)]

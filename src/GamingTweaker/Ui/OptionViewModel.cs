@@ -51,6 +51,8 @@ namespace GamingTweaker.Ui
         public string Menu { get { return Item.Menu; } }
         public RiskLevel NiveauRisque { get; private set; }
         public string Risque { get; private set; }
+        /// <summary>Vrai si « Recommandé » peut cocher l'option : classée Sûr et non exclue par le catalogue.</summary>
+        public bool Recommandee { get { return NiveauRisque == RiskLevel.Sur && Item.Recommande; } }
         public bool Reversible { get { return Item.Reversible; } }
         public bool Redemarrage { get { return Item.Redemarrage; } }
         internal string SearchText { get; private set; }

@@ -64,8 +64,14 @@ namespace GamingTweaker.Core
             "$p = @(Get-AppxPackage -Name Microsoft.DesktopAppInstaller -ErrorAction SilentlyContinue | Sort-Object Version -Descending | Select-Object -First 1)\r\n" +
             "if ($p.Count -gt 0) { [Console]::Out.WriteLine([string]$p[0].InstallLocation) }";
 
-        /// <summary>winget.exe vérifié (paquet DesktopAppInstaller sous Program Files\WindowsApps, fichier présent), ou null.</summary>
-        public static string Winget()
+        /// <summary>Résolu une fois par processus (un lancement de PowerShell) ; remplaçable par les tests.</summary>
+        internal static Func<string> ResoudreWinget = ResoudreWingetParPowerShell;
+        private static readonly Lazy<string> wingetCache = new Lazy<string>(() => { try { return ResoudreWinget(); } catch (Exception) { return null; } });
+
+        /// <summary>winget.exe vérifié (paquet DesktopAppInstaller sous Program Files\WindowsApps, fichier présent), ou null. Mis en cache.</summary>
+        public static string Winget() { return wingetCache.Value; }
+
+        private static string ResoudreWingetParPowerShell()
         {
             try
             {

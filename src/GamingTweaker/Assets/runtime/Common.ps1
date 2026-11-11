@@ -42,7 +42,7 @@ function Invoke-GTItem([string]$Id, [scriptblock]$Apply) {
 # ---------------------------------------------------------------------------
 # Journal d'annulation (journal.jsonl, une ligne JSON compacte par entree) et fonctions Set-Tweak*.
 # Chaque fonction ecrit puis vide son entree sur disque AVANT de modifier : si l'ecriture echoue, elle leve
-# une erreur et ne change rien. Kinds : registry, defender, service, task, power, bcd, hosts, app, quarantine, regkey, regkeynew.
+# une erreur et ne change rien. Kinds : registry, service, task, power, bcd, hosts, app, quarantine, regkey, regkeynew.
 # ---------------------------------------------------------------------------
 
 function Add-GTJournalLine([string]$Line) {
@@ -211,16 +211,6 @@ function Add-TweakRegistryKey {
     Write-GTJournal 'regkeynew' $target $existed $null $Path
     [Microsoft.Win32.Registry]::SetValue((ConvertTo-GTNativeKey $Path), '', '', [Microsoft.Win32.RegistryValueKind]::String)
     return $true
-}
-
-# ---- Defender ---------------------------------------------------------------
-
-function Set-TweakDefenderRealtime {
-    param([Parameter(Mandatory)][bool]$Enabled)
-    $pref = Get-MpPreference
-    $before = -not [bool]$pref.DisableRealtimeMonitoring
-    Write-GTJournal 'defender' 'RealtimeMonitoring' $true $before $Enabled
-    Set-MpPreference -DisableRealtimeMonitoring (-not $Enabled)
 }
 
 # ---- Services ---------------------------------------------------------------
@@ -677,7 +667,6 @@ function Restore-GTEntry($E) {
             elseif ((Get-GTRegValue $path $name).Existed) { Remove-ItemProperty -LiteralPath $path -Name $name -ErrorAction Stop }
             if ($path -ieq 'HKCU:\Control Panel\Mouse') { Update-GTMouseParams }
         }
-        'defender'   { Set-MpPreference -DisableRealtimeMonitoring (-not [bool]$E.before) }
         'service'    { Set-GTServiceStart $E.target ([string]$E.before) }
         'task' {
             $p = Split-GTTaskPath $E.target
@@ -1043,34 +1032,6 @@ function Get-GTStartupState {
     return 'Applied'
 }
 
-# ---- Cles a enumerer ---------------------------------------------------------------------
-
-function ConvertTo-GTHklmPath([string]$RegistryName) {
-    # « HKEY_LOCAL_MACHINE\x » (Name d'une cle) -> « HKLM:\x »
-    return ('HKLM:' + $RegistryName.Substring('HKEY_LOCAL_MACHINE'.Length))
-}
-
-# Pour chaque carte graphique PCI : cle MessageSignaledInterruptProperties de ses parametres d'interruption.
-function Get-GTGpuMsiKeys {
-    $res = @()
-    $root = 'HKLM:\SYSTEM\CurrentControlSet\Enum\PCI'
-    foreach ($dev in @(Get-ChildItem -LiteralPath $root -ErrorAction SilentlyContinue)) {
-        foreach ($inst in @(Get-ChildItem -LiteralPath $dev.PSPath -ErrorAction SilentlyContinue)) {
-            $p = Get-ItemProperty -LiteralPath $inst.PSPath -ErrorAction SilentlyContinue
-            if ($p -and ([string]$p.ClassGUID -ieq '{4d36e968-e325-11ce-bfc1-08002be10318}')) {
-                $res += ((ConvertTo-GTHklmPath $inst.Name) + '\Device Parameters\Interrupt Management\MessageSignaledInterruptProperties')
-            }
-        }
-    }
-    return $res
-}
-
-# Une cle par interface reseau IP.
-function Get-GTTcpInterfaceKeys {
-    $root = 'HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces'
-    return @(Get-ChildItem -LiteralPath $root -ErrorAction SilentlyContinue | ForEach-Object { ConvertTo-GTHklmPath $_.Name })
-}
-
 # ---------------------------------------------------------------------------
 # Aides du menu Nettoyage.
 # Remove-TweakPath ne supprime que dans $AllowedRoots (chemins resolus, sans tenir compte de la casse, avec separateur : « C:\a » n'autorise pas « C:\ab »).
@@ -1145,11 +1106,19 @@ function Get-GTSteamDir {
     try { return (Get-GTFullPath $p) } catch { return $null }
 }
 
+# Dossier temporaire de l'utilisateur du bureau. $env:TEMP du processus est le dossier Run de l'outil (environnement reconstruit par
+# PowerShellLanceur) : il ne doit jamais servir au nettoyage. GT_USERTEMP vient de ProfileList, sinon LOCALAPPDATA\Temp ; $null si inconnu.
+function Get-GTUserTemp {
+    if ($env:GT_USERTEMP) { return [string]$env:GT_USERTEMP }
+    if ($env:LOCALAPPDATA) { return (Join-Path $env:LOCALAPPDATA 'Temp') }
+    return $null
+}
+
 function Get-GTDefaultAllowedRoots {
     $roots = New-Object System.Collections.Generic.List[string]
     $sr = [string]$env:SystemRoot; $la = [string]$env:LOCALAPPDATA; $ap = [string]$env:APPDATA; $pd = [string]$env:ProgramData; $up = [string]$env:USERPROFILE
-    # %TEMP% deregle (profil, racine d'un disque) : ignore. Un dossier temporaire s'appelle Temp ou Tmp (ou en est un sous-dossier : Temp\1).
-    $tmp = [string]$env:TEMP
+    # Dossier temporaire deregle (profil, racine d'un disque) : ignore. Un dossier temporaire s'appelle Temp ou Tmp (ou en est un sous-dossier : Temp\1).
+    $tmp = [string](Get-GTUserTemp)
     if ($tmp) {
         try {
             $t = Get-GTFullPath $tmp
@@ -1473,75 +1442,7 @@ function Select-GTOldDrivers {
     }
 }
 
-# ---- Registre : entrees orphelines -------------------------------------------------------------
-
-$GT_UninstallRoots = @('HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall',
-                       'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall',
-                       'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall')
-$GT_MuiCachePath = 'HKCU:\Software\Classes\Local Settings\Software\Microsoft\Windows\Shell\MuiCache'
-
-# Vrai si le chemin est sur un disque fixe pret : un disque amovible, reseau ou debranche ne permet pas de conclure qu'un fichier a disparu.
-function Test-GTFixedDrive([string]$Path) {
-    try { $d = New-Object IO.DriveInfo($Path.Substring(0, 1)); return ($d.DriveType -eq [IO.DriveType]::Fixed -and $d.IsReady) } catch { return $false }
-}
-
-# Programme designe par une commande de desinstallation : chemin absolu (lecteur:\...) ou $null (MsiExec, rundll32, chemin relatif, UNC...).
-# Commande non guillemetee contenant des espaces : on essaie les prefixes se terminant par .exe, .com, .bat ou .cmd et on garde le premier qui existe ;
-# si aucun n'existe le programme est absent (premier prefixe). Sans extension reconnue et avec des espaces, on ne peut pas conclure : $null.
-function Get-GTUninstallTarget([string]$Command) {
-    if ([string]::IsNullOrWhiteSpace($Command)) { return $null }
-    $c = [Environment]::ExpandEnvironmentVariables($Command.Trim())
-    $p = $null
-    if ($c.StartsWith('"')) {
-        $e = $c.IndexOf('"', 1)
-        if ($e -lt 2) { return $null }
-        $p = $c.Substring(1, $e - 1)
-    }
-    elseif ($c -match '^[A-Za-z]:\\') {
-        $cands = @()
-        foreach ($m in [regex]::Matches($c, '\.(?:exe|com|bat|cmd)(?=\s|$)', [Text.RegularExpressions.RegexOptions]::IgnoreCase)) { $cands += $c.Substring(0, $m.Index + $m.Length) }
-        if ($cands.Count -gt 0) {
-            $p = $cands[0]
-            foreach ($cand in $cands) { $ok = $false; try { $ok = Test-Path -LiteralPath $cand -PathType Leaf } catch { }; if ($ok) { $p = $cand; break } }
-        }
-        elseif ($c -match '\s') { return $null }
-        else { $p = $c }
-    }
-    if (-not $p -or $p -notmatch '^[A-Za-z]:\\') { return $null }
-    return $p
-}
-
-# Cles Uninstall dont le programme a disparu : cible absolue, sur un disque fixe pret, inexistante, et sans WindowsInstaller=1.
-function Get-GTStaleUninstallKeys {
-    foreach ($root in @($GT_UninstallRoots)) {
-        if (-not (Test-Path -LiteralPath $root)) { continue }
-        foreach ($k in @(Get-ChildItem -LiteralPath $root -ErrorAction SilentlyContinue)) {
-            try {
-                $wi = $k.GetValue('WindowsInstaller')
-                if ($null -ne $wi -and [int]$wi -eq 1) { continue }
-                $target = Get-GTUninstallTarget ([string]$k.GetValue('UninstallString'))
-                if (-not $target) { continue }
-                if (-not (Test-GTFixedDrive $target)) { continue }
-                if (Test-Path -LiteralPath $target) { continue }
-                [pscustomobject]@{ Path = ($root.TrimEnd('\') + '\' + $k.PSChildName); Target = $target }
-            } catch { continue }
-        }
-    }
-}
-
-# Valeurs MuiCache « <chemin>.FriendlyAppName » / « .ApplicationCompany » dont le fichier a disparu (disque fixe pret).
-function Get-GTStaleMuiValues {
-    if (-not (Test-Path -LiteralPath $GT_MuiCachePath)) { return @() }
-    $k = Get-Item -LiteralPath $GT_MuiCachePath
-    $res = @()
-    foreach ($n in $k.GetValueNames()) {
-        if ($n -notmatch '^(?<p>[A-Za-z]:\\.+)\.(?:FriendlyAppName|ApplicationCompany)$') { continue }
-        $p = $Matches['p']
-        if (-not (Test-GTFixedDrive $p)) { continue }
-        if (-not (Test-Path -LiteralPath $p)) { $res += $n }
-    }
-    return $res
-}
+# ---- Registre : valeurs journalisees et listes d'historique ------------------------------------------------
 
 # Supprime une valeur apres l'avoir journalisee (l'annulation la remet). Renvoie $true si elle existait.
 function Remove-TweakRegistryValue {
@@ -1551,31 +1452,6 @@ function Remove-TweakRegistryValue {
     Write-GTJournal 'registry' ($Path + '|' + $Name) $true $cur.Value $null $cur.Type
     Remove-ItemProperty -LiteralPath $Path -Name ([WildcardPattern]::Escape($Name)) -ErrorAction Stop
     return $true
-}
-
-# Nettoyage limite du registre : cles Uninstall orphelines (exportees .reg puis supprimees) et valeurs MuiCache obsoletes (journalisees).
-# Tous les exports sont verifies avant la premiere suppression : si l'un echoue, rien n'est supprime.
-function Clear-TweakStaleRegistry {
-    $keys = @(Get-GTStaleUninstallKeys)
-    $vals = @(Get-GTStaleMuiValues)
-    if ($keys.Count -eq 0 -and $vals.Count -eq 0) { Skip-GTItem 'Aucune entrée de désinstallation orpheline ni valeur MuiCache obsolète.' }
-    if ([string]::IsNullOrEmpty($GT_JournalPath)) { throw 'Journal d''annulation non configuré.' }
-    $dir = Split-Path -Parent $GT_JournalPath
-    if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
-    $checks = @()
-    try {
-        foreach ($k in $keys) {
-            $f = Join-Path $dir ('verif-' + [Guid]::NewGuid().ToString('N') + '.reg')
-            $checks += $f
-            Export-GTRegistryKey $k.Path $f
-        }
-    } finally {
-        foreach ($f in $checks) { Remove-Item -LiteralPath $f -Force -ErrorAction SilentlyContinue }
-    }
-    $nk = 0; $nv = 0
-    foreach ($k in $keys) { if (Remove-TweakRegistryKey -Path $k.Path) { $nk++ } }
-    foreach ($n in $vals) { if (Remove-TweakRegistryValue -Path $GT_MuiCachePath -Name $n) { $nv++ } }
-    Set-GTItemNote ([string]$nk + ' entrée(s) de désinstallation et ' + [string]$nv + ' valeur(s) MuiCache retirée(s) ; exportées dans le dossier de la session, annulables depuis Historique.')
 }
 
 # Vide les valeurs d'une cle HKCU (listes de fichiers recents, historiques). Definitif, sans journal. -Recurse : sous-cles comprises (les cles restent).
@@ -1603,11 +1479,11 @@ function Clear-GTRegistryValues {
 
 # ---- winget --------------------------------------------------------------------------------
 
-# $GT_WingetPath : remplacement pour les tests. Renvoie $null si winget est absent.
+# $GT_WingetPath : chemin de winget.exe vérifié par l'outil (paquet DesktopAppInstaller sous Program Files\WindowsApps), écrit dans l'en-tête
+# de chaque script ; remplacé dans les tests. Jamais cherché dans le PATH (réduit aux dossiers système, l'alias WindowsApps n'y est pas).
+# Renvoie $null si winget est absent.
 function Get-GTWingetPath {
     if ($GT_WingetPath) { return $GT_WingetPath }
-    $c = Get-Command winget.exe -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($c) { return [string]$c.Source }
     return $null
 }
 
@@ -1787,32 +1663,6 @@ function New-TweakEmptyFile {
     if ($dirNew) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
     New-Item -ItemType File -Force -Path $Path | Out-Null
     return $true
-}
-
-# Dossier d'installation d'Edge (Chromium) ; $GT_EdgeAppDir le remplace dans les tests.
-function Get-GTEdgeAppDir {
-    if ($GT_EdgeAppDir) { return $GT_EdgeAppDir }
-    return (Join-Path ${env:ProgramFiles(x86)} 'Microsoft\Edge\Application')
-}
-
-# setup.exe d'Edge de la version la plus recente (tri sur [version], pas sur le texte : 99.0 < 120.0). $null si absent.
-function Get-GTEdgeSetup([string]$AppDir) {
-    if (-not (Test-Path -LiteralPath $AppDir)) { return $null }
-    $best = $null; $bestV = $null
-    foreach ($d in @(Get-ChildItem -LiteralPath $AppDir -Directory -ErrorAction SilentlyContinue)) {
-        $v = $null
-        if (-not [version]::TryParse($d.Name, [ref]$v)) { continue }
-        $s = Join-Path $d.FullName 'Installer\setup.exe'
-        if (-not (Test-Path -LiteralPath $s)) { continue }
-        if ($null -eq $bestV -or $v -gt $bestV) { $best = $s; $bestV = $v }
-    }
-    return $best
-}
-
-# Fichier factice du dossier de l'ancien Edge : sa presence debloque le desinstalleur officiel (methode de WinUtil).
-function Get-GTEdgeDummyPath {
-    if ($GT_EdgeDummyPath) { return $GT_EdgeDummyPath }
-    return (Join-Path $env:SystemRoot 'SystemApps\Microsoft.MicrosoftEdge_8wekyb3d8bbwe\MicrosoftEdge.exe')
 }
 
 # Desinstalle OneDrive par son programme officiel. Les dossiers de l'utilisateur ne sont jamais touches.

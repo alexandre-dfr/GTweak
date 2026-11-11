@@ -401,126 +401,6 @@ namespace GamingTweaker.Tests
             Assert.Equal("0", lignes[1]);
         }
 
-        // ---- Registre -----------------------------------------------------------------------------
-
-        private string CleUn(string nom) => @"HKCU:\" + sub + @"\Uninstall\" + nom;
-        private string RacineUn => @"HKCU:\" + sub + @"\Uninstall";
-        private string Mui => @"HKCU:\" + sub + @"\MuiCache";
-
-        private void Entree(string nom, string uninstallString, int? windowsInstaller = null)
-        {
-            using (var k = Registry.CurrentUser.CreateSubKey(sub + @"\Uninstall\" + nom))
-            {
-                k.SetValue("DisplayName", nom);
-                if (uninstallString != null) k.SetValue("UninstallString", uninstallString);
-                if (windowsInstaller != null) k.SetValue("WindowsInstaller", windowsInstaller.Value, RegistryValueKind.DWord);
-            }
-        }
-        private bool CleExiste(string nom) { using (var k = Registry.CurrentUser.OpenSubKey(sub + @"\Uninstall\" + nom)) return k != null; }
-        private bool MuiExiste(string nom) { using (var k = Registry.CurrentUser.OpenSubKey(sub + @"\MuiCache")) return k != null && k.GetValue(nom) != null; }
-
-        private static string LettreAbsente() => "ZYXWVUTSRQPONMLKJIHGFED".Select(c => c.ToString()).First(l => !Directory.Exists(l + @":\"));
-
-        private string PrefixeRegistre() => "$GT_UninstallRoots = @(" + Q(RacineUn) + ")\n$GT_MuiCachePath = " + Q(Mui) + "\n";
-
-        [Fact]
-        public async Task Registre_garde_une_entree_dont_le_programme_existe()
-        {
-            var exe = Fichier(Dir("Programme"), "prog.exe");
-            Entree("Present", "\"" + exe + "\" /uninstall");
-            Entree("PresentSansGuillemets", exe + " /S");
-            Entree("Disparu", "\"" + Path.Combine(tmp, "Disparu", "unins000.exe") + "\" /SILENT");
-            Entree("DisparuSansGuillemets", Path.Combine(tmp, "Disparu", "remove.exe") + " /S");
-            Entree("InstallerMsi", @"MsiExec.exe /X{11111111-2222-3333-4444-555555555555}");
-            Entree("MsiDisparu", "\"" + Path.Combine(tmp, "Disparu", "x.exe") + "\"", 1);
-            Entree("Relatif", "uninstall.exe /S");
-            Entree("Rundll", @"rundll32.exe setupapi.dll,InstallHinfSection DefaultUninstall 132 foo.inf");
-            Entree("SansChaine", null);
-            Entree("LecteurAbsent", "\"" + LettreAbsente() + @":\Programmes\unins.exe""");
-            var o = await Lance(AvecPrefixe(Catalogue()["cln.registry"], PrefixeRegistre()));
-            Assert.Equal(OutcomeStatus.Ok, o.Status);
-            foreach (var k in new[] { "Present", "PresentSansGuillemets", "InstallerMsi", "MsiDisparu", "Relatif", "Rundll", "SansChaine", "LecteurAbsent" })
-                Assert.True(CleExiste(k), k + " doit rester");
-            Assert.False(CleExiste("Disparu"));
-            Assert.False(CleExiste("DisparuSansGuillemets"));
-        }
-
-        [Fact]
-        public async Task Registre_exporte_les_cles_retirees_et_les_restaure_par_l_annulation()
-        {
-            Entree("Disparu", "\"" + Path.Combine(tmp, "Disparu", "unins000.exe") + "\"");
-            var journal = Path.Combine(tmp, "Sessions", "s1", "journal.jsonl");
-            var o = await Lance(AvecPrefixe(Catalogue()["cln.registry"], PrefixeRegistre()), journal);
-            Assert.Equal(OutcomeStatus.Ok, o.Status);
-            Assert.False(CleExiste("Disparu"));
-            Assert.Contains("\"kind\":\"regkey\"", File.ReadAllText(journal));
-            Assert.NotEmpty(Directory.GetFiles(Path.GetDirectoryName(journal), "regkey-*.reg"));
-
-            var r = await Runner.RunAsync(UndoService.BuildScript(journal, new[] { "cln.registry" }), null, CancellationToken.None, _ => 120);
-            Assert.Equal(OutcomeStatus.Ok, r.Items.Single().Status);
-            Assert.True(CleExiste("Disparu"));
-        }
-
-        [Fact]
-        public async Task Registre_export_echoue_aucune_suppression()
-        {
-            Entree("Disparu1", "\"" + Path.Combine(tmp, "Disparu", "a.exe") + "\"");
-            Entree("Disparu2", "\"" + Path.Combine(tmp, "Disparu", "b.exe") + "\"");
-            using (var k = Registry.CurrentUser.CreateSubKey(sub + @"\MuiCache")) k.SetValue(Path.Combine(tmp, "Disparu", "c.exe") + ".FriendlyAppName", "C");
-            var prefixe = PrefixeRegistre() + "function Export-GTRegistryKey([string]$Path, [string]$File) { throw 'export impossible' }\n";
-            var o = await Lance(AvecPrefixe(Catalogue()["cln.registry"], prefixe));
-            Assert.Equal(OutcomeStatus.Failed, o.Status);
-            Assert.True(CleExiste("Disparu1")); Assert.True(CleExiste("Disparu2"));
-            Assert.True(MuiExiste(Path.Combine(tmp, "Disparu", "c.exe") + ".FriendlyAppName"));
-        }
-
-        [Fact]
-        public async Task Registre_MuiCache_retire_les_valeurs_dont_le_fichier_a_disparu_avec_journal()
-        {
-            var present = Fichier(Dir("Programme"), "vivant.exe");
-            var perdu = Path.Combine(tmp, "Perdu", "mort.exe");
-            using (var k = Registry.CurrentUser.CreateSubKey(sub + @"\MuiCache"))
-            {
-                k.SetValue(present + ".FriendlyAppName", "Vivant");
-                k.SetValue(present + ".ApplicationCompany", "Vivant SA");
-                k.SetValue(perdu + ".FriendlyAppName", "Mort");
-                k.SetValue(perdu + ".ApplicationCompany", "Mort SA");
-                k.SetValue("LangID", 1036, RegistryValueKind.DWord);
-                k.SetValue("@shell32.dll,-21769", "Aide");
-                k.SetValue(LettreAbsente() + @":\x\y.exe.FriendlyAppName", "Lecteur absent");
-            }
-            var journal = Path.Combine(tmp, "Sessions", "s1", "journal.jsonl");
-            var o = await Lance(AvecPrefixe(Catalogue()["cln.registry"], PrefixeRegistre()), journal);
-            Assert.Equal(OutcomeStatus.Ok, o.Status);
-            Assert.True(MuiExiste(present + ".FriendlyAppName")); Assert.True(MuiExiste(present + ".ApplicationCompany"));
-            Assert.False(MuiExiste(perdu + ".FriendlyAppName")); Assert.False(MuiExiste(perdu + ".ApplicationCompany"));
-            Assert.True(MuiExiste("LangID")); Assert.True(MuiExiste("@shell32.dll,-21769"));
-            Assert.True(MuiExiste(LettreAbsente() + @":\x\y.exe.FriendlyAppName"));
-
-            var r = await Runner.RunAsync(UndoService.BuildScript(journal, new[] { "cln.registry" }), null, CancellationToken.None, _ => 120);
-            Assert.Equal(OutcomeStatus.Ok, r.Items.Single().Status);
-            Assert.True(MuiExiste(perdu + ".FriendlyAppName"));
-            Assert.True(MuiExiste(perdu + ".ApplicationCompany"));
-        }
-
-        [Fact]
-        public async Task Registre_rien_a_nettoyer_est_ignore()
-        {
-            Entree("Present", "\"" + Fichier(Dir("P"), "p.exe") + "\"");
-            var o = await Lance(AvecPrefixe(Catalogue()["cln.registry"], PrefixeRegistre()));
-            Assert.Equal(OutcomeStatus.Skipped, o.Status);
-            Assert.True(CleExiste("Present"));
-        }
-
-        [Fact]
-        public void Les_racines_du_registre_par_defaut_sont_uniquement_les_cles_Uninstall_et_MuiCache()
-        {
-            var r = Un("Write-Output ($GT_UninstallRoots -join '|')\nWrite-Output $GT_MuiCachePath");
-            var l = r.Split('\n');
-            Assert.Equal(@"HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall|HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall|HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall", l[0]);
-            Assert.Equal(@"HKCU:\Software\Classes\Local Settings\Software\Microsoft\Windows\Shell\MuiCache", l[1]);
-        }
-
         // ---- Variables Common.ps1 -----------------------------------------------------------------
 
         [Fact]
@@ -588,15 +468,16 @@ Write-Output (($old | ForEach-Object { $_.Driver } | Sort-Object) -join ',')");
 
         private static readonly Dictionary<string, RiskLevel> Minimum = new Dictionary<string, RiskLevel>
         {
-            { "cln.temp", RiskLevel.Sur }, { "cln.recycle", RiskLevel.Sur }, { "cln.thumbs", RiskLevel.Sur }, { "cln.wu-cache", RiskLevel.Sur },
-            { "cln.crash", RiskLevel.Sur }, { "cln.logs", RiskLevel.Sur }, { "cln.browsers", RiskLevel.Sur }, { "cln.launchers", RiskLevel.Sur },
+            { "cln.temp", RiskLevel.Sur }, { "cln.recycle", RiskLevel.Avance }, { "cln.thumbs", RiskLevel.Sur }, { "cln.wu-cache", RiskLevel.Sur },
+            { "cln.crash", RiskLevel.Sur }, { "cln.logs", RiskLevel.Avance }, { "cln.browsers", RiskLevel.Sur }, { "cln.launchers", RiskLevel.Sur },
             { "cln.dism", RiskLevel.Sur }, { "cln.shaders", RiskLevel.Avance }, { "cln.windows-old", RiskLevel.Avance }, { "cln.old-drivers", RiskLevel.Avance },
-            { "cln.orphans", RiskLevel.Avance }, { "cln.resetbase", RiskLevel.Avance }, { "cln.prefetch", RiskLevel.Risque }, { "cln.registry", RiskLevel.Risque },
+            { "cln.orphans", RiskLevel.Avance }, { "cln.resetbase", RiskLevel.Avance },
         };
-        private static readonly string[] Reversibles = { "cln.orphans", "cln.registry" };
+        // cln.prefetch (effet négatif) et cln.registry (gain nul) retirés le 11 novembre 2026.
+        private static readonly string[] Reversibles = { "cln.orphans" };
         private static readonly string[] AvecEstimate =
             { "cln.temp", "cln.recycle", "cln.thumbs", "cln.wu-cache", "cln.crash", "cln.logs", "cln.browsers", "cln.launchers", "cln.shaders", "cln.windows-old",
-              "cln.orphans", "cln.prefetch", "cln.recent", "cln.apps-traces" };
+              "cln.orphans", "cln.recent", "cln.apps-traces" };
 
         public static IEnumerable<object[]> Lignes() => Minimum.Select(kv => new object[] { kv.Key, kv.Value });
 
@@ -627,7 +508,8 @@ Write-Output (($old | ForEach-Object { $_.Driver } | Sort-Object) -join ',')");
             Assert.Equal(2, recap.Count);
             Assert.Empty(recap.Select(r => r.Id).Intersect(Minimum.Keys));
             var attendu = new HashSet<string>(Minimum.Keys.Concat(recap.Select(r => r.Id)));
-            Assert.Equal(18, attendu.Count);
+            Assert.Equal(16, attendu.Count);
+            Assert.DoesNotContain("cln.prefetch", cat.Keys); Assert.DoesNotContain("cln.registry", cat.Keys);
             Assert.Empty(cat.Keys.Where(k => !attendu.Contains(k)));
             Assert.Empty(attendu.Where(k => !cat.ContainsKey(k)));
             foreach (var r in recap)
@@ -682,10 +564,9 @@ Write-Output (($old | ForEach-Object { $_.Driver } | Sort-Object) -join ',')");
             Assert.DoesNotContain("/ResetBase", cat["cln.dism"].Apply);
             Assert.Contains("/StartComponentCleanup", cat["cln.dism"].Apply);
             Assert.Contains("retour à la version précédente de Windows", cat["cln.windows-old"].Description);
-            Assert.Contains("définitiv", cat["cln.prefetch"].Description);
-            Assert.Contains("Ralentit", cat["cln.prefetch"].Description);
             Assert.Contains("quarantaine", cat["cln.orphans"].Description);
-            Assert.Contains("export", cat["cln.registry"].Description);
+            Assert.Contains("Recommandé", cat["cln.recycle"].Description);   // Corbeille : Avancé, jamais cochée par « Recommandé »
+            Assert.Contains("diagnostic", cat["cln.logs"].Description);
             Assert.Contains("Définitif", cat["cln.recent"].Description);
             Assert.Contains("Définitif", cat["cln.apps-traces"].Description);
         }
@@ -735,7 +616,7 @@ Write-Output (($old | ForEach-Object { $_.Driver } | Sort-Object) -join ',')");
         {
             var cat = Catalogue();
             foreach (var id in new[] { "cln.temp", "cln.thumbs", "cln.wu-cache", "cln.crash", "cln.logs", "cln.browsers", "cln.launchers", "cln.shaders", "cln.windows-old",
-                                       "cln.prefetch", "cln.recent", "cln.apps-traces" })
+                                       "cln.recent", "cln.apps-traces" })
                 Assert.Contains("Remove-TweakPath", cat[id].Apply);
             foreach (var id in AvecEstimate.Where(i => i != "cln.recycle" && i != "cln.orphans" && i != "cln.logs"))
                 Assert.Contains("Get-TweakPathSize", cat[id].Estimate);
@@ -746,15 +627,6 @@ Write-Output (($old | ForEach-Object { $_.Driver } | Sort-Object) -join ',')");
                 Assert.DoesNotContain("-RemoveRoot", it.Apply);
                 Assert.DoesNotContain("-TakeOwnership", it.Apply);
             }
-        }
-
-        [Fact]
-        public void Prefetch_ne_vise_que_les_fichiers_pf_du_dossier()
-        {
-            var a = Catalogue()["cln.prefetch"].Apply;
-            Assert.Contains("*.pf", a);
-            Assert.Contains("-NoRecurse", a);
-            Assert.Contains(@"Prefetch", a);
         }
 
         [Fact]
@@ -799,35 +671,6 @@ Write-Output (($old | ForEach-Object { $_.Driver } | Sort-Object) -join ',')");
         }
 
         // ---- Correctifs de revue (Task 10) --------------------------------------------------------
-
-        [Theory]
-        [InlineData(@"Program Files (x86)\Amazon.com Music\Uninstall.exe", " /S")]
-        [InlineData(@"Program Files\Foo Bar\uninstall", "")]
-        [InlineData(@"Program Files\Mon Jeu.com\Outils\unins000.exe", " /SILENT")]
-        public async Task Registre_garde_une_entree_non_guillemetee_dont_le_chemin_contient_des_espaces(string relatif, string arguments)
-        {
-            var exe = Fichier(Path.GetDirectoryName(Path.Combine(tmp, relatif)), Path.GetFileName(relatif));
-            Entree("Espaces", exe + arguments);
-            Entree("Disparu", Path.Combine(tmp, "Program Files", "Gone App", "unins.exe") + " /S");
-            var o = await Lance(AvecPrefixe(Catalogue()["cln.registry"], PrefixeRegistre()));
-            Assert.Equal(OutcomeStatus.Ok, o.Status);
-            Assert.True(CleExiste("Espaces"), "le programme existe : l'entrée doit rester");
-            Assert.False(CleExiste("Disparu"));
-        }
-
-        [Fact]
-        public async Task Registre_ne_conclut_pas_sur_un_chemin_a_espaces_sans_extension_reconnue()
-        {
-            // Aucun fichier n'existe, mais « C:\...\Foo Bar\uninstall » peut désigner un programme : pas de suppression.
-            Entree("SansExtension", Path.Combine(tmp, "Program Files", "Foo Bar", "uninstall"));
-            Entree("SansExtensionArgs", Path.Combine(tmp, "Program Files", "Foo Bar", "uninstall") + " /S");
-            Entree("Disparu", Path.Combine(tmp, "Disparu", "remove.exe") + " /S");
-            var o = await Lance(AvecPrefixe(Catalogue()["cln.registry"], PrefixeRegistre()));
-            Assert.Equal(OutcomeStatus.Ok, o.Status);
-            Assert.True(CleExiste("SansExtension"));
-            Assert.True(CleExiste("SansExtensionArgs"));
-            Assert.False(CleExiste("Disparu"));
-        }
 
         private static string FauxNatif() =>
             "$script:GT_Calls = New-Object System.Collections.Generic.List[string]\n"
@@ -1009,6 +852,23 @@ Write-Output (($old | ForEach-Object { $_.Driver } | Sort-Object) -join ',')");
         {
             Assert.Equal(OutcomeStatus.Ok, (await PilotesAvecCode(0)).Status);
             Assert.Equal(OutcomeStatus.Ok, (await PilotesAvecCode(3010)).Status);
+        }
+
+        [Fact]
+        public void Le_dossier_temporaire_nettoye_est_celui_de_l_utilisateur_jamais_celui_du_processus()
+        {
+            var cat = Catalogue();
+            // $env:TEMP du processus PowerShell est le dossier Run protégé de l'outil (PowerShellLanceur) : jamais une racine de nettoyage.
+            foreach (var id in new[] { "cln.temp", "cln.apps-traces" })
+                foreach (var s in new[] { cat[id].Apply, cat[id].Estimate })
+                {
+                    Assert.DoesNotContain("$env:TEMP", s);
+                    Assert.Contains("Get-GTUserTemp", s);
+                }
+            var u = Un("$env:GT_USERTEMP = 'C:\\Users\\x\\AppData\\Local\\Temp'\nWrite-Output (Get-GTUserTemp)\n$env:GT_USERTEMP = ''\n$env:LOCALAPPDATA = 'C:\\Users\\y\\AppData\\Local'\nWrite-Output (Get-GTUserTemp)");
+            Assert.Equal(new[] { @"C:\Users\x\AppData\Local\Temp", @"C:\Users\y\AppData\Local\Temp" }, u.Split('\n').Select(l => l.Trim()).ToArray());
+            Assert.Contains("AppData", cat["cln.windows-old"].Apply);
+            Assert.Contains("-ExcludePath", cat["cln.windows-old"].Apply);
         }
 
         [Fact]

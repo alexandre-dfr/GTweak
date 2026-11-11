@@ -87,7 +87,7 @@ namespace GamingTweaker.Ui
             menus.Add(new MenuEntry { Nom = "Historique", EstEmplacement = true });
             Menus = menus;
 
-            RecommanderCommand = new RelayCommand(_ => ApplyRecommended(MenuCourant), _ => !EstEmplacement && !EnRecherche && Visibles.Any(o => o.NiveauRisque == RiskLevel.Sur));
+            RecommanderCommand = new RelayCommand(_ => ApplyRecommended(MenuCourant), _ => !EstEmplacement && !EnRecherche && Visibles.Any(o => o.Recommandee));
             RafraichirProfils();
             Filtrer();
         }
@@ -200,9 +200,10 @@ namespace GamingTweaker.Ui
 
         // ---------- Sélection ----------
 
+        /// <summary>Coche les options Sûr du menu que le catalogue n'exclut pas de la recommandation (« recommande »: false).</summary>
         public void ApplyRecommended(string menu)
         {
-            foreach (var o in Options.Where(o => o.Menu == menu && o.NiveauRisque == RiskLevel.Sur)) o.IsChecked = true;
+            foreach (var o in Options.Where(o => o.Menu == menu && o.Recommandee)) o.IsChecked = true;
         }
 
         public Selection BuildSelection()

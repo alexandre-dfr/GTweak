@@ -93,8 +93,10 @@ namespace GamingTweaker.Tests
             var cat = GamingTweaker.Core.Catalogue.LoadEmbedded().Where(i => i.Menu == "Optimisation").ToDictionary(i => i.Id);
             Assert.Equal(ServicesProvider.Services.OrderBy(x => x), NomsDuScript(cat["opt.services"].Apply).OrderBy(x => x));
             Assert.Equal(ServicesProvider.XboxServices.OrderBy(x => x), NomsDuScript(cat["opt.xbox-services"].Apply).OrderBy(x => x));
-            // Liste du plan + celles que la couverture ajoute (CscService, StorSvc, SharedAccess), jamais de DiagTrack (relève de tel.diagtrack-off).
-            foreach (var n in new[] { "Fax", "RemoteRegistry", "MapsBroker", "PhoneSvc", "RetailDemo", "WpcMonSvc", "lfsvc", "Spooler", "CscService", "StorSvc", "SharedAccess" })
+            // Liste du plan + celles que la couverture ajoute (CscService, SharedAccess), jamais de DiagTrack (relève de tel.diagtrack-off),
+            // ni Spooler ni StorSvc (impression et stockage cassés en manuel : retirés le 11 novembre 2026).
+            Assert.DoesNotContain("Spooler", ServicesProvider.Services); Assert.DoesNotContain("StorSvc", ServicesProvider.Services);
+            foreach (var n in new[] { "Fax", "RemoteRegistry", "MapsBroker", "PhoneSvc", "RetailDemo", "WpcMonSvc", "lfsvc", "CscService", "SharedAccess" })
                 Assert.Contains(n, ServicesProvider.Services);
             Assert.DoesNotContain("DiagTrack", ServicesProvider.Services);
             Assert.Equal(new[] { "XblAuthManager", "XblGameSave", "XboxGipSvc", "XboxNetApiSvc" }, ServicesProvider.XboxServices);

@@ -23,6 +23,8 @@ namespace GamingTweaker.Core
         [JsonProperty("annulationPartielle")] public string AnnulationPartielle { get; set; }
         [JsonProperty("redemarrage")] public bool Redemarrage { get; set; }
         [JsonProperty("testable")] public bool Testable { get; set; } = true;
+        /// <summary>Faux : option Sûr que « Recommandé » ne coche pas (ex. plan d'alimentation sur portable).</summary>
+        [JsonProperty("recommande")] public bool Recommande { get; set; } = true;
         [JsonProperty("hkcu")] public bool Hkcu { get; set; } = false;
         /// <summary>Ordre d'exécution (croissant) ; à égalité, ordre du catalogue. Les plans d'alimentation passent avant les réglages de plan.</summary>
         [JsonProperty("ordre")] public int Ordre { get; set; } = 100;

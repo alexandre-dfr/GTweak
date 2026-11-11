@@ -49,7 +49,10 @@ namespace GamingTweaker.Core
         }
 
         /// <summary>En-tête commun (encodage, journal, quarantaine, fonctions communes), partagé avec Detection.</summary>
-        internal static string Header(string journalPath, string quarantineDir)
+        internal static string Header(string journalPath, string quarantineDir) { return Header(journalPath, quarantineDir, true); }
+
+        /// <param name="avecWinget">Faux pour la détection et l'estimation (lecture seule) : winget n'y sert pas et sa résolution lance PowerShell.</param>
+        internal static string Header(string journalPath, string quarantineDir, bool avecWinget)
         {
             var sb = new StringBuilder();
             sb.Append("[Console]::OutputEncoding = [Text.Encoding]::UTF8\r\n");
@@ -60,6 +63,10 @@ namespace GamingTweaker.Core
             sb.Append("$GT_QuarantineDir = ").Append(quarantineDir == null ? "$null" : Quote(quarantineDir)).Append("\r\n");
             // Téléchargements (pilote NVIDIA) : sous la racine protégée, chemin fixé par l'outil et non par $env:ProgramFiles.
             sb.Append("$GT_DownloadRoot = ").Append(Quote(Path.Combine(DataPaths.RacineProtegeeParDefaut, "Telechargements"))).Append("\r\n");
+            // winget vérifié par l'outil (paquet DesktopAppInstaller sous Program Files\WindowsApps) : le PATH des scripts est réduit aux dossiers
+            // système, l'alias WindowsApps n'y figure pas. $null : winget absent (mises à jour d'applications ignorées, réinstallation à la main).
+            var winget = avecWinget ? SystemExe.Winget() : null;
+            sb.Append("$GT_WingetPath = ").Append(winget == null ? "$null" : Quote(winget)).Append("\r\n");
             sb.Append(ReadCommon()).Append("\r\n");
             return sb.ToString();
         }

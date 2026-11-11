@@ -1,2 +1,4 @@
-# Le dossier de travail de GamingTweaker (scripts en cours d'exécution) est exclu.
-Remove-TweakPath -Path @($env:TEMP, (Join-Path $env:SystemRoot 'Temp')) -ExcludePath (Join-Path $env:TEMP 'GamingTweaker') | Out-Null
+# Dossier temporaire de l'utilisateur du bureau (jamais $env:TEMP, qui est le dossier Run protégé de l'outil) et celui de Windows.
+$gtT = Get-GTUserTemp
+if (-not $gtT) { Skip-GTItem 'Dossier temporaire de l''utilisateur introuvable.' }
+Remove-TweakPath -Path @($gtT, (Join-Path $env:SystemRoot 'Temp')) | Out-Null
