@@ -1,0 +1,80 @@
+<Window x:Class="GamingTweaker.Ui.PreviewWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Style="{StaticResource AppWindow}"
+        Title="Aperçu du script" Width="1000" Height="680" MinWidth="800" MinHeight="520"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+    <Grid Margin="24,20,24,20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="2*" MinHeight="90"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="3*" MinHeight="120"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock x:Name="Titre" FontSize="22" FontWeight="SemiBold"/>
+        <TextBlock x:Name="Sous" Grid.Row="1" Margin="0,4,0,12" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap"
+                   Text="Rien n'est modifié tant que vous n'avez pas cliqué sur Lancer. Le dossier de session est créé au lancement ; les options déjà appliquées ou ignorées ne seront pas exécutées."/>
+
+        <Border Grid.Row="2" Background="{StaticResource PanelBrush}" CornerRadius="6" Padding="4">
+            <Grid Grid.IsSharedSizeScope="True">
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <Grid Margin="12,6,12,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="R"/>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="V"/>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="D"/>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="T"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Option" Foreground="{StaticResource MutedBrush}"/>
+                    <TextBlock Grid.Column="1" Text="Risque" Margin="16,0" Foreground="{StaticResource MutedBrush}"/>
+                    <TextBlock Grid.Column="2" Text="Annulation" Margin="16,0" Foreground="{StaticResource MutedBrush}"/>
+                    <TextBlock Grid.Column="3" Text="Redémarrage" Margin="16,0" Foreground="{StaticResource MutedBrush}"/>
+                    <TextBlock Grid.Column="4" Text="Taille estimée" Margin="16,0,0,0" Foreground="{StaticResource MutedBrush}" TextAlignment="Right"/>
+                </Grid>
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl x:Name="Lignes">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="12,5">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="R"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="V"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="D"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="T"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding Titre}" TextWrapping="Wrap"/>
+                                    <TextBlock x:Name="r" Grid.Column="1" Text="{Binding Risque}" Margin="16,0" FontWeight="SemiBold" Foreground="{StaticResource SurFg}"/>
+                                    <TextBlock x:Name="v" Grid.Column="2" Text="{Binding Reversibilite}" Margin="16,0"/>
+                                    <TextBlock Grid.Column="3" Text="{Binding Redemarrage}" Margin="16,0" Foreground="{StaticResource AvanceFg}"/>
+                                    <TextBlock Grid.Column="4" Text="{Binding Taille}" Margin="16,0,0,0" TextAlignment="Right" Foreground="{StaticResource MutedBrush}"/>
+                                </Grid>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding Risque}" Value="Avancé"><Setter TargetName="r" Property="Foreground" Value="{StaticResource AvanceFg}"/></DataTrigger>
+                                    <DataTrigger Binding="{Binding Risque}" Value="Risqué"><Setter TargetName="r" Property="Foreground" Value="{StaticResource RisqueFg}"/></DataTrigger>
+                                    <DataTrigger Binding="{Binding Reversibilite}" Value="définitif"><Setter TargetName="v" Property="Foreground" Value="{StaticResource RisqueFg}"/></DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+
+        <TextBlock x:Name="Total" Grid.Row="3" Margin="12,6,12,0" TextAlignment="Right" Foreground="{StaticResource MutedBrush}"/>
+        <TextBlock Grid.Row="4" Text="Script exact qui sera exécuté" Margin="0,10,0,6" Foreground="{StaticResource MutedBrush}"/>
+        <TextBox x:Name="Script" Grid.Row="5" IsReadOnly="True" FontFamily="Consolas" FontSize="12.5" AcceptsReturn="True" TextWrapping="NoWrap"
+                 HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"/>
+
+        <DockPanel Grid.Row="6" Margin="0,18,0,0" LastChildFill="False">
+            <Button x:Name="Exporter" DockPanel.Dock="Left" Content="Exporter en .ps1" Click="Exporter_Click"/>
+            <Button x:Name="Lancer" DockPanel.Dock="Right" Content="LANCER" Style="{StaticResource PrimaryButton}" Click="Lancer_Click" IsDefault="True"/>
+            <Button DockPanel.Dock="Right" Content="Annuler" IsCancel="True" Margin="0,0,12,0"/>
+        </DockPanel>
+    </Grid>
+</Window>

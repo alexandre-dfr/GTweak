@@ -1,0 +1,103 @@
+[
+  {
+    "id": "upd.windows",
+    "menu": "Mises à jour",
+    "groupe": "Windows Update",
+    "titre": "Installer les mises à jour de Windows",
+    "description": "Recherche par l'API de Windows Update les mises à jour logicielles non installées et non masquées, puis installe celles que vous cochez (les pilotes, les mises à jour facultatives et les mises à jour de fonctionnalités sont exclus). Par « Tout », les mises à jour apparues plus tard sont aussi installées, sauf celles que vous excluez par leur numéro KB. Un redémarrage peut être nécessaire ; l'appli ne redémarre jamais le PC. Non réversible : une mise à jour installée se désinstalle depuis Windows.",
+    "risque": "Sur",
+    "reversible": false,
+    "redemarrage": true,
+    "delaiSec": 3600,
+    "liste": "windowsUpdate",
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "upd.apps",
+    "menu": "Mises à jour",
+    "groupe": "Applications",
+    "titre": "Mettre à jour les applications avec winget",
+    "description": "Affiche les mises à jour disponibles par winget et installe celles que vous cochez, en silence et en acceptant les conditions des paquets. Une application ouverte peut refuser de se mettre à jour. Si winget est absent, l'option est ignorée. Non réversible : l'ancienne version n'est pas conservée.",
+    "risque": "Sur",
+    "reversible": false,
+    "redemarrage": false,
+    "delaiSec": 3600,
+    "liste": "winget",
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "upd.nvidia",
+    "menu": "Mises à jour",
+    "groupe": "Pilotes",
+    "titre": "Mettre à jour le pilote NVIDIA",
+    "description": "Cherche la dernière version du pilote GeForce (Game Ready ou Studio) par un accès NVIDIA non documenté, la compare à celle installée, la télécharge, vérifie la signature de NVIDIA Corporation (sinon le fichier est supprimé et rien n'est installé) puis l'installe en silencieux sans redémarrage. Les options d'installation silencieuse sont à valider sur un vrai PC. Si la recherche échoue, la page officielle est proposée. Pour un GPU AMD ou Intel, seule la version installée et un lien vers la page officielle sont affichés. Non réversible : l'ancien pilote reste disponible dans la liste des pilotes de Windows.",
+    "risque": "Avance",
+    "reversible": false,
+    "redemarrage": true,
+    "delaiSec": 3600,
+    "liste": "pilote",
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "upd.wu-auto-off",
+    "menu": "Mises à jour",
+    "groupe": "Windows Update",
+    "titre": "Bloquer les mises à jour automatiques de Windows",
+    "description": "Active la stratégie NoAutoUpdate : Windows ne télécharge ni n'installe plus rien tout seul. Les services restent actifs, donc la mise à jour manuelle, l'option « Installer les mises à jour de Windows » et la routine continuent de fonctionner. Risqué : sans mise à jour manuelle régulière, le PC ne reçoit plus les correctifs de sécurité. L'annulation supprime la stratégie.",
+    "risque": "Risque",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "upd.wu-drivers-off",
+    "menu": "Mises à jour",
+    "groupe": "Windows Update",
+    "titre": "Ne pas installer de pilotes par Windows Update",
+    "description": "Empêche Windows Update de remplacer les pilotes (notamment le pilote graphique) : valeurs SearchOrderConfig=0 et ExcludeWUDriversInQualityUpdate=1. Les mises à jour logicielles continuent. Avancé : les pilotes ne sont plus mis à jour automatiquement, pensez à les mettre à jour vous-même. L'annulation rétablit l'état d'origine.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  }
+]

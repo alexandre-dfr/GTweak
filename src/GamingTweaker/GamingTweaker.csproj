@@ -1,0 +1,57 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>GamingTweaker</RootNamespace>
+    <AssemblyName>GamingTweaker</AssemblyName>
+    <Nullable>disable</Nullable>
+    <StartupObject>GamingTweaker.Program</StartupObject>
+    <SatelliteResourceLanguages>fr;en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <!-- requireAdministrator en Release, asInvoker en Debug (voir global-constraints). -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' != 'Release'">
+    <ApplicationManifest>app.debug.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\catalog\*.json" LogicalName="catalog/%(Filename)%(Extension)" WithCulture="false" />
+    <EmbeddedResource Include="Assets\bloatware-list.json" LogicalName="bloatware-list.json" WithCulture="false" />
+    <EmbeddedResource Include="Assets\scripts\*.ps1" LogicalName="scripts/%(Filename)%(Extension)" WithCulture="false" />
+    <EmbeddedResource Include="Assets\runtime\*.ps1" LogicalName="runtime/%(Filename)%(Extension)" WithCulture="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="GamingTweaker.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Management" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.ServiceProcess" />
+  </ItemGroup>
+
+  <!-- Integre chaque DLL copiee localement en ressource embarquee et empeche sa copie. -->
+  <Target Name="EmbedLocalDlls" AfterTargets="ResolveReferences">
+    <ItemGroup>
+      <_DllToEmbed Include="@(ReferenceCopyLocalPaths)" Condition="'%(Extension)' == '.dll' And !$([System.String]::Copy('%(Filename)').EndsWith('.resources'))" />
+      <EmbeddedResource Include="@(_DllToEmbed)" LogicalName="%(Filename)%(Extension)" WithCulture="false" />
+      <!-- On retire DLL, satellites, pdb et xml des fichiers copies a cote de l'exe. -->
+      <ReferenceCopyLocalPaths Remove="@(ReferenceCopyLocalPaths)" Condition="'%(Extension)' == '.dll' Or '%(Extension)' == '.pdb' Or '%(Extension)' == '.xml'" />
+    </ItemGroup>
+  </Target>
+
+</Project>

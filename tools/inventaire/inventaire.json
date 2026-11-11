@@ -1,0 +1,4304 @@
+{
+ "resume": {
+  "winutil": 68,
+  "winutil_par_niveau": {
+   "Essential": 18,
+   "Advanced": 23,
+   "Customize Preferences": 25,
+   "Performance Plans - NOT FOR LAPTOPS": 2
+  },
+  "privacysexy_feuilles": 180,
+  "privacysexy_scripts": 920,
+  "privacysexy_par_niveau": {
+   "aucune": 90,
+   "standard": 60,
+   "strict": 30
+  },
+  "privacysexy_par_categorie": {
+   "Privacy cleanup": 19,
+   "Disable OS data collection": 32,
+   "Configure programs": 22,
+   "Security improvements": 11,
+   "Block tracking hosts": 2,
+   "Privacy over security": 54,
+   "UI for privacy": 4,
+   "Remove bloatware": 35,
+   "Advanced settings": 1
+  }
+ },
+ "winutil": [
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksActivity",
+   "entree": "Activity History - Disable",
+   "categorie": "Essential Tweaks",
+   "niveau": "Essential",
+   "type": "Checkbox",
+   "description": "Stops Windows from publishing or uploading user activities while preserving clipboard history.",
+   "services": [],
+   "registre": [
+    "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System\\EnableActivityFeed",
+    "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System\\PublishUserActivities",
+    "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System\\UploadUserActivities"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksHiber",
+   "entree": "Hibernation - Disable",
+   "categorie": "Essential Tweaks",
+   "niveau": "Essential",
+   "type": "Checkbox",
+   "description": "Hibernation is really meant for laptops as it saves what's in memory before turning the PC off. It really should never be used.",
+   "services": [],
+   "registre": [
+    "HKLM:\\System\\CurrentControlSet\\Control\\Session Manager\\Power\\HibernateEnabled",
+    "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FlyoutMenuSettings\\ShowHibernateOption"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksWidget",
+   "entree": "Widgets - Remove",
+   "categorie": "Essential Tweaks",
+   "niveau": "Essential",
+   "type": "Checkbox",
+   "description": "Removes the annoying widgets in the bottom left of the Taskbar.",
+   "services": [],
+   "registre": []
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksRevertStartMenu",
+   "entree": "Start Menu Previous Layout - Enable",
+   "categorie": "Essential Tweaks",
+   "niveau": "Essential",
+   "type": "Checkbox",
+   "description": "Bring back the old Start Menu layout from before the gradual rollout of the new one in 25H2. On newer versions of Windows !!THIS TWEAK WILL NOT WORK!!",
+   "services": [],
+   "registre": [
+    "HKLM:\\SYSTEM\\ControlSet001\\Control\\FeatureManagement\\Overrides\\8\\3036241548\\EnabledState"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksDisableStoreSearch",
+   "entree": "Microsoft Store Recommended Search Results - Disable",
+   "categorie": "Essential Tweaks",
+   "niveau": "Essential",
+   "type": "Checkbox",
+   "description": "Will not display recommended Microsoft Store apps when searching for apps in the Start menu.",
+   "services": [],
+   "registre": []
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksLocation",
+   "entree": "Location Tracking - Disable",
+   "categorie": "Essential Tweaks",
+   "niveau": "Essential",
+   "type": "Checkbox",
+   "description": "Disables Location Tracking.",
+   "services": [
+    "lfsvc"
+   ],
+   "registre": [
+    "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\location\\Value",
+    "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Sensor\\Overrides\\{BFA794E4-F964-4FDB-90F6-51056BFE4B44}\\SensorPermissionState",
+    "HKLM:\\SYSTEM\\Maps\\AutoUpdateEnabled"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksServices",
+   "entree": "Services - Set to Manual",
+   "categorie": "Essential Tweaks",
+   "niveau": "Essential",
+   "type": "Checkbox",
+   "description": "Sets some services to Manual startup.",
+   "services": [
+    "CscService",
+    "DiagTrack",
+    "MapsBroker",
+    "StorSvc",
+    "SharedAccess"
+   ],
+   "registre": []
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksSvcHostSplitting",
+   "entree": "svchost.exe Splitting - Disable",
+   "categorie": "z__Advanced Tweaks - CAUTION",
+   "niveau": "Advanced",
+   "type": "Checkbox",
+   "description": "Disables service-host splitting to reduce the number of svchost.exe processes and modestly lower memory overhead. Recommended for low-performance systems with 12 GB of RAM or less. Can interfere with Xbox services. Restart Windows after changing this setting.",
+   "services": [],
+   "registre": []
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksBraveDebloat",
+   "entree": "Brave Browser - Debloat",
+   "categorie": "z__Advanced Tweaks - CAUTION",
+   "niveau": "Advanced",
+   "type": "Checkbox",
+   "description": "Disables various annoyances like Brave Rewards, Leo AI, Crypto Wallet and VPN.",
+   "services": [],
+   "registre": [
+    "HKLM:\\SOFTWARE\\Policies\\BraveSoftware\\Brave\\BraveRewardsDisabled",
+    "HKLM:\\SOFTWARE\\Policies\\BraveSoftware\\Brave\\BraveWalletDisabled",
+    "HKLM:\\SOFTWARE\\Policies\\BraveSoftware\\Brave\\BraveVPNDisabled",
+    "HKLM:\\SOFTWARE\\Policies\\BraveSoftware\\Brave\\BraveAIChatEnabled",
+    "HKLM:\\SOFTWARE\\Policies\\BraveSoftware\\Brave\\BraveStatsPingEnabled",
+    "HKLM:\\SOFTWARE\\Policies\\BraveSoftware\\Brave\\BraveNewsDisabled",
+    "HKLM:\\SOFTWARE\\Policies\\BraveSoftware\\Brave\\BraveTalkDisabled",
+    "HKLM:\\SOFTWARE\\Policies\\BraveSoftware\\Brave\\TorDisabled",
+    "HKLM:\\SOFTWARE\\Policies\\BraveSoftware\\Brave\\BraveP3AEnabled",
+    "HKLM:\\SOFTWARE\\Policies\\BraveSoftware\\Brave\\UrlKeyedAnonymizedDataCollectionEnabled",
+    "HKLM:\\SOFTWARE\\Policies\\BraveSoftware\\Brave\\SafeBrowsingExtendedReportingEnabled",
+    "HKLM:\\SOFTWARE\\Policies\\BraveSoftware\\Brave\\MetricsReportingEnabled"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksDisableWarningForUnsignedRdp",
+   "entree": "RDP Unsigned File Warnings - Disable",
+   "categorie": "z__Advanced Tweaks - CAUTION",
+   "niveau": "Advanced",
+   "type": "Checkbox",
+   "description": "Disables warnings shown when launching unsigned RDP files introduced with the latest Windows 10 and 11 updates.",
+   "services": [],
+   "registre": [
+    "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services\\Client\\RedirectionWarningDialogVersion",
+    "HKCU:\\SOFTWARE\\Microsoft\\Terminal Server Client\\RdpLaunchConsentAccepted"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksEdgeDebloat",
+   "entree": "Microsoft Edge - Debloat",
+   "categorie": "z__Advanced Tweaks - CAUTION",
+   "niveau": "Advanced",
+   "type": "Checkbox",
+   "description": "Disables various telemetry options, popups, and other annoyances in Edge.",
+   "services": [],
+   "registre": [
+    "HKLM:\\SOFTWARE\\Policies\\Microsoft\\EdgeUpdate\\CreateDesktopShortcutDefault",
+    "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Edge\\PersonalizationReportingEnabled",
+    "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Edge\\ExtensionInstallBlocklist\\1",
+    "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Edge\\ShowRecommendationsEnabled",
+    "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Edge\\HideFirstRunExperience",
+    "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Edge\\UserFeedbackAllowed",
+    "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Edge\\ConfigureDoNotTrack",
+    "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Edge\\AlternateErrorPagesEnabled",
+    "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Edge\\EdgeCollectionsEnabled",
+    "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Edge\\EdgeShoppingAssistantEnabled",
+    "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Edge\\MicrosoftEdgeInsiderPromotionEnabled",
+    "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Edge\\ShowMicrosoftRewards",
+    "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Edge\\WebWidgetAllowed",
+    "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Edge\\DiagnosticData",
+    "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Edge\\EdgeAssetDeliveryServiceEnabled",
+    "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Edge\\WalletDonationEnabled",
+    "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Edge\\DefaultBrowserSettingsCampaignEnabled"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksConsumerFeatures",
+   "entree": "ConsumerFeatures - Disable",
+   "categorie": "Essential Tweaks",
+   "niveau": "Essential",
+   "type": "Checkbox",
+   "description": "Stops promoted app installs and reduces app suggestions from Microsoft Store content.",
+   "services": [],
+   "registre": [
+    "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent\\DisableWindowsConsumerFeatures"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksTelemetry",
+   "entree": "Telemetry - Disable",
+   "categorie": "Essential Tweaks",
+   "niveau": "Essential",
+   "type": "Checkbox",
+   "description": "Disables Microsoft Telemetry.",
+   "services": [
+    "diagtrack",
+    "WerSvc"
+   ],
+   "registre": [
+    "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\AdvertisingInfo\\Enabled",
+    "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Privacy\\TailoredExperiencesWithDiagnosticDataEnabled",
+    "HKCU:\\Software\\Microsoft\\Speech_OneCore\\Settings\\OnlineSpeechPrivacy\\HasAccepted",
+    "HKCU:\\Software\\Microsoft\\Input\\TIPC\\Enabled",
+    "HKCU:\\Software\\Microsoft\\InputPersonalization\\RestrictImplicitInkCollection",
+    "HKCU:\\Software\\Microsoft\\InputPersonalization\\RestrictImplicitTextCollection",
+    "HKCU:\\Software\\Microsoft\\InputPersonalization\\TrainedDataStore\\HarvestContacts",
+    "HKCU:\\Software\\Microsoft\\Personalization\\Settings\\AcceptedPrivacyPolicy",
+    "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\DataCollection\\AllowTelemetry",
+    "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced\\Start_TrackProgs",
+    "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System\\PublishUserActivities",
+    "HKCU:\\Software\\Microsoft\\Siuf\\Rules\\NumberOfSIUFInPeriod",
+    "HKCU:\\Software\\Microsoft\\Siuf\\Rules\\PeriodInNanoSeconds"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksDeliveryOptimization",
+   "entree": "Delivery Optimization - Disable",
+   "categorie": "Essential Tweaks",
+   "niveau": "Essential",
+   "type": "Checkbox",
+   "description": "Stops Windows from using your bandwidth to upload updates to other PCs on the internet or local network.",
+   "services": [],
+   "registre": [
+    "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\DeliveryOptimization\\DODownloadMode"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksRemoveEdge",
+   "entree": "Microsoft Edge - Remove",
+   "categorie": "z__Advanced Tweaks - CAUTION",
+   "niveau": "Advanced",
+   "type": "Checkbox",
+   "description": "Uninstalls Microsoft Edge by creating dummy MicrosoftEdge.exe file in the legacy Edge folder. This tricks Windows into unlocking the official Edge uninstaller allowing for a system-level removal.",
+   "services": [],
+   "registre": []
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksDisableBitLocker",
+   "entree": "BitLocker - Disable",
+   "categorie": "Essential Tweaks",
+   "niveau": "Essential",
+   "type": "Checkbox",
+   "description": "Disables BitLocker.",
+   "services": [],
+   "registre": []
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksUTC",
+   "entree": "Date & Time - Set Time to UTC",
+   "categorie": "z__Advanced Tweaks - CAUTION",
+   "niveau": "Advanced",
+   "type": "Checkbox",
+   "description": "Essential for computers that are dual booting. Fixes the time sync with Linux systems.",
+   "services": [],
+   "registre": [
+    "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\TimeZoneInformation\\RealTimeIsUniversal"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksRemoveOneDrive",
+   "entree": "Microsoft OneDrive - Remove",
+   "categorie": "z__Advanced Tweaks - CAUTION",
+   "niveau": "Advanced",
+   "type": "Checkbox",
+   "description": "Denies permission to remove OneDrive user files, then uses its own uninstaller to remove it and restores the original permission afterward.",
+   "services": [],
+   "registre": []
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksRemoveHomeAndGallery",
+   "entree": "File Explorer Home and Gallery - Disable",
+   "categorie": "z__Advanced Tweaks - CAUTION",
+   "niveau": "Advanced",
+   "type": "Checkbox",
+   "description": "Removes the Home and Gallery from Explorer and sets This PC as default.",
+   "services": [],
+   "registre": [
+    "HKCU:\\Software\\Classes\\CLSID\\{f874310e-b6b7-47dc-bc84-b9e6b38f5903}\\System.IsPinnedToNameSpaceTree",
+    "HKCU:\\Software\\Classes\\CLSID\\{e88865ea-0e1c-4e20-9aa6-edcd0212c87c}\\System.IsPinnedToNameSpaceTree",
+    "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced\\LaunchTo"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksDisplay",
+   "entree": "Visual Effects - Set to Best Performance",
+   "categorie": "z__Advanced Tweaks - CAUTION",
+   "niveau": "Advanced",
+   "type": "Checkbox",
+   "description": "Sets the system preferences to performance. You can do this manually with sysdm.cpl as well.",
+   "services": [],
+   "registre": [
+    "HKCU:\\Control Panel\\Desktop\\DragFullWindows",
+    "HKCU:\\Control Panel\\Desktop\\MenuShowDelay",
+    "HKCU:\\Control Panel\\Desktop\\WindowMetrics\\MinAnimate",
+    "HKCU:\\Control Panel\\Keyboard\\KeyboardDelay",
+    "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced\\ListviewAlphaSelect",
+    "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced\\ListviewShadow",
+    "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced\\TaskbarAnimations",
+    "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\VisualEffects\\VisualFXSetting",
+    "HKCU:\\Software\\Microsoft\\Windows\\DWM\\EnableAeroPeek",
+    "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced\\TaskbarMn"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksReservedStorage",
+   "entree": "Disable Reserved Storage",
+   "categorie": "z__Advanced Tweaks - CAUTION",
+   "niveau": "Advanced",
+   "type": "Checkbox",
+   "description": "Disables Windows Reserved Storage (7-10 GB held for updates/temp files). Recommended only on small drives. Re-enable before major Windows feature updates to avoid installation failures.",
+   "services": [],
+   "registre": []
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksRestorePoint",
+   "entree": "Restore Point - Create",
+   "categorie": "Essential Tweaks",
+   "niveau": "Essential",
+   "type": "Checkbox",
+   "description": "Creates a restore point at runtime in case a revert is needed from WinUtil modifications.",
+   "services": [],
+   "registre": [
+    "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SystemRestore\\SystemRestorePointCreationFrequency"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksEndTaskOnTaskbar",
+   "entree": "End Task With Right Click - Enable",
+   "categorie": "Essential Tweaks",
+   "niveau": "Essential",
+   "type": "Checkbox",
+   "description": "Enables option to end task when right-clicking a program in the taskbar.",
+   "services": [],
+   "registre": [
+    "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced\\TaskbarDeveloperSettings\\TaskbarEndTask"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksStorage",
+   "entree": "Storage Sense - Disable",
+   "categorie": "z__Advanced Tweaks - CAUTION",
+   "niveau": "Advanced",
+   "type": "Checkbox",
+   "description": "Storage Sense deletes temp files automatically.",
+   "services": [],
+   "registre": [
+    "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\StorageSense\\Parameters\\StoragePolicy\\01"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksWindowsAI",
+   "entree": "Windows AI - Disable And Remove",
+   "categorie": "z__Advanced Tweaks - CAUTION",
+   "niveau": "Advanced",
+   "type": "Checkbox",
+   "description": "Removes and disables all AI features/packages",
+   "services": [],
+   "registre": [
+    "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer\\SettingsPageVisibility",
+    "HKLM:\\SOFTWARE\\Policies\\WindowsNotepad\\DisableAIFeatures"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksWPBT",
+   "entree": "Windows Platform Binary Table (WPBT) - Disable",
+   "categorie": "Essential Tweaks",
+   "niveau": "Essential",
+   "type": "Checkbox",
+   "description": "If enabled, WPBT allows your computer vendor to execute programs at boot time, such as anti-theft software, software drivers, as well as force install software without user consent. Poses potential security risk.",
+   "services": [],
+   "registre": [
+    "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\DisableWpbtExecution"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksPreventDeviceMetadataFromNetwork",
+   "entree": "Prevent Device Companion Apps",
+   "categorie": "Essential Tweaks",
+   "niveau": "Essential",
+   "type": "Checkbox",
+   "description": "Prevents additional software from being installed when plugging in devices (e.g. Ads when plugging in a monitor). Poses potential security risk.",
+   "services": [],
+   "registre": [
+    "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Device Metadata\\PreventDeviceMetadataFromNetwork"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksRazerBlock",
+   "entree": "Razer Software Auto-Install - Disable",
+   "categorie": "z__Advanced Tweaks - CAUTION",
+   "niveau": "Advanced",
+   "type": "Checkbox",
+   "description": "Blocks ALL Razer Software installations. The hardware works fine without any software.",
+   "services": [],
+   "registre": [
+    "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\DriverSearching\\SearchOrderConfig",
+    "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Device Installer\\DisableCoInstallers"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksLogiBlock",
+   "entree": "Logitech Download Assistant Auto-Install - Disable",
+   "categorie": "z__Advanced Tweaks - CAUTION",
+   "niveau": "Advanced",
+   "type": "Checkbox",
+   "description": "Blocks the Logi Download Assistant that Windows Update keeps reinstalling with Logitech device drivers. Logitech hardware keeps working without it.",
+   "services": [],
+   "registre": []
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksDisableNotifications",
+   "entree": "System Tray Notifications & Calendar - Disable",
+   "categorie": "z__Advanced Tweaks - CAUTION",
+   "niveau": "Advanced",
+   "type": "Checkbox",
+   "description": "Disables all Notifications INCLUDING Calendar.",
+   "services": [],
+   "registre": [
+    "HKCU:\\Software\\Policies\\Microsoft\\Windows\\Explorer\\DisableNotificationCenter",
+    "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\PushNotifications\\ToastEnabled"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksBlockAdobeNet",
+   "entree": "Adobe URL Block List - Enable",
+   "categorie": "z__Advanced Tweaks - CAUTION",
+   "niveau": "Advanced",
+   "type": "Checkbox",
+   "description": "Reduces user interruptions by selectively blocking connections to Adobe's activation and telemetry servers. Credit: Ruddernation-Designs",
+   "services": [],
+   "registre": []
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksRightClickMenu",
+   "entree": "Right-Click Menu Previous Layout - Enable",
+   "categorie": "z__Advanced Tweaks - CAUTION",
+   "niveau": "Advanced",
+   "type": "Checkbox",
+   "description": "Restores the classic context menu when right-clicking in File Explorer, replacing the simplified Windows 11 version.",
+   "services": [],
+   "registre": []
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksDiskCleanup",
+   "entree": "Disk Cleanup - Run",
+   "categorie": "Essential Tweaks",
+   "niveau": "Essential",
+   "type": "Checkbox",
+   "description": "Runs Disk Cleanup on Drive C: and removes old Windows Updates.",
+   "services": [],
+   "registre": []
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksDeleteTempFiles",
+   "entree": "Temporary Files - Remove",
+   "categorie": "Essential Tweaks",
+   "niveau": "Essential",
+   "type": "Checkbox",
+   "description": "Erases TEMP Folders.",
+   "services": [],
+   "registre": []
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksIPv46",
+   "entree": "IPv6 - Set IPv4 as Preferred",
+   "categorie": "z__Advanced Tweaks - CAUTION",
+   "niveau": "Advanced",
+   "type": "Checkbox",
+   "description": "Setting the IPv4 preference can have latency and security benefits on private networks where IPv6 is not configured.",
+   "services": [],
+   "registre": [
+    "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\Tcpip6\\Parameters\\DisabledComponents"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksTeredo",
+   "entree": "Teredo - Disable",
+   "categorie": "z__Advanced Tweaks - CAUTION",
+   "niveau": "Advanced",
+   "type": "Checkbox",
+   "description": "Teredo network tunneling is an IPv6 feature that can cause additional latency, but may cause problems with some games.",
+   "services": [],
+   "registre": [
+    "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\Tcpip6\\Parameters\\DisabledComponents"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksDisableIPv6",
+   "entree": "IPv6 - Disable",
+   "categorie": "z__Advanced Tweaks - CAUTION",
+   "niveau": "Advanced",
+   "type": "Checkbox",
+   "description": "Disables IPv6.",
+   "services": [],
+   "registre": [
+    "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\Tcpip6\\Parameters\\DisabledComponents"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksDisableBGapps",
+   "entree": "Background Apps - Disable",
+   "categorie": "z__Advanced Tweaks - CAUTION",
+   "niveau": "Advanced",
+   "type": "Checkbox",
+   "description": "Disables all Microsoft Store apps from running in the background, which has to be done individually since Windows 11.",
+   "services": [],
+   "registre": [
+    "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\BackgroundAccessApplications\\GlobalUserDisabled"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFTweaksDisableExplorerAutoDiscovery",
+   "entree": "File Explorer Automatic Folder Discovery - Disable",
+   "categorie": "Essential Tweaks",
+   "niveau": "Essential",
+   "type": "Checkbox",
+   "description": "Windows Explorer automatically tries to guess the type of the folder based on its contents, slowing down the browsing experience. WARNING! Will disable File Explorer grouping.",
+   "services": [],
+   "registre": []
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFToggleDetailedBSoD",
+   "entree": "BSoD Verbose Mode",
+   "categorie": "Customize Preferences",
+   "niveau": "Customize Preferences",
+   "type": "Toggle",
+   "description": "Gives more information when you blue screen.",
+   "services": [],
+   "registre": [
+    "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\CrashControl\\DisplayParameters",
+    "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\CrashControl\\DisableEmoticon"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFToggleBatteryPercentage",
+   "entree": "System Tray Battery Percentage",
+   "categorie": "Customize Preferences",
+   "niveau": "Customize Preferences",
+   "type": "Toggle",
+   "description": "Shows numeric battery percentage next to the battery icon in the system tray.",
+   "services": [],
+   "registre": [
+    "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced\\IsBatteryPercentageEnabled"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFToggleDarkMode",
+   "entree": "Dark Theme for Windows",
+   "categorie": "Customize Preferences",
+   "niveau": "Customize Preferences",
+   "type": "Toggle",
+   "description": "Dark Mode for the system and applications.",
+   "services": [],
+   "registre": [
+    "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize\\AppsUseLightTheme",
+    "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize\\SystemUsesLightTheme"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFToggleShowExt",
+   "entree": "File Explorer File Extensions",
+   "categorie": "Customize Preferences",
+   "niveau": "Customize Preferences",
+   "type": "Toggle",
+   "description": "Shows .file extensions in Explorer (.exe, .png, etc.)",
+   "services": [],
+   "registre": [
+    "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced\\HideFileExt"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFToggleHiddenFiles",
+   "entree": "File Explorer Hidden Files",
+   "categorie": "Customize Preferences",
+   "niveau": "Customize Preferences",
+   "type": "Toggle",
+   "description": "Reveals hidden files in Explorer.",
+   "services": [],
+   "registre": [
+    "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced\\Hidden"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFToggleVerboseLogon",
+   "entree": "Logon Verbose Mode",
+   "categorie": "Customize Preferences",
+   "niveau": "Customize Preferences",
+   "type": "Toggle",
+   "description": "Show detailed messages during startup/shutdown.",
+   "services": [],
+   "registre": [
+    "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System\\VerboseStatus"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFToggleNewOutlook",
+   "entree": "Microsoft Outlook New Version",
+   "categorie": "Customize Preferences",
+   "niveau": "Customize Preferences",
+   "type": "Toggle",
+   "description": "This will ensure the new Outlook application is used.",
+   "services": [],
+   "registre": [
+    "HKCU:\\SOFTWARE\\Microsoft\\Office\\16.0\\Outlook\\Preferences\\UseNewOutlook",
+    "HKCU:\\Software\\Microsoft\\Office\\16.0\\Outlook\\Options\\General\\HideNewOutlookToggle",
+    "HKCU:\\Software\\Policies\\Microsoft\\Office\\16.0\\Outlook\\Options\\General\\DoNewOutlookAutoMigration",
+    "HKCU:\\Software\\Policies\\Microsoft\\Office\\16.0\\Outlook\\Preferences\\NewOutlookMigrationUserSetting"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFToggleScrollbars",
+   "entree": "Scrollbars Always Visible",
+   "categorie": "Customize Preferences",
+   "niveau": "Customize Preferences",
+   "type": "Toggle",
+   "description": "If enabled, scrollbars will always be visible. If disabled, Windows will automatically hide scrollbars when not in use.",
+   "services": [],
+   "registre": [
+    "HKCU:\\Control Panel\\Accessibility\\DynamicScrollbars"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFMultiplaneOverlay",
+   "entree": "Multiplane Overlay",
+   "categorie": "Customize Preferences",
+   "niveau": "Customize Preferences",
+   "type": "Combobox",
+   "description": "Multiplane Overlay composes multiple image layers, which can sometimes cause issues with graphics cards. Changes to this preference are applied immediately.",
+   "services": [],
+   "registre": [
+    "HKLM:\\SOFTWARE\\Microsoft\\Windows\\Dwm\\OverlayTestMode",
+    "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers\\DisableOverlays"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFToggleMouseAcceleration",
+   "entree": "Mouse Acceleration",
+   "categorie": "Customize Preferences",
+   "niveau": "Customize Preferences",
+   "type": "Toggle",
+   "description": "Makes it so Cursor movement is affected by the speed of your physical mouse movements.",
+   "services": [],
+   "registre": [
+    "HKCU:\\Control Panel\\Mouse\\MouseSpeed",
+    "HKCU:\\Control Panel\\Mouse\\MouseThreshold1",
+    "HKCU:\\Control Panel\\Mouse\\MouseThreshold2"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFToggleNumLock",
+   "entree": "Num Lock on Startup",
+   "categorie": "Customize Preferences",
+   "niveau": "Customize Preferences",
+   "type": "Toggle",
+   "description": "Toggle the Num Lock key state when your computer starts.",
+   "services": [],
+   "registre": [
+    "HKU:\\.Default\\Control Panel\\Keyboard\\InitialKeyboardIndicators",
+    "HKCU:\\Control Panel\\Keyboard\\InitialKeyboardIndicators"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFToggleWindowSnapping",
+   "entree": "Window Snapping",
+   "categorie": "Customize Preferences",
+   "niveau": "Customize Preferences",
+   "type": "Toggle",
+   "description": "Toggles the window snapping feature when dragging windows.",
+   "services": [],
+   "registre": [
+    "HKCU:\\Control Panel\\Desktop\\WindowArrangementActive"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFToggleStandbyFix",
+   "entree": "S0 Sleep Network Connectivity",
+   "categorie": "Customize Preferences",
+   "niveau": "Customize Preferences",
+   "type": "Toggle",
+   "description": "Toggles network connectivity during S0 Sleep which is low power idle in modern laptops.",
+   "services": [],
+   "registre": [
+    "HKCU:\\SOFTWARE\\Policies\\Microsoft\\Power\\PowerSettings\\f15576e8-98b7-4186-b944-eafa664402d9\\ACSettingIndex"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFToggleS3Sleep",
+   "entree": "S3 Sleep",
+   "categorie": "Customize Preferences",
+   "niveau": "Customize Preferences",
+   "type": "Toggle",
+   "description": "Toggles between Modern Standby and S3 Sleep, which cuts off power to the CPU while continuing to refresh the memory.",
+   "services": [],
+   "registre": [
+    "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Power\\PlatformAoAcOverride"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFToggleHideSettingsHome",
+   "entree": "Settings Home Page",
+   "categorie": "Customize Preferences",
+   "niveau": "Customize Preferences",
+   "type": "Toggle",
+   "description": "Toggles the Home Page in the Windows Settings app.",
+   "services": [],
+   "registre": [
+    "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer\\SettingsPageVisibility"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFToggleBingSearch",
+   "entree": "Start Menu Bing Search",
+   "categorie": "Customize Preferences",
+   "niveau": "Customize Preferences",
+   "type": "Toggle",
+   "description": "Toggles Bing web search results in Windows Search.",
+   "services": [],
+   "registre": [
+    "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Search\\BingSearchEnabled"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFToggleLoginBlur",
+   "entree": "Logon Screen Acrylic Blur",
+   "categorie": "Customize Preferences",
+   "niveau": "Customize Preferences",
+   "type": "Toggle",
+   "description": "Toggles the acrylic blur effect on login screen background.",
+   "services": [],
+   "registre": [
+    "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System\\DisableAcrylicBackgroundOnLogon"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFToggleDisableLockscreen",
+   "entree": "Lock Screen - Disable",
+   "categorie": "Customize Preferences",
+   "niveau": "Customize Preferences",
+   "type": "Toggle",
+   "description": "Skips the lock screen entirely and goes directly to the sign-in screen on boot and wake.",
+   "services": [],
+   "registre": [
+    "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Personalization\\NoLockScreen"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFToggleStartMenuRecommendations",
+   "entree": "Start Menu Recommendations",
+   "categorie": "Customize Preferences",
+   "niveau": "Customize Preferences",
+   "type": "Toggle",
+   "description": "Toggles the recommendations section in the Start Menu. WARNING: This will also disable Windows Spotlight on your Lock Screen as a side effect.",
+   "services": [],
+   "registre": [
+    "HKLM:\\SOFTWARE\\Microsoft\\PolicyManager\\current\\device\\Start\\HideRecommendedSection",
+    "HKLM:\\SOFTWARE\\Microsoft\\PolicyManager\\current\\device\\Education\\IsEducationEnvironment",
+    "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Explorer\\HideRecommendedSection"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFToggleStickyKeys",
+   "entree": "Sticky Keys",
+   "categorie": "Customize Preferences",
+   "niveau": "Customize Preferences",
+   "type": "Toggle",
+   "description": "Toggles the Sticky Keys, which activate when clicking shift rapidly.",
+   "services": [],
+   "registre": [
+    "HKCU:\\Control Panel\\Accessibility\\StickyKeys\\Flags"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFToggleTaskbarAlignment",
+   "entree": "Taskbar Centered Icons",
+   "categorie": "Customize Preferences",
+   "niveau": "Customize Preferences",
+   "type": "Toggle",
+   "description": "Toggles the Taskbar alignment either to the left or center.",
+   "services": [],
+   "registre": [
+    "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced\\TaskbarAl"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFToggleTaskbarSearch",
+   "entree": "Taskbar Search Icon",
+   "categorie": "Customize Preferences",
+   "niveau": "Customize Preferences",
+   "type": "Toggle",
+   "description": "Toggles the Search Button on the Taskbar.",
+   "services": [],
+   "registre": [
+    "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Search\\SearchboxTaskbarMode"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFToggleTaskView",
+   "entree": "Taskbar Task View Icon",
+   "categorie": "Customize Preferences",
+   "niveau": "Customize Preferences",
+   "type": "Toggle",
+   "description": "Toggles the Task View Button in the Taskbar.",
+   "services": [],
+   "registre": [
+    "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced\\ShowTaskViewButton"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFToggleGameMode",
+   "entree": "Game Mode",
+   "categorie": "Customize Preferences",
+   "niveau": "Customize Preferences",
+   "type": "Toggle",
+   "description": "Toggles Windows prioritizes gaming performance by allocating system resources to games.",
+   "services": [],
+   "registre": [
+    "HKCU:\\Software\\Microsoft\\GameBar\\AllowAutoGameMode",
+    "HKCU:\\Software\\Microsoft\\GameBar\\AutoGameModeEnabled"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFToggleLongPaths",
+   "entree": "Enable Long Paths",
+   "categorie": "Customize Preferences",
+   "niveau": "Customize Preferences",
+   "type": "Toggle",
+   "description": "Toggles support for file paths longer than 260 characters in Explorer.",
+   "services": [],
+   "registre": [
+    "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\FileSystem\\LongPathsEnabled"
+   ]
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFOOSUbutton",
+   "entree": "O&O ShutUp10++ - Run",
+   "categorie": "z__Advanced Tweaks - CAUTION",
+   "niveau": "Advanced",
+   "type": "Button",
+   "description": "Downloads O&O ShutUp10++ (about 82 MB) from oo-software.com on every click and launches it. Nothing is installed; the file is saved under %LocalAppData%\\winutil.",
+   "services": [],
+   "registre": []
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFchangedns",
+   "entree": "DNS - Set to:",
+   "categorie": "z__Advanced Tweaks - CAUTION",
+   "niveau": "Advanced",
+   "type": "Combobox",
+   "description": "",
+   "services": [],
+   "registre": []
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFAddUltPerf",
+   "entree": "Ultimate Performance Profile - Enable",
+   "categorie": "Performance Plans - NOT FOR LAPTOPS",
+   "niveau": "Performance Plans - NOT FOR LAPTOPS",
+   "type": "Button",
+   "description": "",
+   "services": [],
+   "registre": []
+  },
+  {
+   "source": "WinUtil",
+   "cle": "WPFRemoveUltPerf",
+   "entree": "Ultimate Performance Profile - Disable",
+   "categorie": "Performance Plans - NOT FOR LAPTOPS",
+   "niveau": "Performance Plans - NOT FOR LAPTOPS",
+   "type": "Button",
+   "description": "",
+   "services": [],
+   "registre": []
+  }
+ ],
+ "privacysexy": [
+  {
+   "source": "privacy.sexy",
+   "groupe": "",
+   "entree": "Privacy cleanup",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 9,
+   "recommandations": {
+    "aucune": 5,
+    "standard": 4
+   },
+   "noms_scripts": [
+    "Clear credentials in Windows Credential Manager",
+    "Remove the controversial `default0` user",
+    "Empty trash (Recycle Bin)",
+    "Minimize DISM \"Reset Base\" update data",
+    "Remove Windows product key from registry",
+    "Clear volume backups (shadow copies)",
+    "Remove associations of default apps",
+    "Clear System Resource Usage Monitor (SRUM) data",
+    "Clear previous Windows installations"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy cleanup",
+   "entree": "Clear recent activity",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 11,
+   "recommandations": {
+    "standard": 9,
+    "strict": 2
+   },
+   "noms_scripts": [
+    "Clear recent application history",
+    "Clear Adobe recent file history",
+    "Clear Microsoft Paint recent files history",
+    "Clear WordPad recent file history",
+    "Clear network drive mapping history",
+    "Clear Windows Search history",
+    "Clear recent files and folders history",
+    "Clear Windows Media Player recent activity history",
+    "Clear DirectX recent application history",
+    "Clear Windows Run command history",
+    "Clear File Explorer address bar history"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy cleanup > Clear recent activity",
+   "entree": "Clear Quick Access lists",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 2,
+   "recommandations": {
+    "standard": 1,
+    "aucune": 1
+   },
+   "noms_scripts": [
+    "Clear Quick Access recent files",
+    "Clear Quick Access pinned items"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy cleanup > Clear recent activity",
+   "entree": "Clear Windows Registry recent activity",
+   "niveau": "strict",
+   "niveau_gt": "Avance",
+   "scripts": 2,
+   "recommandations": {
+    "standard": 1,
+    "strict": 1
+   },
+   "noms_scripts": [
+    "Clear Windows Registry last-accessed key",
+    "Clear Windows Registry favorite locations"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy cleanup",
+   "entree": "Clear third-party application data",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 4,
+   "recommandations": {
+    "aucune": 1,
+    "strict": 1,
+    "standard": 2
+   },
+   "noms_scripts": [
+    "Clear Listary search index",
+    "Clear Java cache",
+    "Clear Flash Player traces",
+    "Clear Dotnet CLI telemetry"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy cleanup > Clear third-party application data",
+   "entree": "Clear privacy.sexy data",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 2,
+   "recommandations": {
+    "aucune": 2
+   },
+   "noms_scripts": [
+    "Clear privacy.sexy script history",
+    "Clear privacy.sexy activity logs"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy cleanup > Clear third-party application data",
+   "entree": "Clear Steam data",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 3,
+   "recommandations": {
+    "standard": 3
+   },
+   "noms_scripts": [
+    "Clear Steam dumps",
+    "Clear Steam traces",
+    "Clear Steam cache"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy cleanup > Clear third-party application data > Clear Visual Studio usage data",
+   "entree": "Clear Visual Studio telemetry and feedback data",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 4,
+   "recommandations": {
+    "standard": 4
+   },
+   "noms_scripts": [
+    "Clear offline Visual Studio usage telemetry data",
+    "Clear Visual Studio Application Insights logs",
+    "Clear Visual Studio telemetry data",
+    "Clear Visual Studio temporary telemetry and log data"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy cleanup > Clear third-party application data > Clear Visual Studio usage data",
+   "entree": "Clear Visual Studio licenses",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 6,
+   "recommandations": {
+    "aucune": 6
+   },
+   "noms_scripts": [
+    "Clear Visual Studio 2010 license",
+    "Clear Visual Studio 2013 license",
+    "Clear Visual Studio 2015 license",
+    "Clear Visual Studio 2017 license",
+    "Clear Visual Studio 2019 license",
+    "Clear Visual Studio 2022 license"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy cleanup",
+   "entree": "Clear browser history",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 1,
+   "recommandations": {
+    "aucune": 1
+   },
+   "noms_scripts": [
+    "Clear Opera history (user profiles, settings, and data)"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy cleanup > Clear browser history",
+   "entree": "Clear Internet Explorer history",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 7,
+   "recommandations": {
+    "standard": 5,
+    "strict": 1,
+    "aucune": 1
+   },
+   "noms_scripts": [
+    "Clear Internet Explorer cache",
+    "Clear Internet Explorer typed URLs",
+    "Clear \"Temporary Internet Files\" (browser cache)",
+    "Clear Internet Explorer feeds cache",
+    "Clear Internet Explorer cookies",
+    "Clear Internet Explorer DOMStore",
+    "Clear Internet Explorer usage data"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy cleanup > Clear browser history",
+   "entree": "Clear Chrome history",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 3,
+   "recommandations": {
+    "standard": 2,
+    "aucune": 1
+   },
+   "noms_scripts": [
+    "Clear Chrome crash reports",
+    "Clear Google's \"Software Reporter Tool\" logs",
+    "Clear Chrome user data"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy cleanup > Clear browser history",
+   "entree": "Clear Firefox history",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 2,
+   "recommandations": {
+    "aucune": 2
+   },
+   "noms_scripts": [
+    "Clear Firefox browsing history (URLs, downloads, bookmarks, visits, etc.)",
+    "Clear all Firefox user information and preferences"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy cleanup > Clear browser history",
+   "entree": "Clear Safari history",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 4,
+   "recommandations": {
+    "standard": 2,
+    "strict": 1,
+    "aucune": 1
+   },
+   "noms_scripts": [
+    "Clear Webpage Icons",
+    "Clear Safari cache",
+    "Clear Safari cookies",
+    "Clear all Safari data (user profiles, settings, and data)"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy cleanup",
+   "entree": "Clear temporary Windows files",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 3,
+   "recommandations": {
+    "standard": 3
+   },
+   "noms_scripts": [
+    "Clear temporary system folder",
+    "Clear temporary user folder",
+    "Clear prefetch folder"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy cleanup",
+   "entree": "Clear Windows log and caches",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 4,
+   "recommandations": {
+    "aucune": 3,
+    "standard": 1
+   },
+   "noms_scripts": [
+    "Clear thumbnail cache",
+    "Clear diagnostics tracking logs",
+    "Clear event logs in Event Viewer application",
+    "Clear Defender scan (protection) history"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy cleanup > Clear Windows log and caches",
+   "entree": "Clear Windows system log files",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 14,
+   "recommandations": {
+    "standard": 11,
+    "aucune": 3
+   },
+   "noms_scripts": [
+    "Clear Optional Component Manager and COM+ components logs",
+    "Clear \"Distributed Transaction Coordinator (DTC)\" logs",
+    "Clear logs for pending/unsuccessful file rename operations",
+    "Clear Windows update installation logs",
+    "Clear Windows setup logs",
+    "Clear \"Windows System Assessment Tool (`WinSAT`)\" logs",
+    "Clear password change events",
+    "Clear user web cache database",
+    "Clear system temp folder when not logged in",
+    "Clear DISM (Deployment Image Servicing and Management) system logs",
+    "Clear Windows update files",
+    "Clear Common Language Runtime system logs",
+    "Clear Network Setup Service Events system logs",
+    "Clear logs generated by Disk Cleanup Tool (`cleanmgr.exe`)"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy cleanup > Clear Windows log and caches > Clear Windows system log files",
+   "entree": "Clear Windows Update system logs",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 5,
+   "recommandations": {
+    "standard": 3,
+    "aucune": 2
+   },
+   "noms_scripts": [
+    "Clear Windows update and SFC scan logs",
+    "Clear Windows Update Medic Service logs",
+    "Clear \"Cryptographic Services\" diagnostic traces",
+    "Clear Server-initiated Healing Events system logs",
+    "Clear Windows Update logs"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy cleanup",
+   "entree": "Clear Outlook data",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 3,
+   "recommandations": {
+    "standard": 1,
+    "strict": 1,
+    "aucune": 1
+   },
+   "noms_scripts": [
+    "Clear Outlook logs and telemetry",
+    "Clear Outlook caches",
+    "Clear Outlook user data"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "",
+   "entree": "Disable OS data collection",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 14,
+   "recommandations": {
+    "strict": 2,
+    "standard": 12
+   },
+   "noms_scripts": [
+    "Disable Recall",
+    "Disable cloud-based speech recognition",
+    "Opt out of Windows privacy consent",
+    "Disable Windows feedback collection",
+    "Disable text and handwriting data collection",
+    "Disable device sensors",
+    "Disable Wi-Fi Sense",
+    "Disable app launch tracking (hides most-used apps)",
+    "Disable Website Access of Language List",
+    "Disable automatic map downloads",
+    "Disable game screen recording",
+    "Disable internet access for Windows DRM",
+    "Disable typing feedback (sends typing data)",
+    "Disable Activity Feed feature"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection",
+   "entree": "Disable app access to personal information",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 20,
+   "recommandations": {
+    "standard": 16,
+    "aucune": 3,
+    "strict": 1
+   },
+   "noms_scripts": [
+    "Disable app access to location",
+    "Disable app access to account information, name, and picture",
+    "Disable app access to motion activity",
+    "Disable app access to trusted devices",
+    "Disable app access to unpaired wireless devices",
+    "Disable app access to camera",
+    "Disable app access to microphone (breaks Sound Recorder)",
+    "Disable app access to information about other apps",
+    "Disable app access to your contacts",
+    "Disable app access to notifications",
+    "Disable app access to calendar",
+    "Disable app access to email",
+    "Disable app access to tasks",
+    "Disable app access to radios",
+    "Disable app access to physical movement",
+    "Disable app access to eye tracking",
+    "Disable app access to human presence",
+    "Disable app access to screen capture",
+    "Disable app access to background activity (breaks Cortana, Search, live tiles, notifications)",
+    "Disable app access to input devices"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection > Disable app access to personal information",
+   "entree": "Disable app access to your files",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 5,
+   "recommandations": {
+    "standard": 5
+   },
+   "noms_scripts": [
+    "Disable app access to \"Documents\" folder",
+    "Disable app access to \"Pictures\" folder",
+    "Disable app access to \"Videos\" folder",
+    "Disable app access to \"Music\" folder",
+    "Disable app access to personal files"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection > Disable app access to personal information",
+   "entree": "Disable app access to phone",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 3,
+   "recommandations": {
+    "standard": 2,
+    "strict": 1
+   },
+   "noms_scripts": [
+    "Disable app access to call history",
+    "Disable app access to phone calls (breaks phone calls through Phone Link)",
+    "Disable app access to messaging (SMS / MMS)"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection > Disable app access to personal information",
+   "entree": "Disable app access to Bluetooth devices",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 2,
+   "recommandations": {
+    "standard": 2
+   },
+   "noms_scripts": [
+    "Disable app access to paired Bluetooth devices",
+    "Disable app access to unpaired Bluetooth devices"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection > Disable app access to personal information",
+   "entree": "Disable app voice activation",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 2,
+   "recommandations": {
+    "standard": 2
+   },
+   "noms_scripts": [
+    "Disable app access to voice activation",
+    "Disable app access to voice activation on locked system"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection",
+   "entree": "Disable Customer Experience Improvement Program",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 2,
+   "recommandations": {
+    "standard": 2
+   },
+   "noms_scripts": [
+    "Disable Customer Experience Improvement Program data collection",
+    "Disable Customer Experience Improvement Program data uploads"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection > Disable Customer Experience Improvement Program",
+   "entree": "Disable background customer experience data collection",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 8,
+   "recommandations": {
+    "standard": 7,
+    "strict": 1
+   },
+   "noms_scripts": [
+    "Disable automatic Software Quality Metrics (SQM) data transmission",
+    "Disable kernel-level customer experience data collection",
+    "Disable Bluetooth usage data collection",
+    "Disable disk diagnostic data collection",
+    "Disable disk diagnostic user notifications",
+    "Disable USB data collection",
+    "Disable customer experience data consolidation",
+    "Disable customer experience data uploads"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection > Disable Customer Experience Improvement Program > Disable background customer experience data collection",
+   "entree": "Disable server-specific customer experience data collection",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 3,
+   "recommandations": {
+    "standard": 3
+   },
+   "noms_scripts": [
+    "Disable server customer experience data assistant",
+    "Disable server role telemetry collection",
+    "Disable server role usage data collection"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection > Disable Application Experience data collection",
+   "entree": "Disable automatic system compatibility checks (Microsoft Compatibility Appraiser)",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 2,
+   "recommandations": {
+    "standard": 2
+   },
+   "noms_scripts": [
+    "Disable daily compatibility data collection (\"Microsoft Compatibility Appraiser\" task)",
+    "Disable telemetry collector and sender process (`CompatTelRunner.exe`)"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection > Disable Application Experience data collection",
+   "entree": "Disable background application compatibility checks (Application Experience scheduled tasks)",
+   "niveau": "strict",
+   "niveau_gt": "Avance",
+   "scripts": 6,
+   "recommandations": {
+    "standard": 2,
+    "strict": 4
+   },
+   "noms_scripts": [
+    "Disable program data collection and reporting (`ProgramDataUpdater`)",
+    "Disable application usage tracking (`AitAgent`)",
+    "Disable startup application data tracking (`StartupAppTask`)",
+    "Disable software compatibility updates (`PcaPatchDbTask`)",
+    "Disable compatibility adjustment data sharing (`SdbinstMergeDbTask`)",
+    "Disable application backup data gathering (`MareBackup`)"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection",
+   "entree": "Disable Application Compatibility Framework",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 5,
+   "recommandations": {
+    "standard": 4,
+    "strict": 1
+   },
+   "noms_scripts": [
+    "Disable Application Impact Telemetry (AIT)",
+    "Disable Application Compatibility Engine",
+    "Remove \"Program Compatibility\" tab from file properties (context menu)",
+    "Disable Steps Recorder (collects screenshots, mouse/keyboard input and UI data)",
+    "Disable \"Inventory Collector\" task"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection > Disable Application Compatibility Framework",
+   "entree": "Disable Program Compatibility Assistant (PCA)",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 2,
+   "recommandations": {
+    "standard": 2
+   },
+   "noms_scripts": [
+    "Disable \"Program Compatibility Assistant (PCA)\" feature",
+    "Disable \"Program Compatibility Assistant Service\" (`PcaSvc`)"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection",
+   "entree": "Disable Windows telemetry and data collection",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 4,
+   "recommandations": {
+    "standard": 3,
+    "strict": 1
+   },
+   "noms_scripts": [
+    "Disable diagnostic and usage telemetry",
+    "Disable automatic cloud configuration downloads",
+    "Disable license telemetry",
+    "Disable error reporting"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection > Disable Windows telemetry and data collection",
+   "entree": "Disable diagnostics telemetry services",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 4,
+   "recommandations": {
+    "standard": 2,
+    "aucune": 2
+   },
+   "noms_scripts": [
+    "Disable \"Connected User Experiences and Telemetry\" (`DiagTrack`) service",
+    "Disable WAP push notification routing service",
+    "Disable \"Diagnostics Hub Standard Collector\" service",
+    "Disable \"Diagnostic Execution Service\" (`diagsvc`)"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection > Disable Windows telemetry and data collection",
+   "entree": "Disable census data collection",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 3,
+   "recommandations": {
+    "standard": 3
+   },
+   "noms_scripts": [
+    "Disable \"Device\" task",
+    "Disable \"Device User\" task",
+    "Disable device and configuration data collection tool"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection > Disable Windows telemetry and data collection",
+   "entree": "Disable enterprise/business focused data collection",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 1,
+   "recommandations": {
+    "standard": 1
+   },
+   "noms_scripts": [
+    "Disable commercial usage of collected data"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection > Disable Windows telemetry and data collection > Disable enterprise/business focused data collection",
+   "entree": "Disable Desktop Analytics telemetry",
+   "niveau": "strict",
+   "niveau_gt": "Avance",
+   "scripts": 5,
+   "recommandations": {
+    "strict": 4,
+    "standard": 1
+   },
+   "noms_scripts": [
+    "Disable processing of Desktop Analytics",
+    "Disable sending device name in Windows diagnostic data",
+    "Disable collection of Edge browsing data for Desktop Analytics",
+    "Disable diagnostics data processing for Business cloud",
+    "Disable Update Compliance processing of diagnostics data"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection",
+   "entree": "Disable connectivity checks",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 6,
+   "recommandations": {
+    "aucune": 5,
+    "strict": 1
+   },
+   "noms_scripts": [
+    "Disable active connectivity tests (breaks internet connection status, captive portals)",
+    "Disable passive connectivity tests (breaks internet connection status)",
+    "Remove \"Network Connectivity Status Indicator (NCSI)\" app (breaks internet connection status icon)",
+    "Block Microsoft connectivity check hosts (breaks internet connection status, captive portals)",
+    "Disable \"Network Location Awareness (NLA)\" service (breaks auto-reconnect, connectivity status, network identification)",
+    "Disable \"Network List Service (NLS)\" service (breaks connectivity status, network identification, network connection icon, connectivity with some Microsoft apps)"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection",
+   "entree": "Disable update and app sharing",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 2,
+   "recommandations": {
+    "standard": 1,
+    "aucune": 1
+   },
+   "noms_scripts": [
+    "Disable update and app peer downloads",
+    "Disable Delivery Optimization service (breaks Windows Update & Store downloads)"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection",
+   "entree": "Disable location access",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 3,
+   "recommandations": {
+    "aucune": 1,
+    "standard": 2
+   },
+   "noms_scripts": [
+    "Disable Windows Location Provider",
+    "Disable location scripting",
+    "Disable location"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection",
+   "entree": "Disable Windows search data collection",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 4,
+   "recommandations": {
+    "standard": 3,
+    "strict": 1
+   },
+   "noms_scripts": [
+    "Disable search's access to location",
+    "Disable local search history (breaks recent suggestions)",
+    "Disable sharing personal search data with Microsoft",
+    "Disable personal cloud content search in taskbar"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection > Disable Windows search data collection",
+   "entree": "Disable Cortana data collection",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 9,
+   "recommandations": {
+    "standard": 9
+   },
+   "noms_scripts": [
+    "Disable Cortana during search",
+    "Disable Cortana experience",
+    "Disable Cortana's access to cloud services such as OneDrive and SharePoint",
+    "Disable Cortana speech interaction while the system is locked",
+    "Disable participation in Cortana data collection",
+    "Disable enabling of Cortana",
+    "Disable Cortana in start menu",
+    "Remove \"Cortana\" icon from taskbar",
+    "Disable Cortana in ambient mode"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection > Disable Windows search data collection > Disable Cortana data collection",
+   "entree": "Disable Cortana activity history",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 2,
+   "recommandations": {
+    "standard": 2
+   },
+   "noms_scripts": [
+    "Disable Cortana's history display",
+    "Disable Cortana's device history usage"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection > Disable Windows search data collection > Disable Cortana data collection",
+   "entree": "Disable Cortana voice listening",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 5,
+   "recommandations": {
+    "standard": 5
+   },
+   "noms_scripts": [
+    "Disable \"Hey Cortana\" voice activation",
+    "Disable Cortana keyboard shortcut (**Windows logo key** + **C**)",
+    "Disable Cortana on locked device",
+    "Disable automatic update of speech data",
+    "Disable Cortana voice support during Windows setup"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection > Disable Windows search data collection",
+   "entree": "Disable privacy-invasive indexing",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 4,
+   "recommandations": {
+    "standard": 4
+   },
+   "noms_scripts": [
+    "Disable indexing of encrypted items",
+    "Disable automatic language detection when indexing",
+    "Disable remote access to search index",
+    "Disable iFilters and protocol handlers"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection > Disable Windows search data collection",
+   "entree": "Disable search suggestions",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 5,
+   "recommandations": {
+    "standard": 5
+   },
+   "noms_scripts": [
+    "Disable Bing search and recent search suggestions (breaks search history)",
+    "Disable Bing search in start menu",
+    "Disable web search in search bar",
+    "Disable web results in Windows Search",
+    "Disable Windows search highlights"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection",
+   "entree": "Disable targeted advertisements and marketing",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 2,
+   "recommandations": {
+    "standard": 2
+   },
+   "noms_scripts": [
+    "Disable ad customization with Advertising ID",
+    "Disable suggested content in Settings app"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection > Disable targeted advertisements and marketing",
+   "entree": "Disable cloud-based advertising and tips",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 3,
+   "recommandations": {
+    "standard": 2,
+    "strict": 1
+   },
+   "noms_scripts": [
+    "Disable Windows Tips",
+    "Disable Windows Spotlight (shows random wallpapers on lock screen)",
+    "Disable Microsoft Consumer Experiences"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection",
+   "entree": "Disable biometrics (breaks fingerprinting/facial login)",
+   "niveau": "strict",
+   "niveau_gt": "Avance",
+   "scripts": 3,
+   "recommandations": {
+    "strict": 3
+   },
+   "noms_scripts": [
+    "Disable use of biometrics",
+    "Disable biometric logon",
+    "Disable \"Windows Biometric Service\""
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection",
+   "entree": "Disable Windows Insider Program",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 4,
+   "recommandations": {
+    "standard": 3,
+    "aucune": 1
+   },
+   "noms_scripts": [
+    "Disable \"Windows Insider Service\"",
+    "Disable Microsoft feature trials",
+    "Disable receipt of Windows preview builds",
+    "Remove \"Windows Insider Program\" from Settings"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Disable OS data collection",
+   "entree": "Disable cloud sync",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 10,
+   "recommandations": {
+    "standard": 10
+   },
+   "noms_scripts": [
+    "Disable all settings synchronization",
+    "Disable \"Application\" setting synchronization",
+    "Disable \"App Sync\" setting synchronization",
+    "Disable \"Credentials\" setting synchronization",
+    "Disable \"Desktop Theme\" setting synchronization",
+    "Disable \"Personalization\" setting synchronization",
+    "Disable \"Start Layout\" setting synchronization",
+    "Disable \"Web Browser\" setting synchronization",
+    "Disable \"Windows\" setting synchronization",
+    "Disable \"Language\" setting synchronization"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "",
+   "entree": "Configure programs",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 7,
+   "recommandations": {
+    "standard": 6,
+    "aucune": 1
+   },
+   "noms_scripts": [
+    "Disable NET Core CLI telemetry",
+    "Disable PowerShell telemetry",
+    "Disable \"Razer Game Scanner Service\"",
+    "Disable \"Logitech Gaming Registry Service\"",
+    "Disable CCleaner data collection",
+    "Disable WinGet telemetry",
+    "Disable Accessibility Insights telemetry"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Configure programs",
+   "entree": "Disable Visual Studio data collection",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 6,
+   "recommandations": {
+    "standard": 6
+   },
+   "noms_scripts": [
+    "Disable participation in Visual Studio Customer Experience Improvement Program (VSCEIP)",
+    "Disable Visual Studio telemetry",
+    "Disable Visual Studio feedback",
+    "Disable \"Visual Studio Standard Collector Service\"",
+    "Disable Diagnostics Hub log collection",
+    "Disable participation in IntelliCode data collection"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Configure programs",
+   "entree": "Disable Nvidia telemetry",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 5,
+   "recommandations": {
+    "standard": 4,
+    "aucune": 1
+   },
+   "noms_scripts": [
+    "Remove Nvidia telemetry packages",
+    "Remove Nvidia telemetry components",
+    "Disable Nvidia telemetry drivers",
+    "Disable participation in Nvidia telemetry",
+    "Disable \"Nvidia Telemetry Container\" service"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Configure programs > Disable Nvidia telemetry",
+   "entree": "Disable Nvidia telemetry scheduled tasks",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 3,
+   "recommandations": {
+    "standard": 2,
+    "aucune": 1
+   },
+   "noms_scripts": [
+    "Disable \"NVIDIA Telemetry Report\" task",
+    "Disable \"NVIDIA Telemetry Report on Logon\" task",
+    "Disable \"NVIDIA telemetry monitor\" task"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Configure programs",
+   "entree": "Disable Visual Studio Code data collection",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 9,
+   "recommandations": {
+    "standard": 3,
+    "aucune": 6
+   },
+   "noms_scripts": [
+    "Disable Visual Studio Code telemetry",
+    "Disable Visual Studio Code crash reporting",
+    "Disable online experiments by Microsoft in Visual Studio Code",
+    "Disable Visual Studio Code automatic updates in favor of manual updates",
+    "Disable fetching release notes from Microsoft servers after an update",
+    "Automatically check extensions from Microsoft online service",
+    "Fetch recommendations from Microsoft only on demand",
+    "Disable automatic fetching of remote repositories in Visual Studio Code",
+    "Disable fetching package information from NPM and Bower in Visual Studio Code"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Configure programs",
+   "entree": "Disable Microsoft Office telemetry",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 6,
+   "recommandations": {
+    "standard": 5,
+    "aucune": 1
+   },
+   "noms_scripts": [
+    "Disable Microsoft Office logging",
+    "Disable Microsoft Office client telemetry",
+    "Disable user participation in Office Customer Experience Improvement Program (CEIP)",
+    "Disable Microsoft Office feedback",
+    "Disable Microsoft Office telemetry agent",
+    "Disable \"Microsoft Office Subscription Heartbeat\" task"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Configure programs > Configure browsers",
+   "entree": "Configure Edge",
+   "niveau": "strict",
+   "niveau_gt": "Avance",
+   "scripts": 22,
+   "recommandations": {
+    "standard": 9,
+    "strict": 12,
+    "aucune": 1
+   },
+   "noms_scripts": [
+    "Disable Edge Follow feature",
+    "Disable Edge Shopping Assistant",
+    "Disable Edge Search bar on desktop",
+    "Disable Edge Microsoft Rewards",
+    "Disable Edge Bing suggestions in address bar",
+    "Disable Edge \"Find on Page\" data collection",
+    "Disable Edge sign-in prompt on new tab page",
+    "Disable Edge search and site suggestions",
+    "Disable outdated Edge automatic image enhancement",
+    "Disable Edge quick links on the new tab page",
+    "Disable Edge remote background images on new tab page",
+    "Disable Edge Collections feature",
+    "Disable Edge failed page data collection and suggestions",
+    "Disable outdated Edge games menu",
+    "Disable Edge in-app support",
+    "Disable Edge payment data storage and ads",
+    "Disable Edge address data storage",
+    "Disable Edge experimentation and remote configuration",
+    "Disable Edge automatic startup",
+    "Disable Edge external connectivity checks",
+    "Disable Edge Family Safety settings",
+    "Disable Edge site information gathering from Bing"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Configure programs > Configure browsers > Configure Edge",
+   "entree": "Disable Edge telemetry",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 4,
+   "recommandations": {
+    "standard": 4
+   },
+   "noms_scripts": [
+    "Disable Edge diagnostic data sending",
+    "Disable outdated Edge metrics data sending",
+    "Disable outdated Edge site information sending",
+    "Disable Edge Feedback"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Configure programs > Configure browsers > Configure Edge",
+   "entree": "Disable Edge and WebView2 automatic updates",
+   "niveau": "strict",
+   "niveau_gt": "Avance",
+   "scripts": 7,
+   "recommandations": {
+    "standard": 1,
+    "strict": 6
+   },
+   "noms_scripts": [
+    "Disable Edge automatic update services",
+    "Disable Edge automatic update scheduled tasks",
+    "Disable Edge update executable",
+    "Disable Edge automatic updates across all channels",
+    "Disable Edge WebView and WebView2 updates",
+    "Disable Edge automatic update checks",
+    "Maximize Edge update suppression duration"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Configure programs > Configure browsers > Configure Edge > Disable Edge and WebView2 automatic updates",
+   "entree": "Disable automatic installation of Edge and WebView",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 3,
+   "recommandations": {
+    "standard": 3
+   },
+   "noms_scripts": [
+    "Disable automatic installation of Edge",
+    "Disable automatic installation of Edge across all channels",
+    "Disable automatic installation of WebView and WebView2"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Configure programs > Configure browsers > Configure Edge",
+   "entree": "Disable Copilot in Edge",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 4,
+   "recommandations": {
+    "aucune": 3,
+    "strict": 1
+   },
+   "noms_scripts": [
+    "Disable Edge Copilot and Hubs Sidebar",
+    "Disable Edge Copilot browsing data collection",
+    "Disable Edge Copilot access on new tab page",
+    "Disable outdated Edge Discover button"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Configure programs > Configure browsers > Configure Edge",
+   "entree": "Disable Edge ads",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 8,
+   "recommandations": {
+    "standard": 8
+   },
+   "noms_scripts": [
+    "Disable Edge spotlight recommendations",
+    "Disable Edge feature ads",
+    "Disable Edge Bing ads",
+    "Disable Edge promotional pages",
+    "Disable Edge browsing history collection for ads",
+    "Disable Edge Insider ads",
+    "Disable Edge Adobe Acrobat subscription ads",
+    "Disable Edge top sites and sponsored links on new tab page"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Configure programs > Configure browsers > Configure Edge",
+   "entree": "Harden Edge privacy",
+   "niveau": "strict",
+   "niveau_gt": "Avance",
+   "scripts": 3,
+   "recommandations": {
+    "strict": 2,
+    "standard": 1
+   },
+   "noms_scripts": [
+    "Enable Edge tracking prevention",
+    "Block Edge third party cookies",
+    "Enable Do Not Track requests"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Configure programs > Configure browsers",
+   "entree": "Configure Edge (Legacy)",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 3,
+   "recommandations": {
+    "standard": 3
+   },
+   "noms_scripts": [
+    "Disable Edge (Legacy) Live Tile data collection",
+    "Disable Edge (Legacy) search suggestions",
+    "Disable Edge (Legacy) Books telemetry"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Configure programs > Configure browsers",
+   "entree": "Configure Internet Explorer",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 6,
+   "recommandations": {
+    "standard": 6
+   },
+   "noms_scripts": [
+    "Disable Internet Explorer geolocation",
+    "Disable Internet Explorer InPrivate logging",
+    "Disable Internet Explorer Customer Experience Improvement Program (CEIP) participation",
+    "Disable legacy WCM policy calls",
+    "Disable SSLv3 fallback",
+    "Disable certificate error ignoring"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Configure programs > Configure browsers",
+   "entree": "Configure Chrome",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 2,
+   "recommandations": {
+    "standard": 2
+   },
+   "noms_scripts": [
+    "Disable outdated Chrome Software Reporter Tool",
+    "Disable Chrome metrics reporting"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Configure programs > Configure browsers > Configure Chrome",
+   "entree": "Configure Chrome cleanup",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 2,
+   "recommandations": {
+    "standard": 2
+   },
+   "noms_scripts": [
+    "Disable sharing scanned software data with Google",
+    "Disable Chrome system cleanup scans"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Configure programs > Configure browsers",
+   "entree": "Configure Firefox",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 3,
+   "recommandations": {
+    "standard": 3
+   },
+   "noms_scripts": [
+    "Disable Firefox default browser and system data reporting",
+    "Disable Firefox background browser checks",
+    "Disable Firefox telemetry data collection"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Configure programs",
+   "entree": "Disable Google background automatic updates",
+   "niveau": "strict",
+   "niveau_gt": "Avance",
+   "scripts": 2,
+   "recommandations": {
+    "standard": 1,
+    "strict": 1
+   },
+   "noms_scripts": [
+    "Disable \"Google Update Service\" services",
+    "Disable Google automatic updates scheduled tasks (breaks Google Credential Provider)"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Configure programs",
+   "entree": "Disable Adobe background automatic updates",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 3,
+   "recommandations": {
+    "standard": 3
+   },
+   "noms_scripts": [
+    "Disable \"Adobe Acrobat Update Service\" service",
+    "Disable \"Adobe Update Service\" service",
+    "Disable \"Adobe Acrobat Update Task\" scheduled task"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Configure programs",
+   "entree": "Disable Dropbox background automatic updates",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 2,
+   "recommandations": {
+    "standard": 2
+   },
+   "noms_scripts": [
+    "Disable \"Dropbox Update Service\" services",
+    "Disable Dropbox automatic updates scheduled tasks"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Configure programs",
+   "entree": "Disable Media Player data collection",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 3,
+   "recommandations": {
+    "standard": 3
+   },
+   "noms_scripts": [
+    "Disable sending Windows Media Player statistics",
+    "Disable metadata retrieval",
+    "Disable \"Windows Media Player Network Sharing Service\" (`WMPNetworkSvc`)"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "",
+   "entree": "Security improvements",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 8,
+   "recommandations": {
+    "aucune": 1,
+    "standard": 7
+   },
+   "noms_scripts": [
+    "Enable Data Execution Prevention (DEP)",
+    "Disable AutoPlay and AutoRun",
+    "Disable lock screen camera access",
+    "Disable storage of the LAN Manager password hashes",
+    "Disable \"Always install with elevated privileges\" in Windows Installer",
+    "Enable Structured Exception Handling Overwrite Protection (SEHOP)",
+    "Enable security against PowerShell 2.0 downgrade attacks",
+    "Disable \"Windows Connect Now\" wizard"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Security improvements > Improve network security",
+   "entree": "Enable strong secret key requirements",
+   "niveau": "strict",
+   "niveau_gt": "Avance",
+   "scripts": 2,
+   "recommandations": {
+    "standard": 1,
+    "strict": 1
+   },
+   "noms_scripts": [
+    "Enable strong Diffie-Hellman key requirement",
+    "Enable strong RSA key requirement (breaks Hyper-V VMs)"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Security improvements > Improve network security",
+   "entree": "Disable insecure connections",
+   "niveau": "strict",
+   "niveau_gt": "Avance",
+   "scripts": 2,
+   "recommandations": {
+    "strict": 2
+   },
+   "noms_scripts": [
+    "Disable insecure renegotiation",
+    "Disable insecure connections from .NET apps"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Security improvements > Improve network security > Disable insecure connections",
+   "entree": "Disable insecure ciphers",
+   "niveau": "strict",
+   "niveau_gt": "Avance",
+   "scripts": 5,
+   "recommandations": {
+    "strict": 4,
+    "standard": 1
+   },
+   "noms_scripts": [
+    "Disable insecure \"RC2\" ciphers",
+    "Disable insecure \"RC4\" ciphers",
+    "Disable insecure \"DES\" cipher",
+    "Disable insecure \"Triple DES\" cipher",
+    "Disable insecure \"NULL\" cipher"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Security improvements > Improve network security > Disable insecure connections",
+   "entree": "Disable insecure hashes",
+   "niveau": "strict",
+   "niveau_gt": "Avance",
+   "scripts": 2,
+   "recommandations": {
+    "strict": 2
+   },
+   "noms_scripts": [
+    "Disable insecure \"MD5\" hash",
+    "Disable insecure \"SHA-1\" hash"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Security improvements > Improve network security > Disable insecure connections",
+   "entree": "Disable insecure protocols",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 8,
+   "recommandations": {
+    "standard": 5,
+    "strict": 2,
+    "aucune": 1
+   },
+   "noms_scripts": [
+    "Disable insecure \"SMBv1\" protocol",
+    "Disable insecure \"NetBios\" protocol",
+    "Disable insecure \"SSL 2.0\" protocol",
+    "Disable insecure \"SSL 3.0\" protocol",
+    "Disable insecure \"TLS 1.0\" protocol",
+    "Disable insecure \"TLS 1.1\" protocol",
+    "Disable insecure \"DTLS 1.0\" protocol",
+    "Disable insecure \"LM & NTLM\" protocols"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Security improvements > Improve network security",
+   "entree": "Enable secure connections",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 3,
+   "recommandations": {
+    "standard": 2,
+    "strict": 1
+   },
+   "noms_scripts": [
+    "Enable secure \"DTLS 1.2\" protocol",
+    "Enable secure \"TLS 1.3\" protocol",
+    "Enable secure connections for legacy .NET apps"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Security improvements > Improve network security",
+   "entree": "Disable insecure remote administration access",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 8,
+   "recommandations": {
+    "standard": 6,
+    "strict": 1,
+    "aucune": 1
+   },
+   "noms_scripts": [
+    "Disable basic authentication in WinRM",
+    "Disable unauthorized user account discovery (anonymous SAM enumeration)",
+    "Disable anonymous access to named pipes and shares",
+    "Disable hidden remote file access via administrative shares (breaks remote system management software)",
+    "Disable anonymous enumeration of shares",
+    "Disable \"Telnet Client\" feature",
+    "Remove \"RAS Connection Manager Administration Kit (CMAK)\" capability",
+    "Disable Windows Remote Assistance feature"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Security improvements > Improve network security",
+   "entree": "Disable non-essential network components",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 6,
+   "recommandations": {
+    "strict": 2,
+    "standard": 1,
+    "aucune": 3
+   },
+   "noms_scripts": [
+    "Disable \"Net.TCP Port Sharing\" feature",
+    "Disable \"SMB Direct\" feature",
+    "Disable \"TFTP Client\" feature",
+    "Remove \"RIP Listener\" capability",
+    "Remove \"Simple Network Management Protocol (SNMP)\" capability",
+    "Remove \"SNMP WMI Provider\" capability"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Security improvements",
+   "entree": "Disable clipboard data collection",
+   "niveau": "strict",
+   "niveau_gt": "Avance",
+   "scripts": 3,
+   "recommandations": {
+    "strict": 2,
+    "standard": 1
+   },
+   "noms_scripts": [
+    "Disable Cloud Clipboard (breaks clipboard sync)",
+    "Disable clipboard history",
+    "Disable background clipboard data collection (`cbdhsvc`) (breaks clipboard history and sync)"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Security improvements",
+   "entree": "Enable protection against Meltdown and Spectre",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 2,
+   "recommandations": {
+    "aucune": 2
+   },
+   "noms_scripts": [
+    "Mitigate Spectre Variant 2 and Meltdown in host operating system",
+    "Mitigate Spectre Variant 2 and Meltdown in Hyper-V"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "",
+   "entree": "Block tracking hosts",
+   "niveau": "strict",
+   "niveau_gt": "Avance",
+   "scripts": 12,
+   "recommandations": {
+    "standard": 4,
+    "strict": 8
+   },
+   "noms_scripts": [
+    "Block Windows crash report hosts",
+    "Block Windows error reporting hosts",
+    "Block telemetry and user experience hosts",
+    "Block remote configuration sync hosts",
+    "Block location data sharing hosts",
+    "Block maps data and updates hosts",
+    "Block Spotlight ads and suggestions hosts",
+    "Block Cortana and Live Tiles hosts",
+    "Block Edge experimentation hosts",
+    "Block Photos app sync hosts",
+    "Block OneNote Live Tile hosts",
+    "Block Weather Live Tile hosts"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Block tracking hosts",
+   "entree": "Block third-party app hosts",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 2,
+   "recommandations": {
+    "standard": 1,
+    "aucune": 1
+   },
+   "noms_scripts": [
+    "Block Dropbox telemetry hosts",
+    "Block Spotify Live Tile hosts"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender",
+   "entree": "Disable Defender data collection",
+   "niveau": "strict",
+   "niveau_gt": "Avance",
+   "scripts": 5,
+   "recommandations": {
+    "strict": 5
+   },
+   "noms_scripts": [
+    "Disable \"Malicious Software Reporting Tool\" diagnostic data",
+    "Disable Defender Antivirus Watson event reporting",
+    "Disable Defender Antivirus telemetry",
+    "Disable Defender Antivirus remote experimentation and configurations",
+    "Disable Defender Antivirus Azure data collection"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Defender data collection",
+   "entree": "Disable Defender Antivirus cloud protection",
+   "niveau": "strict",
+   "niveau_gt": "Avance",
+   "scripts": 7,
+   "recommandations": {
+    "strict": 7
+   },
+   "noms_scripts": [
+    "Disable Defender Antivirus \"Block at First Sight\" feature",
+    "Disable Defender Antivirus \"Extended Cloud Check\" feature",
+    "Disable Defender Antivirus aggressive cloud protection",
+    "Disable Defender Antivirus cloud-based notifications",
+    "Disable Defender Antivirus cloud protection reporting",
+    "Disable Defender Antivirus automatic file submission to Microsoft",
+    "Disable Defender Antivirus real-time security intelligence updates"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender",
+   "entree": "Disable system modification restrictions",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 6,
+   "recommandations": {
+    "aucune": 6
+   },
+   "noms_scripts": [
+    "Disable Defender Antivirus minifilter driver",
+    "Disable Defender Antivirus boot driver",
+    "Disable security event monitoring",
+    "Disable Secure Boot driver",
+    "Disable Tamper Protection",
+    "Disable virtualization-based security (VBS)"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable system modification restrictions",
+   "entree": "Disable Defender System Guard",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 6,
+   "recommandations": {
+    "aucune": 6
+   },
+   "noms_scripts": [
+    "Disable System Guard startup verification",
+    "Disable System Guard sandbox monitoring",
+    "Disable System Guard kernel monitoring",
+    "Disable System Guard communication hub",
+    "Disable System Guard rule definitions",
+    "Disable System Guard rule scanner"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender",
+   "entree": "Disable Defender Antivirus",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 5,
+   "recommandations": {
+    "aucune": 5
+   },
+   "noms_scripts": [
+    "Disable outdated Defender Antivirus",
+    "Disable Potentially Unwanted Application (PUA) protection",
+    "Disable file hash computation feature",
+    "Disable Defender auto-exclusions",
+    "Disable Defender Antivirus license verification"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Defender Antivirus",
+   "entree": "Disable network inspection",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 3,
+   "recommandations": {
+    "aucune": 3
+   },
+   "noms_scripts": [
+    "Disable protocol recognition",
+    "Disable definition retirement",
+    "Minimize rate of detection events"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Defender Antivirus",
+   "entree": "Disable real-time protection",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 5,
+   "recommandations": {
+    "aucune": 5
+   },
+   "noms_scripts": [
+    "Disable real-time monitoring",
+    "Disable intrusion prevention system (IPS)",
+    "Disable Information Protection Control (IPC)",
+    "Disable real-time protection process scanning",
+    "Disable Defender Antivirus real-time protection module"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Defender Antivirus > Disable real-time protection",
+   "entree": "Disable Defender monitoring of behavior",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 2,
+   "recommandations": {
+    "aucune": 2
+   },
+   "noms_scripts": [
+    "Disable behavior monitoring",
+    "Disable sending raw write notifications to behavior monitoring"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Defender Antivirus > Disable real-time protection",
+   "entree": "Disable monitoring of downloads and attachments in Defender",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 2,
+   "recommandations": {
+    "aucune": 2
+   },
+   "noms_scripts": [
+    "Disable scanning of all downloaded files and attachments",
+    "Disable scanning files larger than 1 KB (minimum possible)"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Defender Antivirus > Disable real-time protection",
+   "entree": "Disable Defender monitoring of file and program activity",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 2,
+   "recommandations": {
+    "aucune": 2
+   },
+   "noms_scripts": [
+    "Disable file and program activity monitoring",
+    "Disable bidirectional scan for incoming and outgoing file and program activities"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Defender Antivirus",
+   "entree": "Disable Defender remediation",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 4,
+   "recommandations": {
+    "aucune": 4
+   },
+   "noms_scripts": [
+    "Disable routine remediation",
+    "Disable running scheduled auto-remediation",
+    "Disable remediation actions",
+    "Enable automatically purging items from quarantine folder"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Defender Antivirus > Disable Defender scans",
+   "entree": "Disable scan actions",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 3,
+   "recommandations": {
+    "aucune": 3
+   },
+   "noms_scripts": [
+    "Disable signature verification before scanning",
+    "Disable creation of daily system restore points",
+    "Minimize retention time for files in scan history"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Defender Antivirus > Disable Defender scans",
+   "entree": "Disable catch-up scans",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 3,
+   "recommandations": {
+    "aucune": 3
+   },
+   "noms_scripts": [
+    "Maximize days until mandatory catch-up scan",
+    "Disable catch-up full scans",
+    "Disable catch-up quick scans"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Defender Antivirus > Disable Defender scans",
+   "entree": "Disable Defender scan options",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 3,
+   "recommandations": {
+    "aucune": 3
+   },
+   "noms_scripts": [
+    "Disable scan heuristics",
+    "Disable scanning when not idle",
+    "Disable scheduled anti-malware scanner (MRT)"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Defender Antivirus > Disable Defender scans > Disable Defender scan options",
+   "entree": "Disable intensive CPU usage during Defender scans",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 2,
+   "recommandations": {
+    "aucune": 2
+   },
+   "noms_scripts": [
+    "Minimize CPU usage during scans",
+    "Minimize CPU usage during idle scans"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Defender Antivirus > Disable Defender scans",
+   "entree": "Minimize scanned areas",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 7,
+   "recommandations": {
+    "aucune": 7
+   },
+   "noms_scripts": [
+    "Disable e-mail scanning",
+    "Disable script scanning",
+    "Disable reparse point scanning",
+    "Disable scanning mapped network drives during full scan",
+    "Disable network file scanning",
+    "Disable scanning packed executables",
+    "Disable scanning removable drives"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Defender Antivirus > Disable Defender scans > Minimize scanned areas",
+   "entree": "Disable scanning archive files",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 3,
+   "recommandations": {
+    "aucune": 3
+   },
+   "noms_scripts": [
+    "Disable Defender archive file scanning",
+    "Minimize scanning depth of archive files",
+    "Minimize file size for scanning archive files"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Defender Antivirus > Disable Defender scans",
+   "entree": "Disable auto-scans",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 5,
+   "recommandations": {
+    "aucune": 5
+   },
+   "noms_scripts": [
+    "Disable scheduled scans",
+    "Disable randomizing scheduled task times",
+    "Disable scheduled full-scans",
+    "Minimize daily quick scan frequency",
+    "Disable scanning after security intelligence (signature) update"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Defender Antivirus > Disable Defender scans",
+   "entree": "Disable Antimalware Scan Interface (AMSI)",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 3,
+   "recommandations": {
+    "aucune": 3
+   },
+   "noms_scripts": [
+    "Disable Defender Antivirus AMSI provider",
+    "Disable Defender Antivirus UAC AMSI provider",
+    "Disable Antimalware Scan Interface (AMSI) for current user"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Defender Antivirus",
+   "entree": "Disable Defender Antivirus management",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 4,
+   "recommandations": {
+    "aucune": 4
+   },
+   "noms_scripts": [
+    "Disable Defender Antivirus command-line library",
+    "Disable Defender Antivirus command-line utility",
+    "Disable Defender Antivirus WMI management",
+    "Disable Microsoft Security Client Policy Configuration Tool"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Defender Antivirus > Disable Defender Antivirus management",
+   "entree": "Disable Defender Antivirus remote management",
+   "niveau": "strict",
+   "niveau_gt": "Avance",
+   "scripts": 2,
+   "recommandations": {
+    "strict": 2
+   },
+   "noms_scripts": [
+    "Disable Defender Antivirus remote configuration",
+    "Disable Defender Antivirus remote commands"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Defender Antivirus",
+   "entree": "Disable Defender updates",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 4,
+   "recommandations": {
+    "aucune": 4
+   },
+   "noms_scripts": [
+    "Minimize Defender updates to completed gradual release cycles",
+    "Minimize Defender engine updates to completed release cycles",
+    "Minimize Defender platform updates to completed release cycles",
+    "Minimize Defender definition updates to completed gradual release cycles"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Defender Antivirus > Disable Defender updates",
+   "entree": "Disable Defender Security Intelligence (signature) updates",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 9,
+   "recommandations": {
+    "aucune": 9
+   },
+   "noms_scripts": [
+    "Disable forced security intelligence (signature) updates from Microsoft Update",
+    "Disable security intelligence (signature) updates when running on battery power",
+    "Disable startup check for latest virus and spyware security intelligence (signature)",
+    "Disable catch-up security intelligence (signature) updates",
+    "Minimize spyware security intelligence (signature) updates",
+    "Minimize virus security intelligence (signature) updates",
+    "Disable security intelligence (signature) update on startup",
+    "Disable automatic checks for security intelligence (signature) updates",
+    "Minimize checks for security intelligence (signature) updates"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Defender Antivirus > Disable Defender updates > Disable Defender Security Intelligence (signature) updates",
+   "entree": "Disable alternate definition updates",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 2,
+   "recommandations": {
+    "aucune": 2
+   },
+   "noms_scripts": [
+    "Disable definition updates via WSUS and Microsoft Malware Protection Center",
+    "Disable definition updates through both WSUS and Windows Update"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Defender Antivirus",
+   "entree": "Disable Defender reporting",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 3,
+   "recommandations": {
+    "aucune": 3
+   },
+   "noms_scripts": [
+    "Disable Windows Defender boot logging",
+    "Disable Defender ETW provider (Windows Event Logs)",
+    "Minimize Windows software trace preprocessor (WPP Software Tracing)"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Defender Antivirus",
+   "entree": "Disable Defender services and drivers",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 4,
+   "recommandations": {
+    "aucune": 4
+   },
+   "noms_scripts": [
+    "Disable \"Microsoft Defender Antivirus Network Inspection System Driver\" service",
+    "Disable Defender Antivirus device filter driver",
+    "Disable Defender Antivirus network inspection service",
+    "Disable Microsoft Defender Core Service"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Defender Antivirus > Disable Defender services and drivers",
+   "entree": "Disable Defender Antivirus service",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 11,
+   "recommandations": {
+    "aucune": 9,
+    "strict": 2
+   },
+   "noms_scripts": [
+    "Disable Defender Antivirus service (breaks `Set-MpPreference` cmdlet)",
+    "Disable Defender Antivirus service in Safe Mode",
+    "Disable Defender Antivirus service always-on state",
+    "Disable Defender Antivirus service high-priority startup",
+    "Disable Defender Antivirus service automatic launch",
+    "Disable Defender Antivirus service active state",
+    "Disable Defender Antivirus data storage location",
+    "Disable Defender Antivirus service module",
+    "Disable Defender Antivirus antimalware engine",
+    "Disable Defender Antivirus communication module",
+    "Disable Defender Antivirus service communication with apps"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Defender Antivirus",
+   "entree": "Disable Defender Antivirus scheduled tasks",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 4,
+   "recommandations": {
+    "aucune": 4
+   },
+   "noms_scripts": [
+    "Disable Defender Antivirus cache maintenance task",
+    "Disable Defender Antivirus cleanup task",
+    "Disable Defender Antivirus scheduled scan task",
+    "Disable Defender Antivirus verification task"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Defender Antivirus",
+   "entree": "Disable Defender Antivirus file activity monitoring",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 4,
+   "recommandations": {
+    "aucune": 4
+   },
+   "noms_scripts": [
+    "Disable Defender Antivirus copy accelerator library",
+    "Disable Defender Antivirus copy accelerator utility",
+    "Disable Defender Antivirus file activity tracking library",
+    "Disable Defender Antivirus file risk estimation library"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender",
+   "entree": "Disable Defender Firewall",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 3,
+   "recommandations": {
+    "aucune": 3
+   },
+   "noms_scripts": [
+    "Disable firewall via command-line utility",
+    "Disable Firewall via registry",
+    "Disable \"Firewall & network protection\" section in \"Windows Security\""
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Defender Firewall",
+   "entree": "Disable Defender Firewall services and drivers",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 3,
+   "recommandations": {
+    "aucune": 3
+   },
+   "noms_scripts": [
+    "Disable \"Windows Defender Firewall Authorization Driver\" service (breaks Microsoft Store, `netsh advfirewall`, winget, Windows Sandbox, Docker, WSL)",
+    "Disable \"Windows Defender Firewall\" service (breaks Microsoft Store, `netsh advfirewall`, winget, Windows Sandbox, Docker, WSL)",
+    "Disable Microsoft Security WFP callout driver"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender",
+   "entree": "Disable Defender for Endpoint",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 5,
+   "recommandations": {
+    "aucune": 3,
+    "strict": 2
+   },
+   "noms_scripts": [
+    "Disable \"Windows Defender Advanced Threat Protection Service\" service",
+    "Disable Microsoft Data Loss Prevention (DLP) service",
+    "Disable Defender for Endpoint remote configuration",
+    "Disable Defender Antivirus DLP command-line utility",
+    "Disable Defender Antivirus Endpoint Data Loss Prevention (DLP) module"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender",
+   "entree": "Disable SmartScreen",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 1,
+   "recommandations": {
+    "aucune": 1
+   },
+   "noms_scripts": [
+    "Disable outdated SmartScreen settings interface"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable SmartScreen",
+   "entree": "Disable SmartScreen for apps and files",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 2,
+   "recommandations": {
+    "aucune": 2
+   },
+   "noms_scripts": [
+    "Disable SmartScreen checks for apps and files",
+    "Enable SmartScreen warning dismissal for apps"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable SmartScreen > Disable SmartScreen for apps and files",
+   "entree": "Disable SmartScreen for Store apps",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 3,
+   "recommandations": {
+    "aucune": 3
+   },
+   "noms_scripts": [
+    "Disable SmartScreen \"App Install Control\" feature",
+    "Disable SmartScreen web content checking for Store apps",
+    "Enable SmartScreen warning dismissal for Store apps"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable SmartScreen",
+   "entree": "Disable SmartScreen in Microsoft browsers",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 11,
+   "recommandations": {
+    "aucune": 10,
+    "strict": 1
+   },
+   "noms_scripts": [
+    "Disable Edge SmartScreen",
+    "Disable Edge SmartScreen for potentially unwanted apps",
+    "Enable Edge SmartScreen warning dismissal",
+    "Enable Edge SmartScreen warning dismissal for files",
+    "Disable Edge SmartScreen DNS requests",
+    "Disable Edge SmartScreen checks on downloads from trusted sources",
+    "Disable outdated Edge SmartScreen library update",
+    "Disable Edge (Legacy) SmartScreen",
+    "Enable Edge (Legacy) SmartScreen warning dismissal",
+    "Disable outdated Internet Explorer SmartScreen",
+    "Disable outdated Internet Explorer SmartScreen Filter component"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable SmartScreen",
+   "entree": "Disable SmartScreen system components",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 3,
+   "recommandations": {
+    "aucune": 3
+   },
+   "noms_scripts": [
+    "Disable SmartScreen process",
+    "Disable SmartScreen libraries",
+    "Disable SmartScreen integrations"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable SmartScreen",
+   "entree": "Disable SmartScreen Enhanced Phishing Protection",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 8,
+   "recommandations": {
+    "aucune": 6,
+    "strict": 2
+   },
+   "noms_scripts": [
+    "Disable SmartScreen Enhanced Phishing Protection Web background services",
+    "Disable SmartScreen Enhanced Phishing Protection automatic data collection",
+    "Disable SmartScreen Enhanced Phishing Protection \"potentially malicious\" notifications",
+    "Disable SmartScreen Enhanced Phishing Protection \"password reuse\" notifications",
+    "Disable SmartScreen Enhanced Phishing Protection \"unsafe apps\" notifications",
+    "Disable SmartScreen Enhanced Phishing Protection audit mode",
+    "Disable SmartScreen Enhanced Phishing Protection warnings and prompts",
+    "Disable SmartScreen Enhanced Phishing Protection telemetry"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender",
+   "entree": "Disable Windows Security interface",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 9,
+   "recommandations": {
+    "aucune": 9
+   },
+   "noms_scripts": [
+    "Remove \"Windows Security\" system tray icon",
+    "Remove \"Scan with Defender\" from context menu",
+    "Remove \"Windows Security\" icon from taskbar",
+    "Disable Defender Antivirus interface",
+    "Disable outdated non-administrator access to Defender threat history",
+    "Disable Defender Firewall Control Panel applet",
+    "Disable Defender Firewall \"Windows Defender Firewall with Advanced Security\"",
+    "Remove \"Windows Security\" app (`SecHealthUI`) (breaks Windows Security user interface)",
+    "Disable outdated \"Windows Defender Security Center\" interface"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Windows Security interface",
+   "entree": "Disable Defender interface background services",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 11,
+   "recommandations": {
+    "aucune": 11
+   },
+   "noms_scripts": [
+    "Disable \"Windows Security\" status reporting integrations",
+    "Disable Defender Shell Service",
+    "Disable \"Windows Security Service\" service",
+    "Disable \"Windows Security Service\" interactions",
+    "Disable Windows Security Health Agent (WSHA)",
+    "Disable Windows Security Health Core",
+    "Disable Windows Security Health UDK",
+    "Disable \"Windows Security Health Host\" process",
+    "Disable Windows Security Health data sharing",
+    "Disable Windows Security service",
+    "Disable Windows Security service integrations"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Windows Security interface",
+   "entree": "Disable sections in \"Windows Security\"",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 6,
+   "recommandations": {
+    "aucune": 6
+   },
+   "noms_scripts": [
+    "Disable \"Virus and threat protection\" section in \"Windows Security\"",
+    "Disable \"Ransomware data recovery\" section in \"Windows Security\"",
+    "Disable \"Family options\" section in \"Windows Security\"",
+    "Disable \"Device performance and health\" section in \"Windows Security\"",
+    "Disable \"Account protection\" section in \"Windows Security\"",
+    "Disable \"App and browser control\" section in \"Windows Security\""
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Windows Security interface > Disable sections in \"Windows Security\"",
+   "entree": "Disable device security sections",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 5,
+   "recommandations": {
+    "aucune": 5
+   },
+   "noms_scripts": [
+    "Disable \"Device security\" section in \"Windows Security\"",
+    "Disable \"Clear TPM\" button in \"Windows Security\"",
+    "Disable \"Secure boot\" button in \"Windows Security\"",
+    "Disable \"Security processor (TPM) troubleshooter\" page in \"Windows Security\"",
+    "Disable \"TPM Firmware Update\" recommendation in \"Windows Security\""
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Windows Security interface > Disable security notifications",
+   "entree": "Disable Security and Maintenance notifications",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 4,
+   "recommandations": {
+    "aucune": 4
+   },
+   "noms_scripts": [
+    "Disable Security and Maintenance push notifications",
+    "Disable Security and Maintenance taskbar notifications",
+    "Disable Security and Maintenance notification integrations",
+    "Disable all Security and Maintenance notifications"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Windows Security interface > Disable security notifications",
+   "entree": "Disable Windows Security notifications",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 3,
+   "recommandations": {
+    "aucune": 3
+   },
+   "noms_scripts": [
+    "Disable all Windows Security notifications",
+    "Disable non-critical Windows Security notifications",
+    "Disable Windows Security taskbar notifications"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Windows Security interface > Disable security notifications",
+   "entree": "Disable Defender Antivirus notifications",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 3,
+   "recommandations": {
+    "aucune": 3
+   },
+   "noms_scripts": [
+    "Disable Defender Antivirus push notifications",
+    "Disable Defender Antivirus reboot notifications",
+    "Disable Defender Antivirus taskbar notifications"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender > Disable Windows Security interface",
+   "entree": "Disable Security and Maintenance",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 3,
+   "recommandations": {
+    "aucune": 3
+   },
+   "noms_scripts": [
+    "Disable Security and Maintenance core library",
+    "Disable Security and Maintenance Control Panel applet",
+    "Disable Security and Maintenance desktop features"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender",
+   "entree": "Disable Defender Exploit Guard",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 3,
+   "recommandations": {
+    "aucune": 3
+   },
+   "noms_scripts": [
+    "Disable prevention of users and apps from accessing dangerous websites",
+    "Disable controlled folder access",
+    "Disable \"ExploitGuard MDM policy Refresh\" task"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable Defender",
+   "entree": "Disable outdated Defender Application Guard",
+   "niveau": "strict",
+   "niveau_gt": "Avance",
+   "scripts": 3,
+   "recommandations": {
+    "aucune": 1,
+    "strict": 2
+   },
+   "noms_scripts": [
+    "Disable Defender Application Guard isolation",
+    "Disable Defender Application Guard remote configuration",
+    "Disable auditing events in Defender Application Guard"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security",
+   "entree": "Disable automatic updates",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 4,
+   "recommandations": {
+    "aucune": 4
+   },
+   "noms_scripts": [
+    "Disable Automatic Updates (AU) feature",
+    "Disable automatic installation of Windows updates without user consent",
+    "Disable automatic daily installation of Windows updates",
+    "Disable scheduled automatic updates"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable automatic updates",
+   "entree": "Disable Windows Update automatic driver updates",
+   "niveau": "strict",
+   "niveau_gt": "Avance",
+   "scripts": 6,
+   "recommandations": {
+    "strict": 6
+   },
+   "noms_scripts": [
+    "Disable Windows Update hardware information collection",
+    "Disable Windows Update driver downloads",
+    "Disable Windows Update driver search",
+    "Disable Windows Update driver installation wizard",
+    "Disable Windows Update fallback driver search",
+    "Disable Windows Update driver download server"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable automatic updates",
+   "entree": "Disable Windows update services",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 4,
+   "recommandations": {
+    "aucune": 3,
+    "strict": 1
+   },
+   "noms_scripts": [
+    "Disable \"Windows Update\" (`wuauserv`) service",
+    "Disable \"Update Orchestrator Service\" (`UsoSvc`)",
+    "Disable \"Windows Update Medic Service\" (`WaaSMedicSvc`)",
+    "Disable automatically enabling Windows Update Medic Service"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable automatic updates",
+   "entree": "Disable Windows update scheduled tasks",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 22,
+   "recommandations": {
+    "aucune": 22
+   },
+   "noms_scripts": [
+    "Disable \"RestoreDevice\" task",
+    "Disable \"ScanForUpdates\" task",
+    "Disable \"ScanForUpdatesAsUser\" task",
+    "Disable \"SmartRetry\" task",
+    "Disable \"WakeUpAndContinueUpdates\" task",
+    "Disable \"WakeUpAndScanForUpdates\" task",
+    "Disable \"Scheduled Start\" task",
+    "Disable \"Report policies\" task",
+    "Disable \"Schedule Maintenance Work\" task",
+    "Disable \"Schedule Scan\" task",
+    "Disable \"Schedule Scan Static Task\" task",
+    "Disable \"Schedule Wake To Work\" task",
+    "Disable \"Schedule Work\" task",
+    "Disable \"UpdateModelTask\" task",
+    "Disable \"Start Oobe Expedite Work\" task",
+    "Disable \"StartOobeAppsScan_LicenseAccepted\" task",
+    "Disable \"StartOobeAppsScan_OobeAppReady\" task",
+    "Disable \"StartOobeAppsScanAfterUpdate\" task",
+    "Disable \"USO_UxBroker\" task",
+    "Disable \"UUS Failover Task\" task",
+    "Disable \"PerformRemediation\" task",
+    "Disable outdated Windows Update tasks"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security > Disable automatic updates",
+   "entree": "Maximize auto-update duration",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 4,
+   "recommandations": {
+    "aucune": 4
+   },
+   "noms_scripts": [
+    "Maximize update pause duration",
+    "Maximize feature update duration (disables resuming updates from settings)",
+    "Maximize quality update duration (disables resuming updates from settings)",
+    "Maximize update duration on older Windows versions"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Privacy over security",
+   "entree": "Configure how downloaded files are handled",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 2,
+   "recommandations": {
+    "aucune": 2
+   },
+   "noms_scripts": [
+    "Disable saving of zone information in downloaded files",
+    "Disable notifications to antivirus programs for downloaded files"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "",
+   "entree": "UI for privacy",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 10,
+   "recommandations": {
+    "standard": 6,
+    "strict": 1,
+    "aucune": 3
+   },
+   "noms_scripts": [
+    "Disable lock screen app notifications",
+    "Disable Live Tiles push notifications",
+    "Disable the \"Look For An App In The Store\" option",
+    "Disable the display of recently used files in Quick Access",
+    "Disable sync provider notifications",
+    "Disable hibernation for faster startup and to avoid sensitive data storage",
+    "Enable camera on/off OSD notifications",
+    "Disable app usage tracking",
+    "Disable recent apps",
+    "Disable backtracking"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "UI for privacy",
+   "entree": "Disable online content in File Explorer",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 5,
+   "recommandations": {
+    "standard": 5
+   },
+   "noms_scripts": [
+    "Disable online tips",
+    "Disable \"Internet File Association\" service",
+    "Disable \"Order Prints\" picture task",
+    "Disable \"Publish to Web\" option for files and folders",
+    "Disable provider list downloads for wizards"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "UI for privacy",
+   "entree": "Secure recent document lists",
+   "niveau": "strict",
+   "niveau_gt": "Avance",
+   "scripts": 2,
+   "recommandations": {
+    "strict": 2
+   },
+   "noms_scripts": [
+    "Disable history of recently opened documents",
+    "Clear recently opened document history upon exit"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "UI for privacy",
+   "entree": "Remove folders from This PC in File Explorer",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 7,
+   "recommandations": {
+    "aucune": 7
+   },
+   "noms_scripts": [
+    "Remove \"Desktop\" folder from This PC in File Explorer",
+    "Remove \"Documents\" folder from This PC in File Explorer",
+    "Remove \"Downloads\" folder from This PC in File Explorer",
+    "Remove \"Videos\"folder from This PC in File Explorer",
+    "Remove \"Music\" folder from This PC in File Explorer",
+    "Remove \"Pictures\" folder from This PC in File Explorer",
+    "Remove outdated \"3D Objects\" folder from This PC in File Explorer"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "",
+   "entree": "Remove bloatware",
+   "niveau": "strict",
+   "niveau_gt": "Avance",
+   "scripts": 1,
+   "recommandations": {
+    "strict": 1
+   },
+   "noms_scripts": [
+    "Remove \"Meet Now\" icon from taskbar"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware",
+   "entree": "Remove Windows apps",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 29,
+   "recommandations": {
+    "strict": 2,
+    "standard": 4,
+    "aucune": 23
+   },
+   "noms_scripts": [
+    "Remove \"App Connector\" app",
+    "Remove \"Cortana\" app",
+    "Remove \"App Installer\" app",
+    "Remove \"Get Help\" app (breaks built-in troubleshooting)",
+    "Remove \"Microsoft Tips\" app",
+    "Remove \"Microsoft Messaging\" app",
+    "Remove \"Mixed Reality Portal\" app",
+    "Remove \"Feedback Hub\" app",
+    "Remove \"Windows Alarms and Clock\" app",
+    "Remove \"Windows Camera\" app",
+    "Remove \"Paint 3D\" app",
+    "Remove \"Windows Maps\" app",
+    "Remove \"Minecraft for Windows\" app",
+    "Remove \"Microsoft People\" app",
+    "Remove \"Microsoft Pay\" app",
+    "Remove \"Mobile Plans\" app",
+    "Remove \"Microsoft Solitaire Collection\" app",
+    "Remove \"Microsoft Sticky Notes\" app",
+    "Remove \"Mail and Calendar\" app (outdated)",
+    "Remove \"Windows Media Player\" app",
+    "Remove \"Movies & TV\" app",
+    "Remove \"Windows Calculator\" app",
+    "Remove \"Microsoft Photos\" app",
+    "Remove \"Skype\" app",
+    "Remove \"GroupMe\" app",
+    "Remove \"Windows Sound Recorder\" app",
+    "Remove \"Microsoft Remote Desktop\" app",
+    "Remove \"Network Speed Test\" app",
+    "Remove \"Microsoft To Do: Lists, Tasks & Reminders\" app"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware > Remove Windows apps",
+   "entree": "Remove 3D modeling apps",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 3,
+   "recommandations": {
+    "standard": 1,
+    "aucune": 2
+   },
+   "noms_scripts": [
+    "Remove insecure \"Print 3D\" app",
+    "Remove \"Microsoft 3D Builder\" app",
+    "Remove \"3D Viewer\" app"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware > Remove Windows apps",
+   "entree": "Remove MSN (Bing) apps",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 4,
+   "recommandations": {
+    "standard": 4
+   },
+   "noms_scripts": [
+    "Remove \"MSN Weather\" app",
+    "Remove \"MSN Sports\" app",
+    "Remove \"Microsoft News\" app",
+    "Remove \"MSN Money\" app"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware > Remove Windows apps",
+   "entree": "Remove extension apps",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 6,
+   "recommandations": {
+    "aucune": 6
+   },
+   "noms_scripts": [
+    "Remove \"HEIF Image Extensions\" app",
+    "Remove \"VP9 Video Extensions\" app",
+    "Remove \"Web Media Extensions\" app",
+    "Remove \"Webp Image Extensions\" app",
+    "Remove \"HEVC Video Extensions\" app",
+    "Remove \"Raw Image Extension\" app"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware > Remove Windows apps",
+   "entree": "Remove Microsoft Office apps",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 3,
+   "recommandations": {
+    "standard": 1,
+    "aucune": 2
+   },
+   "noms_scripts": [
+    "Remove \"Microsoft 365 (Office)\" app",
+    "Remove \"OneNote\" app",
+    "Remove \"Sway\" app"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware > Remove Windows apps",
+   "entree": "Remove Microsoft Store apps",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 2,
+   "recommandations": {
+    "aucune": 2
+   },
+   "noms_scripts": [
+    "Remove \"Microsoft Store\" app",
+    "Remove \"Store Purchase\" app"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware > Remove Windows apps",
+   "entree": "Remove Phone apps",
+   "niveau": "strict",
+   "niveau_gt": "Avance",
+   "scripts": 5,
+   "recommandations": {
+    "standard": 2,
+    "strict": 3
+   },
+   "noms_scripts": [
+    "Remove \"Phone Companion\" app (outdated)",
+    "Remove \"Microsoft Phone\" app (outdated)",
+    "Remove \"Phone Link\" app",
+    "Remove \"Call\" app",
+    "Remove \"Cross Device Experience Host\" app"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware > Remove Windows apps",
+   "entree": "Remove third-party apps",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 10,
+   "recommandations": {
+    "aucune": 10
+   },
+   "noms_scripts": [
+    "Remove \"Shazam\" app",
+    "Remove \"Flipboard\" app",
+    "Remove \"Twitter\" app",
+    "Remove \"iHeart: Radio, Music, Podcasts\" app",
+    "Remove \"Duolingo - Language Lessons\" app",
+    "Remove \"Adobe Photoshop Express\" app",
+    "Remove \"Pandora\" app",
+    "Remove \"Eclipse Manager\" app",
+    "Remove \"Code Writer\" app",
+    "Remove \"Spotify - Music and Podcasts\" app"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware > Remove Windows apps > Remove third-party apps",
+   "entree": "Remove Candy Crush apps",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 2,
+   "recommandations": {
+    "aucune": 2
+   },
+   "noms_scripts": [
+    "Remove \"Candy Crush Saga\" app",
+    "Remove \"Candy Crush Soda Saga\" app"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware > Remove Windows apps",
+   "entree": "Remove system apps",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 32,
+   "recommandations": {
+    "aucune": 16,
+    "strict": 12,
+    "standard": 4
+   },
+   "noms_scripts": [
+    "Remove \"File Picker\" app",
+    "Remove \"File Explorer\" app",
+    "Remove \"App Resolver UX\" app",
+    "Remove \"Add Suggested Folders To Library\" app",
+    "Remove \"Microsoft Text Input Application\" app",
+    "Remove \"Microsoft AAD Broker Plugin\" app (breaks Night Light settings, taskbar keyboard selection and Office app authentication)",
+    "Remove \"Microsoft Accounts Control\" app",
+    "Remove \"Microsoft Async Text Service\" app",
+    "Remove \"Hello setup UI\" app (breaks biometric authentication)",
+    "Remove \"Credentials Dialog Host\" app",
+    "Remove \"EC\" app",
+    "Remove \"Lock\" app (shows lock screen)",
+    "Remove \"Win32 Web View Host\" / \"Desktop App Web Viewer\" app",
+    "Remove \"Microsoft PPI Projection\" app",
+    "Remove \"ChxApp\" app",
+    "Remove \"Assigned Access Lock App\" app",
+    "Remove \"Capture Picker\" app",
+    "Remove \"Cloud Experience Host\" app (breaks Windows Hello password/PIN sign-in options, and Microsoft cloud/corporate sign in)",
+    "Remove \"Content Delivery Manager\" app",
+    "Remove \"Search\" app",
+    "Remove \"Holographic First Run\" app",
+    "Remove \"Microsoft Family Safety\" / \"Parental control\" app",
+    "Remove \"My People\" app",
+    "Remove \"Pinning Confirmation Dialog\" app",
+    "Remove \"Secondary Tile Experience\" app",
+    "Remove \"Take a Test\" app",
+    "Remove \"Windows Feedback\" app",
+    "Remove \"CBS Preview\" app",
+    "Remove \"Contact Support\" app",
+    "Remove \"Narrator QuickStart\" app",
+    "Remove \"GPU Eject Dialog\" app",
+    "Remove \"Windows Undocked Developer Kit (UDK)\" app"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware > Remove Windows apps > Remove system apps",
+   "entree": "Remove Edge (Legacy)",
+   "niveau": "strict",
+   "niveau_gt": "Avance",
+   "scripts": 2,
+   "recommandations": {
+    "strict": 2
+   },
+   "noms_scripts": [
+    "Remove \"Microsoft Edge\" app",
+    "Remove \"Microsoft Edge Dev Tools Client\" app"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware > Remove Windows apps > Remove system apps > Remove Edge (Legacy)",
+   "entree": "Remove Edge (Legacy) associations",
+   "niveau": "strict",
+   "niveau_gt": "Avance",
+   "scripts": 2,
+   "recommandations": {
+    "strict": 2
+   },
+   "noms_scripts": [
+    "Remove Edge (Legacy) application selection associations",
+    "Remove Edge (Legacy) user associations"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware > Remove Windows apps > Remove system apps",
+   "entree": "Remove Out-of-Box Experience (OOBE) apps",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 2,
+   "recommandations": {
+    "aucune": 2
+   },
+   "noms_scripts": [
+    "Remove \"OOBE Network Captive Portal\" app",
+    "Remove \"OOBE Network Connection Flow\" app"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware > Remove Windows apps > Remove system apps",
+   "entree": "Remove printing user interface",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 2,
+   "recommandations": {
+    "aucune": 2
+   },
+   "noms_scripts": [
+    "Remove \"Print Queue\" app (breaks printing)",
+    "Remove \"Print UI\" app (breaks printing for some apps)"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware",
+   "entree": "Remove OneDrive",
+   "niveau": "strict",
+   "niveau_gt": "Avance",
+   "scripts": 11,
+   "recommandations": {
+    "strict": 10,
+    "standard": 1
+   },
+   "noms_scripts": [
+    "Kill OneDrive process",
+    "Remove OneDrive from startup",
+    "Remove OneDrive through official installer",
+    "Remove OneDrive user data and synced folders",
+    "Remove OneDrive installation files and cache",
+    "Remove OneDrive shortcuts",
+    "Disable OneDrive usage",
+    "Disable automatic OneDrive installation",
+    "Remove OneDrive folder from File Explorer",
+    "Disable OneDrive scheduled tasks",
+    "Clear OneDrive environment variable"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware",
+   "entree": "Remove Edge",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 2,
+   "recommandations": {
+    "aucune": 2
+   },
+   "noms_scripts": [
+    "Remove Edge through official installer",
+    "Remove Edge shortcuts"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware > Remove Edge",
+   "entree": "Remove Edge associations",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 3,
+   "recommandations": {
+    "aucune": 3
+   },
+   "noms_scripts": [
+    "Remove Edge application selection associations",
+    "Remove Edge Open With associations",
+    "Remove Edge user associations"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware",
+   "entree": "Remove Xbox",
+   "niveau": "standard",
+   "niveau_gt": "Sur",
+   "scripts": 10,
+   "recommandations": {
+    "aucune": 3,
+    "strict": 1,
+    "standard": 6
+   },
+   "noms_scripts": [
+    "Remove Xbox App",
+    "Remove Game Bar",
+    "Remove outdated Xbox Console Companion",
+    "Remove Xbox Live in-game experience",
+    "Remove Xbox Speech To Text Overlay",
+    "Disable Xbox Live Game Save",
+    "Disable Xbox Live Networking Service",
+    "Disable Xbox Live Auth Manager",
+    "Remove Xbox Identity Provider (breaks Xbox sign-in)",
+    "Remove \"Xbox Game Callable UI\" app (breaks Xbox Live games)"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware",
+   "entree": "Disable built-in Windows features",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 8,
+   "recommandations": {
+    "aucune": 6,
+    "standard": 2
+   },
+   "noms_scripts": [
+    "Disable \"Direct Play\" feature",
+    "Disable \"Internet Explorer\" feature",
+    "Disable \"Legacy Components\" feature",
+    "Disable \"Media Features\" feature",
+    "Disable \"Scan Management\" feature",
+    "Disable \"Windows Fax and Scan\" feature",
+    "Disable \"Windows Media Player\" feature",
+    "Disable \"Windows Search\" feature"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware > Disable built-in Windows features",
+   "entree": "Disable Hyper-V virtualization features",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 4,
+   "recommandations": {
+    "aucune": 4
+   },
+   "noms_scripts": [
+    "Disable \"Hyper-V\" feature",
+    "Disable \"Hyper-V GUI Management Tools\" feature",
+    "Disable \"Hyper-V Management Tools\" feature",
+    "Disable \"Hyper-V Module for Windows PowerShell\" feature"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware > Disable built-in Windows features",
+   "entree": "Disable printing features",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 2,
+   "recommandations": {
+    "aucune": 2
+   },
+   "noms_scripts": [
+    "Disable \"Print and Document Services\" feature",
+    "Disable \"Work Folders Client\" feature"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware > Disable built-in Windows features > Disable printing features",
+   "entree": "Disable printer networking",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 4,
+   "recommandations": {
+    "aucune": 4
+   },
+   "noms_scripts": [
+    "Disable \"Internet Printing Client\" feature",
+    "Disable \"LPD Print Service\" feature",
+    "Disable \"LPR Port Monitor\" feature",
+    "Disable \"Microsoft Print to PDF\" feature"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware > Disable built-in Windows features > Disable printing features",
+   "entree": "Disable XPS support features",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 2,
+   "recommandations": {
+    "aucune": 1,
+    "standard": 1
+   },
+   "noms_scripts": [
+    "Disable \"Microsoft XPS Document Writer\" feature",
+    "Disable \"XPS Viewer\" feature"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware > Remove on-demand capabilities and features",
+   "entree": "Remove preinstalled features on demand",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 10,
+   "recommandations": {
+    "aucune": 9,
+    "strict": 1
+   },
+   "noms_scripts": [
+    "Remove \"DirectX Configuration Database\" capability",
+    "Remove \"Internet Explorer 11\" capability",
+    "Remove \"Math Recognizer\" capability",
+    "Remove \"OneSync\" capability (breaks Mail, People, and Calendar)",
+    "Remove \"OpenSSH client\" capability",
+    "Remove \"PowerShell ISE\" capability",
+    "Remove \"Print Management Console\" capability",
+    "Remove \"Quick Assist\" capability",
+    "Remove \"Steps Recorder\" capability",
+    "Remove \"Windows Fax and Scan\" capability"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware > Remove on-demand capabilities and features",
+   "entree": "Remove not preinstalled features on demand",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 12,
+   "recommandations": {
+    "aucune": 12
+   },
+   "noms_scripts": [
+    "Remove \".NET Framework\" capability",
+    "Remove \"Mixed Reality\" capability",
+    "Remove \"Wireless Display\" capability",
+    "Remove \"Accessibility - Braille Support\" capability",
+    "Remove \"Developer Mode\" capability",
+    "Remove \"Graphics Tools\" capability",
+    "Remove \"IrDA\" capability",
+    "Remove \"Microsoft WebDriver\" capability",
+    "Remove \"MSIX Packaging Tool Driver\" capability",
+    "Remove \"OpenSSH Server\" capability",
+    "Remove \"Windows Emergency Management Services and Serial Console\" capability",
+    "Remove \"XPS Viewer\" capability"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware > Remove on-demand capabilities and features > Remove not preinstalled features on demand",
+   "entree": "Remove printing capabilities",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 2,
+   "recommandations": {
+    "aucune": 2
+   },
+   "noms_scripts": [
+    "Remove \"Enterprise Cloud Print\" capability",
+    "Remove \"Mopria Cloud Service\" capability"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware > Remove on-demand capabilities and features > Remove not preinstalled features on demand",
+   "entree": "Remove Remote Server Administration Tools (RSAT)",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 20,
+   "recommandations": {
+    "aucune": 20
+   },
+   "noms_scripts": [
+    "Remove \"Active Directory Domain Services and Lightweight Directory Services Tools\" capability",
+    "Remove \"BitLocker Drive Encryption Administration Utilities\" capability",
+    "Remove \"Active Directory Certificate Services Tools\" capability",
+    "Remove \"DHCP Server Tools\" capability",
+    "Remove \"DNS Server Tools\" capability",
+    "Remove \"Failover Clustering Tools\" capability",
+    "Remove \"File Services Tools\" capability",
+    "Remove \"Group Policy Management Tools\" capability",
+    "Remove \"IP Address Management (IPAM) Client\" capability",
+    "Remove \"Data Center Bridging LLDP Tools\" capability",
+    "Remove \"Network Controller Management Tools\" capability",
+    "Remove \"Network Load Balancing Tools\" capability",
+    "Remove \"Remote Access Management Tools\" capability",
+    "Remove \"Server Manager Tools\" capability",
+    "Remove \"Shielded VM Tools\" capability",
+    "Remove \"Storage Replica Module for Windows PowerShell\" capability",
+    "Remove \"Volume Activation Tools\" capability",
+    "Remove \"Windows Server Update Services Tools\" capability",
+    "Remove \"Storage Migration Service Management Tools\" capability",
+    "Remove \"Systems Insights Module for Windows PowerShell\" capability"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware > Remove on-demand capabilities and features > Remove not preinstalled features on demand",
+   "entree": "Remove storage capabilities",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 2,
+   "recommandations": {
+    "aucune": 2
+   },
+   "noms_scripts": [
+    "Remove \"Windows Storage Management\" capability",
+    "Remove \"OneCore Storage Management\" capability"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware",
+   "entree": "Remove Widgets",
+   "niveau": "strict",
+   "niveau_gt": "Avance",
+   "scripts": 2,
+   "recommandations": {
+    "strict": 2
+   },
+   "noms_scripts": [
+    "Remove \"Widgets\" from taskbar",
+    "Remove \"Windows Web Experience Pack\" (breaks Widgets)"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware",
+   "entree": "Remove Windows Copilot",
+   "niveau": "strict",
+   "niveau_gt": "Avance",
+   "scripts": 4,
+   "recommandations": {
+    "strict": 4
+   },
+   "noms_scripts": [
+    "Disable Copilot feature",
+    "Disable Copilot access",
+    "Disable Copilot auto-launch on start",
+    "Remove \"Copilot\" icon from taskbar"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware",
+   "entree": "Disable non-essential services",
+   "niveau": "strict",
+   "niveau_gt": "Avance",
+   "scripts": 7,
+   "recommandations": {
+    "strict": 3,
+    "standard": 2,
+    "aucune": 2
+   },
+   "noms_scripts": [
+    "Disable Microsoft Account Sign-in Assistant (breaks Microsoft Store and Microsoft Account sign-in)",
+    "Disable Downloaded Maps Manager",
+    "Disable Microsoft Retail Demo",
+    "Disable User Data Access",
+    "Disable Messaging Service",
+    "Disable Windows Push Notifications",
+    "Disable Shadow Copy (breaks System Restore and Windows Backup)"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware > Disable non-essential services",
+   "entree": "Disable synchronization of mail, contacts, calendar, and user data",
+   "niveau": "strict",
+   "niveau_gt": "Avance",
+   "scripts": 2,
+   "recommandations": {
+    "strict": 2
+   },
+   "noms_scripts": [
+    "Disable User Data Storage",
+    "Disable Sync Host"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware",
+   "entree": "Remove Snipping Tool",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 4,
+   "recommandations": {
+    "aucune": 4
+   },
+   "noms_scripts": [
+    "Remove outdated \"Snipping Tool\" app",
+    "Disable outdated Snipping Tool",
+    "Disable Snipping Tool keyboard shortcut (**Windows logo key** + **Shift** + **S**)",
+    "Disable Print Screen keyboard shortcut for Snipping Tool"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "Remove bloatware",
+   "entree": "Remove Outlook",
+   "niveau": "strict",
+   "niveau_gt": "Avance",
+   "scripts": 6,
+   "recommandations": {
+    "strict": 5,
+    "standard": 1
+   },
+   "noms_scripts": [
+    "Remove \"Outlook for Windows\" app",
+    "Disable Outlook automatic installation",
+    "Disable Outlook automatic migration",
+    "Disable Outlook automatic redirection",
+    "Remove \"Try the new Outlook\" toggle",
+    "Disable Outlook preview prompts"
+   ]
+  },
+  {
+   "source": "privacy.sexy",
+   "groupe": "",
+   "entree": "Advanced settings",
+   "niveau": "aucune",
+   "niveau_gt": "Risque",
+   "scripts": 2,
+   "recommandations": {
+    "strict": 1,
+    "aucune": 1
+   },
+   "noms_scripts": [
+    "Set NTP (time) server to `pool.ntp.org`",
+    "Disable reserved storage for updates"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,1 @@
+Reset-GTBcdValue 'disabledynamictick'

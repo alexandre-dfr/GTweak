@@ -1,0 +1,369 @@
+[
+  {
+    "id": "cln.temp",
+    "menu": "Nettoyage",
+    "groupe": "Fichiers temporaires",
+    "titre": "Fichiers temporaires supprimés",
+    "description": "Vide le dossier temporaire de l'utilisateur et celui de Windows (C:\\Windows\\Temp). Les fichiers utilisés par un programme ouvert sont ignorés et comptés dans le rapport. Définitif : les fichiers supprimés ne sont pas restaurables.",
+    "risque": "Sur",
+    "reversible": false,
+    "redemarrage": false,
+    "hkcu": true,
+    "delaiSec": 900,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "cln.recycle",
+    "menu": "Nettoyage",
+    "groupe": "Fichiers temporaires",
+    "titre": "Corbeille vidée",
+    "description": "Vide la Corbeille de tous les lecteurs. Ignorée si elle est déjà vide. Définitif : les fichiers supprimés ne sont pas restaurables.",
+    "risque": "Sur",
+    "reversible": false,
+    "redemarrage": false,
+    "hkcu": true,
+    "delaiSec": 1800,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "cln.thumbs",
+    "menu": "Nettoyage",
+    "groupe": "Fichiers temporaires",
+    "titre": "Cache des miniatures supprimé",
+    "description": "Supprime les fichiers thumbcache_*.db de l'Explorateur ; Windows les recrée à l'ouverture des dossiers (premier affichage un peu plus lent). Ceux que l'Explorateur utilise sont ignorés. Définitif : les fichiers supprimés ne sont pas restaurables.",
+    "risque": "Sur",
+    "reversible": false,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "cln.crash",
+    "menu": "Nettoyage",
+    "groupe": "Fichiers temporaires",
+    "titre": "Rapports et vidages de plantage supprimés",
+    "description": "Supprime les rapports d'erreurs Windows (WER), les vidages du dossier CrashDumps, Minidump et le fichier MEMORY.DMP. Ils servent seulement à diagnostiquer un plantage passé. Définitif : les fichiers supprimés ne sont pas restaurables.",
+    "risque": "Sur",
+    "reversible": false,
+    "redemarrage": false,
+    "hkcu": true,
+    "delaiSec": 600,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "cln.logs",
+    "menu": "Nettoyage",
+    "groupe": "Fichiers temporaires",
+    "titre": "Journaux Windows effacés",
+    "description": "Supprime les journaux de maintenance (CBS, DISM, Windows Update) et efface les journaux d'événements, sauf le journal Sécurité. L'historique des événements passés n'est plus consultable dans l'observateur d'événements. Définitif : les fichiers supprimés ne sont pas restaurables.",
+    "risque": "Sur",
+    "reversible": false,
+    "redemarrage": false,
+    "delaiSec": 900,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "cln.wu-cache",
+    "menu": "Nettoyage",
+    "groupe": "Caches",
+    "titre": "Cache de Windows Update et de l'optimisation de la distribution supprimé",
+    "description": "Supprime les mises à jour déjà téléchargées (SoftwareDistribution\\Download) et le cache de l'optimisation de la distribution. Windows les retélécharge si besoin ; une mise à jour en cours peut en être retardée. Définitif : les fichiers supprimés ne sont pas restaurables.",
+    "risque": "Sur",
+    "reversible": false,
+    "redemarrage": false,
+    "delaiSec": 600,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "cln.browsers",
+    "menu": "Nettoyage",
+    "groupe": "Caches",
+    "titre": "Caches des navigateurs vidés (Chrome, Edge, Firefox)",
+    "description": "Vide les dossiers Cache, Code Cache et GPUCache de Chrome et Edge (tous les profils), le cache de Firefox et les rapports de plantage de Chrome et Edge. Mots de passe, historique, cookies, favoris et données de formulaires ne sont jamais touchés. Les sites se rechargent un peu plus lentement la première fois. Définitif : les fichiers supprimés ne sont pas restaurables.",
+    "risque": "Sur",
+    "reversible": false,
+    "redemarrage": false,
+    "hkcu": true,
+    "delaiSec": 600,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "cln.launchers",
+    "menu": "Nettoyage",
+    "groupe": "Caches",
+    "titre": "Caches de Steam et d'Epic Games Launcher vidés",
+    "description": "Vide le cache web de Steam (appcache\\httpcache), ses dossiers de vidage de plantage et le cache web d'Epic Games Launcher. Vos jeux, sauvegardes et comptes ne sont pas touchés ; les lanceurs reconstruisent ces caches. Définitif : les fichiers supprimés ne sont pas restaurables.",
+    "risque": "Sur",
+    "reversible": false,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "cln.shaders",
+    "menu": "Nettoyage",
+    "groupe": "Caches",
+    "titre": "Caches de shaders supprimés",
+    "description": "Supprime les caches de shaders DirectX (D3DSCache) et ceux de NVIDIA (DXCache, GLCache) et AMD (DxCache). Les jeux les recompilent au lancement suivant : chargement plus long et saccades possibles la première fois. Définitif : les fichiers supprimés ne sont pas restaurables.",
+    "risque": "Avance",
+    "reversible": false,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "cln.dism",
+    "menu": "Nettoyage",
+    "groupe": "Windows",
+    "titre": "Composants Windows obsolètes nettoyés (DISM)",
+    "description": "Lance DISM /Online /Cleanup-Image /StartComponentCleanup : retire les anciennes versions de composants remplacées par les mises à jour. Peut durer plusieurs minutes. Les mises à jour installées restent désinstallables. Définitif : les fichiers supprimés ne sont pas restaurables.",
+    "risque": "Sur",
+    "reversible": false,
+    "redemarrage": false,
+    "delaiSec": 3600,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "cln.windows-old",
+    "menu": "Nettoyage",
+    "groupe": "Windows",
+    "titre": "Windows.old supprimé",
+    "description": "Supprime le dossier C:\\Windows.old laissé par la mise à niveau de Windows (plusieurs dizaines de Go). Après cela, le retour à la version précédente de Windows est impossible. Les dossiers personnels de l'ancienne installation (Documents, Bureau, Images, Téléchargements, etc.) sont conservés et ne sont pas supprimés : le dossier Windows.old peut donc rester en partie ; le reste ne pourra plus être récupéré. Windows le supprime de lui-même après quelques semaines. Définitif : les fichiers supprimés ne sont pas restaurables.",
+    "risque": "Avance",
+    "reversible": false,
+    "redemarrage": false,
+    "testable": false,
+    "delaiSec": 3600,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "cln.old-drivers",
+    "menu": "Nettoyage",
+    "groupe": "Windows",
+    "titre": "Anciennes versions de pilotes supprimées",
+    "description": "Supprime du magasin de pilotes les versions plus anciennes de pilotes tiers, en gardant la plus récente de chacun et tous ceux qu'un périphérique utilise (pnputil sans /force : un pilote en service est refusé). Retour à une ancienne version de pilote impossible sans la retélécharger. Définitif : les fichiers supprimés ne sont pas restaurables.",
+    "risque": "Avance",
+    "reversible": false,
+    "redemarrage": false,
+    "testable": false,
+    "delaiSec": 900,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "cln.orphans",
+    "menu": "Nettoyage",
+    "groupe": "Windows",
+    "titre": "Fichiers .msi et .msp orphelins mis en quarantaine",
+    "description": "Déplace en quarantaine les fichiers .msi et .msp de C:\\Windows\\Installer que Windows Installer n'utilise plus (liste lue par l'API WindowsInstaller.Installer ; si la lecture échoue ou ne renvoie rien, rien n'est déplacé). Les sous-dossiers, dont $PatchCache$, ne sont jamais touchés. Les fichiers restent en quarantaine jusqu'à une purge manuelle depuis Historique, qui permet aussi de les restaurer.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "delaiSec": 600,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "cln.resetbase",
+    "menu": "Nettoyage",
+    "groupe": "Windows",
+    "titre": "Base des composants Windows réinitialisée (DISM /ResetBase)",
+    "description": "Lance DISM /Online /Cleanup-Image /StartComponentCleanup /ResetBase : supprime toutes les versions précédentes des composants. Les mises à jour déjà installées ne pourront plus être désinstallées. Peut durer longtemps. Définitif : les fichiers supprimés ne sont pas restaurables.",
+    "risque": "Avance",
+    "reversible": false,
+    "redemarrage": false,
+    "delaiSec": 3600,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "cln.prefetch",
+    "menu": "Nettoyage",
+    "groupe": "Windows",
+    "titre": "Dossier Prefetch vidé",
+    "description": "Supprime les fichiers .pf de C:\\Windows\\Prefetch. Ralentit les lancements suivants des programmes, le temps que Windows reconstruise ce cache. Suppression définitive.",
+    "risque": "Risque",
+    "reversible": false,
+    "redemarrage": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "cln.registry",
+    "menu": "Nettoyage",
+    "groupe": "Windows",
+    "titre": "Nettoyage limité du registre",
+    "description": "Retire les entrées de désinstallation dont le programme a disparu (jamais celles de Windows Installer) et les valeurs MuiCache dont le fichier n'existe plus. Chaque clé est exportée en .reg dans le dossier de la session avant sa suppression ; si un export échoue, rien n'est supprimé. L'annulation (Historique) réimporte ces exports. Aucun autre nettoyage du registre : le gain attendu est nul.",
+    "risque": "Risque",
+    "reversible": true,
+    "redemarrage": false,
+    "hkcu": true,
+    "delaiSec": 600,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "cln.recent",
+    "menu": "Nettoyage",
+    "groupe": "Traces",
+    "titre": "Historique d'activité récente effacé (fichiers récents, Exécuter, recherches, Accès rapide)",
+    "description": "Efface les raccourcis de fichiers récents (Accès rapide), l'historique de la commande Exécuter, des recherches de l'Explorateur, des boîtes Ouvrir et Enregistrer, de Paint, de WordPad et de DirectX. Les éléments épinglés à l'Accès rapide et aux listes de raccourcis ne sont pas touchés. Définitif : les fichiers supprimés ne sont pas restaurables.",
+    "risque": "Sur",
+    "reversible": false,
+    "redemarrage": false,
+    "hkcu": true,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  },
+  {
+    "id": "cln.apps-traces",
+    "menu": "Nettoyage",
+    "groupe": "Traces",
+    "titre": "Traces d'applications tierces effacées (Java, .NET CLI, Visual Studio)",
+    "description": "Efface le cache de Java, la télémétrie de la CLI .NET et les données de télémétrie et de commentaires de Visual Studio. Les licences, réglages et projets ne sont pas touchés. Définitif : les fichiers supprimés ne sont pas restaurables.",
+    "risque": "Sur",
+    "reversible": false,
+    "redemarrage": false,
+    "hkcu": true,
+    "delaiSec": 600,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": []
+    }
+  }
+]
