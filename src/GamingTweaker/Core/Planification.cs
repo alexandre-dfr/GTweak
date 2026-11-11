@@ -144,8 +144,8 @@ namespace GamingTweaker.Core
 
         // ---------- Effets système (jamais appelés par les tests) ----------
 
-        /// <summary>Copie l'exe et le profil dans %ProgramFiles%\GamingTweaker\App puis crée la tâche (schtasks /Create /XML ... /F, qui remplace l'existante).</summary>
-        public static void Install(RoutineConfig c)
+        /// <summary>Copie l'exe et le profil dans %ProgramFiles%\GamingTweaker\App puis crée ou remplace la tâche (COM, XML en mémoire).</summary>
+        private static void InstallVerrouille(RoutineConfig c)
         {
             if (c == null || string.IsNullOrWhiteSpace(c.Profil) || !File.Exists(c.Profil)) throw new InvalidOperationException("Profil introuvable : " + (c == null ? "" : c.Profil));
             if (!NomProfilAccepte(Path.GetFileName(c.Profil))) throw new InvalidOperationException(MessagePourcent);
@@ -182,19 +182,63 @@ namespace GamingTweaker.Core
             using (var id = WindowsIdentity.GetCurrent()) user = id.User != null ? id.User.Value : id.Name;
             var xml = BuildTaskXml(c, ExeCopie, copieProfil, user);
 
-            var tmp = Path.Combine(Path.GetTempPath(), "gt-routine-" + Guid.NewGuid().ToString("N") + ".xml");
+            // Définition passée en mémoire au Planificateur (aucun fichier XML intermédiaire modifiable par l'utilisateur).
+            EnregistrerTache(NomTache, xml);
+        }
+
+        public const string MessageOccupe = "Une autre exécution de GamingTweaker est en cours : la routine n'a pas été modifiée. Réessayez à la fin de l'exécution.";
+
+        /// <summary>Installe la routine sous le verrou d'instance ; occupé : refus (InvalidOperationException) avant tout effet.</summary>
+        public static void Install(RoutineConfig c) { Install(c, null); }
+
+        public static void Install(RoutineConfig c, string lockName)
+        {
+            using (var verrou = SingleInstance.TryAcquire(lockName))
+            {
+                if (verrou == null) throw new InvalidOperationException(MessageOccupe);
+                InstallVerrouille(c);
+            }
+        }
+
+        /// <summary>Supprime la routine sous le verrou d'instance ; occupé : refus avant tout effet.</summary>
+        public static void Remove() { Remove(null); }
+
+        public static void Remove(string lockName)
+        {
+            using (var verrou = SingleInstance.TryAcquire(lockName))
+            {
+                if (verrou == null) throw new InvalidOperationException(MessageOccupe);
+                RemoveVerrouille();
+            }
+        }
+
+        /// <summary>Enregistre (ou remplace) la tâche par COM Schedule.Service / ITaskFolder.RegisterTask, depuis la chaîne XML en mémoire.</summary>
+        private static void EnregistrerTache(string chemin, string xml)
+        {
+            var type = Type.GetTypeFromProgID("Schedule.Service", true);
+            object service = Activator.CreateInstance(type);
             try
             {
-                File.WriteAllText(tmp, xml, Encoding.Unicode);
-                string sortie;
-                int code = Schtasks("/Create /TN \"" + NomTache + "\" /XML \"" + tmp + "\" /F", out sortie);
-                if (code != 0) throw new InvalidOperationException("schtasks a refusé la tâche (code " + code + ") : " + sortie.Trim());
+                type.InvokeMember("Connect", System.Reflection.BindingFlags.InvokeMethod, null, service, new object[] { null, null, null, null });
+                object racine = type.InvokeMember("GetFolder", System.Reflection.BindingFlags.InvokeMethod, null, service, new object[] { "\\" });
+                try
+                {
+                    // 6 = TASK_CREATE_OR_UPDATE ; 3 = TASK_LOGON_INTERACTIVE_TOKEN (compte défini dans le XML).
+                    object tache = racine.GetType().InvokeMember("RegisterTask", System.Reflection.BindingFlags.InvokeMethod, null, racine,
+                        new object[] { chemin, xml, 6, null, null, 3, null });
+                    if (tache != null && System.Runtime.InteropServices.Marshal.IsComObject(tache)) System.Runtime.InteropServices.Marshal.ReleaseComObject(tache);
+                }
+                catch (System.Reflection.TargetInvocationException ex)
+                {
+                    throw new InvalidOperationException("Le Planificateur de tâches a refusé la routine : " + (ex.InnerException ?? ex).Message, ex.InnerException ?? ex);
+                }
+                finally { if (System.Runtime.InteropServices.Marshal.IsComObject(racine)) System.Runtime.InteropServices.Marshal.ReleaseComObject(racine); }
             }
-            finally { try { File.Delete(tmp); } catch (Exception) { } }
+            finally { if (System.Runtime.InteropServices.Marshal.IsComObject(service)) System.Runtime.InteropServices.Marshal.ReleaseComObject(service); }
         }
 
         /// <summary>Supprime la tâche, puis le dossier App\ (copies de l'exe et du profil). Machines (sessions, journaux, mesures) n'est jamais touché.</summary>
-        public static void Remove()
+        private static void RemoveVerrouille()
         {
             // Toujours tenté (une lecture en échec ne doit pas laisser la tâche en place) ; « introuvable » vaut succès.
             string sortie;
@@ -232,7 +276,7 @@ namespace GamingTweaker.Core
         private static int Schtasks(string args, out string sortie)
         {
             var oem = Encoding.GetEncoding(CultureInfo.CurrentCulture.TextInfo.OEMCodePage);
-            var psi = new ProcessStartInfo("schtasks.exe", args)
+            var psi = new ProcessStartInfo(SystemExe.Chemin("schtasks.exe"), args)
             {
                 UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true,
                 StandardOutputEncoding = oem, StandardErrorEncoding = oem,

@@ -115,7 +115,10 @@ namespace GamingTweaker.Lists
         {
             return await Task.Run(() =>
             {
-                var psi = new ProcessStartInfo("winget.exe", "upgrade --accept-source-agreements --disable-interactivity")
+                // winget vérifié (paquet DesktopAppInstaller sous Program Files\WindowsApps), jamais celui du PATH ; absent : « introuvable ».
+                var winget = Core.SystemExe.Winget();
+                if (winget == null) throw new Win32Exception(2, "winget introuvable");
+                var psi = new ProcessStartInfo(winget, "upgrade --accept-source-agreements --disable-interactivity")
                 {
                     UseShellExecute = false, CreateNoWindow = true,
                     RedirectStandardOutput = true, RedirectStandardError = true,

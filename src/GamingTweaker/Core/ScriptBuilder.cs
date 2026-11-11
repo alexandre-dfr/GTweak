@@ -54,8 +54,12 @@ namespace GamingTweaker.Core
             var sb = new StringBuilder();
             sb.Append("[Console]::OutputEncoding = [Text.Encoding]::UTF8\r\n");
             sb.Append("$ErrorActionPreference = 'Stop'\r\n");
+            // Modules chargés uniquement depuis $PSHOME\Modules (jamais Documents, ni un chemin hérité de l'utilisateur).
+            sb.Append(PowerShellLanceur.LigneModules);
             sb.Append("$GT_JournalPath = ").Append(Quote(journalPath ?? "")).Append("\r\n");
             sb.Append("$GT_QuarantineDir = ").Append(quarantineDir == null ? "$null" : Quote(quarantineDir)).Append("\r\n");
+            // Téléchargements (pilote NVIDIA) : sous la racine protégée, chemin fixé par l'outil et non par $env:ProgramFiles.
+            sb.Append("$GT_DownloadRoot = ").Append(Quote(Path.Combine(DataPaths.RacineProtegeeParDefaut, "Telechargements"))).Append("\r\n");
             sb.Append(ReadCommon()).Append("\r\n");
             return sb.ToString();
         }

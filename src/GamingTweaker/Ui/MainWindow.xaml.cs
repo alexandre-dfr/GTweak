@@ -66,7 +66,7 @@ namespace GamingTweaker.Ui
 
         private void ShutUp_Click(object sender, RoutedEventArgs e)
         {
-            try { Process.Start(new ProcessStartInfo(MainViewModel.UrlShutUp10) { UseShellExecute = true }); }
+            try { Core.SystemExe.OuvrirUrl(MainViewModel.UrlShutUp10); }
             catch (Exception ex) { vm.Message = "Impossible d'ouvrir le navigateur (" + ex.Message + "). Adresse : " + MainViewModel.UrlShutUp10; }
         }
 
@@ -74,8 +74,8 @@ namespace GamingTweaker.Ui
         private void OuvrirLien_Click(object sender, RoutedEventArgs e)
         {
             var url = (sender as System.Windows.Controls.Button)?.Tag as string;
-            if (string.IsNullOrEmpty(url) || !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)) return;
-            try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); }
+            if (!Core.SystemExe.UrlAcceptee(url)) return;
+            try { Core.SystemExe.OuvrirUrl(url); }
             catch (Exception ex) { vm.Message = "Impossible d'ouvrir le navigateur (" + ex.Message + "). Adresse : " + url; }
         }
 

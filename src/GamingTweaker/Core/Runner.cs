@@ -31,23 +31,17 @@ namespace GamingTweaker.Core
         private static RunResult Run(string script, Action<string> onLog, CancellationToken ct, Func<string, int> delaiFor)
         {
             var state = new RunState();
-            var dir = Path.Combine(Path.GetTempPath(), "GamingTweaker");
-            Directory.CreateDirectory(dir);
-            var file = Path.Combine(dir, "run-" + Guid.NewGuid().ToString("N") + ".ps1");
-            File.WriteAllText(file, script, new UTF8Encoding(true));
             bool cancelled = false; int exit = 0;
-            try
+            // Script dans le dossier Run protégé, verrouillé (lecture seule partagée) jusqu'à la fin de la dernière relance.
+            using (var verrouille = PowerShellLanceur.EcrireScript("run", script))
             {
+                var file = verrouille.Chemin;
                 while (true)
                 {
                     int before = state.FinishedCount;
                     bool relaunch = RunOnce(file, state, onLog, ct, delaiFor, out exit, out cancelled);
                     if (cancelled || !relaunch || state.FinishedCount == before) break;
                 }
-            }
-            finally
-            {
-                try { File.Delete(file); } catch { }
             }
             // Toute option planifiée sans état final : Skipped "annulé" si annulation, sinon Failed avec le code de sortie.
             state.Complete(cancelled, exit);
@@ -58,20 +52,11 @@ namespace GamingTweaker.Core
         private static bool RunOnce(string file, RunState state, Action<string> onLog, CancellationToken ct, Func<string, int> delaiFor, out int exitCode, out bool cancelled)
         {
             exitCode = 0; cancelled = false;
-            var args = "-NoProfile -ExecutionPolicy Bypass -File \"" + file + "\"";
+            var args = PowerShellLanceur.ArgumentsFichier(file);
             // Les identifiants sont validés (a-z0-9.-) : liste sans guillemets, redécoupée dans le script.
             var finishedIds = state.FinishedIds.ToList();
             if (finishedIds.Count > 0) args += " -SkipIds " + string.Join(",", finishedIds);
-            var psi = new ProcessStartInfo("powershell.exe", args)
-            {
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                RedirectStandardInput = true,
-                StandardOutputEncoding = Encoding.UTF8,
-                StandardErrorEncoding = Encoding.UTF8,
-            };
+            var psi = PowerShellLanceur.Creer(args);
 
             Action<string> handle = line =>
             {
@@ -121,16 +106,6 @@ namespace GamingTweaker.Core
             }
         }
 
-        private static void KillTree(Process p)
-        {
-            try
-            {
-                var psi = new ProcessStartInfo("taskkill", "/T /F /PID " + p.Id) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
-                using (var k = Process.Start(psi)) { k.WaitForExit(10000); }
-            }
-            catch { }
-            try { if (!p.HasExited) p.Kill(); } catch { }
-            try { p.WaitForExit(5000); } catch { }
-        }
+        private static void KillTree(Process p) { PowerShellLanceur.Tuer(p); }
     }
 }

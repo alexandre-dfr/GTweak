@@ -29,6 +29,13 @@ namespace GamingTweaker.Core
             catch (Exception) { return false; }
         }
 
+        /// <summary>SID du propriétaire de l'explorateur de la session courante (utilisateur du bureau), ou null.</summary>
+        public static string SidDuBureau()
+        {
+            int session = Process.GetCurrentProcess().SessionId;
+            return ExplorerOwners().Where(o => o.Item1 == session).Select(o => o.Item2).FirstOrDefault();
+        }
+
         /// <summary>Décision pure : seuls les explorer.exe de la session courante comptent ; aucun = faux.</summary>
         public static bool Decide(string currentSid, int currentSession, IEnumerable<Tuple<int, string>> explorerOwners)
         {

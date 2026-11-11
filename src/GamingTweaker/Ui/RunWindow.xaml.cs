@@ -65,7 +65,7 @@ namespace GamingTweaker.Ui
 
         private void Dossier_Click(object sender, RoutedEventArgs e)
         {
-            try { if (sessionDir != null && Directory.Exists(sessionDir)) Process.Start("explorer.exe", "\"" + sessionDir + "\""); }
+            try { if (sessionDir != null && Directory.Exists(sessionDir)) Core.SystemExe.OuvrirAvecExplorateur(sessionDir); }
             catch (Exception) { }
         }
     }

@@ -454,7 +454,7 @@ namespace GamingTweaker.Core
         public void RestartProcess(string chemin)
         {
             if (!File.Exists(chemin)) throw new FileNotFoundException("exécutable introuvable : " + chemin);
-            Process.Start(new ProcessStartInfo("explorer.exe", "\"" + chemin + "\"") { UseShellExecute = false })?.Dispose();
+            SystemExe.OuvrirAvecExplorateur(chemin);
         }
 
         public string SetPlan(string guid)
@@ -474,7 +474,7 @@ namespace GamingTweaker.Core
 
         private static string Powercfg(string args)
         {
-            var psi = new ProcessStartInfo("powercfg.exe", args) { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true };
+            var psi = new ProcessStartInfo(SystemExe.Chemin("powercfg.exe"), args) { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true };
             using (var p = Process.Start(psi))
             {
                 var o = p.StandardOutput.ReadToEnd(); var e = p.StandardError.ReadToEnd();

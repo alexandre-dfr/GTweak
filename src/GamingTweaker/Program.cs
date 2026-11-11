@@ -21,9 +21,28 @@ namespace GamingTweaker
         [STAThread]
         public static int Main(string[] args)
         {
+            // Tout en haut, avant tout type Newtonsoft/LHM : une DLL du même nom qu'une DLL embarquée à côté de l'exe serait chargée à sa place.
+            var refus = VerifierDllsAuDemarrage(args);
+            if (refus != 0) return refus;
+            DemarrageSur.RestreindreRechercheDll();
             AssemblyLoader.Register();
             if (args.Length == 0) return LaunchUi();
             return RunCommandLine(args);
+        }
+
+        private static int VerifierDllsAuDemarrage(string[] args)
+        {
+            string dossier;
+            try { dossier = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location); } catch (Exception) { dossier = AppDomain.CurrentDomain.BaseDirectory; }
+            var conflits = DemarrageSur.DllsEnConflit(dossier, DemarrageSur.DllsEmbarquees());
+            if (conflits.Count == 0) return 0;
+            var msg = DemarrageSur.MessageDllEnConflit(conflits, dossier);
+            if (args.Length == 0)
+            {
+                try { System.Windows.MessageBox.Show(msg, "GamingTweaker", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error); } catch (Exception) { }
+            }
+            else { AttachParentConsole(); Console.Error.WriteLine(msg); }
+            return 2;
         }
 
         private static int LaunchUi()
@@ -58,11 +77,11 @@ namespace GamingTweaker
 
         private static int RunSilent(string profilePath)
         {
-            // Le verrou d'instance est pris par RunPipeline.ExecuteAsync (interface et routine).
             if (!IsAdministrator()) { Console.Error.WriteLine("Droits administrateur requis pour appliquer un profil."); return 2; }
-            // Avant toute lecture (profil copié par la routine) ou écriture sous %ProgramFiles%\GamingTweaker : refus (code 2) s'il n'est pas sûr.
-            var protection = DossierProtege.SecuriserAuDemarrage(DataPaths.RacineProtegeeParDefaut, IsAdministrator);
-            if (protection.Erreur != null) { Console.Error.WriteLine(protection.Erreur); return 2; }
+            // Verrou d'instance d'abord (occupé : code 2, aucun parcours), puis contrôle de %ProgramFiles%\GamingTweaker avant toute lecture
+            // (profil copié par la routine) ou écriture : refus (code 2) s'il n'est pas sûr. RunPipeline.ExecuteAsync reprend ensuite le verrou.
+            var erreur = DemarrageSur.VerifierDossierProtege(DataPaths.RacineProtegeeParDefaut, IsAdministrator);
+            if (erreur != null) { Console.Error.WriteLine(erreur); return 2; }
 
             var catalogue = Catalogue.LoadEmbedded();
             var load = Profils.Load(profilePath, catalogue.Where(c => !string.IsNullOrEmpty(c.Liste)).Select(c => c.Liste).Distinct());

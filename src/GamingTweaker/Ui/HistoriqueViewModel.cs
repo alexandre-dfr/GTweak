@@ -35,8 +35,6 @@ namespace GamingTweaker.Ui
         public string EtatLibelle { get; set; }
         /// <summary>Session interrompue (Running) ou en échec interne (Failed) : mise en évidence.</summary>
         public bool Anormale { get; set; }
-        /// <summary>Session écrite par la routine planifiée (racine protégée %ProgramFiles%\GamingTweaker).</summary>
-        public bool DeLaRoutine { get; set; }
         /// <summary>Session « Running » alors qu'une exécution tient le verrou : elle est en cours, pas interrompue.</summary>
         public bool EnCoursExecution { get; set; }
         public int Appliquees { get; set; }
@@ -80,7 +78,6 @@ namespace GamingTweaker.Ui
         public const string AvertissementMesures = "Ces mesures (temps DPC, interruptions, services, processus, mémoire libre) ne disent rien de l'input lag : elles ne mesurent pas la latence entre un clic et l'écran.";
 
         private readonly DataPaths paths;
-        private readonly List<DataPaths> autresRacines;
         private readonly IRestauration restauration;
         private readonly Dictionary<string, CatalogItem> catalogue;
         private readonly QuarantineService quarantaine;
@@ -93,13 +90,11 @@ namespace GamingTweaker.Ui
         private string rapportTexte = "";
         private string comparaison = "";
 
-        /// <param name="autresRacines">Autres racines dont les sessions sont aussi listées (routine planifiée, racine protégée %ProgramFiles%\GamingTweaker).</param>
+        /// <param name="paths">Racine unique des sessions (sous %ProgramFiles%\GamingTweaker : interface et routine).</param>
         public HistoriqueViewModel(DataPaths paths, IRestauration restauration, IReadOnlyList<CatalogItem> catalogue, QuarantineService quarantaine,
-            Func<TimeSpan, IProgress<double>, CancellationToken, Task<MesureSnapshot>> prendreReleve = null, IEnumerable<DataPaths> autresRacines = null)
+            Func<TimeSpan, IProgress<double>, CancellationToken, Task<MesureSnapshot>> prendreReleve = null)
         {
             this.paths = paths; this.restauration = restauration; this.quarantaine = quarantaine;
-            this.autresRacines = (autresRacines ?? Enumerable.Empty<DataPaths>())
-                .Where(r => r != null && paths != null && !string.Equals(r.SessionsDir, paths.SessionsDir, StringComparison.OrdinalIgnoreCase)).ToList();
             this.catalogue = (catalogue ?? new List<CatalogItem>()).GroupBy(c => c.Id).ToDictionary(g => g.Key, g => g.First());
             prendre = prendreReleve ?? ((d, p, ct) => Mesures.TakeAsync(d, p, ct));
 
@@ -192,24 +187,16 @@ namespace GamingTweaker.Ui
             catch (Exception ex) { Message = "Mesures illisibles : " + ex.Message; }
         }
 
-        /// <summary>Sessions de la racine interactive et de la routine, fusionnées du plus récent au plus ancien (date de début).</summary>
+        /// <summary>Sessions de l'interface et de la routine (une seule racine), du plus récent au plus ancien (date de début).</summary>
         private List<SessionViewModel> LireSessions()
         {
             var res = new List<SessionViewModel>();
-            var racines = new List<Tuple<string, bool>>();
-            if (paths != null) racines.Add(Tuple.Create(paths.SessionsDir, false));
-            foreach (var r in autresRacines) racines.Add(Tuple.Create(r.SessionsDir, true));
-            foreach (var r in racines)
+            var dir = paths == null ? null : paths.SessionsDir;
+            if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
             {
-                if (string.IsNullOrEmpty(r.Item1) || !Directory.Exists(r.Item1)) continue;
-                foreach (var d in Directory.GetDirectories(r.Item1))
+                foreach (var d in Directory.GetDirectories(dir))
                 {
-                    try
-                    {
-                        var s = LireSession(d);
-                        if (r.Item2) { s.DeLaRoutine = true; s.Resume = "routine planifiée · " + s.Resume; }
-                        res.Add(s);
-                    }
+                    try { res.Add(LireSession(d)); }
                     catch (Exception) { /* dossier illisible : ignoré */ }
                 }
             }

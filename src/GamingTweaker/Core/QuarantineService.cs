@@ -34,7 +34,7 @@ namespace GamingTweaker.Core
         private readonly string racine;
         private readonly List<string> sessionsDirs;
 
-        /// <param name="sessionsDirs">Dossiers de sessions dont les journaux sont lus (racine interactive et racine de la routine).</param>
+        /// <param name="sessionsDirs">Dossiers de sessions dont les journaux sont lus (racine unique sous %ProgramFiles%GamingTweaker).</param>
         public QuarantineService(string quarantineDir, params string[] sessionsDirs)
         {
             racine = Path.GetFullPath(quarantineDir);

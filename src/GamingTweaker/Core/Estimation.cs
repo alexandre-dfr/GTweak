@@ -34,16 +34,12 @@ namespace GamingTweaker.Core
                                   .OrderBy(i => i.Estimate.TrimStart().StartsWith("# lent", StringComparison.Ordinal)).ToList();
             if (withScript.Count == 0) return res;
 
-            var file = Path.Combine(Path.GetTempPath(), "gt-estimate-" + Guid.NewGuid().ToString("N") + ".ps1");
+            ScriptVerrouille script = null;
             try
             {
-                File.WriteAllText(file, BuildScript(withScript), new UTF8Encoding(true));
-                var psi = new ProcessStartInfo("powershell.exe", "-NoProfile -ExecutionPolicy Bypass -File \"" + file + "\"")
-                {
-                    UseShellExecute = false, CreateNoWindow = true,
-                    RedirectStandardOutput = true, RedirectStandardError = true, RedirectStandardInput = true,
-                    StandardOutputEncoding = Encoding.UTF8, StandardErrorEncoding = Encoding.UTF8,
-                };
+                // Dossier Run protégé ; script verrouillé jusqu'à la fin de PowerShell.
+                script = PowerShellLanceur.EcrireScript("estimate", BuildScript(withScript));
+                var psi = PowerShellLanceur.Creer(PowerShellLanceur.ArgumentsFichier(script.Chemin));
                 using (var p = new Process { StartInfo = psi })
                 {
                     p.OutputDataReceived += (s, e) =>
@@ -61,11 +57,11 @@ namespace GamingTweaker.Core
                     p.BeginOutputReadLine();
                     p.BeginErrorReadLine();
                     if (!p.WaitForExit((int)timeout.TotalMilliseconds)) Detection.Kill(p);
-                    else p.WaitForExit();
+                    else PowerShellLanceur.AttendreFlux(p);
                 }
             }
             catch (Exception) { /* échec de lancement : tout reste null */ }
-            finally { try { File.Delete(file); } catch { } }
+            finally { if (script != null) script.Dispose(); }
             lock (res) return new Dictionary<string, long?>(res);
         }
 

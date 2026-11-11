@@ -14,15 +14,10 @@ namespace GamingTweaker.Lists
             return Task.Run(() =>
             {
                 var texte = "[Console]::OutputEncoding = [Text.Encoding]::UTF8\r\n$ProgressPreference = 'SilentlyContinue'\r\n" + script;
-                var enc = Convert.ToBase64String(Encoding.Unicode.GetBytes(texte));
-                var psi = new ProcessStartInfo("powershell.exe", "-NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand " + enc)
-                {
-                    UseShellExecute = false, CreateNoWindow = true,
-                    RedirectStandardOutput = true, RedirectStandardError = true,
-                    StandardOutputEncoding = Encoding.UTF8, StandardErrorEncoding = Encoding.UTF8,
-                };
+                var psi = Core.PowerShellLanceur.Creer(Core.PowerShellLanceur.ArgumentsEncodes(texte));
                 using (var p = Process.Start(psi))
                 {
+                    p.StandardInput.Close();
                     var err = p.StandardError.ReadToEndAsync();
                     var sortie = p.StandardOutput.ReadToEndAsync();
                     using (ct.Register(() => { try { p.Kill(); } catch (Exception) { } }))

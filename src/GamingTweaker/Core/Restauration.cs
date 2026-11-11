@@ -34,14 +34,12 @@ namespace GamingTweaker.Core
         private readonly Func<bool> sameUser;
         private readonly string lockName;
 
-        /// <param name="autresRacines">Autres racines de données lues aussi (celle de la routine planifiée, racine protégée %ProgramFiles%\GamingTweaker).</param>
-        public RestaurationService(DataPaths paths, Func<bool> sameUser = null, string lockName = null, IEnumerable<DataPaths> autresRacines = null)
+        /// <param name="paths">Racine unique des données (sous %ProgramFiles%\GamingTweaker : l'interface et la routine y écrivent leurs sessions).</param>
+        public RestaurationService(DataPaths paths, Func<bool> sameUser = null, string lockName = null)
         {
             this.paths = paths; this.sameUser = sameUser; this.lockName = lockName;
             racines = new List<DataPaths>();
             if (paths != null) racines.Add(paths);
-            foreach (var r in autresRacines ?? Enumerable.Empty<DataPaths>())
-                if (r != null && !racines.Any(x => string.Equals(x.MachineDir, r.MachineDir, StringComparison.OrdinalIgnoreCase))) racines.Add(r);
         }
 
         public IDisposable PrendreVerrou() { return SingleInstance.TryAcquire(lockName); }

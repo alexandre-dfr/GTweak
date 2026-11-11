@@ -19,10 +19,16 @@ namespace GamingTweaker
         private void OnStartup(object sender, StartupEventArgs e)
         {
             // Avant toute lecture ou écriture de %ProgramFiles%\GamingTweaker : créé avec sa DACL protégée, ou vérifié (refus s'il n'est pas sûr).
-            var protection = DossierProtege.SecuriserAuDemarrage(DataPaths.RacineProtegeeParDefaut, ElevationCheck.EstAdministrateur);
-            if (protection.Erreur != null)
+            // Verrou d'instance pris AVANT le parcours (occupé : message, aucun parcours), libéré ensuite.
+            var erreur = DemarrageSur.VerifierDossierProtege(DataPaths.RacineProtegeeParDefaut, ElevationCheck.EstAdministrateur);
+            if (erreur == DemarrageSur.MessageOccupe)
             {
-                MessageBox.Show(protection.Erreur + "\r\n\r\nPar sécurité, GamingTweaker s'arrête.", "GamingTweaker", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(erreur, "GamingTweaker", MessageBoxButton.OK, MessageBoxImage.Information);
+                Shutdown(2); return;
+            }
+            if (erreur != null)
+            {
+                MessageBox.Show(erreur + "\r\n\r\nPar sécurité, GamingTweaker s'arrête.", "GamingTweaker", MessageBoxButton.OK, MessageBoxImage.Error);
                 Shutdown(2); return;
             }
 
@@ -68,15 +74,10 @@ namespace GamingTweaker
             vm.Info = info;
             Exit += (s, ev) => info.Dispose();
 
-            // Racine interactive et racine de la routine (racine protégée) : historique et « Tout restaurer » lisent les deux.
-            var racines = DataPaths.Racines(paths, facts, DataPaths.RacineProtegeeParDefaut);
-            var autresRacines = racines.Skip(1).ToList();
-            var restauration = new RestaurationService(paths, ElevationCheck.SameUserAsDesktop, null, autresRacines);
+            // Une seule racine de sessions (%ProgramFiles%\GamingTweaker\Machines) pour l'interface et la routine.
+            var restauration = new RestaurationService(paths, ElevationCheck.SameUserAsDesktop);
             vm.Restauration = restauration;
-            // La quarantaine est unique (%ProgramFiles%\GamingTweaker\Quarantaine, partagée par les deux racines) ; les origines sont résolues via les journaux des deux racines.
-            var quarantineDir = racines.Select(r => r.QuarantineDir).Distinct(StringComparer.OrdinalIgnoreCase).First();
-            vm.Historique = new HistoriqueViewModel(paths, restauration, catalogue,
-                new QuarantineService(quarantineDir, racines.Select(r => r.SessionsDir).ToArray()), null, autresRacines)
+            vm.Historique = new HistoriqueViewModel(paths, restauration, catalogue, new QuarantineService(paths.QuarantineDir, paths.SessionsDir))
             {
                 Confirmer = texte => MessageBox.Show(fenetre, texte, "Historique", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes,
                 ApresAnnulation = () => { var _ = vm.DetectAsync(); },

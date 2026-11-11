@@ -5,7 +5,11 @@ using System.Linq;
 
 namespace GamingTweaker.Core
 {
-    /// <summary>Emplacements des données : à côté de l'exe si inscriptible, sinon sous %ProgramFiles%\GamingTweaker (racine protégée).</summary>
+    /// <summary>
+    /// Emplacements des données. Machines\ (sessions, journaux d'annulation, état, mode Jeu, mesures) et Quarantaine\ sont toujours sous
+    /// %ProgramFiles%\GamingTweaker (racine protégée) : l'outil élevé n'y lit et n'y rejoue rien qu'un utilisateur standard ait pu écrire.
+    /// Seuls les profils (Profils\, sans aucune commande) restent à côté de l'exe s'il est inscriptible.
+    /// </summary>
     public class DataPaths
     {
         public string ProfilsDir { get; set; }
@@ -35,28 +39,20 @@ namespace GamingTweaker.Core
         }
 
         /// <summary>
-        /// Racine des données : la racine protégée si l'exe est dedans (copie lancée par la routine, App\),
-        /// sinon à côté de l'exe s'il est inscriptible, sinon la racine protégée.
+        /// Machines\ et Quarantaine\ : toujours sous la racine protégée (interface et routine partagent une seule racine de sessions).
+        /// Profils\ : à côté de l'exe s'il est inscriptible et hors de la racine protégée, sinon sous la racine protégée.
         /// </summary>
         public static DataPaths Resolve(string exeDir, MachineFacts f, string racineProtegee)
         {
-            var root = !EstSous(exeDir, racineProtegee) && IsWritable(exeDir) ? exeDir : racineProtegee;
-            return Build(root, f, racineProtegee);
-        }
-
-        /// <summary>Emplacements utilisés par la routine planifiée (racine protégée).</summary>
-        public static DataPaths ResolveRoutine(MachineFacts f, string racineProtegee)
-        {
-            return Build(racineProtegee, f, racineProtegee);
-        }
-
-        /// <summary>Racines à lire par l'historique et « Tout restaurer » : la racine interactive puis celle de la routine (sans doublon).</summary>
-        public static List<DataPaths> Racines(DataPaths interactive, MachineFacts f, string racineProtegee)
-        {
-            var res = new List<DataPaths> { interactive };
-            var routine = ResolveRoutine(f, racineProtegee);
-            if (!MemeDossier(routine.MachineDir, interactive.MachineDir)) res.Add(routine);
-            return res;
+            var profils = !EstSous(exeDir, racineProtegee) && IsWritable(exeDir) ? exeDir : racineProtegee;
+            var machine = Path.Combine(racineProtegee, "Machines", MachineId(f));
+            return new DataPaths
+            {
+                ProfilsDir = Path.Combine(profils, "Profils"),
+                MachineDir = machine,
+                SessionsDir = Path.Combine(machine, "Sessions"),
+                QuarantineDir = Path.Combine(racineProtegee, "Quarantaine"),
+            };
         }
 
         internal static bool MemeDossier(string a, string b)
@@ -75,18 +71,6 @@ namespace GamingTweaker.Core
                 return d.StartsWith(r, StringComparison.OrdinalIgnoreCase);
             }
             catch (Exception) { return false; }
-        }
-
-        private static DataPaths Build(string root, MachineFacts f, string racineProtegee)
-        {
-            var machine = Path.Combine(root, "Machines", MachineId(f));
-            return new DataPaths
-            {
-                ProfilsDir = Path.Combine(root, "Profils"),
-                MachineDir = machine,
-                SessionsDir = Path.Combine(machine, "Sessions"),
-                QuarantineDir = Path.Combine(racineProtegee, "Quarantaine"),
-            };
         }
 
         /// <summary>Crée puis supprime un fichier sonde. Un dossier inexistant est considéré non inscriptible.</summary>

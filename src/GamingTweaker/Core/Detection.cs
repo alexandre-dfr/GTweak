@@ -28,16 +28,12 @@ namespace GamingTweaker.Core
             var withScript = items.Where(i => !string.IsNullOrWhiteSpace(i.Detect)).ToList();
             if (withScript.Count == 0) return res;
 
-            var file = Path.Combine(Path.GetTempPath(), "gt-detect-" + Guid.NewGuid().ToString("N") + ".ps1");
+            ScriptVerrouille script = null;
             try
             {
-                File.WriteAllText(file, BuildScript(withScript), new UTF8Encoding(true));
-                var psi = new ProcessStartInfo("powershell.exe", "-NoProfile -ExecutionPolicy Bypass -File \"" + file + "\"")
-                {
-                    UseShellExecute = false, CreateNoWindow = true,
-                    RedirectStandardOutput = true, RedirectStandardError = true, RedirectStandardInput = true,
-                    StandardOutputEncoding = Encoding.UTF8, StandardErrorEncoding = Encoding.UTF8,
-                };
+                // Dossier Run protégé ; script verrouillé jusqu'à la fin de PowerShell.
+                script = PowerShellLanceur.EcrireScript("detect", BuildScript(withScript));
+                var psi = PowerShellLanceur.Creer(PowerShellLanceur.ArgumentsFichier(script.Chemin));
                 using (var p = new Process { StartInfo = psi })
                 {
                     p.OutputDataReceived += (s, e) =>
@@ -58,11 +54,11 @@ namespace GamingTweaker.Core
                     p.BeginOutputReadLine();
                     p.BeginErrorReadLine();
                     if (!p.WaitForExit((int)timeout.TotalMilliseconds)) Kill(p);
-                    else p.WaitForExit(); // vide les flux asynchrones
+                    else PowerShellLanceur.AttendreFlux(p); // vide les flux asynchrones (borné)
                 }
             }
             catch (Exception) { /* échec de lancement : tout reste Unknown */ }
-            finally { try { File.Delete(file); } catch { } }
+            finally { if (script != null) script.Dispose(); }
             lock (res) return new Dictionary<string, DetectState>(res);
         }
 
@@ -83,16 +79,7 @@ namespace GamingTweaker.Core
             return sb.ToString();
         }
 
-        internal static void Kill(Process p)
-        {
-            try
-            {
-                var psi = new ProcessStartInfo("taskkill", "/T /F /PID " + p.Id) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
-                using (var k = Process.Start(psi)) { k.WaitForExit(10000); }
-            }
-            catch { }
-            try { if (!p.HasExited) p.Kill(); } catch { }
-            try { p.WaitForExit(5000); } catch { }
-        }
+        /// <summary>Arrêt après délai : processus et enfants tués, puis flux vidés (au plus 5 s) pour garder les lignes déjà émises.</summary>
+        internal static void Kill(Process p) { PowerShellLanceur.Tuer(p); }
     }
 }

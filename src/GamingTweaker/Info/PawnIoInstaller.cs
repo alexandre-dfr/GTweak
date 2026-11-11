@@ -29,7 +29,10 @@ namespace GamingTweaker.Info
         {
             try
             {
-                var psi = new ProcessStartInfo("winget", "install --id " + WingetId + " --exact --source winget --accept-package-agreements --accept-source-agreements --disable-interactivity")
+                // winget vérifié (paquet DesktopAppInstaller sous Program Files\WindowsApps), jamais celui du PATH.
+                var winget = Core.SystemExe.Winget();
+                if (winget == null) throw new System.ComponentModel.Win32Exception(2, "winget introuvable");
+                var psi = new ProcessStartInfo(winget, "install --id " + WingetId + " --exact --source winget --accept-package-agreements --accept-source-agreements --disable-interactivity")
                 { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
                 using (var p = Process.Start(psi))
                 {
@@ -39,7 +42,8 @@ namespace GamingTweaker.Info
             }
             catch (System.ComponentModel.Win32Exception) { }
             catch (Exception) { }
-            try { Process.Start(new ProcessStartInfo(PageOfficielle) { UseShellExecute = true }); } catch { }
+            // Navigateur ouvert par l'explorateur du bureau : il ne tourne pas en administrateur.
+            try { Core.SystemExe.OuvrirUrl(PageOfficielle); } catch { }
             return "L'installation par winget n'a pas abouti : la page officielle de PawnIO a été ouverte dans le navigateur.";
         }
     }

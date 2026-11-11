@@ -39,16 +39,10 @@ if ($after -gt $before) { Write-Output 'OK' } else { Write-Output 'LIMIT' }
 
         public RestorePointResult TryCreate(string description)
         {
-            var file = Path.Combine(Path.GetTempPath(), "gt-rp-" + Guid.NewGuid().ToString("N") + ".ps1");
             try
             {
-                File.WriteAllText(file, Script, new UTF8Encoding(true));
-                var psi = new ProcessStartInfo("powershell.exe", "-NoProfile -ExecutionPolicy Bypass -File \"" + file + "\"")
-                {
-                    UseShellExecute = false, CreateNoWindow = true,
-                    RedirectStandardOutput = true, RedirectStandardError = true, RedirectStandardInput = true,
-                    StandardOutputEncoding = Encoding.UTF8,
-                };
+                // Aucun fichier : script passé en -EncodedCommand, environnement propre ; la description passe par une variable.
+                var psi = PowerShellLanceur.Creer(PowerShellLanceur.ArgumentsEncodes(Script));
                 psi.EnvironmentVariables["GT_RP_DESC"] = description ?? "GamingTweaker";
                 using (var p = Process.Start(psi))
                 {
@@ -73,7 +67,6 @@ if ($after -gt $before) { Write-Output 'OK' } else { Write-Output 'LIMIT' }
             {
                 return new RestorePointResult { Message = "Point de restauration impossible : " + ex.Message };
             }
-            finally { try { File.Delete(file); } catch { } }
         }
     }
 }
