@@ -316,12 +316,17 @@ namespace GamingTweaker.Tests
 
         [Theory]
         [InlineData("opt.services")] [InlineData("opt.xbox-services")] [InlineData("opt.startup")]
-        public void La_detection_des_listes_est_inconnue_car_elle_ignore_la_selection(string id)
+        public void La_detection_des_listes_lit_l_etat_de_tous_les_elements_de_la_liste(string id)
         {
-            var d = Catalogue()[id].Detect;
-            Assert.Contains("Unknown", d);
-            Assert.DoesNotContain("Applied", d);
-            Assert.StartsWith("#", d.TrimStart());
+            var it = Catalogue()[id];
+            Assert.StartsWith("#", it.Detect.TrimStart());
+            Assert.Contains("Unknown", it.Detect);   // repli en cas d'erreur de lecture
+            if (id == "opt.startup") { Assert.Contains("Get-GTStartupState", it.Detect); return; }
+            Assert.Contains("Get-GTServiceManualState", it.Detect);
+            // La liste lue par la détection est celle que l'application accepte.
+            var noms = System.Text.RegularExpressions.Regex.Matches(it.Apply.Split('\n')[0], "'([A-Za-z]+)'").Cast<System.Text.RegularExpressions.Match>().Select(m => m.Groups[1].Value).ToList();
+            Assert.NotEmpty(noms);
+            foreach (var n in noms) Assert.Contains("'" + n + "'", it.Detect);
         }
 
         // ---- partie B : options du récapitulatif ---------------------------------------------------

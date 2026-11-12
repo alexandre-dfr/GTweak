@@ -1,2 +1,6 @@
-# La détection ignore la sélection de l'utilisateur (liste) : état inconnu, l'application est idempotente.
-'Unknown'
+# « Appliquée » si au moins un programme au démarrage existe et que tous sont désactivés ; sinon « Non appliquée ».
+try {
+    Get-GTStartupState
+} catch {
+    'Unknown'
+}

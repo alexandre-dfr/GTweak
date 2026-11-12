@@ -435,11 +435,13 @@ namespace GamingTweaker.Tests
 
 
         [Fact]
-        public async Task Les_detections_des_listes_renvoient_Unknown()
+        public async Task Les_detections_des_listes_lisent_l_etat_reel_sans_erreur()
         {
+            // Lecture seule (registre des services, StartupApproved) : jamais « Inconnu », même sans droits particuliers.
             var items = Catalogue.LoadEmbedded().Where(i => new[] { "opt.services", "opt.xbox-services", "opt.startup" }.Contains(i.Id)).ToList();
             var etats = await Detection.RunAsync(items, TimeSpan.FromSeconds(120));
-            Assert.All(etats.Values, e => Assert.Equal(DetectState.Unknown, e));
+            Assert.Equal(3, etats.Count);
+            Assert.All(etats.Values, e => Assert.NotEqual(DetectState.Unknown, e));
         }
 
         [Fact]
