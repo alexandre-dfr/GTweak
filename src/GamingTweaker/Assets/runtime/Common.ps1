@@ -1681,10 +1681,12 @@ function Test-GTOneDriveInstalled {
     return $false
 }
 
+# $GT_OneDriveSetupRoot : remplacement du dossier Windows dans les tests (SystemRoot ne doit jamais etre modifie : .NET en depend).
 function Remove-TweakOneDrive {
     if (-not (Test-GTOneDriveInstalled)) { Skip-GTItem 'OneDrive absent de cette machine (installation du profil de l''utilisateur courant).' }
-    $exe = Join-Path $env:SystemRoot 'SysWOW64\OneDriveSetup.exe'
-    if (-not (Test-Path -LiteralPath $exe)) { $exe = Join-Path $env:SystemRoot 'System32\OneDriveSetup.exe' }
+    $racine = if ($GT_OneDriveSetupRoot) { [string]$GT_OneDriveSetupRoot } else { [string]$env:SystemRoot }
+    $exe = Join-Path $racine 'SysWOW64\OneDriveSetup.exe'
+    if (-not (Test-Path -LiteralPath $exe)) { $exe = Join-Path $racine 'System32\OneDriveSetup.exe' }
     if (-not (Test-Path -LiteralPath $exe)) { throw 'Le désinstalleur de OneDrive (OneDriveSetup.exe) est introuvable.' }
     Write-GTJournal 'wingetapp' 'Microsoft.OneDrive' $true 'winget' $null
     Get-Process -Name 'OneDrive' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue

@@ -468,7 +468,7 @@ namespace GamingTweaker.Tests
             else { try { Directory.Delete(local, true); } catch { } Directory.CreateDirectory(local); }
             if (setupPresent) File.WriteAllText(Path.Combine(win, "SysWOW64", "OneDriveSetup.exe"), "x");
             lancements = Path.Combine(tmp, "start.log");
-            return "$env:LOCALAPPDATA = " + Q(local) + "; $env:ProgramFiles = " + Q(pf) + "; ${env:ProgramFiles(x86)} = " + Q(Path.Combine(tmp, "pf86")) + "; $env:SystemRoot = " + Q(win) + "\r\n"
+            return "$env:LOCALAPPDATA = " + Q(local) + "; $env:ProgramFiles = " + Q(pf) + "; ${env:ProgramFiles(x86)} = " + Q(Path.Combine(tmp, "pf86")) + "; $GT_OneDriveSetupRoot = " + Q(win) + "\r\n"
                  + "function Get-Process { [CmdletBinding()] param([string]$Name) }\r\n"
                  + "function Start-Process { [CmdletBinding()] param([string]$FilePath, [string]$ArgumentList, [switch]$Wait, [switch]$PassThru) Add-Content -LiteralPath " + Q(lancements) + " -Value ($FilePath + ' ' + $ArgumentList); [pscustomobject]@{ ExitCode = 0 } }\r\n";
         }

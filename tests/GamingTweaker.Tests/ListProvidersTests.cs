@@ -30,17 +30,19 @@ namespace GamingTweaker.Tests
         public void Les_services_proposes_sont_ceux_de_la_liste_presents_sur_la_machine()
         {
             var src = new FakeServices();
-            src.Donnees["Spooler"] = new ServiceInfo { Name = "Spooler", DisplayName = "Spouleur d'impression", StartType = "Automatique" };
+            src.Donnees["lfsvc"] = new ServiceInfo { Name = "lfsvc", DisplayName = "Service de géolocalisation", StartType = "Automatique" };
             src.Donnees["Fax"] = new ServiceInfo { Name = "Fax", DisplayName = "Télécopie", StartType = "Manuel" };
             src.Donnees["Winmgmt"] = new ServiceInfo { Name = "Winmgmt", DisplayName = "Infrastructure WMI", StartType = "Automatique" };   // hors liste : jamais proposé
+            src.Donnees["Spooler"] = new ServiceInfo { Name = "Spooler", DisplayName = "Spouleur d'impression", StartType = "Automatique" };   // retiré de la liste : jamais proposé
             var p = ServicesProvider.Standard(src);
             Assert.Equal("services", p.ListId);
             var l = Charger(p);
-            Assert.Equal(new[] { "Fax", "Spooler" }, l.Select(e => e.Key).OrderBy(x => x));
+            Assert.Equal(new[] { "Fax", "lfsvc" }, l.Select(e => e.Key).OrderBy(x => x));
             Assert.DoesNotContain(l, e => e.Key == "Winmgmt");
-            var sp = l.Single(e => e.Key == "Spooler");
-            Assert.Contains("Spouleur d'impression", sp.Titre);
-            Assert.Contains("Spooler", sp.Titre);
+            Assert.DoesNotContain(l, e => e.Key == "Spooler");
+            var sp = l.Single(e => e.Key == "lfsvc");
+            Assert.Contains("Service de géolocalisation", sp.Titre);
+            Assert.Contains("lfsvc", sp.Titre);
             Assert.Contains("Automatique", sp.Detail);
             Assert.Equal(RiskLevel.Avance, sp.Risque);
         }
