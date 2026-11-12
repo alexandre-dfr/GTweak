@@ -262,6 +262,7 @@ function Set-TweakTask {
     Write-GTJournal 'task' $Path $true $before $Enabled
     if ($Enabled) { Enable-ScheduledTask -TaskPath $p.Dir -TaskName $p.Name | Out-Null }
     else { Disable-ScheduledTask -TaskPath $p.Dir -TaskName $p.Name | Out-Null }
+    Clear-GTTaskCache
 }
 
 # ---- Alimentation -----------------------------------------------------------
@@ -420,9 +421,13 @@ function Set-TweakHibernate {
 
 # ---- Gestion d'alimentation des peripheriques (MSPower_DeviceEnable) ---------------
 
+# Enumeration WMI mise en cache par processus ; videe apres chaque modification (Set-GTDevicePower).
 function Get-GTPowerDevices {
-    return @(Get-CimInstance -Namespace 'root\wmi' -ClassName 'MSPower_DeviceEnable' -ErrorAction Stop |
-        ForEach-Object { [pscustomobject]@{ InstanceName = [string]$_.InstanceName; Enable = [bool]$_.Enable } })
+    if ($null -eq $script:GT_PowerDevicesCache) {
+        $script:GT_PowerDevicesCache = @(Get-CimInstance -Namespace 'root\wmi' -ClassName 'MSPower_DeviceEnable' -ErrorAction Stop |
+            ForEach-Object { [pscustomobject]@{ InstanceName = [string]$_.InstanceName; Enable = [bool]$_.Enable } })
+    }
+    return $script:GT_PowerDevicesCache
 }
 
 function Select-GTUsbInstances([string[]]$InstanceNames) {
@@ -452,6 +457,7 @@ function Set-GTDevicePower([string]$InstanceName, [bool]$Enabled) {
     if (-not $inst) { throw ('Périphérique ' + $InstanceName + ' introuvable.') }
     $inst.Enable = $Enabled
     Set-CimInstance -InputObject $inst
+    $script:GT_PowerDevicesCache = $null
 }
 
 function Set-TweakDevicePower {
@@ -672,6 +678,7 @@ function Restore-GTEntry($E) {
             $p = Split-GTTaskPath $E.target
             if ([bool]$E.before) { Enable-ScheduledTask -TaskPath $p.Dir -TaskName $p.Name | Out-Null }
             else { Disable-ScheduledTask -TaskPath $p.Dir -TaskName $p.Name | Out-Null }
+            Clear-GTTaskCache
         }
         'power' {
             $t = $E.target -split '\|'
@@ -839,12 +846,28 @@ function Get-GTServiceManualState([string[]]$Names) {
 }
 
 # $null si la tache est absente, sinon $true (activee) ou $false (desactivee).
+# Les taches sont enumerees une seule fois par processus (une vingtaine de lectures a la detection) ; le cache est vide apres chaque
+# modification (Set-TweakTask, Reset-GTTweaks). Si l'enumeration globale echoue, lecture tache par tache comme avant.
 function Get-GTTaskEnabled([string]$Path) {
     $p = Split-GTTaskPath $Path
+    if ($null -eq $script:GT_TaskCache) {
+        $cache = @{}
+        try {
+            foreach ($t in @(Get-ScheduledTask -ErrorAction Stop)) { $cache[([string]$t.TaskPath + [string]$t.TaskName)] = [bool]($t.State -ne 'Disabled') }
+            $script:GT_TaskCache = $cache
+        } catch { $script:GT_TaskCache = $null }
+    }
+    if ($null -ne $script:GT_TaskCache) {
+        $k = $p.Dir + $p.Name
+        if ($script:GT_TaskCache.ContainsKey($k)) { return $script:GT_TaskCache[$k] }
+        return $null
+    }
     $t = Get-ScheduledTask -TaskPath $p.Dir -TaskName $p.Name -ErrorAction SilentlyContinue
     if (-not $t) { return $null }
     return [bool]($t.State -ne 'Disabled')
 }
+
+function Clear-GTTaskCache { $script:GT_TaskCache = $null }
 
 # Renvoie $true si la tache existe sur cette machine (modifiee ou deja a l'etat voulu), $false sinon.
 function Set-TweakTaskIfNeeded {
@@ -901,7 +924,7 @@ function Reset-GTTweaks {
     }
     foreach ($t in $Task) {
         $cur = Get-GTTaskEnabled $t
-        if ($null -ne $cur -and -not $cur) { $p = Split-GTTaskPath $t; Enable-ScheduledTask -TaskPath $p.Dir -TaskName $p.Name | Out-Null }
+        if ($null -ne $cur -and -not $cur) { $p = Split-GTTaskPath $t; Enable-ScheduledTask -TaskPath $p.Dir -TaskName $p.Name | Out-Null; Clear-GTTaskCache }
     }
     if ($HostName.Count -gt 0) {
         Remove-GTHostsLines (Get-GTHostsDefault) ([string[]]@($HostName | ForEach-Object { '0.0.0.0 ' + $_ + ' ' + $script:GT_HostsMarker }))

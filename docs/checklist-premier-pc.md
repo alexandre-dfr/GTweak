@@ -71,6 +71,8 @@ Options concernées : économie d'énergie USB, économie d'énergie carte rése
 | Exécuter la tâche (`schtasks /Run`) | Rapport écrit dans le dossier de données protégé, code de sortie 0, aucune interface | - |
 | Lancer l'interface pendant la routine (ou l'exe deux fois) | La seconde exécution refuse (code 2 en routine) | - |
 | `GamingTweaker.exe --profile absent.json --silent` | Message clair, code 2 | - |
+| `GamingTweaker.exe --uninstall` puis `--uninstall --confirm` | Aperçu (sessions, quarantaine) sans effet ; puis tâche, dossier `\GamingTweaker` du Planificateur et dossier de données supprimés | Relancer l'exe : dossier recréé |
+| Lancer l'exe sur un portable | Bandeau « PC portable détecté » ; « Recommandé » ne coche pas le plan Performances élevées | - |
 
 ## 9. Windows 10 (si une machine ou une image est disponible)
 

@@ -27,6 +27,16 @@ Chaque modification réversible est notée dans un journal. L'historique permet 
 
 **Planifier** crée la tâche hebdomadaire `\GamingTweaker\Routine` qui applique le profil choisi sans interface (`GamingTweaker.exe --profile <fichier> --silent`). Codes de sortie : 0 = tout est appliqué ou ignoré, 1 = au moins un échec, 2 = exécution impossible. **Supprimer la routine** retire la tâche. Les données de la routine sont dans le dossier de données protégé de GamingTweaker, dossier protégé (propriétaire Administrateurs).
 
+## Désinstaller
+
+L'application est portable : supprimer `GamingTweaker.exe` suffit pour le programme. Pour retirer aussi la routine planifiée et le dossier de données protégé (`%ProgramFiles%\GamingTweaker` : sessions, journaux d'annulation, quarantaine), lancer en administrateur :
+
+```bash
+GamingTweaker.exe --uninstall
+```
+
+Sans `--confirm`, la commande affiche seulement ce qui serait supprimé. Les réglages appliqués ne sont pas annulés par la désinstallation : passer d'abord par **Tout restaurer** ou par l'annulation des sessions dans l'historique, car les journaux d'annulation disparaissent avec le dossier de données.
+
 ## Tests et vérification
 
 - `dotnet test` : tests automatiques (aucune modification du système en dehors de `HKCU\Software\GamingTweakerTest` et du dossier temporaire).

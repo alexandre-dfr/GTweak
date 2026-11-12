@@ -58,5 +58,22 @@ namespace GamingTweaker.Tests
         [InlineData("Microsoft Basic Display Adapter", "")]
         [InlineData(null, "")]
         public void Vendeur_normalise(string nom, string attendu) => Assert.Equal(attendu, SystemInfo.NormalizeVendor(nom));
+
+        [Theory]
+        [InlineData(new int[] { 3 }, false, false)]      // Desktop
+        [InlineData(new int[] { 3 }, true, true)]        // Desktop avec batterie (onduleur ou mini-PC) : prudence
+        [InlineData(new int[] { 10 }, false, true)]      // Notebook
+        [InlineData(new int[] { 31 }, false, true)]      // Convertible
+        [InlineData(new int[0], false, false)]
+        public void Portable_depuis_le_chassis_ou_la_batterie(int[] chassis, bool batterie, bool attendu)
+        {
+            Assert.Equal(attendu, SystemInfo.EstPortable(chassis, batterie));
+        }
+
+        [Fact]
+        public void Le_verrou_d_instance_a_une_DACL_explicite()
+        {
+            Assert.NotNull(SingleInstance.Securite());
+        }
     }
 }

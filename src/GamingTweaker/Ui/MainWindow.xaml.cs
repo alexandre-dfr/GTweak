@@ -94,12 +94,15 @@ namespace GamingTweaker.Ui
         }
 
         /// <summary>Contrôles de démarrage (appelés par l'application, pas par les tests).</summary>
-        public void LancerControlesDemarrage(DataPaths paths)
+        public const string BandeauPortable = "PC portable détecté : les options d'alimentation (plans Performances, ASPM, veille des périphériques, veille prolongée) augmentent la consommation sur batterie. Appliquez-les branché sur secteur, ou laissez-les décochées.";
+
+        public void LancerControlesDemarrage(DataPaths paths, MachineFacts facts = null)
         {
+            if (facts != null && facts.EstPortable) vm.Bandeau = BandeauPortable;
             Task.Run(() => ElevationCheck.SameUserAsDesktop()).ContinueWith(t =>
             {
                 if (t.Status == TaskStatus.RanToCompletion && !t.Result)
-                    vm.Bandeau = "Les options du profil utilisateur seront ignorées : l'application est exécutée sous un autre compte administrateur.";
+                    vm.Bandeau = ("Les options du profil utilisateur seront ignorées : l'application est exécutée sous un autre compte administrateur. " + vm.Bandeau).Trim();
             }, TaskScheduler.FromCurrentSynchronizationContext());
 
             SessionInterrompue s = null;

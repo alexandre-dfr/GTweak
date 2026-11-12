@@ -105,7 +105,7 @@ namespace GamingTweaker
 
             fenetre = new Ui.MainWindow(vm);
             fenetre.Show();
-            fenetre.LancerControlesDemarrage(paths);
+            fenetre.LancerControlesDemarrage(paths, facts);
             var _ = vm.DetectAsync();
             var __ = vm.Routine.ActualiserAsync();
         }

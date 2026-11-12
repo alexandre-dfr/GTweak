@@ -62,7 +62,7 @@ namespace GamingTweaker.Core
             return !string.IsNullOrEmpty(nomOuChemin) && nomOuChemin.IndexOf('%') < 0;
         }
 
-        /// <summary>Résultat de « schtasks /Delete » : succès, ou tâche introuvable (déjà absente). Un refus (droits…) n'est pas un succès.</summary>
+        /// <summary>Résultat de « schtasks /Delete » (ancien mécanisme, conservé pour l'interprétation des sorties) : succès, ou tâche introuvable. Un refus n'est pas un succès.</summary>
         public static bool SuppressionReussie(int code, string sortie)
         {
             if (code == 0) return true;
@@ -237,13 +237,57 @@ namespace GamingTweaker.Core
             finally { if (System.Runtime.InteropServices.Marshal.IsComObject(service)) System.Runtime.InteropServices.Marshal.ReleaseComObject(service); }
         }
 
-        /// <summary>Supprime la tâche, puis le dossier App\ (copies de l'exe et du profil). Machines (sessions, journaux, mesures) n'est jamais touché.</summary>
+        private const int HRESULT_FICHIER_INTROUVABLE = unchecked((int)0x80070002);
+
+        /// <summary>
+        /// Supprime la tâche et le dossier \GamingTweaker du Planificateur par COM (ITaskFolder.DeleteTask / DeleteFolder), indépendamment
+        /// de la langue de Windows. Une tâche ou un dossier déjà absents valent succès ; un dossier qui contient d'autres tâches est conservé.
+        /// </summary>
+        internal static void SupprimerTacheEtDossier()
+        {
+            var type = Type.GetTypeFromProgID("Schedule.Service", true);
+            object service = Activator.CreateInstance(type);
+            try
+            {
+                type.InvokeMember("Connect", System.Reflection.BindingFlags.InvokeMethod, null, service, new object[] { null, null, null, null });
+                object racine = type.InvokeMember("GetFolder", System.Reflection.BindingFlags.InvokeMethod, null, service, new object[] { "\\" });
+                try
+                {
+                    var dossier = NomTache.Substring(1, NomTache.LastIndexOf('\\') - 1);   // « GamingTweaker »
+                    var nom = NomTache.Substring(NomTache.LastIndexOf('\\') + 1);          // « Routine »
+                    object sous = null;
+                    try { sous = racine.GetType().InvokeMember("GetFolder", System.Reflection.BindingFlags.InvokeMethod, null, racine, new object[] { dossier }); }
+                    catch (System.Reflection.TargetInvocationException ex) { if (!Introuvable(ex)) throw Refus(ex); return; }   // dossier absent : rien à faire
+                    try
+                    {
+                        try { sous.GetType().InvokeMember("DeleteTask", System.Reflection.BindingFlags.InvokeMethod, null, sous, new object[] { nom, 0 }); }
+                        catch (System.Reflection.TargetInvocationException ex) { if (!Introuvable(ex)) throw Refus(ex); }
+                        try { racine.GetType().InvokeMember("DeleteFolder", System.Reflection.BindingFlags.InvokeMethod, null, racine, new object[] { dossier, 0 }); }
+                        catch (System.Reflection.TargetInvocationException) { /* dossier non vide (autres tâches) ou déjà absent : conservé */ }
+                    }
+                    finally { if (System.Runtime.InteropServices.Marshal.IsComObject(sous)) System.Runtime.InteropServices.Marshal.ReleaseComObject(sous); }
+                }
+                finally { if (System.Runtime.InteropServices.Marshal.IsComObject(racine)) System.Runtime.InteropServices.Marshal.ReleaseComObject(racine); }
+            }
+            finally { if (System.Runtime.InteropServices.Marshal.IsComObject(service)) System.Runtime.InteropServices.Marshal.ReleaseComObject(service); }
+        }
+
+        private static bool Introuvable(System.Reflection.TargetInvocationException ex)
+        {
+            var com = (ex.InnerException ?? ex) as System.Runtime.InteropServices.COMException;
+            return com != null && com.ErrorCode == HRESULT_FICHIER_INTROUVABLE;
+        }
+
+        private static InvalidOperationException Refus(System.Reflection.TargetInvocationException ex)
+        {
+            return new InvalidOperationException("Le Planificateur de tâches a refusé la suppression de la routine : " + (ex.InnerException ?? ex).Message, ex.InnerException ?? ex);
+        }
+
+        /// <summary>Supprime la tâche (et son dossier), puis le dossier App\ (copies de l'exe et du profil). Machines (sessions, journaux, mesures) n'est jamais touché.</summary>
         private static void RemoveVerrouille()
         {
-            // Toujours tenté (une lecture en échec ne doit pas laisser la tâche en place) ; « introuvable » vaut succès.
-            string sortie;
-            int code = Schtasks("/Delete /TN \"" + NomTache + "\" /F", out sortie);
-            if (!SuppressionReussie(code, sortie)) throw new InvalidOperationException("schtasks n'a pas supprimé la tâche (code " + code + ") : " + sortie.Trim());
+            // Toujours tenté (une lecture en échec ne doit pas laisser la tâche en place) ; une tâche déjà absente vaut succès.
+            SupprimerTacheEtDossier();
             // Interface lancée depuis la copie : l'exe en cours ne peut pas être supprimé ; le profil copié l'est.
             var source = Process.GetCurrentProcess().MainModule.FileName;
             var erreurs = new List<string>();
