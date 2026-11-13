@@ -81,6 +81,7 @@ if ($after -gt $before) { Write-Output 'OK' } else { Write-Output 'LIMIT' }
             }
             catch (Exception ex)
             {
+                TraceAppli.Erreur("point de restauration", ex);
                 return new RestorePointResult { Message = "Point de restauration impossible : " + ex.Message };
             }
         }

@@ -120,13 +120,13 @@ namespace GamingTweaker.Ui
         public string MenuCourant
         {
             get { return menuCourant; }
-            set { if (Set(ref menuCourant, value)) { Raise("EstEmplacement"); Raise("EstMenuTelemetrie"); Raise("EstModeJeu"); Raise("EstHistorique"); Raise("TitreAffiche"); Raise("EstMenuInformations"); MajInfo(); Filtrer(); if (value == MenuModeJeu && modeJeuVm != null) modeJeuVm.ChargerSiBesoin(); if (value == MenuHistorique && historiqueVm != null) historiqueVm.Charger(); } }
+            set { if (Set(ref menuCourant, value)) { Raise("EstEmplacement"); Raise("EstMenuTelemetrie"); Raise("EstMenuOptions"); Raise("EstModeJeu"); Raise("EstHistorique"); Raise("TitreAffiche"); Raise("EstMenuInformations"); MajInfo(); Filtrer(); if (value == MenuModeJeu && modeJeuVm != null) modeJeuVm.ChargerSiBesoin(); if (value == MenuHistorique && historiqueVm != null) historiqueVm.Charger(); } }
         }
 
         public string Recherche
         {
             get { return recherche; }
-            set { if (Set(ref recherche, value ?? "")) { Raise("EnRecherche"); CommandManager.InvalidateRequerySuggested(); Raise("TitreAffiche"); Raise("EstMenuTelemetrie"); Raise("EstModeJeu"); Raise("EstHistorique"); Raise("EstMenuInformations"); MajInfo(); Filtrer(); } }
+            set { if (Set(ref recherche, value ?? "")) { Raise("EnRecherche"); CommandManager.InvalidateRequerySuggested(); Raise("TitreAffiche"); Raise("EstMenuTelemetrie"); Raise("EstMenuOptions"); Raise("EstModeJeu"); Raise("EstHistorique"); Raise("EstMenuInformations"); MajInfo(); Filtrer(); } }
         }
 
         public bool EnRecherche { get { return Normaliser(recherche).Length > 0; } }
@@ -139,8 +139,10 @@ namespace GamingTweaker.Ui
         private void MajInfo() { if (Info != null) Info.SetVisible(EstMenuInformations); }
         public const string MenuTelemetrie = "Télémétrie";
         public const string UrlShutUp10 = "https://www.oo-software.com/fr/shutup10";
-        /// <summary>Vrai quand le bandeau du menu Télémétrie (Tout restaurer, lien O&amp;O ShutUp10++) doit s'afficher.</summary>
+        /// <summary>Vrai sur le menu Télémétrie (lien O&amp;O ShutUp10++).</summary>
         public bool EstMenuTelemetrie { get { return !EnRecherche && menuCourant == MenuTelemetrie; } }
+        /// <summary>Vrai sur un menu d'options (bandeau « Tout restaurer », qui porte sur tous les menus).</summary>
+        public bool EstMenuOptions { get { return !EnRecherche && Array.IndexOf(MenusOptions, menuCourant) >= 0; } }
         public const string MenuModeJeu = "Mode Jeu";
         public const string MenuHistorique = "Historique";
         public bool EstModeJeu { get { return !EnRecherche && menuCourant == MenuModeJeu; } }
@@ -329,7 +331,7 @@ namespace GamingTweaker.Ui
             foreach (var o in Options) o.SetEtat(DetectState.Detecting);
             Dictionary<string, DetectState> res = null;
             try { res = await detect(Options.Select(o => o.Item).ToList()); }
-            catch (Exception) { /* détection impossible : tout reste Inconnu */ }
+            catch (Exception ex) { TraceAppli.Erreur("détection impossible, tout reste Inconnu", ex); }
             foreach (var o in Options)
             {
                 DetectState s;
@@ -337,7 +339,7 @@ namespace GamingTweaker.Ui
             }
         }
 
-        // ---------- Tout restaurer (menu Télémétrie) ----------
+        // ---------- Tout restaurer (tous les menus) ----------
 
         /// <summary>Service d'annulation utilisé par « Tout restaurer » (journal, sinon script revert).</summary>
         public IRestauration Restauration { get; set; }
@@ -347,7 +349,7 @@ namespace GamingTweaker.Ui
         public bool PeutToutRestaurer { get { return !restaurationEnCours; } }
 
         /// <summary>
-        /// Annule les options du menu Télémétrie : toute option qui a des entrées actives dans un journal est annulée par TOUS ses journaux
+        /// Annule les options réversibles de tous les menus : toute option qui a des entrées actives dans un journal est annulée par TOUS ses journaux
         /// (du plus récent au plus ancien), quel que soit son état de détection ; une option détectée « appliquée » sans journal passe par son
         /// script revert (valeurs par défaut de Windows). Une annulation par journal en échec n'est jamais remplacée par le script revert.
         /// Même verrou d'instance et même règle de compte que l'exécution : les options HKCU sont ignorées sous un autre compte.
@@ -366,7 +368,7 @@ namespace GamingTweaker.Ui
                 {
                     if (verrou == null) { Message = "Une autre exécution de GamingTweaker est en cours : rien n'a été restauré."; return res; }
 
-                    var tel = Options.Where(o => o.Menu == MenuTelemetrie).Select(o => o.Item).ToList();
+                    var tel = Options.Where(o => Array.IndexOf(MenusOptions, o.Menu) >= 0).Select(o => o.Item).ToList();
                     bool memeUtilisateur = svc.MemeUtilisateur();
                     Dictionary<string, DetectState> etats = null;
                     string erreurDetection = null;
@@ -421,7 +423,7 @@ namespace GamingTweaker.Ui
                     if (candidats == 0)
                     {
                         Message = erreurDetection != null ? "Détection impossible, rien n'a été restauré : " + erreurDetection
-                                                          : "Rien à restaurer : aucune option du menu Télémétrie n'est appliquée.";
+                                                          : "Rien à restaurer : aucune option appliquée par GamingTweaker.";
                         return res;
                     }
 

@@ -57,7 +57,8 @@ namespace GamingTweaker.Ui
         private async void ToutRestaurer_Click(object sender, RoutedEventArgs e)
         {
             var ok = MessageBox.Show(this,
-                "Toutes les options du menu Télémétrie déjà appliquées vont être annulées : par le journal de leur dernière exécution, sinon par un retour aux valeurs par défaut de Windows.\r\n\r\nContinuer ?",
+                "Toutes les options appliquées par GamingTweaker, dans tous les menus, vont être annulées : par le journal de leurs exécutions, sinon par un retour aux valeurs par défaut de Windows. "
+                + "Les nettoyages (définitifs) et les mises à jour installées ne sont pas concernés.\r\n\r\nContinuer ?",
                 "Tout restaurer", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
             if (ok != MessageBoxResult.Yes) return;
             try { await vm.ToutRestaurerAsync(); }

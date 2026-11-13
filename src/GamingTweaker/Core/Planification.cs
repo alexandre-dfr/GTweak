@@ -230,6 +230,7 @@ namespace GamingTweaker.Core
                 }
                 catch (System.Reflection.TargetInvocationException ex)
                 {
+                    TraceAppli.Erreur("planification refusée", ex.InnerException ?? ex);
                     throw new InvalidOperationException("Le Planificateur de tâches a refusé la routine : " + (ex.InnerException ?? ex).Message, ex.InnerException ?? ex);
                 }
                 finally { if (System.Runtime.InteropServices.Marshal.IsComObject(racine)) System.Runtime.InteropServices.Marshal.ReleaseComObject(racine); }

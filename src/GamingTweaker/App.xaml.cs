@@ -47,6 +47,8 @@ namespace GamingTweaker
             }
             var facts = SystemInfo.Detect();
             var paths = DataPaths.Resolve(AppDomain.CurrentDomain.BaseDirectory, facts, DataPaths.RacineProtegeeParDefaut);
+            TraceAppli.Configurer(paths.MachineDir);
+            TraceAppli.Ecrire("interface : Windows " + facts.WindowsMajor + " " + facts.Edition + ", CPU " + facts.CpuVendor + ", GPU " + string.Join("/", facts.GpuVendors) + (facts.EstPortable ? ", portable" : ""));
             var pipeline = new RunPipeline(new RestorePoint(), ElevationCheck.SameUserAsDesktop);
 
             var registre = new ListProviderRegistry();

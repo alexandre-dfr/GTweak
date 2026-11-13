@@ -74,7 +74,7 @@ namespace GamingTweaker.Tests
         }
 
         [Fact]
-        public async Task Annule_par_le_journal_sinon_par_revert_et_ne_touche_que_les_options_appliquees_du_menu()
+        public async Task Annule_par_le_journal_sinon_par_revert_toutes_les_options_appliquees_de_tous_les_menus()
         {
             etats = new Dictionary<string, DetectState>
             {
@@ -87,14 +87,14 @@ namespace GamingTweaker.Tests
 
             var r = await vm.ToutRestaurerAsync();
 
-            Assert.Equal(new[] { @"journal:tel.a@C:\S\20260101-100000\journal.jsonl", "revert:tel.b" }, faux.Appels);
+            Assert.Equal(new[] { @"journal:tel.a@C:\S\20260101-100000\journal.jsonl", "revert:tel.b", "revert:opt.x" }, faux.Appels);   // opt.x : autre menu, restauré aussi
             Assert.Equal(1, r.AnnuleesParJournal);
-            Assert.Equal(1, r.AnnuleesParRevert);
+            Assert.Equal(2, r.AnnuleesParRevert);
             Assert.Empty(r.Echecs);
             Assert.Contains("tel.definitif", r.Ignorees);   // appliquée mais sans journal ni revert
             Assert.DoesNotContain("tel.win11", r.Ignorees); // incompatible : n'existe pas pour ce PC
             Assert.Equal(2, detections);                    // détection avant, puis nouvelle détection après
-            Assert.Equal(new[] { "tel.a", "tel.b" }, faux.Oublies);   // plus « appliquées par l'outil » (last-applied.json)
+            Assert.Equal(new[] { "tel.a", "tel.b", "opt.x" }, faux.Oublies);   // plus « appliquées par l'outil » (last-applied.json)
             Assert.True(faux.VerrouLibere);
         }
 

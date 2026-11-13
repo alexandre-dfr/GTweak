@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using GamingTweaker.Core;
 using Xunit;
@@ -74,6 +75,24 @@ namespace GamingTweaker.Tests
         public void Le_verrou_d_instance_a_une_DACL_explicite()
         {
             Assert.NotNull(SingleInstance.Securite());
+        }
+
+        [Fact]
+        public void Le_journal_applicatif_ecrit_les_lignes_gardees_en_memoire_une_fois_configure()
+        {
+            var dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "gt-trace-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                TraceAppli.Ecrire("avant configuration");
+                TraceAppli.Configurer(dir);
+                TraceAppli.Erreur("contexte", new InvalidOperationException("ligne 1\r\nligne 2"));
+                var texte = System.IO.File.ReadAllText(System.IO.Path.Combine(dir, TraceAppli.NomFichier));
+                Assert.Contains("démarrage GamingTweaker", texte);
+                Assert.Contains("avant configuration", texte);
+                Assert.Contains("contexte : InvalidOperationException : ligne 1 ligne 2", texte);
+                Assert.DoesNotContain("ligne 1\r\nligne 2", texte);
+            }
+            finally { TraceAppli.Reinitialiser(); try { System.IO.Directory.Delete(dir, true); } catch (System.IO.IOException) { } }
         }
     }
 }
