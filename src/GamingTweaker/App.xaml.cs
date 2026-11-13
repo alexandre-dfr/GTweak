@@ -89,6 +89,11 @@ namespace GamingTweaker
             {
                 Confirmer = texte => MessageBox.Show(fenetre, texte, "Historique", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes,
                 ApresAnnulation = () => { var _ = vm.DetectAsync(); },
+                ApresDesinstallation = () =>
+                {
+                    MessageBox.Show(fenetre, "GamingTweaker est désinstallé. Supprimez GamingTweaker.exe à la main si vous ne voulez plus l'utiliser.", "GamingTweaker", MessageBoxButton.OK, MessageBoxImage.Information);
+                    Shutdown(0);
+                },
             };
 
             vm.ModeJeu = new ModeJeuViewModel(new ModeJeu(paths.MachineDir, new ModeJeuSysteme()), ModeJeuListes.ListerServices, ModeJeuListes.ListerProcessus)

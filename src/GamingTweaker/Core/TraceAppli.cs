@@ -54,12 +54,12 @@ namespace GamingTweaker.Core
         public static void Erreur(string contexte, Exception ex)
         {
             if (ex == null) { Ecrire(contexte); return; }
-            Ecrire(contexte + " : " + ex.GetType().Name + " : " + (ex.Message ?? "").Replace("\r", " ").Replace("\n", " "));
+            Ecrire(contexte + " : " + ex.GetType().Name + " : " + (ex.Message ?? ""));
         }
 
         private static string Ligne(string message)
         {
-            return DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) + " " + message.Replace("\r", " ").Replace("\n", " ");
+            return DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) + " " + message.Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ");
         }
 
         private static void Vider()

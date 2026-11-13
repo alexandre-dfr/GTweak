@@ -105,6 +105,7 @@ namespace GamingTweaker.Ui
             PurgerQuarantaineCommand = new RelayCommand(p => PurgerQuarantaine((QuarantaineLigne)p), p => p is QuarantaineLigne);
             ReleverCommand = new RelayCommand(_ => { var t = ReleverAsync(); }, _ => !enReleve);
             ComparerCommand = new RelayCommand(_ => Comparer(), _ => Releves.Count(r => r.IsChecked) == 2);
+            DesinstallerCommand = new RelayCommand(_ => { var t = DesinstallerAsync(); }, _ => !enCours && !enReleve);
             Charger();
         }
 
@@ -119,6 +120,35 @@ namespace GamingTweaker.Ui
         public ICommand PurgerQuarantaineCommand { get; private set; }
         public ICommand ReleverCommand { get; private set; }
         public ICommand ComparerCommand { get; private set; }
+        public ICommand DesinstallerCommand { get; private set; }
+
+        /// <summary>Désinstallation (aperçu si faux, exécution si vrai) ; remplaçable dans les tests. Par défaut : Desinstallation.Executer.</summary>
+        public Func<bool, BilanDesinstallation> Desinstaller { get; set; } = confirme => Desinstallation.Executer(confirme);
+        /// <summary>Appelée quand la désinstallation a été exécutée (l'application se ferme).</summary>
+        public Action ApresDesinstallation { get; set; }
+
+        /// <summary>
+        /// Aperçu (routine, sessions, quarantaine) puis confirmation explicite ; les réglages appliqués ne sont pas annulés par la désinstallation,
+        /// le texte le rappelle. Sous le verrou d'instance (pris dans Desinstallation.Executer).
+        /// </summary>
+        public async Task DesinstallerAsync()
+        {
+            if (enCours) return;
+            EnCours = true;
+            try
+            {
+                var apercu = await Task.Run(() => Desinstaller(false));
+                var texte = string.Join("\r\n", apercu.Actions.Concat(apercu.Avertissements.Select(a => "Attention : " + a)))
+                    + "\r\n\r\nL'application se fermera ; GamingTweaker.exe lui-même reste à supprimer à la main.\r\n\r\nDésinstaller maintenant ?";
+                if (apercu.Avertissements.Any(a => a.Contains("autre exécution"))) { Message = apercu.Avertissements[0]; return; }
+                if (Confirmer == null || !Confirmer(texte)) { Message = "Désinstallation annulée."; return; }
+                var bilan = await Task.Run(() => Desinstaller(true));
+                Message = string.Join(" ", bilan.Actions.Concat(bilan.Avertissements.Select(a => "Attention : " + a)));
+                if (bilan.Code != 2 && ApresDesinstallation != null) ApresDesinstallation();
+            }
+            catch (Exception ex) { Message = "Désinstallation impossible : " + ex.Message; }
+            finally { EnCours = false; }
+        }
 
         /// <summary>Confirmation (texte, vrai pour continuer) : conflits d'annulation, suppression définitive.</summary>
         public Func<string, bool> Confirmer { get; set; }
