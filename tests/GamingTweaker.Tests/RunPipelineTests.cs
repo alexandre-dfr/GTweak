@@ -207,8 +207,9 @@ namespace GamingTweaker.Tests
         {
             var exe = Path.Combine(tmp, "exe2"); Directory.CreateDirectory(exe);
             var p = DataPaths.Resolve(exe, new MachineFacts { MachineName = "PC", MachineGuid = "abcdef01-2345" }, Path.Combine(tmp, "pd"));
+            // Profils à côté de l'exe (inscriptible) ; Machines et Quarantaine toujours sous la racine protégée (racine unique).
             Assert.Equal(Path.Combine(exe, "Profils"), p.ProfilsDir);
-            Assert.Equal(Path.Combine(exe, "Machines", "PC-abcdef01", "Sessions"), p.SessionsDir);
+            Assert.Equal(Path.Combine(tmp, "pd", "Machines", "PC-abcdef01", "Sessions"), p.SessionsDir);
             Assert.Equal(Path.Combine(tmp, "pd", "Quarantaine"), p.QuarantineDir);
             Assert.Empty(Directory.GetFiles(exe));
         }

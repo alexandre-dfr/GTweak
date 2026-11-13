@@ -1,0 +1,75 @@
+name: Build
+
+# Compile l'exe Release (net48, WPF) sur Windows, le publie dans la pré-version « test-build » du dépôt
+# (onglet Releases ; le quota de stockage des artefacts Actions du compte est épuisé, les releases n'y sont pas soumises),
+# puis lance les tests : un échec des tests fait échouer le job mais l'exe est déjà publié.
+on:
+  push:
+    branches: ['**']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restaurer
+        run: dotnet restore GamingTweaker.sln
+
+      - name: Compiler (Release, requireAdministrator)
+        run: dotnet build src/GamingTweaker/GamingTweaker.csproj -c Release --no-restore
+
+      - name: Vérifier l'exe et préparer la publication
+        id: exe
+        shell: pwsh
+        run: |
+          $exe = 'src/GamingTweaker/bin/Release/net48/GamingTweaker.exe'
+          if (-not (Test-Path $exe)) { throw "exe introuvable : $exe" }
+          $txt = [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($exe))
+          if ($txt -notmatch 'requireAdministrator') { throw 'Le manifeste requireAdministrator est absent de l''exe Release.' }
+          if ($txt -notmatch 'PerMonitorV2') { throw 'Le manifeste DPI PerMonitorV2 est absent de l''exe Release.' }
+          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash
+          $ver = (Get-Item $exe).VersionInfo.FileVersion
+          "version=$ver" >> $env:GITHUB_OUTPUT
+          "hash=$hash" >> $env:GITHUB_OUTPUT
+          New-Item -ItemType Directory -Force publication | Out-Null
+          Copy-Item $exe, 'src/GamingTweaker/bin/Release/net48/GamingTweaker.exe.config' publication/
+          "GamingTweaker.exe $ver`nSHA-256 : $hash`nCommit : $env:GITHUB_SHA`nBranche : $env:GITHUB_REF_NAME" | Set-Content publication/SHA256.txt -Encoding utf8
+          Get-Content publication/SHA256.txt
+
+      - name: Publier dans la pré-version test-build
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = 'test-build'
+          gh release delete $tag --yes --cleanup-tag 2>$null; if ($LASTEXITCODE -ne 0) { Write-Host 'aucune pré-version précédente' }
+          $notes = "Build de test automatique, non signé (SmartScreen avertira).`n`nBranche : $env:GITHUB_REF_NAME`nCommit : $env:GITHUB_SHA`nVersion : ${{ steps.exe.outputs.version }}`nSHA-256 : ${{ steps.exe.outputs.hash }}`n`nLancer GamingTweaker.exe (UAC), vérifier le hash avec ``Get-FileHash GamingTweaker.exe``."
+          gh release create $tag publication/GamingTweaker.exe publication/GamingTweaker.exe.config publication/SHA256.txt --prerelease --target $env:GITHUB_SHA --title "Build de test ($env:GITHUB_REF_NAME, ${{ steps.exe.outputs.version }})" --notes $notes
+          if ($LASTEXITCODE -ne 0) { throw 'Publication de la pré-version impossible.' }
+          Write-Host "::notice::Exe publié : https://github.com/$env:GITHUB_REPOSITORY/releases/tag/$tag"
+
+      - name: Tests
+        run: dotnet test tests/GamingTweaker.Tests/GamingTweaker.Tests.csproj -c Release --no-restore --logger "trx;LogFileName=tests.trx" --results-directory TestResults
+
+      - name: Résumé des tests
+        if: always()
+        shell: pwsh
+        run: |
+          $trx = Get-ChildItem TestResults -Filter *.trx -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $trx) { "Aucun résultat de tests (compilation des tests en échec ?)." >> $env:GITHUB_STEP_SUMMARY; exit 0 }
+          [xml]$x = Get-Content $trx.FullName
+          $c = $x.TestRun.ResultSummary.Counters
+          "## Tests : $($c.passed) réussis, $($c.failed) échoués, $($c.total) au total" >> $env:GITHUB_STEP_SUMMARY
+          foreach ($r in $x.TestRun.Results.UnitTestResult | Where-Object { $_.outcome -eq 'Failed' }) {
+            "- **$($r.testName)** : " + (($r.Output.ErrorInfo.Message -split "`n")[0]) >> $env:GITHUB_STEP_SUMMARY
+          }

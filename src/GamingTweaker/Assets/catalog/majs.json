@@ -63,25 +63,6 @@
     }
   },
   {
-    "id": "upd.wu-auto-off",
-    "menu": "Mises à jour",
-    "groupe": "Windows Update",
-    "titre": "Bloquer les mises à jour automatiques de Windows",
-    "description": "Active la stratégie NoAutoUpdate : Windows ne télécharge ni n'installe plus rien tout seul. Les services restent actifs, donc la mise à jour manuelle, l'option « Installer les mises à jour de Windows » et la routine continuent de fonctionner. Risqué : sans mise à jour manuelle régulière, le PC ne reçoit plus les correctifs de sécurité. L'annulation supprime la stratégie.",
-    "risque": "Risque",
-    "reversible": true,
-    "redemarrage": false,
-    "compatibilite": {
-      "windows": [
-        "10",
-        "11"
-      ],
-      "editions": [],
-      "cpu": [],
-      "gpu": []
-    }
-  },
-  {
     "id": "upd.wu-drivers-off",
     "menu": "Mises à jour",
     "groupe": "Windows Update",

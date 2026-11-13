@@ -55,6 +55,7 @@ namespace GamingTweaker
         private const string Usage =
             "Utilisation : GamingTweaker.exe                      lance l'interface\r\n" +
             "              GamingTweaker.exe --profile <fichier> --silent   applique un profil sans interface\r\n" +
+            "              GamingTweaker.exe --uninstall [--confirm]          retire la routine et le dossier de données (aperçu sans --confirm)\r\n" +
             "Codes de sortie : 0 = tout est appliqué ou ignoré, 1 = au moins un échec, 2 = exécution impossible.";
 
         private static int RunCommandLine(string[] args)
@@ -62,6 +63,8 @@ namespace GamingTweaker
             AttachParentConsole();
             if (string.Equals(args[0], "--cycle-test", StringComparison.OrdinalIgnoreCase))
                 return args.Length == 2 ? CycleTest.Run(args[1]) : 2;
+            if (string.Equals(args[0], "--uninstall", StringComparison.OrdinalIgnoreCase))
+                return RunUninstall(args);
             string profile = null; bool silent = false;
             for (int i = 0; i < args.Length; i++)
             {
@@ -103,6 +106,24 @@ namespace GamingTweaker
             if (report.SessionDir != null) Console.Out.WriteLine(Path.Combine(report.SessionDir, "report.txt"));
             else foreach (var w in report.Avertissements) Console.Error.WriteLine(w);
             return report.ExitCode;
+        }
+
+        private static int RunUninstall(string[] args)
+        {
+            bool confirme = false;
+            for (int i = 1; i < args.Length; i++)
+            {
+                if (string.Equals(args[i], "--confirm", StringComparison.OrdinalIgnoreCase)) confirme = true;
+                else { Console.Error.WriteLine("Argument inconnu : " + args[i]); Console.Error.WriteLine(Usage); return 2; }
+            }
+            if (!IsAdministrator()) { Console.Error.WriteLine("Droits administrateur requis pour désinstaller."); return 2; }
+            BilanDesinstallation b;
+            try { b = Desinstallation.Executer(confirme); }
+            catch (Exception ex) { Console.Error.WriteLine("Désinstallation impossible : " + ex.Message); return 2; }
+            foreach (var a in b.Actions) Console.Out.WriteLine(a);
+            foreach (var w in b.Avertissements) Console.Error.WriteLine("Attention : " + w);
+            if (!confirme) Console.Out.WriteLine("Relancez avec --confirm pour exécuter.");
+            return b.Code;
         }
 
         private static bool IsAdministrator()

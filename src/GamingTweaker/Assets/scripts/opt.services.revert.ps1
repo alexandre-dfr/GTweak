@@ -6,8 +6,6 @@ Reset-GTTweaks -Service @(
     @('RetailDemo', 'Manual'),
     @('WpcMonSvc', 'Manual'),
     @('lfsvc', 'Manual'),
-    @('Spooler', 'Automatic'),
     @('CscService', 'Manual'),
-    @('StorSvc', 'AutomaticDelayed'),
     @('SharedAccess', 'Manual')
 )

@@ -25,8 +25,8 @@
     "menu": "Nettoyage",
     "groupe": "Fichiers temporaires",
     "titre": "Corbeille vidée",
-    "description": "Vide la Corbeille de tous les lecteurs. Ignorée si elle est déjà vide. Définitif : les fichiers supprimés ne sont pas restaurables.",
-    "risque": "Sur",
+    "description": "Vide la Corbeille de tous les lecteurs. Ignorée si elle est déjà vide. Avancé, jamais coché par « Recommandé » : des fichiers supprimés par erreur ne pourront plus être récupérés. Définitif : les fichiers supprimés ne sont pas restaurables.",
+    "risque": "Avance",
     "reversible": false,
     "redemarrage": false,
     "hkcu": true,
@@ -87,8 +87,8 @@
     "menu": "Nettoyage",
     "groupe": "Fichiers temporaires",
     "titre": "Journaux Windows effacés",
-    "description": "Supprime les journaux de maintenance (CBS, DISM, Windows Update) et efface les journaux d'événements, sauf le journal Sécurité. L'historique des événements passés n'est plus consultable dans l'observateur d'événements. Définitif : les fichiers supprimés ne sont pas restaurables.",
-    "risque": "Sur",
+    "description": "Supprime les journaux de maintenance (CBS, DISM, Windows Update) et efface les journaux d'événements, sauf le journal Sécurité. L'historique des événements passés n'est plus consultable dans l'observateur d'événements. Avancé : ces journaux servent au diagnostic d'un plantage de jeu ou de pilote. Définitif : les fichiers supprimés ne sont pas restaurables.",
+    "risque": "Avance",
     "reversible": false,
     "redemarrage": false,
     "delaiSec": 900,
@@ -208,7 +208,7 @@
     "menu": "Nettoyage",
     "groupe": "Windows",
     "titre": "Windows.old supprimé",
-    "description": "Supprime le dossier C:\\Windows.old laissé par la mise à niveau de Windows (plusieurs dizaines de Go). Après cela, le retour à la version précédente de Windows est impossible. Les dossiers personnels de l'ancienne installation (Documents, Bureau, Images, Téléchargements, etc.) sont conservés et ne sont pas supprimés : le dossier Windows.old peut donc rester en partie ; le reste ne pourra plus être récupéré. Windows le supprime de lui-même après quelques semaines. Définitif : les fichiers supprimés ne sont pas restaurables.",
+    "description": "Supprime le dossier C:\\Windows.old laissé par la mise à niveau de Windows (plusieurs dizaines de Go). Après cela, le retour à la version précédente de Windows est impossible. Les dossiers personnels de l'ancienne installation (Documents, Bureau, Images, Téléchargements, etc.) et les dossiers AppData de chaque ancien profil (sauvegardes de jeux, réglages) sont conservés et ne sont pas supprimés : le dossier Windows.old peut donc rester en partie ; le reste ne pourra plus être récupéré. Windows le supprime de lui-même après quelques semaines. Définitif : les fichiers supprimés ne sont pas restaurables.",
     "risque": "Avance",
     "reversible": false,
     "redemarrage": false,
@@ -275,46 +275,6 @@
     "reversible": false,
     "redemarrage": false,
     "delaiSec": 3600,
-    "compatibilite": {
-      "windows": [
-        "10",
-        "11"
-      ],
-      "editions": [],
-      "cpu": [],
-      "gpu": []
-    }
-  },
-  {
-    "id": "cln.prefetch",
-    "menu": "Nettoyage",
-    "groupe": "Windows",
-    "titre": "Dossier Prefetch vidé",
-    "description": "Supprime les fichiers .pf de C:\\Windows\\Prefetch. Ralentit les lancements suivants des programmes, le temps que Windows reconstruise ce cache. Suppression définitive.",
-    "risque": "Risque",
-    "reversible": false,
-    "redemarrage": false,
-    "compatibilite": {
-      "windows": [
-        "10",
-        "11"
-      ],
-      "editions": [],
-      "cpu": [],
-      "gpu": []
-    }
-  },
-  {
-    "id": "cln.registry",
-    "menu": "Nettoyage",
-    "groupe": "Windows",
-    "titre": "Nettoyage limité du registre",
-    "description": "Retire les entrées de désinstallation dont le programme a disparu (jamais celles de Windows Installer) et les valeurs MuiCache dont le fichier n'existe plus. Chaque clé est exportée en .reg dans le dossier de la session avant sa suppression ; si un export échoue, rien n'est supprimé. L'annulation (Historique) réimporte ces exports. Aucun autre nettoyage du registre : le gain attendu est nul.",
-    "risque": "Risque",
-    "reversible": true,
-    "redemarrage": false,
-    "hkcu": true,
-    "delaiSec": 600,
     "compatibilite": {
       "windows": [
         "10",

@@ -1,1 +1,2 @@
-Get-TweakPathSize -Path @($env:TEMP, (Join-Path $env:SystemRoot 'Temp')) -ExcludePath (Join-Path $env:TEMP 'GamingTweaker')
+$gtT = Get-GTUserTemp
+if (-not $gtT) { 0 } else { Get-TweakPathSize -Path @($gtT, (Join-Path $env:SystemRoot 'Temp')) }

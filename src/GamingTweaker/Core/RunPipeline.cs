@@ -266,6 +266,25 @@ namespace GamingTweaker.Core
             catch (Exception) { /* non bloquant */ }
         }
 
+        private static string VersionOutil()
+        {
+            try { return typeof(RunPipeline).Assembly.GetName().Version.ToString(3); } catch (Exception) { return "?"; }
+        }
+
+        private static string BuildWindows()
+        {
+            try
+            {
+                using (var k = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion"))
+                {
+                    if (k == null) return "?";
+                    var build = Convert.ToString(k.GetValue("CurrentBuildNumber")); var ubr = k.GetValue("UBR");
+                    return string.IsNullOrEmpty(build) ? "?" : build + (ubr == null ? "" : "." + ubr);
+                }
+            }
+            catch (Exception) { return "?"; }
+        }
+
         private static string Libelle(OutcomeStatus s)
         {
             switch (s)
@@ -285,6 +304,7 @@ namespace GamingTweaker.Core
             var titres = selected.ToDictionary(i => i.Id, i => i.Titre ?? i.Id);
             var sb = new StringBuilder();
             sb.AppendLine("GamingTweaker - rapport du " + debut.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture));
+            sb.AppendLine("Version " + VersionOutil() + " ; Windows build " + BuildWindows() + " (pour le support)");
             sb.AppendLine();
             foreach (var i in r.Items)
             {

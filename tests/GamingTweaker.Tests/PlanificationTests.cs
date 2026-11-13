@@ -254,7 +254,8 @@ namespace GamingTweaker.Tests
                 var p = DataPaths.Resolve(app, f, pd);
                 Assert.Equal(System.IO.Path.Combine(pd, "Machines", "PC-12345678"), p.MachineDir);
                 Assert.Equal(System.IO.Path.Combine(pd, "Profils"), p.ProfilsDir);
-                Assert.Equal(p.MachineDir, DataPaths.ResolveRoutine(f, pd).MachineDir);
+                // Racine unique : la routine et l'interface résolvent le même dossier Machines.
+                Assert.Equal(p.MachineDir, DataPaths.Resolve(System.IO.Path.Combine(pd, "ailleurs"), f, pd).MachineDir);
             }
             finally { try { System.IO.Directory.Delete(pd, true); } catch (System.IO.IOException) { } }
         }

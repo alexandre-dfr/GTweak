@@ -36,14 +36,15 @@
 
 ## 5. Options Testable=false (matériel)
 
-Options concernées : économie d'énergie USB, économie d'énergie carte réseau, MSI du GPU, HAGS, PCIe ASPM, VBS / intégrité de la mémoire, HPET, BitLocker, suppression d'Edge, et toute option marquée `testable: false` dans le catalogue.
+Options concernées : économie d'énergie USB, économie d'énergie carte réseau, HAGS, PCIe ASPM, Windows.old, anciens pilotes, et toute option marquée `testable: false` dans le catalogue.
 
 | Action | Résultat attendu | Annulation |
 |---|---|---|
 | Appliquer une option à la fois (jamais toutes d'un coup la première fois), vérifier la détection | « Appliquée » ; ni écran noir ni perte réseau ; redémarrage signalé si nécessaire | Historique : annuler l'option, redémarrer, vérifier « Non appliquée » |
 | Redémarrer et jouer 15 minutes | Stabilité, pas de régression de FPS | Annuler l'option fautive |
 | Options sur des services (`sc config ... start= auto`) | Le démarrage différé est retiré quand l'option le demande ; détection cohérente | Le type de démarrage d'origine, différé compris, est rétabli |
-| Defender (temps réel, analyses) avec protection contre les falsifications active | Échec explicite si Windows refuse, jamais un faux « Appliquée » | - |
+| Charge processeur des analyses Defender avec protection contre les falsifications active | Échec explicite si Windows refuse, jamais un faux « Appliquée » | - |
+| `cln.temp` et `upd.apps` (winget présent) | Fichiers temporaires de l'utilisateur supprimés (jamais le dossier Run de l'outil) ; mises à jour winget installées | - |
 
 ## 6. Annulation réelle
 
@@ -70,6 +71,8 @@ Options concernées : économie d'énergie USB, économie d'énergie carte rése
 | Exécuter la tâche (`schtasks /Run`) | Rapport écrit dans le dossier de données protégé, code de sortie 0, aucune interface | - |
 | Lancer l'interface pendant la routine (ou l'exe deux fois) | La seconde exécution refuse (code 2 en routine) | - |
 | `GamingTweaker.exe --profile absent.json --silent` | Message clair, code 2 | - |
+| `GamingTweaker.exe --uninstall` puis `--uninstall --confirm` | Aperçu (sessions, quarantaine) sans effet ; puis tâche, dossier `\GamingTweaker` du Planificateur et dossier de données supprimés | Relancer l'exe : dossier recréé |
+| Lancer l'exe sur un portable | Bandeau « PC portable détecté » ; « Recommandé » ne coche pas le plan Performances élevées | - |
 
 ## 9. Windows 10 (si une machine ou une image est disponible)
 

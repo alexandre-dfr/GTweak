@@ -1,1 +1,0 @@
-Set-TweakRegistryIfNeeded -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\PriorityControl' -Name 'Win32PrioritySeparation' -Type DWord -Value 0x26

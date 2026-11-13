@@ -160,11 +160,11 @@ namespace GamingTweaker.Tests
                     JsonConvert.SerializeObject(new { item = i, kind = "task", target = "\\X\\" + i, existed = true, before = "Enabled", after = "Disabled" }))) + "\n");
         }
 
-        private HistoriqueViewModel Vm(FauxRestauration f = null, IReadOnlyList<CatalogItem> cat = null, DataPaths routine = null)
+        /// <summary>Racine unique (%ProgramFiles%\GamingTweaker) : l'interface et la routine partagent les mêmes sessions.</summary>
+        private HistoriqueViewModel Vm(FauxRestauration f = null, IReadOnlyList<CatalogItem> cat = null)
         {
-            var autres = routine == null ? null : new List<DataPaths> { routine };
-            var q = routine == null ? new QuarantineService(paths.QuarantineDir, paths.SessionsDir) : new QuarantineService(paths.QuarantineDir, paths.SessionsDir, routine.SessionsDir);
-            return new HistoriqueViewModel(paths, f ?? new FauxRestauration(), cat ?? new List<CatalogItem>(), q, null, autres);
+            var q = new QuarantineService(paths.QuarantineDir, paths.SessionsDir);
+            return new HistoriqueViewModel(paths, f ?? new FauxRestauration(), cat ?? new List<CatalogItem>(), q);
         }
 
         [Fact]
@@ -269,56 +269,6 @@ namespace GamingTweaker.Tests
             Assert.True(File.Exists(origine));
             Assert.Empty(vm.Quarantaine);
             await Task.CompletedTask;
-        }
-
-        // ---------- Revue lots 14-16 ----------
-
-        private DataPaths Routine()
-        {
-            var r = Path.Combine(tmp, "RacineProtegee", "Machines", "PC-1");
-            var p = new DataPaths { ProfilsDir = Path.Combine(tmp, "RacineProtegee", "Profils"), MachineDir = r, SessionsDir = Path.Combine(r, "Sessions"), QuarantineDir = paths.QuarantineDir };
-            Directory.CreateDirectory(p.SessionsDir);
-            return p;
-        }
-
-        private static void SessionDans(string sessionsDir, string nom, string etat, string debut, SessionReport rapport = null, string[] journalItems = null)
-        {
-            var d = Path.Combine(sessionsDir, nom); Directory.CreateDirectory(d);
-            File.WriteAllText(Path.Combine(d, "state.json"), JsonConvert.SerializeObject(new { etat, debut }));
-            if (rapport != null)
-                File.WriteAllText(Path.Combine(d, "report.json"), JsonConvert.SerializeObject(rapport, new Newtonsoft.Json.Converters.StringEnumConverter()));
-            if (journalItems != null)
-                File.WriteAllText(Path.Combine(d, "journal.jsonl"), string.Join("\n", journalItems.Select(i =>
-                    JsonConvert.SerializeObject(new { item = i, kind = "task", target = "\\X\\" + i, existed = true, before = "Enabled", after = "Disabled" }))) + "\n");
-        }
-
-        [Fact]
-        public void Sessions_de_la_routine_fusionnees_par_date_avec_celles_de_l_interface()
-        {
-            var routine = Routine();
-            Session("20260101-100000", "Done", "2026-01-01T10:00:00");
-            SessionDans(routine.SessionsDir, "20260102-100000", "Done", "2026-01-02T10:00:00");
-            Session("20260103-100000", "Done", "2026-01-03T10:00:00");
-            SessionDans(routine.SessionsDir, "20260101-100000", "Done", "2026-01-01T09:00:00"); // même nom de dossier, autre racine
-            var vm = Vm(routine: routine);
-            Assert.Equal(4, vm.Sessions.Count);
-            Assert.Equal(new[] { "2026-01-03", "2026-01-02", "2026-01-01", "2026-01-01" }, vm.Sessions.Select(x => x.Debut.ToString("yyyy-MM-dd")).ToArray());
-            Assert.True(vm.Sessions[1].DeLaRoutine);
-            Assert.False(vm.Sessions[0].DeLaRoutine);
-            Assert.Contains("routine", vm.Sessions[1].Resume);
-            Assert.Equal(2, vm.Sessions.Count(x => x.DeLaRoutine));
-        }
-
-        [Fact]
-        public async Task Session_de_la_routine_s_annule_depuis_l_historique()
-        {
-            var routine = Routine();
-            var r = new SessionReport(); r.Items.Add(new ItemOutcome { Id = "opt.a", Status = OutcomeStatus.Ok });
-            SessionDans(routine.SessionsDir, "20260102-100000", "Done", "2026-01-02T10:00:00", r, new[] { "opt.a" });
-            var f = new FauxRestauration(); var vm = Vm(f, routine: routine);
-            Assert.True(vm.Sessions[0].Annulable);
-            await vm.AnnulerSessionAsync(vm.Sessions[0]);
-            Assert.Equal(new[] { "opt.a" }, f.Appels.ToArray());
         }
 
         [Fact]
@@ -427,24 +377,6 @@ namespace GamingTweaker.Tests
             File.AppendAllText(jf, "{\"item\":\"cln.orph");
             new QuarantineService(paths.QuarantineDir, paths.SessionsDir).Purge(id);
             Assert.Empty(Journal.Active(Journal.Read(jf)));
-        }
-
-        [Fact]
-        public void Tout_restaurer_lit_les_journaux_des_deux_racines_et_oublie_dans_chacune()
-        {
-            var routine = Routine();
-            var r = new SessionReport();
-            Session("20260101-100000", "Done", "2026-01-01T10:00:00", r, new[] { "tel.a" });
-            SessionDans(routine.SessionsDir, "20260102-100000", "Done", "2026-01-02T10:00:00", r, new[] { "tel.a" });
-            File.WriteAllText(Path.Combine(paths.MachineDir, "last-applied.json"), "[\"tel.a\",\"tel.b\"]");
-            File.WriteAllText(Path.Combine(routine.MachineDir, "last-applied.json"), "[\"tel.a\",\"tel.c\"]");
-            var svc = new RestaurationService(paths, null, null, new[] { routine });
-            var j = svc.TrouverJournauxActifs("tel.a");
-            Assert.Equal(2, j.Count);
-            Assert.StartsWith(routine.SessionsDir, j[0]);              // le plus récent d'abord, toutes racines confondues
-            svc.OublierDernieresApplications(new[] { "tel.a" });
-            Assert.Equal(new[] { "tel.b" }, JsonConvert.DeserializeObject<List<string>>(File.ReadAllText(Path.Combine(paths.MachineDir, "last-applied.json"))).ToArray());
-            Assert.Equal(new[] { "tel.c" }, JsonConvert.DeserializeObject<List<string>>(File.ReadAllText(Path.Combine(routine.MachineDir, "last-applied.json"))).ToArray());
         }
     }
 }

@@ -201,7 +201,7 @@ namespace GamingTweaker.Tests
         }
 
         [Theory]
-        [InlineData("opt.gamemode-on")] [InlineData("opt.gamedvr-off")] [InlineData("opt.fso-off")] [InlineData("opt.visualfx")]
+        [InlineData("opt.gamemode-on")] [InlineData("opt.gamedvr-off")] [InlineData("opt.fso-off")]
         [InlineData("opt.stickykeys-off")] [InlineData("opt.mouse.precision-off")]
         public async Task Les_scripts_HKCU_s_appliquent_se_detectent_et_s_annulent_sous_la_cle_de_test(string id)
         {
@@ -239,10 +239,7 @@ namespace GamingTweaker.Tests
         }
 
         [Theory]
-        [InlineData("opt.storagesense-off")] [InlineData("opt.show-extensions")] [InlineData("opt.show-hidden")] [InlineData("opt.dark-mode")]
-        [InlineData("opt.scrollbars-visible")] [InlineData("opt.numlock-on")] [InlineData("opt.snap-off")] [InlineData("opt.settings-home-off")]
-        [InlineData("opt.taskbar-left")] [InlineData("opt.taskbar-search-off")] [InlineData("opt.taskview-off")] [InlineData("opt.endtask-taskbar")]
-        [InlineData("opt.explorer-home-off")] [InlineData("opt.classic-context-menu")] [InlineData("opt.notifications-off")]
+        [InlineData("opt.storagesense-off")] [InlineData("opt.show-extensions")] [InlineData("opt.endtask-taskbar")] [InlineData("opt.notifications-off")]
         public async Task Les_options_confort_HKCU_s_appliquent_se_detectent_et_s_annulent_sous_la_cle_de_test(string id)
         {
             var cat = Catalogue.LoadEmbedded().Single(i => i.Id == id);
@@ -284,54 +281,6 @@ namespace GamingTweaker.Tests
             new RestaurationService(new DataPaths { SessionsDir = Path.Combine(tmp, "Sessions"), MachineDir = Path.Combine(tmp, "M") });
 
         [Fact]
-        public async Task La_page_d_accueil_des_Parametres_garde_les_autres_pages_masquees()
-        {
-            var id = "opt.settings-home-off";
-            var it = Redirigee(Catalogue.LoadEmbedded().Single(i => i.Id == id));
-            using (var k = Registry.CurrentUser.CreateSubKey(sub + "\\PoliciesExplorer")) k.SetValue("SettingsPageVisibility", "hide:about;windowsupdate", RegistryValueKind.String);
-            var sel = new Selection { OptionIds = new HashSet<string> { id } };
-            Assert.Equal(DetectState.NotApplied, (await Detection.RunAsync(new[] { it }))[id]);
-            await Runner.RunAsync(ScriptBuilder.Build(new[] { it }, sel, Journal), null, CancellationToken.None, _ => 120);
-            using (var k = Registry.CurrentUser.OpenSubKey(sub + "\\PoliciesExplorer")) Assert.Equal("hide:about;windowsupdate;home", k.GetValue("SettingsPageVisibility"));
-            Assert.Equal(DetectState.Applied, (await Detection.RunAsync(new[] { it }))[id]);
-            Assert.Equal(OutcomeStatus.Ok, (await Service().ExecuterRevertAsync(it)).Status);   // le script revert ne retire que « home »
-            using (var k = Registry.CurrentUser.OpenSubKey(sub + "\\PoliciesExplorer")) Assert.Equal("hide:about;windowsupdate", k.GetValue("SettingsPageVisibility"));
-        }
-
-        [Theory]
-        [InlineData("show:home", "hide:home")]
-        [InlineData("SHOW:home;about", "hide:home")]
-        [InlineData("hide:home", "hide:home")]
-        public async Task La_page_d_accueil_des_Parametres_remplace_un_show_home(string avant, string apres)
-        {
-            var id = "opt.settings-home-off";
-            var it = Redirigee(Catalogue.LoadEmbedded().Single(i => i.Id == id));
-            using (var k = Registry.CurrentUser.CreateSubKey(sub + @"\PoliciesExplorer")) k.SetValue("SettingsPageVisibility", avant, RegistryValueKind.String);
-            var sel = new Selection { OptionIds = new HashSet<string> { id } };
-            var r = await Runner.RunAsync(ScriptBuilder.Build(new[] { it }, sel, Journal), null, CancellationToken.None, _ => 120);
-            Assert.Equal(OutcomeStatus.Ok, r.Items.Single().Status);
-            using (var k = Registry.CurrentUser.OpenSubKey(sub + @"\PoliciesExplorer")) Assert.Equal(apres, k.GetValue("SettingsPageVisibility"));
-            Assert.Equal(DetectState.Applied, (await Detection.RunAsync(new[] { it }))[id]);
-            if (avant != apres)
-            {
-                Assert.Equal(OutcomeStatus.Ok, (await Service().AnnulerParJournalAsync(Journal, id)).Status);
-                using (var k = Registry.CurrentUser.OpenSubKey(sub + @"\PoliciesExplorer")) Assert.Equal(avant, k.GetValue("SettingsPageVisibility"));
-            }
-        }
-
-        [Fact]
-        public async Task La_page_d_accueil_des_Parametres_ignore_showonly_avec_un_message_exact()
-        {
-            var id = "opt.settings-home-off";
-            var it = Redirigee(Catalogue.LoadEmbedded().Single(i => i.Id == id));
-            using (var k = Registry.CurrentUser.CreateSubKey(sub + @"\PoliciesExplorer")) k.SetValue("SettingsPageVisibility", "showonly:about", RegistryValueKind.String);
-            var sel = new Selection { OptionIds = new HashSet<string> { id } };
-            var o = (await Runner.RunAsync(ScriptBuilder.Build(new[] { it }, sel, Journal), null, CancellationToken.None, _ => 120)).Items.Single();
-            Assert.Equal(OutcomeStatus.Skipped, o.Status);
-            Assert.Contains("showonly:", o.Message);
-        }
-
-        [Fact]
         public async Task Remove_TweakRegistryKey_gere_un_chemin_avec_espace_par_reg_exe()
         {
             var chemin = @"HKCU:\" + sub + @"\Avec Espace\Sous Dossier";
@@ -343,53 +292,6 @@ namespace GamingTweaker.Tests
             Assert.Single(Directory.GetFiles(Path.GetDirectoryName(Journal), "*.reg"));
             Assert.Equal(OutcomeStatus.Ok, (await Service().AnnulerParJournalAsync(Journal, "opt.test")).Status);
             Assert.Equal(avant, Instantane());
-        }
-
-        [Fact]
-        public async Task La_decouverte_automatique_exporte_Bags_et_BagMRU_puis_l_annulation_les_reimporte()
-        {
-            var id = "opt.explorer-autodiscovery-off";
-            var it = Redirigee(Catalogue.LoadEmbedded().Single(i => i.Id == id));
-            using (var k = Registry.CurrentUser.CreateSubKey(sub + "\\Shell\\Bags\\5\\Shell\\{guid}"))
-            {
-                k.SetValue("Mode", 4, RegistryValueKind.DWord); k.SetValue("Texte", "é à", RegistryValueKind.String);
-                k.SetValue("Bin", new byte[] { 1, 2, 3 }, RegistryValueKind.Binary);
-            }
-            using (var k = Registry.CurrentUser.CreateSubKey(sub + "\\Shell\\BagMRU\\0")) k.SetValue("NodeSlot", 5, RegistryValueKind.DWord);
-            var avant = Instantane();
-            var sel = new Selection { OptionIds = new HashSet<string> { id } };
-            Assert.Equal(DetectState.NotApplied, (await Detection.RunAsync(new[] { it }))[id]);
-
-            var r = await Runner.RunAsync(ScriptBuilder.Build(new[] { it }, sel, Journal), null, CancellationToken.None, _ => 120);
-            Assert.Equal(OutcomeStatus.Ok, r.Items.Single().Status);
-            var apres = Instantane();
-            Assert.Single(apres);
-            Assert.Equal("NotSpecified/String", apres[@"\Shell\Bags\AllFolders\Shell|FolderType"]);
-            Assert.Equal(DetectState.Applied, (await Detection.RunAsync(new[] { it }))[id]);
-            // Deux exports .reg dans le dossier de la session, deux entrées « regkey » puis l'écriture de la valeur.
-            Assert.Equal(2, Directory.GetFiles(Path.GetDirectoryName(Journal), "*.reg").Length);
-            var kinds = File.ReadAllLines(Journal).Select(l => (string)Newtonsoft.Json.Linq.JObject.Parse(l)["kind"]).ToList();
-            Assert.Equal(new[] { "regkey", "regkey", "registry" }, kinds);
-
-            var lignes = File.ReadAllLines(Journal).Length;
-            await Runner.RunAsync(ScriptBuilder.Build(new[] { it }, sel, Journal), null, CancellationToken.None, _ => 120);
-            Assert.Equal(lignes, File.ReadAllLines(Journal).Length);   // idempotent
-            Assert.Equal(2, Directory.GetFiles(Path.GetDirectoryName(Journal), "*.reg").Length);
-
-            Assert.Equal(OutcomeStatus.Ok, (await Service().AnnulerParJournalAsync(Journal, id)).Status);
-            Assert.Equal(avant, Instantane());   // vues de dossiers d'origine rétablies à l'identique
-        }
-
-        [Fact]
-        public async Task Le_revert_de_la_decouverte_automatique_retire_seulement_le_type_generique()
-        {
-            var id = "opt.explorer-autodiscovery-off";
-            var it = Redirigee(Catalogue.LoadEmbedded().Single(i => i.Id == id));
-            var sel = new Selection { OptionIds = new HashSet<string> { id } };
-            await Runner.RunAsync(ScriptBuilder.Build(new[] { it }, sel, Journal), null, CancellationToken.None, _ => 120);
-            Assert.Equal(DetectState.Applied, (await Detection.RunAsync(new[] { it }))[id]);
-            Assert.Equal(OutcomeStatus.Ok, (await Service().ExecuterRevertAsync(it)).Status);
-            Assert.Equal(DetectState.NotApplied, (await Detection.RunAsync(new[] { it }))[id]);
         }
 
         // ---- clés entières : Remove-TweakRegistryKey et Add-TweakRegistryKey ------------------------------
@@ -527,17 +429,19 @@ namespace GamingTweaker.Tests
             var etats = await Detection.RunAsync(items, TimeSpan.FromSeconds(180));
             Assert.Equal(items.Count, etats.Count);
             // Registre HKCU et listes : toujours lisibles sans droits particuliers.
-            foreach (var id in new[] { "opt.mouse.precision-off", "opt.stickykeys-off", "opt.gamemode-on", "opt.gamedvr-off", "opt.fso-off", "opt.visualfx", "opt.sysmain", "opt.wsearch" })
+            foreach (var id in new[] { "opt.mouse.precision-off", "opt.stickykeys-off", "opt.gamemode-on", "opt.gamedvr-off", "opt.fso-off", "opt.sysmain", "opt.wsearch" })
                 Assert.NotEqual(DetectState.Unknown, etats[id]);
         }
 
 
         [Fact]
-        public async Task Les_detections_des_listes_renvoient_Unknown()
+        public async Task Les_detections_des_listes_lisent_l_etat_reel_sans_erreur()
         {
+            // Lecture seule (registre des services, StartupApproved) : jamais « Inconnu », même sans droits particuliers.
             var items = Catalogue.LoadEmbedded().Where(i => new[] { "opt.services", "opt.xbox-services", "opt.startup" }.Contains(i.Id)).ToList();
             var etats = await Detection.RunAsync(items, TimeSpan.FromSeconds(120));
-            Assert.All(etats.Values, e => Assert.Equal(DetectState.Unknown, e));
+            Assert.Equal(3, etats.Count);
+            Assert.All(etats.Values, e => Assert.NotEqual(DetectState.Unknown, e));
         }
 
         [Fact]

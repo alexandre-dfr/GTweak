@@ -35,7 +35,39 @@ namespace GamingTweaker.Core
                 var v = NormalizeVendor(name);
                 if (v != "" && !facts.GpuVendors.Contains(v)) facts.GpuVendors.Add(v);
             }
+            facts.EstPortable = EstPortable(QueryChassis(), Query("SELECT Name FROM Win32_Battery", "Name").Count > 0);
             return facts;
+        }
+
+        /// <summary>Types de châssis SMBIOS portables : Portable, Laptop, Notebook, Sub Notebook, Tablet, Convertible, Detachable.</summary>
+        private static readonly int[] ChassisPortables = { 8, 9, 10, 14, 30, 31, 32 };
+
+        /// <summary>Décision pure : portable si un type de châssis le dit ou si une batterie est présente.</summary>
+        public static bool EstPortable(IEnumerable<int> chassisTypes, bool batteriePresente)
+        {
+            if (batteriePresente) return true;
+            foreach (var c in chassisTypes ?? new int[0]) if (Array.IndexOf(ChassisPortables, c) >= 0) return true;
+            return false;
+        }
+
+        private static List<int> QueryChassis()
+        {
+            var res = new List<int>();
+            try
+            {
+                using (var searcher = new ManagementObjectSearcher("SELECT ChassisTypes FROM Win32_SystemEnclosure"))
+                using (var items = searcher.Get())
+                {
+                    foreach (ManagementBaseObject o in items)
+                    {
+                        var t = o["ChassisTypes"] as ushort[];
+                        if (t != null) foreach (var c in t) res.Add(c);
+                        o.Dispose();
+                    }
+                }
+            }
+            catch (Exception) { /* WMI indisponible : non portable par défaut (la batterie reste testée) */ }
+            return res;
         }
 
         public static string WindowsMajorFromBuild(string currentBuild)

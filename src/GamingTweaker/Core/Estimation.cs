@@ -68,7 +68,7 @@ namespace GamingTweaker.Core
         private static string BuildScript(List<CatalogItem> items)
         {
             var sb = new StringBuilder();
-            sb.Append(ScriptBuilder.Header("", null));
+            sb.Append(ScriptBuilder.Header("", null, false));
             foreach (var it in items)
             {
                 var id = ScriptBuilder.Quote(it.Id);
