@@ -1203,6 +1203,162 @@ function Update-GTCleanNote($Stats, [string]$Detail) {
 
 function Add-GTCleanDetail([string]$Detail) { Update-GTCleanNote $null $Detail }
 
+# Suppression par poignee (outil eleve dans des dossiers ou l'utilisateur peut ecrire : Temp, caches) :
+# l'element est ouvert sans suivre un lien final (FILE_FLAG_OPEN_REPARSE_POINT), son chemin reel est lu sur la poignee
+# (GetFinalPathNameByHandle) et doit rester sous le chemin reel de la racine, puis il est supprime par cette meme poignee
+# (FileDispositionInfo). Un dossier parent remplace par une jonction, ou un lien du gestionnaire d'objets, entre l'enumeration
+# et la suppression, fait sortir le chemin reel de la racine : rien n'est supprime.
+$script:GT_SafeFsSource = @'
+using System;
+using System.Runtime.InteropServices;
+using System.Text;
+using Microsoft.Win32.SafeHandles;
+
+namespace GTNative
+{
+    public static class SafeFs
+    {
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern SafeFileHandle CreateFileW(string name, uint access, uint share, IntPtr sec, uint disp, uint flags, IntPtr tmpl);
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern uint GetFinalPathNameByHandleW(SafeFileHandle h, StringBuilder buf, uint len, uint flags);
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern uint GetLongPathNameW(string shortPath, StringBuilder buf, uint len);
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool GetFileInformationByHandle(SafeFileHandle h, out ByHandleInfo info);
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool SetFileInformationByHandle(SafeFileHandle h, int cls, ref BasicInfo info, uint size);
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool SetFileInformationByHandle(SafeFileHandle h, int cls, ref DispositionInfo info, uint size);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct ByHandleInfo
+        {
+            public uint Attributes, C1, C2, A1, A2, W1, W2, Volume, SizeHigh, SizeLow, Links, IndexHigh, IndexLow;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct BasicInfo
+        {
+            public long Creation, LastAccess, LastWrite, Change;
+            public uint Attributes;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct DispositionInfo
+        {
+            public byte Delete;
+        }
+
+        private const uint DeleteAccess = 0x00010000, ReadAttributes = 0x80, WriteAttributes = 0x100;
+        private const uint ShareAll = 7, OpenExisting = 3, OpenReparsePoint = 0x00200000, BackupSemantics = 0x02000000;
+        private const uint AttrReadOnly = 0x1, AttrDirectory = 0x10, AttrNormal = 0x80, AttrReparse = 0x400;
+
+        private static string Prefixe(string path)
+        {
+            if (path.StartsWith(@"\\", StringComparison.Ordinal)) return path;
+            return @"\\?\" + path;
+        }
+
+        private static string SansPrefixe(string path)
+        {
+            if (path == null) return null;
+            if (path.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase)) return path;
+            if (path.StartsWith(@"\\?\", StringComparison.Ordinal)) return path.Substring(4);
+            return path;
+        }
+
+        private static SafeFileHandle Ouvrir(string path, uint access)
+        {
+            return CreateFileW(Prefixe(path), access, ShareAll, IntPtr.Zero, OpenExisting, OpenReparsePoint | BackupSemantics, IntPtr.Zero);
+        }
+
+        private static string CheminFinal(SafeFileHandle h)
+        {
+            var sb = new StringBuilder(1024);
+            uint n = GetFinalPathNameByHandleW(h, sb, (uint)sb.Capacity, 0);
+            if (n == 0) return null;
+            if (n >= sb.Capacity)
+            {
+                sb = new StringBuilder((int)n + 1);
+                n = GetFinalPathNameByHandleW(h, sb, (uint)sb.Capacity, 0);
+                if (n == 0 || n >= sb.Capacity) return null;
+            }
+            return SansPrefixe(sb.ToString()).TrimEnd('\\');
+        }
+
+        /// <summary>Chemin long (sans noms courts 8.3) ; le chemin tel quel si l'API echoue.</summary>
+        public static string CheminLong(string path)
+        {
+            var sb = new StringBuilder(1024);
+            uint n = GetLongPathNameW(Prefixe(path), sb, (uint)sb.Capacity);
+            if (n == 0 || n >= sb.Capacity) return path.TrimEnd('\\');
+            return SansPrefixe(sb.ToString()).TrimEnd('\\');
+        }
+
+        public static bool EstSous(string full, string root)
+        {
+            if (string.IsNullOrEmpty(full) || string.IsNullOrEmpty(root)) return false;
+            return full.Length > root.Length + 1 && full.StartsWith(root + "\\", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Chemin reel d'un dossier ordinaire (ni jonction ni lien), ou null. Avec attendu : null aussi si le chemin reel differe
+        /// du chemin attendu (un dossier parent redirige par un lien).
+        /// </summary>
+        public static string DossierReel(string dir, string attendu)
+        {
+            using (var h = Ouvrir(dir, ReadAttributes))
+            {
+                if (h.IsInvalid) return null;
+                ByHandleInfo i;
+                if (!GetFileInformationByHandle(h, out i)) return null;
+                if ((i.Attributes & AttrReparse) != 0 || (i.Attributes & AttrDirectory) == 0) return null;
+                var reel = CheminFinal(h);
+                if (reel == null) return null;
+                if (attendu != null && !string.Equals(reel, CheminLong(attendu), StringComparison.OrdinalIgnoreCase)) return null;
+                return reel;
+            }
+        }
+
+        /// <summary>
+        /// Supprime un element sous la racine reelle. 0 : supprime ; 1 : echec (verrouille, acces refuse, dossier non vide) ;
+        /// 2 : chemin reel hors de la racine (lien ou redirection), rien n'est supprime ; 3 : type inattendu, rien n'est supprime.
+        /// lien : l'element attendu est une jonction ou un lien symbolique (seul le lien est retire).
+        /// </summary>
+        public static int Supprimer(string path, string racineReelle, bool dossier, bool lien)
+        {
+            if (string.IsNullOrEmpty(racineReelle)) return 2;
+            var h = Ouvrir(path, DeleteAccess | ReadAttributes | WriteAttributes);
+            if (h.IsInvalid) { h.Dispose(); h = Ouvrir(path, DeleteAccess | ReadAttributes); }
+            using (h)
+            {
+                if (h.IsInvalid) return 1;
+                ByHandleInfo i;
+                if (!GetFileInformationByHandle(h, out i)) return 1;
+                bool estLien = (i.Attributes & AttrReparse) != 0, estDossier = (i.Attributes & AttrDirectory) != 0;
+                if (estLien != lien) return 3;
+                if (!lien && estDossier != dossier) return 3;
+                if (!EstSous(CheminFinal(h), racineReelle)) return 2;
+                if ((i.Attributes & AttrReadOnly) != 0)
+                {
+                    uint a = i.Attributes & ~AttrReadOnly;
+                    var b = new BasicInfo { Attributes = a == 0 ? AttrNormal : a };
+                    SetFileInformationByHandle(h, 0, ref b, (uint)Marshal.SizeOf(typeof(BasicInfo)));
+                }
+                var d = new DispositionInfo { Delete = 1 };
+                return SetFileInformationByHandle(h, 4, ref d, (uint)Marshal.SizeOf(typeof(DispositionInfo))) ? 0 : 1;
+            }
+        }
+    }
+}
+'@
+
+function Initialize-GTSafeFs {
+    if ('GTNative.SafeFs' -as [type]) { return }
+    Add-Type -TypeDefinition $script:GT_SafeFsSource -Language CSharp
+}
+
 # Vrai si l'element est (ou ne peut pas etre prouve ne pas etre) une jonction ou un lien symbolique.
 function Test-GTReparse([string]$Path) {
     try { return [bool]([IO.File]::GetAttributes($Path) -band [IO.FileAttributes]::ReparsePoint) } catch { return $true }
@@ -1218,7 +1374,8 @@ function Grant-GTOwnership([string]$Path) {
 # Parcours commun a la suppression et a l'estimation. $Stats : table (Files, Bytes, Locked, Links, Protected).
 # $Own : prise de possession element par element, seulement quand un acces est refuse ($GT_OwnAlways : test, la fait avant chaque element).
 # $GT_WalkHook : test, appele avant de descendre dans un sous-dossier.
-function Invoke-GTWalk([string]$Dir, [string]$Filter, [bool]$Recurse, [bool]$Delete, [bool]$RemoveLinks, $Stats, $Exclude, [bool]$Own = $false) {
+# $Real : chemin reel de la racine (suppression uniquement) ; chaque suppression est verifiee contre lui (GTNative.SafeFs).
+function Invoke-GTWalk([string]$Dir, [string]$Filter, [bool]$Recurse, [bool]$Delete, [bool]$RemoveLinks, $Stats, $Exclude, [bool]$Own = $false, [string]$Real = $null) {
     if ($Own -and $GT_OwnAlways) { Grant-GTOwnership $Dir }
     $entries = $null
     try { $entries = (New-Object IO.DirectoryInfo($Dir)).GetFileSystemInfos() } catch {
@@ -1239,14 +1396,16 @@ function Invoke-GTWalk([string]$Dir, [string]$Filter, [bool]$Recurse, [bool]$Del
             if ((Test-GTReparse $full) -or ($attr -band [IO.FileAttributes]::ReparsePoint)) {
                 # Jonction ou lien symbolique : jamais suivi. Seul le lien est retire, et seulement sur demande.
                 $Stats.Links++
-                if ($Delete -and $RemoveLinks) { try { [IO.Directory]::Delete($full, $false) } catch { } }
+                if ($Delete -and $RemoveLinks) { $null = [GTNative.SafeFs]::Supprimer($full, $Real, $true, $true) }
                 continue
             }
-            Invoke-GTWalk $full $Filter $Recurse $Delete $RemoveLinks $Stats $Exclude $Own
+            # Suppression : le dossier doit encore etre, par son chemin reel, sous la racine (sinon il a ete redirige : non suivi).
+            if ($Delete -and -not [GTNative.SafeFs]::EstSous([GTNative.SafeFs]::DossierReel($full, $null), $Real)) { $Stats.Links++; continue }
+            Invoke-GTWalk $full $Filter $Recurse $Delete $RemoveLinks $Stats $Exclude $Own $Real
             # Un dossier vide est retire (jamais le dossier racine) ; un dossier non vide (fichiers verrouilles) reste.
             if ($Delete -and $Filter -eq '*') {
-                try { [IO.Directory]::Delete($full, $false) } catch {
-                    if ($Own) { Grant-GTOwnership $full; try { [IO.Directory]::Delete($full, $false) } catch { } }
+                if (([GTNative.SafeFs]::Supprimer($full, $Real, $true, $false) -eq 1) -and $Own) {
+                    Grant-GTOwnership $full; $null = [GTNative.SafeFs]::Supprimer($full, $Real, $true, $false)
                 }
             }
         } else {
@@ -1254,15 +1413,15 @@ function Invoke-GTWalk([string]$Dir, [string]$Filter, [bool]$Recurse, [bool]$Del
             if (-not $Delete) { $Stats.Files++; $Stats.Bytes += [long]$e.Length; continue }
             $len = [long]$e.Length
             if ($Own -and $GT_OwnAlways) { Grant-GTOwnership $full }
-            $done = $false
+            $done = $false; $code = 1
+            $isLink = [bool]($attr -band [IO.FileAttributes]::ReparsePoint)
             for ($try = 0; $try -lt 2 -and -not $done; $try++) {
-                try {
-                    if ($attr -band [IO.FileAttributes]::ReadOnly) { [IO.File]::SetAttributes($full, [IO.FileAttributes]::Normal) }
-                    [IO.File]::Delete($full)
-                    $done = $true
-                } catch { if ($Own -and $try -eq 0) { Grant-GTOwnership $full } else { break } }
+                $code = [GTNative.SafeFs]::Supprimer($full, $Real, $false, $isLink)
+                if ($code -eq 0) { $done = $true }
+                elseif ($code -eq 1 -and $Own -and $try -eq 0) { Grant-GTOwnership $full }
+                else { break }
             }
-            if ($done) { $Stats.Files++; $Stats.Bytes += $len } else { $Stats.Locked++ }
+            if ($done) { $Stats.Files++; $Stats.Bytes += $len } elseif ($code -ge 2) { $Stats.Links++ } else { $Stats.Locked++ }
         }
     }
 }
@@ -1308,6 +1467,7 @@ function Remove-TweakPath {
     }
     $exclude = ConvertTo-GTExcludeSet $ExcludePath
     $stats = New-GTCleanStats
+    Initialize-GTSafeFs
     foreach ($root in $roots) {
         if ([IO.File]::Exists($root)) {
             try { [IO.File]::SetAttributes($root, [IO.FileAttributes]::Normal); $len = (New-Object IO.FileInfo($root)).Length; [IO.File]::Delete($root); $stats.Files++; $stats.Bytes += [long]$len }
@@ -1320,7 +1480,10 @@ function Remove-TweakPath {
             # (racine ici, puis chaque element non lie lors du parcours, quand l'acces est refuse). Jamais recursif : une jonction n'est pas traversee.
             Grant-GTOwnership $root
         }
-        Invoke-GTWalk $root $Filter (-not $NoRecurse) $true ([bool]$RemoveLinks) $stats $exclude ([bool]$TakeOwnership)
+        # Chemin reel de la racine, relu sur une poignee : la racine ou un dossier parent devenu lien depuis la verification est refuse.
+        $real = [GTNative.SafeFs]::DossierReel($root, $root)
+        if (-not $real) { throw ('Dossier refusé (jonction, lien symbolique ou dossier parent redirigé) : ' + $root) }
+        Invoke-GTWalk $root $Filter (-not $NoRecurse) $true ([bool]$RemoveLinks) $stats $exclude ([bool]$TakeOwnership) $real
         if ($RemoveRoot) {
             try { [IO.Directory]::Delete($root, $false) } catch { Add-GTCleanDetail ('Le dossier ' + $root + ' n''a pas pu être supprimé entièrement') }
         }
@@ -1622,13 +1785,14 @@ function Set-TweakDismCapabilityOff {
 
 # ---- Pilote NVIDIA -------------------------------------------------------------------------------
 
-# Vrai si la signature est valide ET delivree a NVIDIA Corporation.
+# Vrai si la signature est valide ET delivree a NVIDIA Corporation : nom commun (CN) exactement « NVIDIA Corporation »
+# (un sujet qui ne fait que contenir ce texte, comme « CN=Not NVIDIA Corporation », est refuse).
 function Test-GTNvidiaSignature($Signature) {
     if ($null -eq $Signature) { return $false }
     if ([string]$Signature.Status -ne 'Valid') { return $false }
     $subject = ''
     if ($null -ne $Signature.SignerCertificate) { $subject = [string]$Signature.SignerCertificate.Subject }
-    return ($subject.IndexOf('NVIDIA Corporation', [StringComparison]::OrdinalIgnoreCase) -ge 0)
+    return [bool]($subject -match '(?i)(^|,)\s*CN\s*=\s*"?NVIDIA Corporation"?\s*(,|$)')
 }
 
 # Verifie l'installateur telecharge ; sinon le supprime et leve une erreur. -Signature : remplacement pour les tests.

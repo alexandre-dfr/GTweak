@@ -731,6 +731,72 @@ Write-Output (($old | ForEach-Object { $_.Driver } | Sort-Object) -join ',')");
             Assert.Equal("1", r);
         }
 
+        // ---- Suppression par poignée (revue de sécurité du 17 novembre 2026) -----------------------
+
+        private const string InitSafeFs = "Initialize-GTSafeFs\n";
+
+        [Fact]
+        public void Suppression_par_poignee_refuse_un_chemin_reel_hors_de_la_racine()
+        {
+            // Dossier parent remplacé par une jonction entre l'énumération et la suppression : le chemin réel sort de la racine.
+            var racine = Dir("racine"); var cible = Dir("cible"); var precieux = Fichier(cible, "precieux.txt");
+            Jonction(Path.Combine(racine, "sub"), cible);
+            var r = Un(InitSafeFs + "$real = [GTNative.SafeFs]::DossierReel(" + Q(racine) + ", " + Q(racine) + ")\n"
+                     + "[GTNative.SafeFs]::Supprimer(" + Q(Path.Combine(racine, "sub", "precieux.txt")) + ", $real, $false, $false)");
+            Assert.Equal("2", r);
+            Assert.True(File.Exists(precieux), "un fichier atteint par une jonction ne doit jamais être supprimé");
+        }
+
+        [Fact]
+        public void Suppression_par_poignee_supprime_sous_la_racine_y_compris_en_lecture_seule()
+        {
+            var racine = Dir("racine"); var a = Fichier(racine, "a.tmp"); var b = Fichier(Dir("racine", "s"), "b.tmp");
+            File.SetAttributes(b, FileAttributes.ReadOnly);
+            var r = Un(InitSafeFs + "$real = [GTNative.SafeFs]::DossierReel(" + Q(racine) + ", " + Q(racine) + ")\n"
+                     + "[GTNative.SafeFs]::Supprimer(" + Q(a) + ", $real, $false, $false)\n"
+                     + "[GTNative.SafeFs]::Supprimer(" + Q(b) + ", $real, $false, $false)\n"
+                     + "[GTNative.SafeFs]::Supprimer(" + Q(racine) + ", $real, $true, $false)");
+            Assert.Equal("0\n0\n2", r); // la racine elle-même n'est jamais « sous » la racine
+            Assert.False(File.Exists(a)); Assert.False(File.Exists(b));
+        }
+
+        [Fact]
+        public void Suppression_par_poignee_retire_le_lien_et_jamais_sa_cible()
+        {
+            var racine = Dir("racine"); var cible = Dir("cible"); var precieux = Fichier(cible, "precieux.txt");
+            var lien = Path.Combine(racine, "lien"); Jonction(lien, cible);
+            var r = Un(InitSafeFs + "$real = [GTNative.SafeFs]::DossierReel(" + Q(racine) + ", " + Q(racine) + ")\n"
+                     + "[GTNative.SafeFs]::Supprimer(" + Q(lien) + ", $real, $true, $false)\n"   // attendu dossier ordinaire : refus
+                     + "[GTNative.SafeFs]::Supprimer(" + Q(lien) + ", $real, $true, $true)");
+            Assert.Equal("3\n0", r);
+            Assert.False(Directory.Exists(lien));
+            Assert.True(File.Exists(precieux));
+        }
+
+        [Fact]
+        public void Dossier_reel_refuse_un_lien_ou_un_parent_redirige()
+        {
+            var reel = Dir("reel"); Dir("reel", "cache");
+            var lienParent = Path.Combine(tmp, "lienparent"); Jonction(lienParent, reel);
+            var r = Un(InitSafeFs
+                     + "if ($null -eq [GTNative.SafeFs]::DossierReel(" + Q(lienParent) + ", " + Q(lienParent) + ")) { 'NUL' } else { 'X' }\n"
+                     + "if ($null -eq [GTNative.SafeFs]::DossierReel(" + Q(Path.Combine(lienParent, "cache")) + ", " + Q(Path.Combine(lienParent, "cache")) + ")) { 'NUL' } else { 'X' }\n"
+                     + "if ($null -eq [GTNative.SafeFs]::DossierReel(" + Q(Path.Combine(reel, "cache")) + ", " + Q(Path.Combine(reel, "cache")) + ")) { 'NUL' } else { 'OK' }");
+            Assert.Equal("NUL\nNUL\nOK", r);
+        }
+
+        [Fact]
+        public void Le_parcours_ne_supprime_plus_par_chemin()
+        {
+            var common = File.ReadAllText(Path.Combine(PsCommon.Racine(), "src", "GamingTweaker", "Assets", "runtime", "Common.ps1"));
+            var debut = common.IndexOf("function Invoke-GTWalk", StringComparison.Ordinal);
+            var fin = common.IndexOf("function New-GTCleanStats", StringComparison.Ordinal);
+            var walk = common.Substring(debut, fin - debut);
+            Assert.DoesNotContain("[IO.File]::Delete", walk);
+            Assert.DoesNotContain("[IO.Directory]::Delete", walk);
+            Assert.Contains("[GTNative.SafeFs]::Supprimer", walk);
+        }
+
         [Fact]
         public void Une_racine_dont_un_parent_est_une_jonction_est_refusee()
         {
