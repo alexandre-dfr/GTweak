@@ -26,7 +26,7 @@ namespace GamingTweaker.Ui
 
         private void Sauver_Click(object sender, RoutedEventArgs e)
         {
-            var dlg = new TexteWindow("Enregistrer le profil", "Nom du profil", vm.ProfilSelectionne ?? "") { Owner = this };
+            var dlg = new TexteWindow("Enregistrer le profil", "Nom du profil", vm.NomPourEnregistrer) { Owner = this };
             if (dlg.ShowDialog() != true) return;
             var err = vm.SauverProfil(dlg.Valeur);
             if (err != null) MessageBox.Show(this, err, "Profil", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -57,7 +57,8 @@ namespace GamingTweaker.Ui
         private async void ToutRestaurer_Click(object sender, RoutedEventArgs e)
         {
             var ok = MessageBox.Show(this,
-                "Toutes les options du menu Télémétrie déjà appliquées vont être annulées : par le journal de leur dernière exécution, sinon par un retour aux valeurs par défaut de Windows.\r\n\r\nContinuer ?",
+                "Toutes les options appliquées par GamingTweaker, dans tous les menus, vont être annulées : par le journal de leurs exécutions, sinon par un retour aux valeurs par défaut de Windows. "
+                + "Les nettoyages (définitifs) et les mises à jour installées ne sont pas concernés.\r\n\r\nContinuer ?",
                 "Tout restaurer", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
             if (ok != MessageBoxResult.Yes) return;
             try { await vm.ToutRestaurerAsync(); }

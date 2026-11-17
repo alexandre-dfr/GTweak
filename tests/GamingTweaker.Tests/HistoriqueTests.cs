@@ -378,5 +378,47 @@ namespace GamingTweaker.Tests
             new QuarantineService(paths.QuarantineDir, paths.SessionsDir).Purge(id);
             Assert.Empty(Journal.Active(Journal.Read(jf)));
         }
+    
+
+        // ---------- Désinstallation ----------
+
+        [Fact]
+        public async Task La_desinstallation_montre_un_apercu_puis_n_execute_qu_apres_confirmation()
+        {
+            var vm = Vm(); var appels = new List<bool>(); string texteVu = null; bool ferme = false;
+            vm.Desinstaller = confirme =>
+            {
+                appels.Add(confirme);
+                var b = new BilanDesinstallation { Code = confirme ? 0 : 2 };
+                b.Actions.Add(confirme ? "Dossier de données supprimé." : "- 3 session(s) seraient supprimées");
+                if (!confirme) b.Avertissements.Add("Les réglages appliqués ne sont pas annulés par la désinstallation.");
+                return b;
+            };
+            vm.ApresDesinstallation = () => ferme = true;
+            vm.Confirmer = t => { texteVu = t; return false; };
+            await vm.DesinstallerAsync();
+            Assert.Equal(new[] { false }, appels);
+            Assert.Contains("3 session(s)", texteVu); Assert.Contains("Attention : Les réglages appliqués", texteVu);
+            Assert.False(ferme); Assert.Equal("Désinstallation annulée.", vm.Message);
+
+            vm.Confirmer = t => true;
+            await vm.DesinstallerAsync();
+            Assert.Equal(new[] { false, false, true }, appels);
+            Assert.True(ferme); Assert.Contains("Dossier de données supprimé.", vm.Message);
+        }
+
+        [Fact]
+        public void L_apercu_de_desinstallation_ne_supprime_rien()
+        {
+            var racine = Path.Combine(tmp, "racine-desinstall");
+            Directory.CreateDirectory(Path.Combine(racine, "Machines", "PC-1", "Sessions", "20260101-100000"));
+            Directory.CreateDirectory(Path.Combine(racine, "Quarantaine")); File.WriteAllText(Path.Combine(racine, "Quarantaine", "x.msi"), "x");
+            var b = Desinstallation.Executer(false, racine, @"Local\GamingTweakerTest.Desinstall." + Guid.NewGuid().ToString("N"));
+            Assert.Equal(2, b.Code);
+            Assert.Contains(b.Actions, a => a.Contains("1 session(s)") && a.Contains("1 fichier(s) en quarantaine"));
+            Assert.Equal(2, b.Avertissements.Count);
+            Assert.True(File.Exists(Path.Combine(racine, "Quarantaine", "x.msi")));
+            Assert.True(Directory.Exists(Path.Combine(racine, "Machines", "PC-1", "Sessions", "20260101-100000")));
+        }
     }
 }

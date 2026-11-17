@@ -108,7 +108,7 @@ namespace GamingTweaker.Tests
             Assert.Equal(9, recap.Count);
             // Le tableau minimal et le récapitulatif ne se recouvrent pas.
             Assert.Empty(recap.Select(r => r.Id).Intersect(Minimum.Keys));
-            var attendu = new HashSet<string>(Minimum.Keys.Concat(recap.Select(r => r.Id)));
+            var attendu = new HashSet<string>(Minimum.Keys.Concat(recap.Select(r => r.Id)).Concat(PiloteNvidia));
             Assert.Empty(cat.Keys.Where(k => !attendu.Contains(k)));
             Assert.Empty(attendu.Where(k => !cat.ContainsKey(k)));
             foreach (var r in recap)
@@ -127,6 +127,30 @@ namespace GamingTweaker.Tests
                 Assert.Equal(NouvellesWindows11.Contains(r.Id) ? new[] { "11" } : new[] { "10", "11" }, it.Compatibilite.Windows);
                 Assert.Matches(@"^[a-z0-9][a-z0-9.\-]*$", r.Id);
             }
+        }
+
+        // Réglages du pilote NVIDIA (profil global, NVAPI) : Avancé, jamais cochés par « Recommandé », réservés aux GPU NVIDIA.
+        private static readonly string[] PiloteNvidia = { "opt.nv-latency-ultra", "opt.nv-power-max", "opt.nv-shadercache", "opt.nv-texture-perf", "opt.nv-vsync-off" };
+
+        [Fact]
+        public void Les_reglages_du_pilote_nvidia_sont_avances_non_recommandes_et_reserves_a_nvidia()
+        {
+            var cat = Catalogue();
+            foreach (var id in PiloteNvidia)
+            {
+                Assert.True(cat.ContainsKey(id), id);
+                var it = cat[id];
+                Assert.Equal("Pilote NVIDIA", it.Groupe);
+                Assert.Equal(RiskLevel.Avance, it.Risque);
+                Assert.False(it.Recommande, id + " ne doit jamais être coché par « Recommandé »");
+                Assert.True(it.Reversible); Assert.False(it.Testable); Assert.False(it.Hkcu); Assert.False(it.Redemarrage);
+                Assert.Equal(new[] { "NVIDIA" }, it.Compatibilite.Gpu);
+                Assert.Contains("Set-TweakNvSetting", it.Apply);
+                Assert.Contains("Get-GTNvState", it.Detect);
+                Assert.Contains("Reset-GTNvSettings", it.Revert);
+                Assert.False(string.IsNullOrWhiteSpace(it.Description));
+            }
+            Assert.Equal(PiloteNvidia.Length, cat.Values.Count(i => i.Groupe == "Pilote NVIDIA"));
         }
 
         private static readonly string[] NouvellesRedemarrage = { "opt.ipv4-prefer" };

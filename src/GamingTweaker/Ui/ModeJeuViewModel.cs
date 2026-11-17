@@ -43,6 +43,12 @@ namespace GamingTweaker.Ui
         public ICommand ActualiserCommand { get; private set; }
         public ICommand OublierCommand { get; private set; }
 
+        /// <summary>Mode Jeu automatique (null tant que l'application ne l'a pas configuré).</summary>
+        public ModeJeuAutoViewModel Auto { get; set; }
+
+        /// <summary>Relit l'état du Mode Jeu (activé ou rétabli par le mode automatique, hors de cette vue).</summary>
+        public void Synchroniser() { if (!enCours) EstActif = modeJeu.IsActive; }
+
         /// <summary>Confirmation avant d'activer (texte, renvoie vrai pour continuer).</summary>
         public Func<string, bool> Confirmer { get; set; }
 

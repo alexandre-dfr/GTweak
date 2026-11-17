@@ -173,7 +173,8 @@ namespace GamingTweaker.Core
                     DossierProtege.CreerDossier(DossierApp);
                 }
                 catch (Exception ex) { throw new IOException("Le dossier " + DossierApp + " n'a pas pu être vidé avant la copie de l'exe : " + ex.Message, ex); }
-                File.Copy(source, ExeCopie, true);
+                // Jamais de copie par le chemin : l'exe d'origine a pu être renommé et remplacé depuis le lancement (voir ExeEnCours).
+                ExeEnCours.CopierVers(ExeCopie);
             }
             var copieProfil = Path.Combine(DossierApp, Path.GetFileName(c.Profil));
             File.Copy(c.Profil, copieProfil, true); // hérite de la DACL protégée d'App\
@@ -213,7 +214,7 @@ namespace GamingTweaker.Core
         }
 
         /// <summary>Enregistre (ou remplace) la tâche par COM Schedule.Service / ITaskFolder.RegisterTask, depuis la chaîne XML en mémoire.</summary>
-        private static void EnregistrerTache(string chemin, string xml)
+        internal static void EnregistrerTache(string chemin, string xml)
         {
             var type = Type.GetTypeFromProgID("Schedule.Service", true);
             object service = Activator.CreateInstance(type);
@@ -230,6 +231,7 @@ namespace GamingTweaker.Core
                 }
                 catch (System.Reflection.TargetInvocationException ex)
                 {
+                    TraceAppli.Erreur("planification refusée", ex.InnerException ?? ex);
                     throw new InvalidOperationException("Le Planificateur de tâches a refusé la routine : " + (ex.InnerException ?? ex).Message, ex.InnerException ?? ex);
                 }
                 finally { if (System.Runtime.InteropServices.Marshal.IsComObject(racine)) System.Runtime.InteropServices.Marshal.ReleaseComObject(racine); }
@@ -243,7 +245,10 @@ namespace GamingTweaker.Core
         /// Supprime la tâche et le dossier \GamingTweaker du Planificateur par COM (ITaskFolder.DeleteTask / DeleteFolder), indépendamment
         /// de la langue de Windows. Une tâche ou un dossier déjà absents valent succès ; un dossier qui contient d'autres tâches est conservé.
         /// </summary>
-        internal static void SupprimerTacheEtDossier()
+        internal static void SupprimerTacheEtDossier() { SupprimerTacheEtDossier(NomTache); }
+
+        /// <summary>Supprime une tâche \GamingTweaker\&lt;nom&gt; puis le dossier \GamingTweaker s'il est vide.</summary>
+        internal static void SupprimerTacheEtDossier(string nomTache)
         {
             var type = Type.GetTypeFromProgID("Schedule.Service", true);
             object service = Activator.CreateInstance(type);
@@ -253,8 +258,8 @@ namespace GamingTweaker.Core
                 object racine = type.InvokeMember("GetFolder", System.Reflection.BindingFlags.InvokeMethod, null, service, new object[] { "\\" });
                 try
                 {
-                    var dossier = NomTache.Substring(1, NomTache.LastIndexOf('\\') - 1);   // « GamingTweaker »
-                    var nom = NomTache.Substring(NomTache.LastIndexOf('\\') + 1);          // « Routine »
+                    var dossier = nomTache.Substring(1, nomTache.LastIndexOf('\\') - 1);   // « GamingTweaker »
+                    var nom = nomTache.Substring(nomTache.LastIndexOf('\\') + 1);          // « Routine »
                     object sous = null;
                     try { sous = racine.GetType().InvokeMember("GetFolder", System.Reflection.BindingFlags.InvokeMethod, null, racine, new object[] { dossier }); }
                     catch (System.Reflection.TargetInvocationException ex) { if (!Introuvable(ex)) throw Refus(ex); return; }   // dossier absent : rien à faire
@@ -317,7 +322,7 @@ namespace GamingTweaker.Core
             catch (Exception ex) { return new RoutineEtat { Existe = false, Message = "Lecture de la tâche impossible : " + ex.Message }; }
         }
 
-        private static int Schtasks(string args, out string sortie)
+        internal static int Schtasks(string args, out string sortie)
         {
             var oem = Encoding.GetEncoding(CultureInfo.CurrentCulture.TextInfo.OEMCodePage);
             var psi = new ProcessStartInfo(SystemExe.Chemin("schtasks.exe"), args)

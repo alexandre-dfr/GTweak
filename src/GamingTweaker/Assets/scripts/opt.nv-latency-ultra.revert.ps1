@@ -1,0 +1,1 @@
+Reset-GTNvSettings @(0x0005F543, 0x10835000, 0x007BA09E)

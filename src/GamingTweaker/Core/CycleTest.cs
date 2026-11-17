@@ -102,29 +102,59 @@ namespace GamingTweaker.Core
             var o = rapport.Items.FirstOrDefault(i => i.Id == it.Id);
             var apres = Etat(it);
             l.apresApply = apres.ToString();
-            if (o == null || o.Status == OutcomeStatus.Failed) { l.resultat = "échec"; l.raison = "application : " + (o == null ? "aucun résultat" : o.Message); return; }
-            if (o.Status == OutcomeStatus.Skipped) { l.resultat = "non couvert"; l.couvert = false; l.raison = "ignorée à l'application : " + o.Message; return; }
-            if (avant == DetectState.Unknown) { l.resultat = "échec"; l.raison = "état initial indéterminé"; return; }
-            if (apres != DetectState.Applied) { l.resultat = "échec"; l.raison = "après application, la détection renvoie " + apres; return; }
+
+            // Problème constaté après l'application (échec, état initial ou final douteux) : noté, mais l'annulation est quand même faite
+            // si le journal contient des entrées. Sans elle, l'option resterait appliquée dans le bac à sable et fausserait les suivantes.
+            string probleme = null; bool ignoree = false;
+            if (o == null || o.Status == OutcomeStatus.Failed) probleme = "application : " + (o == null ? "aucun résultat" : o.Message);
+            else if (o.Status == OutcomeStatus.Skipped) ignoree = true;
+            else if (avant == DetectState.Unknown) probleme = "état initial indéterminé";
+            else if (apres != DetectState.Applied) probleme = "après application, la détection renvoie " + apres;
 
             var journal = rapport.SessionDir == null ? null : Path.Combine(rapport.SessionDir, "journal.jsonl");
             var entrees = journal != null && File.Exists(journal) ? Journal.Active(Journal.Read(journal)).Where(e => e.Item == it.Id).ToList() : new List<JournalEntry>();
-            var script = UndoService.BuildScript(journal, new[] { it.Id });
-            var annulation = Runner.RunAsync(script, null, CancellationToken.None, _ => it.DelaiSec > 0 ? it.DelaiSec : 300).GetAwaiter().GetResult()
-                .Items.FirstOrDefault(i => i.Id == it.Id);
+            bool annuler = entrees.Count > 0 || (probleme == null && !ignoree);
+
+            ItemOutcome annulation = null;
+            if (annuler)
+            {
+                var script = UndoService.BuildScript(journal, new[] { it.Id });
+                annulation = Runner.RunAsync(script, null, CancellationToken.None, _ => it.DelaiSec > 0 ? it.DelaiSec : 300).GetAwaiter().GetResult()
+                    .Items.FirstOrDefault(i => i.Id == it.Id);
+            }
             var final = Etat(it);
             l.apresRevert = final.ToString();
-            if (annulation == null || annulation.Status == OutcomeStatus.Failed) { l.resultat = "échec"; l.raison = "annulation : " + (annulation == null ? "aucun résultat" : annulation.Message); return; }
+            bool annulationEchouee = annuler && (annulation == null || annulation.Status == OutcomeStatus.Failed);
+            string noteAnnulation = annulationEchouee ? "annulation : " + (annulation == null ? "aucun résultat" : annulation.Message) : null;
+
+            if (ignoree && !annulationEchouee) { l.resultat = "non couvert"; l.couvert = false; l.raison = "ignorée à l'application : " + o.Message; return; }
+            if (ignoree) probleme = "ignorée à l'application (" + o.Message + ") mais des modifications ont été journalisées";
+            if (probleme != null)
+            {
+                l.resultat = "échec";
+                l.raison = probleme + (noteAnnulation != null ? " ; " + noteAnnulation : annuler ? " ; modifications annulées" : "");
+                return;
+            }
+            if (noteAnnulation != null) { l.resultat = "échec"; l.raison = noteAnnulation; return; }
             if (final != avant) { l.resultat = "échec"; l.raison = "après annulation, la détection renvoie " + final + " (avant : " + avant + ")"; return; }
 
-            // Instantané registre : chaque valeur journalisée doit être revenue à son état d'origine.
-            foreach (var e in entrees.Where(e => e.Kind == "registry"))
+            // Instantané registre : chaque valeur journalisée doit être revenue à son état d'origine, c'est-à-dire à celui de la PREMIÈRE
+            // entrée de sa cible (une option qui écrit deux fois la même valeur a, en deuxième entrée, la valeur intermédiaire pour « avant »).
+            var raison = VerifierRegistre(entrees, UndoService.ReadRegistry);
+            if (raison != null) { l.resultat = "échec"; l.raison = raison; return; }
+            l.resultat = "ok";
+        }
+
+        /// <summary>Première entrée registre de chaque cible comparée à la valeur actuelle ; null si tout est restauré, sinon la raison.</summary>
+        internal static string VerifierRegistre(IEnumerable<JournalEntry> entrees, Func<string, string> lire)
+        {
+            foreach (var e in entrees.Where(x => x.Kind == "registry").GroupBy(x => x.Target, StringComparer.OrdinalIgnoreCase).Select(g => g.First()))
             {
                 var attendu = e.Existed ? UndoService.Norm(e.Before) : UndoService.Absent;
-                var actuel = UndoService.ReadRegistry(e.Target);
-                if (attendu != actuel) { l.resultat = "échec"; l.raison = "registre non restauré : " + e.Target + " (attendu " + attendu + ", actuel " + actuel + ")"; return; }
+                var actuel = lire(e.Target);
+                if (attendu != actuel) return "registre non restauré : " + e.Target + " (attendu " + attendu + ", actuel " + actuel + ")";
             }
-            l.resultat = "ok";
+            return null;
         }
 
         private static DetectState Etat(CatalogItem it)

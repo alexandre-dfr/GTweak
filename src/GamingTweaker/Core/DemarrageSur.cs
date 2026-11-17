@@ -61,7 +61,7 @@ namespace GamingTweaker.Core
                     if (Directory.Exists(d)) AddDllDirectory(d);
                 SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_SYSTEM32 | LOAD_LIBRARY_SEARCH_USER_DIRS);
             }
-            catch (Exception) { }
+            catch (Exception ex) { TraceAppli.Erreur("restriction de la recherche des DLL natives impossible", ex); }
         }
 
         /// <summary>

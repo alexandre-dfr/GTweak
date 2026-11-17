@@ -195,6 +195,43 @@ namespace GamingTweaker.Tests
             Assert.False(Planification.DepuisLaCopie(@"C:\Users\moi\Downloads\GamingTweaker.exe", Planification.ExeCopie));
         }
 
+        // ---------- Copie de l'exe en cours (revue de sécurité du 17 novembre 2026) ----------
+
+        [Fact]
+        public void Image_et_poignee_doivent_designer_le_meme_fichier()
+        {
+            var img = @"\Device\HarddiskVolume3\Users\moi\Downloads\GamingTweaker.exe";
+            Assert.True(ExeEnCours.MemeFichier(img, new[] { null, img.ToUpperInvariant() }));
+            Assert.True(ExeEnCours.MemeFichier(img, new[] { img, null }));
+            // Exe d'origine renommé, remplaçant déposé à sa place : l'image chargée porte le nouveau nom, la poignée l'ancien.
+            Assert.False(ExeEnCours.MemeFichier(@"\Device\HarddiskVolume3\Users\moi\Downloads\ancien.exe", new[] { img, img }));
+            Assert.False(ExeEnCours.MemeFichier(null, new[] { img }));
+            Assert.False(ExeEnCours.MemeFichier(img, new string[] { null, "" }));
+            Assert.False(ExeEnCours.MemeFichier(img, null));
+        }
+
+        [Fact]
+        public void La_copie_de_l_exe_en_cours_reproduit_le_fichier_charge()
+        {
+            string chemin;
+            using (var p = System.Diagnostics.Process.GetCurrentProcess()) chemin = p.MainModule.FileName;
+            var dest = Path.Combine(Path.GetTempPath(), "gt-exe-en-cours-" + Guid.NewGuid().ToString("N") + ".exe");
+            try
+            {
+                ExeEnCours.CopierVers(dest);
+                Assert.Equal(File.ReadAllBytes(chemin), File.ReadAllBytes(dest));
+            }
+            finally { try { File.Delete(dest); } catch (IOException) { } }
+        }
+
+        [Fact]
+        public void La_routine_ne_relit_jamais_l_exe_par_son_chemin()
+        {
+            var src = File.ReadAllText(Path.Combine(Helpers.PsCommon.Racine(), "src", "GamingTweaker", "Core", "Planification.cs"));
+            Assert.Contains("ExeEnCours.CopierVers(ExeCopie)", src);
+            Assert.DoesNotContain("File.Copy(source", src);
+        }
+
         // ---------- Revue lots 14-16 ----------
 
         [Fact]

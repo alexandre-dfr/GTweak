@@ -586,5 +586,120 @@
       "cpu": [],
       "gpu": []
     }
+  },
+  {
+    "id": "opt.nv-latency-ultra",
+    "menu": "Optimisation",
+    "groupe": "Pilote NVIDIA",
+    "titre": "Mode de faible latence : Ultra",
+    "description": "Règle « Mode de faible latence » sur Ultra dans les paramètres globaux du pilote NVIDIA : le processeur prépare les images juste à temps, ce qui réduit la latence quand le GPU est le facteur limitant. Peut baisser légèrement les images par seconde dans certains jeux. Sans effet dans les jeux qui utilisent NVIDIA Reflex. L'annulation remet les valeurs d'avant.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "testable": false,
+    "recommande": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": [
+        "NVIDIA"
+      ]
+    }
+  },
+  {
+    "id": "opt.nv-power-max",
+    "menu": "Optimisation",
+    "groupe": "Pilote NVIDIA",
+    "titre": "Gestion de l'alimentation : performances maximales",
+    "description": "Règle « Mode de gestion de l'alimentation » sur « Privilégier les performances maximales » dans les paramètres globaux du pilote NVIDIA : le GPU garde des fréquences hautes au lieu de descendre entre deux charges. Plus de consommation et de chaleur, y compris hors jeu. L'annulation remet la valeur d'avant.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "testable": false,
+    "recommande": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": [
+        "NVIDIA"
+      ]
+    }
+  },
+  {
+    "id": "opt.nv-shadercache",
+    "menu": "Optimisation",
+    "groupe": "Pilote NVIDIA",
+    "titre": "Cache des shaders : illimité",
+    "description": "Règle « Taille du cache des shaders » sur Illimité dans les paramètres globaux du pilote NVIDIA : moins de recompilations de shaders et de saccades au chargement des jeux, au prix d'espace disque. Le cache se vide avec l'option Nettoyage des shaders. L'annulation remet la valeur d'avant.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "testable": false,
+    "recommande": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": [
+        "NVIDIA"
+      ]
+    }
+  },
+  {
+    "id": "opt.nv-texture-perf",
+    "menu": "Optimisation",
+    "groupe": "Pilote NVIDIA",
+    "titre": "Filtrage des textures : hautes performances",
+    "description": "Règle « Filtrage des textures - Qualité » sur Hautes performances dans les paramètres globaux du pilote NVIDIA : gain d'images par seconde faible sur un GPU récent, textures un peu moins nettes au loin. L'annulation remet la valeur d'avant.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "testable": false,
+    "recommande": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": [
+        "NVIDIA"
+      ]
+    }
+  },
+  {
+    "id": "opt.nv-vsync-off",
+    "menu": "Optimisation",
+    "groupe": "Pilote NVIDIA",
+    "titre": "Synchronisation verticale : désactivée",
+    "description": "Force « Synchronisation verticale » sur Désactivée dans les paramètres globaux du pilote NVIDIA : latence minimale, mais déchirement de l'image possible sans écran G-SYNC ou FreeSync. Le réglage de chaque jeu est alors ignoré. L'annulation remet la valeur d'avant.",
+    "risque": "Avance",
+    "reversible": true,
+    "redemarrage": false,
+    "testable": false,
+    "recommande": false,
+    "compatibilite": {
+      "windows": [
+        "10",
+        "11"
+      ],
+      "editions": [],
+      "cpu": [],
+      "gpu": [
+        "NVIDIA"
+      ]
+    }
   }
 ]

@@ -42,7 +42,7 @@ function Invoke-GTItem([string]$Id, [scriptblock]$Apply) {
 # ---------------------------------------------------------------------------
 # Journal d'annulation (journal.jsonl, une ligne JSON compacte par entree) et fonctions Set-Tweak*.
 # Chaque fonction ecrit puis vide son entree sur disque AVANT de modifier : si l'ecriture echoue, elle leve
-# une erreur et ne change rien. Kinds : registry, service, task, power, bcd, hosts, app, quarantine, regkey, regkeynew.
+# une erreur et ne change rien. Kinds : registry, service, task, power, bcd, hosts, app, quarantine, regkey, regkeynew, nvdrs.
 # ---------------------------------------------------------------------------
 
 function Add-GTJournalLine([string]$Line) {
@@ -700,6 +700,11 @@ function Restore-GTEntry($E) {
             if (@(Get-GTPowerDevices | Where-Object { $_.InstanceName -eq $E.target }).Count -gt 0) { Set-GTDevicePower $E.target ([bool]$E.before) }
         }
         'hosts'      { Remove-GTHostsLines $E.target ([string[]]@($E.after)) }
+        'nvdrs' {
+            $id = ConvertFrom-GTNvId ([string]$E.target)
+            Initialize-GTNvDrs
+            if ($E.existed) { [GTNative.NvDrs]::Ecrire($id, [uint32][long]$E.before) } else { [GTNative.NvDrs]::Retirer($id) }
+        }
         'quarantine' {
             if ((Test-Path -LiteralPath $E.before) -and -not (Test-Path -LiteralPath $E.after)) { return }  # deja restaure
             if (Test-Path -LiteralPath $E.before) { throw ('Impossible de restaurer ' + $E.before + ' : un fichier existe déjà à cet emplacement.') }
@@ -1203,6 +1208,162 @@ function Update-GTCleanNote($Stats, [string]$Detail) {
 
 function Add-GTCleanDetail([string]$Detail) { Update-GTCleanNote $null $Detail }
 
+# Suppression par poignee (outil eleve dans des dossiers ou l'utilisateur peut ecrire : Temp, caches) :
+# l'element est ouvert sans suivre un lien final (FILE_FLAG_OPEN_REPARSE_POINT), son chemin reel est lu sur la poignee
+# (GetFinalPathNameByHandle) et doit rester sous le chemin reel de la racine, puis il est supprime par cette meme poignee
+# (FileDispositionInfo). Un dossier parent remplace par une jonction, ou un lien du gestionnaire d'objets, entre l'enumeration
+# et la suppression, fait sortir le chemin reel de la racine : rien n'est supprime.
+$script:GT_SafeFsSource = @'
+using System;
+using System.Runtime.InteropServices;
+using System.Text;
+using Microsoft.Win32.SafeHandles;
+
+namespace GTNative
+{
+    public static class SafeFs
+    {
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern SafeFileHandle CreateFileW(string name, uint access, uint share, IntPtr sec, uint disp, uint flags, IntPtr tmpl);
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern uint GetFinalPathNameByHandleW(SafeFileHandle h, StringBuilder buf, uint len, uint flags);
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern uint GetLongPathNameW(string shortPath, StringBuilder buf, uint len);
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool GetFileInformationByHandle(SafeFileHandle h, out ByHandleInfo info);
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool SetFileInformationByHandle(SafeFileHandle h, int cls, ref BasicInfo info, uint size);
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool SetFileInformationByHandle(SafeFileHandle h, int cls, ref DispositionInfo info, uint size);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct ByHandleInfo
+        {
+            public uint Attributes, C1, C2, A1, A2, W1, W2, Volume, SizeHigh, SizeLow, Links, IndexHigh, IndexLow;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct BasicInfo
+        {
+            public long Creation, LastAccess, LastWrite, Change;
+            public uint Attributes;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct DispositionInfo
+        {
+            public byte Delete;
+        }
+
+        private const uint DeleteAccess = 0x00010000, ReadAttributes = 0x80, WriteAttributes = 0x100;
+        private const uint ShareAll = 7, OpenExisting = 3, OpenReparsePoint = 0x00200000, BackupSemantics = 0x02000000;
+        private const uint AttrReadOnly = 0x1, AttrDirectory = 0x10, AttrNormal = 0x80, AttrReparse = 0x400;
+
+        private static string Prefixe(string path)
+        {
+            if (path.StartsWith(@"\\", StringComparison.Ordinal)) return path;
+            return @"\\?\" + path;
+        }
+
+        private static string SansPrefixe(string path)
+        {
+            if (path == null) return null;
+            if (path.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase)) return path;
+            if (path.StartsWith(@"\\?\", StringComparison.Ordinal)) return path.Substring(4);
+            return path;
+        }
+
+        private static SafeFileHandle Ouvrir(string path, uint access)
+        {
+            return CreateFileW(Prefixe(path), access, ShareAll, IntPtr.Zero, OpenExisting, OpenReparsePoint | BackupSemantics, IntPtr.Zero);
+        }
+
+        private static string CheminFinal(SafeFileHandle h)
+        {
+            var sb = new StringBuilder(1024);
+            uint n = GetFinalPathNameByHandleW(h, sb, (uint)sb.Capacity, 0);
+            if (n == 0) return null;
+            if (n >= sb.Capacity)
+            {
+                sb = new StringBuilder((int)n + 1);
+                n = GetFinalPathNameByHandleW(h, sb, (uint)sb.Capacity, 0);
+                if (n == 0 || n >= sb.Capacity) return null;
+            }
+            return SansPrefixe(sb.ToString()).TrimEnd('\\');
+        }
+
+        /// <summary>Chemin long (sans noms courts 8.3) ; le chemin tel quel si l'API echoue.</summary>
+        public static string CheminLong(string path)
+        {
+            var sb = new StringBuilder(1024);
+            uint n = GetLongPathNameW(Prefixe(path), sb, (uint)sb.Capacity);
+            if (n == 0 || n >= sb.Capacity) return path.TrimEnd('\\');
+            return SansPrefixe(sb.ToString()).TrimEnd('\\');
+        }
+
+        public static bool EstSous(string full, string root)
+        {
+            if (string.IsNullOrEmpty(full) || string.IsNullOrEmpty(root)) return false;
+            return full.Length > root.Length + 1 && full.StartsWith(root + "\\", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Chemin reel d'un dossier ordinaire (ni jonction ni lien), ou null. Avec attendu : null aussi si le chemin reel differe
+        /// du chemin attendu (un dossier parent redirige par un lien). Attendu vide : PowerShell passe $null comme chaine vide.
+        /// </summary>
+        public static string DossierReel(string dir, string attendu)
+        {
+            using (var h = Ouvrir(dir, ReadAttributes))
+            {
+                if (h.IsInvalid) return null;
+                ByHandleInfo i;
+                if (!GetFileInformationByHandle(h, out i)) return null;
+                if ((i.Attributes & AttrReparse) != 0 || (i.Attributes & AttrDirectory) == 0) return null;
+                var reel = CheminFinal(h);
+                if (reel == null) return null;
+                if (!string.IsNullOrEmpty(attendu) && !string.Equals(reel, CheminLong(attendu), StringComparison.OrdinalIgnoreCase)) return null;
+                return reel;
+            }
+        }
+
+        /// <summary>
+        /// Supprime un element sous la racine reelle. 0 : supprime ; 1 : echec (verrouille, acces refuse, dossier non vide) ;
+        /// 2 : chemin reel hors de la racine (lien ou redirection), rien n'est supprime ; 3 : type inattendu, rien n'est supprime.
+        /// lien : l'element attendu est une jonction ou un lien symbolique (seul le lien est retire).
+        /// </summary>
+        public static int Supprimer(string path, string racineReelle, bool dossier, bool lien)
+        {
+            if (string.IsNullOrEmpty(racineReelle)) return 2;
+            var h = Ouvrir(path, DeleteAccess | ReadAttributes | WriteAttributes);
+            if (h.IsInvalid) { h.Dispose(); h = Ouvrir(path, DeleteAccess | ReadAttributes); }
+            using (h)
+            {
+                if (h.IsInvalid) return 1;
+                ByHandleInfo i;
+                if (!GetFileInformationByHandle(h, out i)) return 1;
+                bool estLien = (i.Attributes & AttrReparse) != 0, estDossier = (i.Attributes & AttrDirectory) != 0;
+                if (estLien != lien) return 3;
+                if (!lien && estDossier != dossier) return 3;
+                if (!EstSous(CheminFinal(h), racineReelle)) return 2;
+                if ((i.Attributes & AttrReadOnly) != 0)
+                {
+                    uint a = i.Attributes & ~AttrReadOnly;
+                    var b = new BasicInfo { Attributes = a == 0 ? AttrNormal : a };
+                    SetFileInformationByHandle(h, 0, ref b, (uint)Marshal.SizeOf(typeof(BasicInfo)));
+                }
+                var d = new DispositionInfo { Delete = 1 };
+                return SetFileInformationByHandle(h, 4, ref d, (uint)Marshal.SizeOf(typeof(DispositionInfo))) ? 0 : 1;
+            }
+        }
+    }
+}
+'@
+
+function Initialize-GTSafeFs {
+    if ('GTNative.SafeFs' -as [type]) { return }
+    Add-Type -TypeDefinition $script:GT_SafeFsSource -Language CSharp
+}
+
 # Vrai si l'element est (ou ne peut pas etre prouve ne pas etre) une jonction ou un lien symbolique.
 function Test-GTReparse([string]$Path) {
     try { return [bool]([IO.File]::GetAttributes($Path) -band [IO.FileAttributes]::ReparsePoint) } catch { return $true }
@@ -1218,7 +1379,8 @@ function Grant-GTOwnership([string]$Path) {
 # Parcours commun a la suppression et a l'estimation. $Stats : table (Files, Bytes, Locked, Links, Protected).
 # $Own : prise de possession element par element, seulement quand un acces est refuse ($GT_OwnAlways : test, la fait avant chaque element).
 # $GT_WalkHook : test, appele avant de descendre dans un sous-dossier.
-function Invoke-GTWalk([string]$Dir, [string]$Filter, [bool]$Recurse, [bool]$Delete, [bool]$RemoveLinks, $Stats, $Exclude, [bool]$Own = $false) {
+# $Real : chemin reel de la racine (suppression uniquement) ; chaque suppression est verifiee contre lui (GTNative.SafeFs).
+function Invoke-GTWalk([string]$Dir, [string]$Filter, [bool]$Recurse, [bool]$Delete, [bool]$RemoveLinks, $Stats, $Exclude, [bool]$Own = $false, [string]$Real = $null) {
     if ($Own -and $GT_OwnAlways) { Grant-GTOwnership $Dir }
     $entries = $null
     try { $entries = (New-Object IO.DirectoryInfo($Dir)).GetFileSystemInfos() } catch {
@@ -1239,14 +1401,16 @@ function Invoke-GTWalk([string]$Dir, [string]$Filter, [bool]$Recurse, [bool]$Del
             if ((Test-GTReparse $full) -or ($attr -band [IO.FileAttributes]::ReparsePoint)) {
                 # Jonction ou lien symbolique : jamais suivi. Seul le lien est retire, et seulement sur demande.
                 $Stats.Links++
-                if ($Delete -and $RemoveLinks) { try { [IO.Directory]::Delete($full, $false) } catch { } }
+                if ($Delete -and $RemoveLinks) { $null = [GTNative.SafeFs]::Supprimer($full, $Real, $true, $true) }
                 continue
             }
-            Invoke-GTWalk $full $Filter $Recurse $Delete $RemoveLinks $Stats $Exclude $Own
+            # Suppression : le dossier doit encore etre, par son chemin reel, sous la racine (sinon il a ete redirige : non suivi).
+            if ($Delete -and -not [GTNative.SafeFs]::EstSous([GTNative.SafeFs]::DossierReel($full, $null), $Real)) { $Stats.Links++; continue }
+            Invoke-GTWalk $full $Filter $Recurse $Delete $RemoveLinks $Stats $Exclude $Own $Real
             # Un dossier vide est retire (jamais le dossier racine) ; un dossier non vide (fichiers verrouilles) reste.
             if ($Delete -and $Filter -eq '*') {
-                try { [IO.Directory]::Delete($full, $false) } catch {
-                    if ($Own) { Grant-GTOwnership $full; try { [IO.Directory]::Delete($full, $false) } catch { } }
+                if (([GTNative.SafeFs]::Supprimer($full, $Real, $true, $false) -eq 1) -and $Own) {
+                    Grant-GTOwnership $full; $null = [GTNative.SafeFs]::Supprimer($full, $Real, $true, $false)
                 }
             }
         } else {
@@ -1254,15 +1418,15 @@ function Invoke-GTWalk([string]$Dir, [string]$Filter, [bool]$Recurse, [bool]$Del
             if (-not $Delete) { $Stats.Files++; $Stats.Bytes += [long]$e.Length; continue }
             $len = [long]$e.Length
             if ($Own -and $GT_OwnAlways) { Grant-GTOwnership $full }
-            $done = $false
+            $done = $false; $code = 1
+            $isLink = [bool]($attr -band [IO.FileAttributes]::ReparsePoint)
             for ($try = 0; $try -lt 2 -and -not $done; $try++) {
-                try {
-                    if ($attr -band [IO.FileAttributes]::ReadOnly) { [IO.File]::SetAttributes($full, [IO.FileAttributes]::Normal) }
-                    [IO.File]::Delete($full)
-                    $done = $true
-                } catch { if ($Own -and $try -eq 0) { Grant-GTOwnership $full } else { break } }
+                $code = [GTNative.SafeFs]::Supprimer($full, $Real, $false, $isLink)
+                if ($code -eq 0) { $done = $true }
+                elseif ($code -eq 1 -and $Own -and $try -eq 0) { Grant-GTOwnership $full }
+                else { break }
             }
-            if ($done) { $Stats.Files++; $Stats.Bytes += $len } else { $Stats.Locked++ }
+            if ($done) { $Stats.Files++; $Stats.Bytes += $len } elseif ($code -ge 2) { $Stats.Links++ } else { $Stats.Locked++ }
         }
     }
 }
@@ -1308,6 +1472,7 @@ function Remove-TweakPath {
     }
     $exclude = ConvertTo-GTExcludeSet $ExcludePath
     $stats = New-GTCleanStats
+    Initialize-GTSafeFs
     foreach ($root in $roots) {
         if ([IO.File]::Exists($root)) {
             try { [IO.File]::SetAttributes($root, [IO.FileAttributes]::Normal); $len = (New-Object IO.FileInfo($root)).Length; [IO.File]::Delete($root); $stats.Files++; $stats.Bytes += [long]$len }
@@ -1320,7 +1485,10 @@ function Remove-TweakPath {
             # (racine ici, puis chaque element non lie lors du parcours, quand l'acces est refuse). Jamais recursif : une jonction n'est pas traversee.
             Grant-GTOwnership $root
         }
-        Invoke-GTWalk $root $Filter (-not $NoRecurse) $true ([bool]$RemoveLinks) $stats $exclude ([bool]$TakeOwnership)
+        # Chemin reel de la racine, relu sur une poignee : la racine ou un dossier parent devenu lien depuis la verification est refuse.
+        $real = [GTNative.SafeFs]::DossierReel($root, $root)
+        if (-not $real) { throw ('Dossier refusé (jonction, lien symbolique ou dossier parent redirigé) : ' + $root) }
+        Invoke-GTWalk $root $Filter (-not $NoRecurse) $true ([bool]$RemoveLinks) $stats $exclude ([bool]$TakeOwnership) $real
         if ($RemoveRoot) {
             try { [IO.Directory]::Delete($root, $false) } catch { Add-GTCleanDetail ('Le dossier ' + $root + ' n''a pas pu être supprimé entièrement') }
         }
@@ -1622,13 +1790,14 @@ function Set-TweakDismCapabilityOff {
 
 # ---- Pilote NVIDIA -------------------------------------------------------------------------------
 
-# Vrai si la signature est valide ET delivree a NVIDIA Corporation.
+# Vrai si la signature est valide ET delivree a NVIDIA Corporation : nom commun (CN) exactement « NVIDIA Corporation »
+# (un sujet qui ne fait que contenir ce texte, comme « CN=Not NVIDIA Corporation », est refuse).
 function Test-GTNvidiaSignature($Signature) {
     if ($null -eq $Signature) { return $false }
     if ([string]$Signature.Status -ne 'Valid') { return $false }
     $subject = ''
     if ($null -ne $Signature.SignerCertificate) { $subject = [string]$Signature.SignerCertificate.Subject }
-    return ($subject.IndexOf('NVIDIA Corporation', [StringComparison]::OrdinalIgnoreCase) -ge 0)
+    return [bool]($subject -match '(?i)(^|,)\s*CN\s*=\s*"?NVIDIA Corporation"?\s*(,|$)')
 }
 
 # Verifie l'installateur telecharge ; sinon le supprime et leve une erreur. -Signature : remplacement pour les tests.
@@ -1817,4 +1986,159 @@ function Install-TweakNvidiaDriver {
         if ($null -ne $lock) { $lock.Dispose() }
         Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue
     }
+}
+
+# ---- Reglages du pilote NVIDIA (profil global, API NVAPI DRS) --------------------------------------
+# nvapi64.dll est installee avec le pilote (System32) : aucun outil externe. Les reglages vont dans le profil global courant
+# (celui que modifie « Parametres globaux » du panneau NVIDIA). Chaque ecriture est journalisee (kind nvdrs, target = id en hexadecimal) :
+# l'annulation remet la valeur d'avant, ou retire le reglage du profil (valeur par defaut du pilote) s'il n'y etait pas defini.
+# Structure NVDRS_SETTING_V1 (12320 octets) manipulee par decalages : version 0, settingId 4100, settingType 4104,
+# settingLocation 4108, u32CurrentValue 8220.
+$script:GT_NvDrsSource = @'
+using System;
+using System.Runtime.InteropServices;
+
+namespace GTNative
+{
+    public static class NvDrs
+    {
+        [DllImport("nvapi64.dll", EntryPoint = "nvapi_QueryInterface", CallingConvention = CallingConvention.Cdecl)]
+        private static extern IntPtr QueryInterface(uint id);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int FInit();
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int FCreate(out IntPtr session);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int FSession(IntPtr session);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int FProfile(IntPtr session, out IntPtr profile);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int FGet(IntPtr session, IntPtr profile, uint id, IntPtr setting);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int FSet(IntPtr session, IntPtr profile, IntPtr setting);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int FDelete(IntPtr session, IntPtr profile, uint id);
+
+        public const int NotFound = -160;
+        private const int Size = 12320;
+        private const int Version = Size | (1 << 16);
+
+        private static T F<T>(uint id) where T : class
+        {
+            IntPtr p = QueryInterface(id);
+            if (p == IntPtr.Zero) throw new InvalidOperationException("Fonction NVAPI absente de ce pilote (0x" + id.ToString("X8") + ").");
+            return Marshal.GetDelegateForFunctionPointer(p, typeof(T)) as T;
+        }
+
+        private static void Ok(int s, string quoi)
+        {
+            if (s != 0) throw new InvalidOperationException("NVAPI " + quoi + " a échoué (code " + s + ").");
+        }
+
+        private static IntPtr Ouvrir(out IntPtr profil)
+        {
+            Ok(F<FInit>(0x0150E828)(), "Initialize");
+            IntPtr h;
+            Ok(F<FCreate>(0x0694D52E)(out h), "DRS_CreateSession");
+            try
+            {
+                Ok(F<FSession>(0x375DBD6B)(h), "DRS_LoadSettings");
+                Ok(F<FProfile>(0x617BFF9F)(h, out profil), "DRS_GetCurrentGlobalProfile");
+            }
+            catch { F<FSession>(0xDAD9CFF8)(h); throw; }
+            return h;
+        }
+
+        private static void Fermer(IntPtr h) { F<FSession>(0xDAD9CFF8)(h); }
+
+        private static IntPtr Tampon()
+        {
+            IntPtr b = Marshal.AllocHGlobal(Size);
+            Marshal.Copy(new byte[Size], 0, b, Size);
+            Marshal.WriteInt32(b, 0, Version);
+            return b;
+        }
+
+        /// <summary>{ defini dans le profil global (1/0), valeur effective (-1 si inconnue) }.</summary>
+        public static long[] Lire(uint id)
+        {
+            IntPtr profil; IntPtr h = Ouvrir(out profil); IntPtr b = Tampon();
+            try
+            {
+                int s = F<FGet>(0x73BF8338)(h, profil, id, b);
+                if (s == NotFound) return new long[] { 0, -1 };
+                Ok(s, "DRS_GetSetting");
+                if (Marshal.ReadInt32(b, 4104) != 0) throw new InvalidOperationException("Réglage NVIDIA 0x" + id.ToString("X8") + " : type inattendu (pas un entier).");
+                bool defini = Marshal.ReadInt32(b, 4108) == 0;
+                return new long[] { defini ? 1 : 0, (long)(uint)Marshal.ReadInt32(b, 8220) };
+            }
+            finally { Marshal.FreeHGlobal(b); Fermer(h); }
+        }
+
+        public static void Ecrire(uint id, uint valeur)
+        {
+            IntPtr profil; IntPtr h = Ouvrir(out profil); IntPtr b = Tampon();
+            try
+            {
+                Marshal.WriteInt32(b, 4100, (int)id);
+                Marshal.WriteInt32(b, 4104, 0);
+                Marshal.WriteInt32(b, 8220, unchecked((int)valeur));
+                Ok(F<FSet>(0x577DD202)(h, profil, b), "DRS_SetSetting");
+                Ok(F<FSession>(0xFCBC7E14)(h), "DRS_SaveSettings");
+            }
+            finally { Marshal.FreeHGlobal(b); Fermer(h); }
+        }
+
+        /// <summary>Retire le reglage du profil global (le pilote reprend sa valeur par defaut).</summary>
+        public static void Retirer(uint id)
+        {
+            IntPtr profil; IntPtr h = Ouvrir(out profil);
+            try
+            {
+                int s = F<FDelete>(0xE4A26362)(h, profil, id);
+                if (s == NotFound) return;
+                Ok(s, "DRS_DeleteProfileSetting");
+                Ok(F<FSession>(0xFCBC7E14)(h), "DRS_SaveSettings");
+            }
+            finally { Fermer(h); }
+        }
+    }
+}
+'@
+
+function Initialize-GTNvDrs {
+    if ('GTNative.NvDrs' -as [type]) { return }
+    if (-not (Test-Path -LiteralPath (Join-Path $env:SystemRoot 'System32\nvapi64.dll'))) { Skip-GTItem 'Pilote NVIDIA introuvable (nvapi64.dll absent) : réglage ignoré.' }
+    Add-Type -TypeDefinition $script:GT_NvDrsSource -Language CSharp
+}
+
+function Format-GTNvId([uint32]$Id) { return ('0x{0:X8}' -f $Id) }
+
+function ConvertFrom-GTNvId([string]$Text) { return [Convert]::ToUInt32(($Text -replace '^0[xX]', ''), 16) }
+
+# @{ Existed = defini dans le profil global ; Value = valeur effective ou $null si le pilote n'en donne pas }.
+function Get-GTNvSetting([uint32]$Id) {
+    Initialize-GTNvDrs
+    $r = [GTNative.NvDrs]::Lire($Id)
+    $v = $null; if ($r[1] -ge 0) { $v = [uint32]$r[1] }
+    return @{ Existed = ($r[0] -eq 1); Value = $v }
+}
+
+# Ecrit un reglage du profil global apres l'avoir journalise. Rien n'est ecrit ni journalise s'il y est deja defini a cette valeur.
+function Set-TweakNvSetting {
+    param([Parameter(Mandatory)][uint32]$Id, [Parameter(Mandatory)][uint32]$Value)
+    $cur = Get-GTNvSetting $Id
+    if ($cur.Existed -and $cur.Value -eq $Value) { return }
+    $before = $null; if ($cur.Existed) { $before = [long]$cur.Value }
+    Write-GTJournal 'nvdrs' (Format-GTNvId $Id) ([bool]$cur.Existed) $before ([long]$Value)
+    [GTNative.NvDrs]::Ecrire($Id, $Value)
+}
+
+# Annulation sans journal (« Tout restaurer ») : reglages retires du profil global, valeurs par defaut du pilote.
+function Reset-GTNvSettings([uint32[]]$Ids) {
+    Initialize-GTNvDrs
+    foreach ($id in $Ids) { [GTNative.NvDrs]::Retirer($id) }
+}
+
+# 'Applied' si chaque reglage a la valeur voulue. $Pairs : @(@(id, valeur), ...).
+function Get-GTNvState([object[]]$Pairs) {
+    foreach ($p in $Pairs) {
+        $c = Get-GTNvSetting ([uint32]$p[0])
+        if ($null -eq $c.Value -or $c.Value -ne [uint32]$p[1]) { return 'NotApplied' }
+    }
+    return 'Applied'
 }

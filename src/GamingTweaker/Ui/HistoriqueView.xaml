@@ -95,12 +95,16 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-            <Button Content="Sessions" Style="{StaticResource SectionButton}" Command="{Binding ChoisirSectionCommand}" CommandParameter="Sessions"/>
-            <Button Content="Quarantaine" Style="{StaticResource SectionButton}" Command="{Binding ChoisirSectionCommand}" CommandParameter="Quarantaine"/>
-            <Button Content="Mesures" Style="{StaticResource SectionButton}" Command="{Binding ChoisirSectionCommand}" CommandParameter="Mesures"/>
-            <Button Content="Actualiser" Command="{Binding ActualiserCommand}" Margin="16,0,0,0"/>
-        </StackPanel>
+        <DockPanel Margin="0,0,0,12" LastChildFill="True">
+            <Button DockPanel.Dock="Right" Content="Désinstaller GamingTweaker…" Command="{Binding DesinstallerCommand}" Margin="16,0,0,0"
+                    ToolTip="Retire la routine planifiée et le dossier de données (sessions, journaux d'annulation, quarantaine) après un aperçu et une confirmation. Les réglages appliqués ne sont pas annulés : utilisez d'abord « Tout restaurer »."/>
+            <StackPanel Orientation="Horizontal">
+                <Button Content="Sessions" Style="{StaticResource SectionButton}" Command="{Binding ChoisirSectionCommand}" CommandParameter="Sessions"/>
+                <Button Content="Quarantaine" Style="{StaticResource SectionButton}" Command="{Binding ChoisirSectionCommand}" CommandParameter="Quarantaine"/>
+                <Button Content="Mesures" Style="{StaticResource SectionButton}" Command="{Binding ChoisirSectionCommand}" CommandParameter="Mesures"/>
+                <Button Content="Actualiser" Command="{Binding ActualiserCommand}" Margin="16,0,0,0"/>
+            </StackPanel>
+        </DockPanel>
 
         <!-- Sessions -->
         <Grid Grid.Row="1" Visibility="{Binding EstSessions, Converter={StaticResource BoolVis}}">

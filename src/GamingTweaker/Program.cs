@@ -27,6 +27,12 @@ namespace GamingTweaker
             DemarrageSur.RestreindreRechercheDll();
             AssemblyLoader.Register();
             if (args.Length == 0) return LaunchUi();
+            // Démarrage avec Windows (tâche \GamingTweaker\Demarrage) : interface cachée, icône dans la zone de notification.
+            if (args.Length == 1 && string.Equals(args[0], DemarrageWindows.Argument, StringComparison.OrdinalIgnoreCase))
+            {
+                App.DemarrageEnZone = true;
+                return LaunchUi();
+            }
             return RunCommandLine(args);
         }
 
@@ -56,6 +62,7 @@ namespace GamingTweaker
             "Utilisation : GamingTweaker.exe                      lance l'interface\r\n" +
             "              GamingTweaker.exe --profile <fichier> --silent   applique un profil sans interface\r\n" +
             "              GamingTweaker.exe --uninstall [--confirm]          retire la routine et le dossier de données (aperçu sans --confirm)\r\n" +
+            "              GamingTweaker.exe --tray                           démarre réduit dans la zone de notification (Mode Jeu automatique)\r\n" +
             "Codes de sortie : 0 = tout est appliqué ou ignoré, 1 = au moins un échec, 2 = exécution impossible.";
 
         private static int RunCommandLine(string[] args)
@@ -75,7 +82,7 @@ namespace GamingTweaker
             }
             if (!silent || profile == null) { Console.Error.WriteLine(Usage); return 2; }
             try { return RunSilent(profile); }
-            catch (Exception ex) { Console.Error.WriteLine("Erreur inattendue : " + ex.Message); return 2; }
+            catch (Exception ex) { TraceAppli.Erreur("routine : erreur inattendue", ex); Console.Error.WriteLine("Erreur inattendue : " + ex.Message); return 2; }
         }
 
         private static int RunSilent(string profilePath)
@@ -97,6 +104,8 @@ namespace GamingTweaker
                 Selection = resolved.Selection, Silent = true, CatalogItems = catalogue.ToList(), Facts = facts,
                 Paths = DataPaths.Resolve(AppDomain.CurrentDomain.BaseDirectory, facts, DataPaths.RacineProtegeeParDefaut),
             };
+            TraceAppli.Configurer(req.Paths.MachineDir);
+            TraceAppli.Ecrire("routine : profil « " + Path.GetFileName(profilePath) + " », " + resolved.Selection.OptionIds.Count + " option(s)");
             req.Avertissements.AddRange(load.Avertissements);
             req.Avertissements.AddRange(resolved.Inconnues.Select(id => "Option inconnue ignorée : " + id));
             req.Avertissements.AddRange(resolved.Incompatibles.Select(id => "Option incompatible avec ce PC, ignorée : " + id));

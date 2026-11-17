@@ -103,6 +103,7 @@ namespace GamingTweaker.Core
             report.SessionDir = CreateSessionDir(req.Paths.SessionsDir, debut);
             var debutTxt = debut.ToString(Format, CultureInfo.InvariantCulture);
             WriteState(report.SessionDir, new SessionState { Etat = "Running", Debut = debutTxt });
+            TraceAppli.Ecrire("session " + Path.GetFileName(report.SessionDir) + (req.Silent ? " (routine)" : "") + " : " + selected.Count + " option(s) : " + string.Join(", ", selected.Select(i => i.Id)));
             var logFile = Path.Combine(report.SessionDir, "log.txt");
             var logLock = new object();
             Action<string> write = line =>
@@ -173,6 +174,7 @@ namespace GamingTweaker.Core
             catch (Exception ex)
             {
                 echec = true;
+                TraceAppli.Erreur("exécution : erreur interne", ex);
                 report.Avertissements.Add("Erreur inattendue pendant l'exécution : " + ex.Message);
                 foreach (var it in selected)
                     if (!outcomes.ContainsKey(it.Id))
@@ -190,6 +192,9 @@ namespace GamingTweaker.Core
             SaveLastApplied(req.Paths.MachineDir, lastApplied.Union(okIds).OrderBy(x => x, StringComparer.Ordinal));
             try { WriteReports(report, selected, debut); }
             catch (Exception ex) { report.Avertissements.Add("Rapport non écrit : " + ex.Message); }
+            TraceAppli.Ecrire("session " + Path.GetFileName(report.SessionDir) + " terminée : code " + report.ExitCode + ", "
+                + report.Items.Count(i => i.Status == OutcomeStatus.Ok) + " appliquée(s), " + report.Items.Count(i => i.Status == OutcomeStatus.Failed) + " échec(s)"
+                + (report.Avertissements.Count > 0 ? " ; avertissements : " + string.Join(" | ", report.Avertissements) : ""));
             WriteState(report.SessionDir, new SessionState
             {
                 Etat = echec ? "Failed" : "Done",
