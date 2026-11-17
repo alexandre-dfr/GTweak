@@ -89,6 +89,7 @@ namespace GamingTweaker.Ui
             if (!TryParseHeure(heure, out h)) { Message = "Heure invalide : saisissez par exemple 20:00."; return; }
             var nom = main.ProfilSelectionne;
             if (string.IsNullOrEmpty(nom)) { Message = "Choisissez d'abord un profil dans la barre du bas (ou enregistrez la sélection avec « Sauver »)."; return; }
+            if (ProfilsIntegres.EstReserve(nom)) { Message = ProfilsIntegres.MessageRoutine; return; }
             var chemin = main.CheminProfil(nom);
             if (!Planification.NomProfilAccepte(nom) || !Planification.NomProfilAccepte(Path.GetFileName(chemin))) { Message = Planification.MessagePourcent; return; }
             if (MemeUtilisateur != null)

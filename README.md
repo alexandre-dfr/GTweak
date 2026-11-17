@@ -19,6 +19,16 @@ Rien n'est installé. Les capteurs matériels (menu Informations) ne sont charg�
 - Les profils (`.json`) ne contiennent que des identifiants d'options, jamais de commande.
 - L'exe n'est pas signé : SmartScreen ou un antivirus peut le signaler. Il modifie le système, c'est normal.
 
+## Profils intégrés
+
+Trois profils sont fournis en tête de la liste des profils, en lecture seule :
+
+- **Gaming léger (intégré)** : options Sûr d'Optimisation, de Télémétrie et de Nettoyage.
+- **Gaming max (intégré)** : options Sûr et Avancé d'Optimisation, plus les options Sûr de Télémétrie et de Nettoyage.
+- **Confidentialité (intégré)** : toute la Télémétrie, Sûr et Avancé.
+
+Aucun ne contient d'option Risqué, d'option à liste (services, démarrage : leur contenu se choisit sur votre PC) ni d'option que « Recommandé » ne coche pas. Pour en modifier un ou le planifier, enregistrez-le sous votre propre nom avec « Sauver ».
+
 ## Annuler
 
 Chaque modification réversible est notée dans un journal. Un journal applicatif (`app.log`, dans le dossier de la machine sous le dossier de données protégé) garde la trace des sessions, de la routine et des erreurs internes pour le support ; il ne contient aucune donnée personnelle. L'historique permet d'annuler une session ou une option, et **Tout restaurer** revient à l'état d'avant. Si une valeur a changé entre-temps, l'application le signale avant de l'écraser. Les options non réversibles ou à annulation partielle sont indiquées dans l'aperçu.

@@ -172,6 +172,7 @@ namespace GamingTweaker.Ui
             set
             {
                 if (!Set(ref profilSelectionne, value)) return;
+                Raise("ProfilIntegreSelectionne");
                 if (!chargementProfil && !string.IsNullOrEmpty(value)) ChargerProfilNomme(value);
             }
         }
@@ -287,7 +288,9 @@ namespace GamingTweaker.Ui
             }
             catch (Exception) { /* dossier illisible : liste vide */ }
             ProfilsDisponibles.Clear();
-            foreach (var n in noms) ProfilsDisponibles.Add(n);
+            // Profils intégrés d'abord ; un fichier qui porterait leur nom affiché n'est pas listé (il serait masqué).
+            foreach (var pi in ProfilsIntegres.Tous) ProfilsDisponibles.Add(pi.NomAffiche);
+            foreach (var n in noms.Where(n => !ProfilsIntegres.EstReserve(n))) ProfilsDisponibles.Add(n);
         }
 
         /// <summary>Recharge le profil actuellement sélectionné (annule les modifications de cases depuis son chargement).</summary>
@@ -298,8 +301,28 @@ namespace GamingTweaker.Ui
 
         public string CheminProfil(string nom) { return Path.Combine(paths.ProfilsDir, nom + ".json"); }
 
+        /// <summary>Vrai si le profil sélectionné est un profil intégré (lecture seule).</summary>
+        public bool ProfilIntegreSelectionne { get { return ProfilsIntegres.Trouver(profilSelectionne) != null; } }
+
+        /// <summary>Nom proposé par « Sauver » : celui du profil sélectionné, sans le suffixe « (intégré) ».</summary>
+        public string NomPourEnregistrer
+        {
+            get
+            {
+                var pi = ProfilsIntegres.Trouver(profilSelectionne);
+                return pi != null ? pi.Nom : profilSelectionne ?? "";
+            }
+        }
+
         private void ChargerProfilNomme(string nom)
         {
+            var integre = ProfilsIntegres.Trouver(nom);
+            if (integre != null)
+            {
+                LoadProfil(ProfilsIntegres.Construire(integre, items, facts));
+                Message = (integre.NomAffiche + " : " + integre.Description + " " + Message).Trim();
+                return;
+            }
             var load = Profils.Load(CheminProfil(nom), items.Where(c => !string.IsNullOrEmpty(c.Liste)).Select(c => c.Liste).Distinct());
             if (load.Erreur != null) { Message = load.Erreur; return; }
             LoadProfil(load.Profil);
@@ -313,6 +336,7 @@ namespace GamingTweaker.Ui
             var invalides = Path.GetInvalidFileNameChars();
             nom = new string(nom.Where(c => !invalides.Contains(c)).ToArray()).Trim().TrimEnd('.');
             if (nom.Length == 0) return "Donnez un nom au profil (sans caractères spéciaux).";
+            if (ProfilsIntegres.EstReserve(nom)) return ProfilsIntegres.MessageNomReserve;
             var risques = Options.Where(o => o.IsChecked && (o.NiveauRisque == RiskLevel.Risque || (o.Liste != null && o.Liste.ElementsRisques().Count > 0))).ToList();
             if (risques.Count > 0 && (ConfirmerProfilRisque == null || !ConfirmerProfilRisque(risques))) return null;
             try { Profils.Save(ToProfil(nom), CheminProfil(nom)); }

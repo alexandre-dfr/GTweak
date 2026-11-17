@@ -26,7 +26,7 @@ namespace GamingTweaker.Ui
 
         private void Sauver_Click(object sender, RoutedEventArgs e)
         {
-            var dlg = new TexteWindow("Enregistrer le profil", "Nom du profil", vm.ProfilSelectionne ?? "") { Owner = this };
+            var dlg = new TexteWindow("Enregistrer le profil", "Nom du profil", vm.NomPourEnregistrer) { Owner = this };
             if (dlg.ShowDialog() != true) return;
             var err = vm.SauverProfil(dlg.Valeur);
             if (err != null) MessageBox.Show(this, err, "Profil", MessageBoxButton.OK, MessageBoxImage.Warning);
