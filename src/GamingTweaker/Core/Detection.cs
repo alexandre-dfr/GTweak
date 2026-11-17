@@ -53,11 +53,11 @@ namespace GamingTweaker.Core
                     p.StandardInput.Close();
                     p.BeginOutputReadLine();
                     p.BeginErrorReadLine();
-                    if (!p.WaitForExit((int)timeout.TotalMilliseconds)) Kill(p);
+                    if (!p.WaitForExit((int)timeout.TotalMilliseconds)) { TraceAppli.Ecrire("détection : délai de " + (int)timeout.TotalSeconds + " s dépassé, processus arrêté (" + withScript.Count + " options)"); Kill(p); }
                     else PowerShellLanceur.AttendreFlux(p); // vide les flux asynchrones (borné)
                 }
             }
-            catch (Exception) { /* échec de lancement : tout reste Unknown */ }
+            catch (Exception ex) { TraceAppli.Erreur("détection : lancement de PowerShell impossible, tout reste Inconnu", ex); }
             finally { if (script != null) script.Dispose(); }
             lock (res) return new Dictionary<string, DetectState>(res);
         }

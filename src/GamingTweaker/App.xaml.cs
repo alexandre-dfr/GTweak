@@ -47,6 +47,8 @@ namespace GamingTweaker
             }
             var facts = SystemInfo.Detect();
             var paths = DataPaths.Resolve(AppDomain.CurrentDomain.BaseDirectory, facts, DataPaths.RacineProtegeeParDefaut);
+            TraceAppli.Configurer(paths.MachineDir);
+            TraceAppli.Ecrire("interface : Windows " + facts.WindowsMajor + " " + facts.Edition + ", CPU " + facts.CpuVendor + ", GPU " + string.Join("/", facts.GpuVendors) + (facts.EstPortable ? ", portable" : ""));
             var pipeline = new RunPipeline(new RestorePoint(), ElevationCheck.SameUserAsDesktop);
 
             var registre = new ListProviderRegistry();
@@ -87,6 +89,11 @@ namespace GamingTweaker
             {
                 Confirmer = texte => MessageBox.Show(fenetre, texte, "Historique", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes,
                 ApresAnnulation = () => { var _ = vm.DetectAsync(); },
+                ApresDesinstallation = () =>
+                {
+                    MessageBox.Show(fenetre, "GamingTweaker est désinstallé. Supprimez GamingTweaker.exe à la main si vous ne voulez plus l'utiliser.", "GamingTweaker", MessageBoxButton.OK, MessageBoxImage.Information);
+                    Shutdown(0);
+                },
             };
 
             vm.ModeJeu = new ModeJeuViewModel(new ModeJeu(paths.MachineDir, new ModeJeuSysteme()), ModeJeuListes.ListerServices, ModeJeuListes.ListerProcessus)

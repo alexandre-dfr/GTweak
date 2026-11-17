@@ -296,21 +296,28 @@
                     </Button>
                 </Grid>
 
-                <!-- Bandeau du menu Télémétrie -->
+                <!-- Bandeau des menus d'options : « Tout restaurer » (tous les menus) ; lien O&O ShutUp10++ sur Télémétrie seulement -->
                 <Border Grid.Row="1" Margin="0,0,16,12" Padding="14,10" CornerRadius="6" Background="{StaticResource PanelBrush}">
                     <Border.Style>
                         <Style TargetType="Border">
                             <Setter Property="Visibility" Value="Collapsed"/>
-                            <Style.Triggers><DataTrigger Binding="{Binding EstMenuTelemetrie}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+                            <Style.Triggers><DataTrigger Binding="{Binding EstMenuOptions}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
                         </Style>
                     </Border.Style>
                     <DockPanel LastChildFill="True">
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                             <Button Content="Tout restaurer" Click="ToutRestaurer_Click" IsEnabled="{Binding PeutToutRestaurer}"
-                                    ToolTip="Annule les options de ce menu déjà appliquées : par le journal, sinon par un retour aux valeurs par défaut de Windows"/>
-                            <Button Content="O&amp;O ShutUp10++ (site officiel)" Margin="8,0,0,0" Click="ShutUp_Click" ToolTip="Ouvre la page officielle d'O&amp;O ShutUp10++ dans le navigateur"/>
+                                    ToolTip="Annule toutes les options appliquées par GamingTweaker, dans tous les menus : par le journal, sinon par un retour aux valeurs par défaut de Windows"/>
+                            <Button Content="O&amp;O ShutUp10++ (site officiel)" Margin="8,0,0,0" Click="ShutUp_Click" ToolTip="Ouvre la page officielle d'O&amp;O ShutUp10++ dans le navigateur">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers><DataTrigger Binding="{Binding EstMenuTelemetrie}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
                         </StackPanel>
-                        <TextBlock Text="Les options appliquées peuvent toutes être annulées d'un coup." Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,12,0"/>
+                        <TextBlock Text="Toutes les options appliquées par GamingTweaker (tous les menus) peuvent être annulées d'un coup ; l'historique permet d'annuler session par session." Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,12,0"/>
                     </DockPanel>
                 </Border>
 

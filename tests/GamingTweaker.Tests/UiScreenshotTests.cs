@@ -296,7 +296,9 @@ namespace GamingTweaker.Tests
             Prepare(run, 900, 640); run.Show(); Pump(d); Thread.Sleep(200); Pump(d); Pump(d);
             Capture(run, "11-execution-rapport");
             // Le RunWindow refuse la fermeture tant que l'exécution n'est pas terminée ; ici elle l'est.
-            run.Close(); win.Close(); Pump(d);
+            // Sur un runner lent, l'exécution simulée peut finir après la capture : la fermeture est retentée (10 s au plus).
+            for (int k = 0; k < 100 && !runFerme; k++) { run.Close(); Pump(d); if (!runFerme) Thread.Sleep(100); }
+            win.Close(); Pump(d);
             var apercuFerme = !prev.IsLoaded;
             if (!runFerme || !apercuFerme || !mainFerme) throw new InvalidOperationException("Une fenêtre ne s'est pas fermée (RunWindow=" + runFerme + ", Aperçu=" + apercuFerme + ", Principale=" + mainFerme + ").");
             try { Directory.Delete(tmp, true); } catch (IOException) { }
