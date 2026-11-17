@@ -173,7 +173,7 @@ namespace GamingTweaker.Core
                     DossierProtege.CreerDossier(DossierApp);
                 }
                 catch (Exception ex) { throw new IOException("Le dossier " + DossierApp + " n'a pas pu être vidé avant la copie de l'exe : " + ex.Message, ex); }
-                // Jamais File.Copy(source) : l'exe d'origine a pu être renommé et remplacé depuis le lancement (voir ExeEnCours).
+                // Jamais de copie par le chemin : l'exe d'origine a pu être renommé et remplacé depuis le lancement (voir ExeEnCours).
                 ExeEnCours.CopierVers(ExeCopie);
             }
             var copieProfil = Path.Combine(DossierApp, Path.GetFileName(c.Profil));

@@ -1304,7 +1304,7 @@ namespace GTNative
 
         /// <summary>
         /// Chemin reel d'un dossier ordinaire (ni jonction ni lien), ou null. Avec attendu : null aussi si le chemin reel differe
-        /// du chemin attendu (un dossier parent redirige par un lien).
+        /// du chemin attendu (un dossier parent redirige par un lien). Attendu vide : PowerShell passe $null comme chaine vide.
         /// </summary>
         public static string DossierReel(string dir, string attendu)
         {
@@ -1316,7 +1316,7 @@ namespace GTNative
                 if ((i.Attributes & AttrReparse) != 0 || (i.Attributes & AttrDirectory) == 0) return null;
                 var reel = CheminFinal(h);
                 if (reel == null) return null;
-                if (attendu != null && !string.Equals(reel, CheminLong(attendu), StringComparison.OrdinalIgnoreCase)) return null;
+                if (!string.IsNullOrEmpty(attendu) && !string.Equals(reel, CheminLong(attendu), StringComparison.OrdinalIgnoreCase)) return null;
                 return reel;
             }
         }
