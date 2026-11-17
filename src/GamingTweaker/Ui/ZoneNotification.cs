@@ -42,6 +42,13 @@ namespace GamingTweaker.Ui
 
         public bool Visible { get { return icone.Visible; } set { icone.Visible = value; } }
 
+        /// <summary>Infobulle de l'icône (63 caractères au plus) : état du Mode Jeu.</summary>
+        public void Etat(bool modeJeuActif, bool autoActif)
+        {
+            var t = "GamingTweaker" + (modeJeuActif ? " · Mode Jeu actif" : autoActif ? " · surveillance des jeux" : "");
+            icone.Text = t.Length > 63 ? t.Substring(0, 63) : t;
+        }
+
         public void Notifier(string titre, string texte)
         {
             if (!icone.Visible) return;

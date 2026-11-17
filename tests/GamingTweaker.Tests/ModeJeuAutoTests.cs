@@ -223,6 +223,24 @@ namespace GamingTweaker.Tests
         }
 
         [Fact]
+        public void Le_mode_automatique_ne_ferme_jamais_un_jeu_de_la_liste_ni_un_lanceur()
+        {
+            var c = new ModeJeuAutoConfig
+            {
+                Jeux = new List<JeuSurveille> { Dossier(@"D:\Jeux\A"), Exe(@"C:\B\b.exe") },
+                Processus = new List<ProcessusChoix>
+                {
+                    new ProcessusChoix { Nom = "a", Chemin = @"D:\Jeux\A\bin\a.exe" },
+                    new ProcessusChoix { Nom = "b", Chemin = @"C:\B\b.exe" },
+                    new ProcessusChoix { Nom = "steam", Chemin = @"C:\Program Files (x86)\Steam\steam.exe" },
+                    new ProcessusChoix { Nom = "EpicGamesLauncher.exe", Chemin = @"C:\Epic\EpicGamesLauncher.exe" },
+                    new ProcessusChoix { Nom = "Discord", Chemin = @"C:\Users\moi\AppData\Local\Discord\Discord.exe" },
+                },
+            };
+            Assert.Equal(new[] { "Discord" }, c.VersModeJeu().Processus.Select(p => p.Nom));
+        }
+
+        [Fact]
         public void Reglages_illisibles_mode_desactive()
         {
             File.WriteAllText(Path.Combine(dir, ModeJeuAutoConfig.NomFichier), "{pas du json");

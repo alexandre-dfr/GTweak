@@ -26,8 +26,22 @@ namespace GamingTweaker.Core
         {
             var c = new ModeJeuConfig { PlanGuid = Plan ? ModeJeu.PlanPerformances : null };
             c.Services.AddRange((Services ?? new List<string>()).Where(s => !ModeJeu.EstServiceProtege(s)));
-            c.Processus.AddRange((Processus ?? new List<ProcessusChoix>()).Where(p => p != null && !ModeJeu.EstProcessusProtege(p.Nom)));
+            // Jamais fermés par le mode automatique : un jeu de la liste (il serait fermé puis relancé en boucle) et les lanceurs
+            // (Steam, Epic : les fermer peut fermer le jeu en cours).
+            c.Processus.AddRange((Processus ?? new List<ProcessusChoix>()).Where(p => p != null && !ModeJeu.EstProcessusProtege(p.Nom) && !EstJeuOuLanceur(p)));
             return c;
+        }
+
+        public static readonly string[] Lanceurs = { "steam", "steamwebhelper", "steamservice", "EpicGamesLauncher", "EpicWebHelper", "EpicOnlineServicesHost" };
+
+        private bool EstJeuOuLanceur(ProcessusChoix p)
+        {
+            var nom = (p.Nom ?? "").Trim();
+            if (nom.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) nom = nom.Substring(0, nom.Length - 4);
+            if (Lanceurs.Any(l => string.Equals(l, nom, StringComparison.OrdinalIgnoreCase))) return true;
+            if (string.IsNullOrEmpty(p.Chemin)) return false;
+            return (Jeux ?? new List<JeuSurveille>()).Any(j => j != null && (Core.Jeux.Correspond(p.Chemin, j)
+                || (j.EstDossier && p.Chemin.StartsWith(j.Chemin.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase))));
         }
 
         public static ModeJeuAutoConfig Charger(string machineDir)

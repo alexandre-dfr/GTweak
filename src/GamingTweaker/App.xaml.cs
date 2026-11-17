@@ -169,10 +169,17 @@ namespace GamingTweaker
             };
             Action quitterApp = () => { quitter = true; fenetre.Close(); Shutdown(0); };
             zone = new ZoneNotification(() => Dispatcher.Invoke(ouvrir), () => Dispatcher.Invoke(quitterApp), () => auto.Actif, v => Dispatcher.Invoke(() => auto.Actif = v));
-            surveillance.Notification += (titre, texte) => Dispatcher.BeginInvoke(new Action(() => { vm.ModeJeu.Synchroniser(); zone.Notifier(titre, texte); }));
+            surveillance.Notification += (titre, texte) => Dispatcher.BeginInvoke(new Action(() =>
+            {
+                vm.ModeJeu.Synchroniser();
+                zone.Etat(modeJeu.IsActive, auto.Actif);
+                zone.Notifier(titre, texte);
+            }));
+            vm.ModeJeu.PropertyChanged += (s, ev) => { if (ev.PropertyName == "EstActif") zone.Etat(modeJeu.IsActive, auto.Actif); };
             Action majAuto = () =>
             {
                 zone.Visible = DemarrageEnZone || auto.Actif || auto.DemarrageAvecWindows;
+                zone.Etat(modeJeu.IsActive, auto.Actif);
                 if (auto.Actif) surveillance.Demarrer(); else surveillance.Arreter();
             };
             auto.ConfigChangee += majAuto;

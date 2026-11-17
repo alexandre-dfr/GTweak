@@ -174,6 +174,51 @@ namespace GamingTweaker.Tests
         }
 
         [Fact]
+        public void Les_menus_affichent_le_nombre_d_options_cochees()
+        {
+            var opt = vm.Menus.Single(m => m.Nom == "Optimisation");
+            Assert.Equal("Optimisation", opt.Libelle);
+            Cocher("opt.sur"); Cocher("opt.avance");
+            Assert.Equal(2, opt.Coches);
+            Assert.Equal("Optimisation  ·  2", opt.Libelle);
+            Assert.Equal(0, vm.Menus.Single(m => m.Nom == "Télémétrie").Coches);
+            vm.LoadProfil(P("tel.sur"));
+            Assert.Equal(0, opt.Coches);
+            Assert.Equal(1, vm.Menus.Single(m => m.Nom == "Télémétrie").Coches);
+        }
+
+        [Fact]
+        public void Decocher_ne_touche_que_les_options_affichees()
+        {
+            Cocher("opt.sur"); Cocher("tel.sur");
+            vm.MenuCourant = "Optimisation";
+            Assert.True(vm.DecocherCommand.CanExecute(null));
+            vm.DecocherCommand.Execute(null);
+            Assert.False(Coche("opt.sur"));
+            Assert.True(Coche("tel.sur"));
+            Assert.False(vm.DecocherCommand.CanExecute(null));
+        }
+
+        [Fact]
+        public async Task Masquer_les_options_deja_appliquees_garde_les_cochees()
+        {
+            var v = Cree(new[]
+            {
+                It("a.fait", "Optimisation", "G", "Déjà fait", RiskLevel.Sur),
+                It("a.coche", "Optimisation", "G", "Fait mais coché", RiskLevel.Sur),
+                It("a.afaire", "Optimisation", "G", "À faire", RiskLevel.Sur),
+            }, its => Task.FromResult(its.ToDictionary(i => i.Id, i => i.Id == "a.afaire" ? DetectState.NotApplied : DetectState.Applied)));
+            v.MenuCourant = "Optimisation";
+            await v.DetectAsync();
+            v.Options.Single(o => o.Id == "a.coche").IsChecked = true;
+            Assert.Equal(3, v.Visibles.Count);
+            v.MasquerAppliquees = true;
+            Assert.Equal(new[] { "a.coche", "a.afaire" }, v.Visibles.Select(o => o.Id).ToArray());
+            v.MasquerAppliquees = false;
+            Assert.Equal(3, v.Visibles.Count);
+        }
+
+        [Fact]
         public void Profil_corrompu_donne_un_message_sans_exception()
         {
             Directory.CreateDirectory(Path.Combine(tmp, "Profils"));

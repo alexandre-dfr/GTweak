@@ -13,9 +13,13 @@ using GamingTweaker.Lists;
 
 namespace GamingTweaker.Ui
 {
-    public class MenuEntry
+    public class MenuEntry : ObservableObject
     {
+        private int coches;
         public string Nom { get; set; }
+        /// <summary>Options cochées dans ce menu (affiché à côté du nom, 0 : rien).</summary>
+        public int Coches { get { return coches; } set { if (Set(ref coches, value)) Raise("Libelle"); } }
+        public string Libelle { get { return coches > 0 ? Nom + "  ·  " + coches : Nom; } }
         public bool EstSeparateur { get; set; }
         /// <summary>Vue réservée aux tâches suivantes : panneau neutre avec le seul titre du menu.</summary>
         public bool EstEmplacement { get; set; }
@@ -79,7 +83,7 @@ namespace GamingTweaker.Ui
 
             Options = items.Where(i => Compatibilite.IsCompatible(i.Compatibilite ?? new CompatRule(), facts))
                            .Select(i => new OptionViewModel(i, confirmerRisque, string.IsNullOrEmpty(i.Liste) || registre == null ? null : registre.Get(i.Liste))).ToList();
-            foreach (var o in Options) o.CocheChanged += () => { Raise("SelectedCount"); Raise("AUneSelection"); Raise("ResumeSelection"); };
+            foreach (var o in Options) o.CocheChanged += () => { Raise("SelectedCount"); Raise("AUneSelection"); Raise("ResumeSelection"); MajCompteurs(); };
 
             var menus = MenusOptions.Concat(new[] { "Informations" }).Select(n => new MenuEntry { Nom = n, EstEmplacement = n == "Informations" }).ToList();
             menus.Add(new MenuEntry { EstSeparateur = true });
@@ -88,6 +92,7 @@ namespace GamingTweaker.Ui
             Menus = menus;
 
             RecommanderCommand = new RelayCommand(_ => ApplyRecommended(MenuCourant), _ => !EstEmplacement && !EnRecherche && Visibles.Any(o => o.Recommandee));
+            DecocherCommand = new RelayCommand(_ => Decocher(), _ => Visibles.Any(o => o.IsChecked));
             RafraichirProfils();
             Filtrer();
         }
@@ -98,6 +103,23 @@ namespace GamingTweaker.Ui
         public ObservableCollection<OptionViewModel> Visibles { get; } = new ObservableCollection<OptionViewModel>();
         public ObservableCollection<string> ProfilsDisponibles { get; } = new ObservableCollection<string>();
         public ICommand RecommanderCommand { get; private set; }
+        /// <summary>Décoche les options affichées (le menu courant, ou les résultats de la recherche).</summary>
+        public ICommand DecocherCommand { get; private set; }
+
+        public void Decocher()
+        {
+            foreach (var o in Visibles.ToList()) if (o.IsChecked) o.IsChecked = false;
+        }
+
+        private bool masquerAppliquees;
+        /// <summary>Masque les options que la détection donne « Déjà appliqué » (une option cochée reste toujours visible).</summary>
+        public bool MasquerAppliquees { get { return masquerAppliquees; } set { if (Set(ref masquerAppliquees, value)) Filtrer(); } }
+
+        private void MajCompteurs()
+        {
+            foreach (var m in Menus.Where(m => !m.EstSeparateur && !m.EstEmplacement))
+                m.Coches = Options.Count(o => o.IsChecked && o.Menu == m.Nom);
+        }
 
         /// <summary>Appelée par la vue pour confirmer l'absence de point de restauration (peut venir d'un autre thread).</summary>
         public Func<string, bool> ConfirmSansPointDeRestauration { get; set; }
@@ -179,6 +201,8 @@ namespace GamingTweaker.Ui
 
         // ---------- Filtre ----------
 
+        public const string EtatDejaApplique = "Déjà appliqué";
+
         public static string Normaliser(string s)
         {
             if (string.IsNullOrWhiteSpace(s)) return "";
@@ -196,6 +220,7 @@ namespace GamingTweaker.Ui
             if (q.Length > 0) src = Options.Where(o => o.SearchText.Contains(q));
             else if (EstEmplacement) src = Enumerable.Empty<OptionViewModel>();
             else src = Options.Where(o => o.Menu == menuCourant);
+            if (masquerAppliquees) src = src.Where(o => o.IsChecked || o.Etat != EtatDejaApplique);
             var liste = src.ToList();
             Visibles.Clear();
             foreach (var o in liste) Visibles.Add(o);
@@ -274,6 +299,7 @@ namespace GamingTweaker.Ui
             if (res.Incompatibles.Count > 0) infos.Add(res.Incompatibles.Count + " option(s) incompatible(s) avec ce PC ignorée(s).");
             if (refuses.Count > 0) infos.Add("Non cochée(s) faute de confirmation : " + string.Join(", ", refuses) + ".");
             Message = string.Join(" ", infos);
+            MajCompteurs();
         }
 
         // ---------- Profils ----------
@@ -361,6 +387,7 @@ namespace GamingTweaker.Ui
                 DetectState s;
                 o.SetEtat(res != null && res.TryGetValue(o.Id, out s) ? s : DetectState.Unknown);
             }
+            if (masquerAppliquees) Filtrer();
         }
 
         // ---------- Tout restaurer (tous les menus) ----------
