@@ -42,7 +42,7 @@ function Invoke-GTItem([string]$Id, [scriptblock]$Apply) {
 # ---------------------------------------------------------------------------
 # Journal d'annulation (journal.jsonl, une ligne JSON compacte par entree) et fonctions Set-Tweak*.
 # Chaque fonction ecrit puis vide son entree sur disque AVANT de modifier : si l'ecriture echoue, elle leve
-# une erreur et ne change rien. Kinds : registry, service, task, power, bcd, hosts, app, quarantine, regkey, regkeynew.
+# une erreur et ne change rien. Kinds : registry, service, task, power, bcd, hosts, app, quarantine, regkey, regkeynew, nvdrs.
 # ---------------------------------------------------------------------------
 
 function Add-GTJournalLine([string]$Line) {
@@ -700,6 +700,11 @@ function Restore-GTEntry($E) {
             if (@(Get-GTPowerDevices | Where-Object { $_.InstanceName -eq $E.target }).Count -gt 0) { Set-GTDevicePower $E.target ([bool]$E.before) }
         }
         'hosts'      { Remove-GTHostsLines $E.target ([string[]]@($E.after)) }
+        'nvdrs' {
+            $id = ConvertFrom-GTNvId ([string]$E.target)
+            Initialize-GTNvDrs
+            if ($E.existed) { [GTNative.NvDrs]::Ecrire($id, [uint32][long]$E.before) } else { [GTNative.NvDrs]::Retirer($id) }
+        }
         'quarantine' {
             if ((Test-Path -LiteralPath $E.before) -and -not (Test-Path -LiteralPath $E.after)) { return }  # deja restaure
             if (Test-Path -LiteralPath $E.before) { throw ('Impossible de restaurer ' + $E.before + ' : un fichier existe déjà à cet emplacement.') }
@@ -1981,4 +1986,159 @@ function Install-TweakNvidiaDriver {
         if ($null -ne $lock) { $lock.Dispose() }
         Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue
     }
+}
+
+# ---- Reglages du pilote NVIDIA (profil global, API NVAPI DRS) --------------------------------------
+# nvapi64.dll est installee avec le pilote (System32) : aucun outil externe. Les reglages vont dans le profil global courant
+# (celui que modifie « Parametres globaux » du panneau NVIDIA). Chaque ecriture est journalisee (kind nvdrs, target = id en hexadecimal) :
+# l'annulation remet la valeur d'avant, ou retire le reglage du profil (valeur par defaut du pilote) s'il n'y etait pas defini.
+# Structure NVDRS_SETTING_V1 (12320 octets) manipulee par decalages : version 0, settingId 4100, settingType 4104,
+# settingLocation 4108, u32CurrentValue 8220.
+$script:GT_NvDrsSource = @'
+using System;
+using System.Runtime.InteropServices;
+
+namespace GTNative
+{
+    public static class NvDrs
+    {
+        [DllImport("nvapi64.dll", EntryPoint = "nvapi_QueryInterface", CallingConvention = CallingConvention.Cdecl)]
+        private static extern IntPtr QueryInterface(uint id);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int FInit();
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int FCreate(out IntPtr session);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int FSession(IntPtr session);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int FProfile(IntPtr session, out IntPtr profile);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int FGet(IntPtr session, IntPtr profile, uint id, IntPtr setting);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int FSet(IntPtr session, IntPtr profile, IntPtr setting);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int FDelete(IntPtr session, IntPtr profile, uint id);
+
+        public const int NotFound = -160;
+        private const int Size = 12320;
+        private const int Version = Size | (1 << 16);
+
+        private static T F<T>(uint id) where T : class
+        {
+            IntPtr p = QueryInterface(id);
+            if (p == IntPtr.Zero) throw new InvalidOperationException("Fonction NVAPI absente de ce pilote (0x" + id.ToString("X8") + ").");
+            return Marshal.GetDelegateForFunctionPointer(p, typeof(T)) as T;
+        }
+
+        private static void Ok(int s, string quoi)
+        {
+            if (s != 0) throw new InvalidOperationException("NVAPI " + quoi + " a échoué (code " + s + ").");
+        }
+
+        private static IntPtr Ouvrir(out IntPtr profil)
+        {
+            Ok(F<FInit>(0x0150E828)(), "Initialize");
+            IntPtr h;
+            Ok(F<FCreate>(0x0694D52E)(out h), "DRS_CreateSession");
+            try
+            {
+                Ok(F<FSession>(0x375DBD6B)(h), "DRS_LoadSettings");
+                Ok(F<FProfile>(0x617BFF9F)(h, out profil), "DRS_GetCurrentGlobalProfile");
+            }
+            catch { F<FSession>(0xDAD9CFF8)(h); throw; }
+            return h;
+        }
+
+        private static void Fermer(IntPtr h) { F<FSession>(0xDAD9CFF8)(h); }
+
+        private static IntPtr Tampon()
+        {
+            IntPtr b = Marshal.AllocHGlobal(Size);
+            Marshal.Copy(new byte[Size], 0, b, Size);
+            Marshal.WriteInt32(b, 0, Version);
+            return b;
+        }
+
+        /// <summary>{ defini dans le profil global (1/0), valeur effective (-1 si inconnue) }.</summary>
+        public static long[] Lire(uint id)
+        {
+            IntPtr profil; IntPtr h = Ouvrir(out profil); IntPtr b = Tampon();
+            try
+            {
+                int s = F<FGet>(0x73BF8338)(h, profil, id, b);
+                if (s == NotFound) return new long[] { 0, -1 };
+                Ok(s, "DRS_GetSetting");
+                if (Marshal.ReadInt32(b, 4104) != 0) throw new InvalidOperationException("Réglage NVIDIA 0x" + id.ToString("X8") + " : type inattendu (pas un entier).");
+                bool defini = Marshal.ReadInt32(b, 4108) == 0;
+                return new long[] { defini ? 1 : 0, (long)(uint)Marshal.ReadInt32(b, 8220) };
+            }
+            finally { Marshal.FreeHGlobal(b); Fermer(h); }
+        }
+
+        public static void Ecrire(uint id, uint valeur)
+        {
+            IntPtr profil; IntPtr h = Ouvrir(out profil); IntPtr b = Tampon();
+            try
+            {
+                Marshal.WriteInt32(b, 4100, (int)id);
+                Marshal.WriteInt32(b, 4104, 0);
+                Marshal.WriteInt32(b, 8220, unchecked((int)valeur));
+                Ok(F<FSet>(0x577DD202)(h, profil, b), "DRS_SetSetting");
+                Ok(F<FSession>(0xFCBC7E14)(h), "DRS_SaveSettings");
+            }
+            finally { Marshal.FreeHGlobal(b); Fermer(h); }
+        }
+
+        /// <summary>Retire le reglage du profil global (le pilote reprend sa valeur par defaut).</summary>
+        public static void Retirer(uint id)
+        {
+            IntPtr profil; IntPtr h = Ouvrir(out profil);
+            try
+            {
+                int s = F<FDelete>(0xE4A26362)(h, profil, id);
+                if (s == NotFound) return;
+                Ok(s, "DRS_DeleteProfileSetting");
+                Ok(F<FSession>(0xFCBC7E14)(h), "DRS_SaveSettings");
+            }
+            finally { Fermer(h); }
+        }
+    }
+}
+'@
+
+function Initialize-GTNvDrs {
+    if ('GTNative.NvDrs' -as [type]) { return }
+    if (-not (Test-Path -LiteralPath (Join-Path $env:SystemRoot 'System32\nvapi64.dll'))) { Skip-GTItem 'Pilote NVIDIA introuvable (nvapi64.dll absent) : réglage ignoré.' }
+    Add-Type -TypeDefinition $script:GT_NvDrsSource -Language CSharp
+}
+
+function Format-GTNvId([uint32]$Id) { return ('0x{0:X8}' -f $Id) }
+
+function ConvertFrom-GTNvId([string]$Text) { return [Convert]::ToUInt32(($Text -replace '^0[xX]', ''), 16) }
+
+# @{ Existed = defini dans le profil global ; Value = valeur effective ou $null si le pilote n'en donne pas }.
+function Get-GTNvSetting([uint32]$Id) {
+    Initialize-GTNvDrs
+    $r = [GTNative.NvDrs]::Lire($Id)
+    $v = $null; if ($r[1] -ge 0) { $v = [uint32]$r[1] }
+    return @{ Existed = ($r[0] -eq 1); Value = $v }
+}
+
+# Ecrit un reglage du profil global apres l'avoir journalise. Rien n'est ecrit ni journalise s'il y est deja defini a cette valeur.
+function Set-TweakNvSetting {
+    param([Parameter(Mandatory)][uint32]$Id, [Parameter(Mandatory)][uint32]$Value)
+    $cur = Get-GTNvSetting $Id
+    if ($cur.Existed -and $cur.Value -eq $Value) { return }
+    $before = $null; if ($cur.Existed) { $before = [long]$cur.Value }
+    Write-GTJournal 'nvdrs' (Format-GTNvId $Id) ([bool]$cur.Existed) $before ([long]$Value)
+    [GTNative.NvDrs]::Ecrire($Id, $Value)
+}
+
+# Annulation sans journal (« Tout restaurer ») : reglages retires du profil global, valeurs par defaut du pilote.
+function Reset-GTNvSettings([uint32[]]$Ids) {
+    Initialize-GTNvDrs
+    foreach ($id in $Ids) { [GTNative.NvDrs]::Retirer($id) }
+}
+
+# 'Applied' si chaque reglage a la valeur voulue. $Pairs : @(@(id, valeur), ...).
+function Get-GTNvState([object[]]$Pairs) {
+    foreach ($p in $Pairs) {
+        $c = Get-GTNvSetting ([uint32]$p[0])
+        if ($null -eq $c.Value -or $c.Value -ne [uint32]$p[1]) { return 'NotApplied' }
+    }
+    return 'Applied'
 }
