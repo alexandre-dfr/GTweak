@@ -113,7 +113,7 @@ namespace GTNative {
         public void Identifiant_hexadecimal_du_journal()
         {
             Assert.Equal("0x00A879CF", string.Join("", PsCommon.Eval("Format-GTNvId 0x00A879CF")));
-            Assert.Equal("11040719", string.Join("", PsCommon.Eval("ConvertFrom-GTNvId '0x00A879CF'")));
+            Assert.Equal("11041231", string.Join("", PsCommon.Eval("ConvertFrom-GTNvId '0x00A879CF'")));
         }
 
         [Fact]
