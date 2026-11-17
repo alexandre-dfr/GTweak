@@ -46,6 +46,7 @@ namespace GamingTweaker.Core
                 {
                     b.Actions.Add("Aperçu (rien n'est supprimé sans --confirm) :");
                     b.Actions.Add(routine.Existe ? "- la routine planifiée " + Planification.NomTache + " serait supprimée" : "- aucune routine planifiée");
+                    b.Actions.Add("- le démarrage avec Windows (" + DemarrageWindows.NomTache + ") serait supprimé s'il existe");
                     b.Actions.Add("- le dossier " + racine + " serait supprimé (" + sessions + " session(s) avec leurs journaux d'annulation, "
                         + fichiersQuarantaine + " fichier(s) en quarantaine)");
                     if (sessions > 0) b.Avertissements.Add("Les réglages appliqués ne sont pas annulés par la désinstallation : utilisez d'abord « Tout restaurer » ou l'annulation des sessions dans l'historique.");
@@ -54,7 +55,9 @@ namespace GamingTweaker.Core
                     return b;
                 }
 
-                // 1. Routine : tâche + dossier du Planificateur (une tâche absente vaut succès).
+                // 1. Démarrage avec Windows puis routine : tâches + dossier du Planificateur (une tâche absente vaut succès).
+                try { Planification.SupprimerTacheEtDossier(DemarrageWindows.NomTache); b.Actions.Add("Démarrage avec Windows supprimé (ou déjà absent)."); }
+                catch (Exception ex) { b.Avertissements.Add("Démarrage avec Windows non supprimé : " + ex.Message); }
                 try { Planification.SupprimerTacheEtDossier(); b.Actions.Add("Routine planifiée supprimée (ou déjà absente)."); }
                 catch (Exception ex) { b.Avertissements.Add("Routine planifiée non supprimée : " + ex.Message); }
 

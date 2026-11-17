@@ -53,6 +53,9 @@
     <Reference Include="System.Management" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.ServiceProcess" />
+    <!-- Icône de la zone de notification (NotifyIcon) : aucune autre partie de l'interface n'utilise Windows Forms. -->
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Drawing" />
   </ItemGroup>
 
   <!-- Integre chaque DLL copiee localement en ressource embarquee et empeche sa copie. -->

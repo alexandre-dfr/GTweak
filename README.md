@@ -33,6 +33,16 @@ Aucun ne contient d'option Risqué, d'option à liste (services, démarrage : le
 
 Avec une carte NVIDIA, le menu Optimisation affiche un groupe « Pilote NVIDIA » : mode de faible latence Ultra, gestion de l'alimentation en performances maximales, cache des shaders illimité, filtrage des textures en hautes performances, synchronisation verticale désactivée. Chaque option se coche séparément (niveau Avancé, jamais cochée par « Recommandé » ni par un profil intégré). Elles modifient les paramètres globaux du pilote par son interface `nvapi64.dll`, installée avec le pilote : rien n'est téléchargé. La valeur d'avant est notée dans le journal, et chaque option s'annule seule.
 
+## Mode Jeu automatique
+
+Dans le menu Mode Jeu, la section « Mode Jeu automatique » surveille une liste de jeux :
+
+- **Liste de jeux** : ajoutez un `.exe`, ou choisissez parmi les jeux installés par Steam et Epic Games. Pour un jeu Steam ou Epic, tout programme lancé depuis son dossier compte (les lanceurs, outils de plantage et anti-triche sont ignorés).
+- **Réglages utilisés** : la sélection du Mode Jeu (services, processus, plan d'alimentation), reprise avec « Utiliser la sélection ci-dessus ».
+- **Fonctionnement** : quand un jeu de la liste démarre, le Mode Jeu s'active. Quand vous quittez le dernier jeu, tout est rétabli. Une notification le signale à chaque fois. Un Mode Jeu activé à la main n'est jamais rétabli automatiquement, et un Mode Jeu rétabli à la main pendant une partie n'est pas réactivé avant la partie suivante.
+- **Zone de notification** : tant que le mode automatique est actif, fermer la fenêtre la réduit en icône près de l'horloge. Clic droit sur l'icône pour rouvrir ou quitter. En quittant, un Mode Jeu activé automatiquement est rétabli.
+- **Démarrer avec Windows** : crée la tâche `\GamingTweaker\Demarrage`, lancée à l'ouverture de session avec les droits administrateur (sans invite). Elle démarre `GamingTweaker.exe --tray` depuis une copie placée dans `%ProgramFiles%\GamingTweaker\Demarrage`, jamais depuis l'emplacement de l'exe portable. `--uninstall` la retire aussi.
+
 ## Annuler
 
 Chaque modification réversible est notée dans un journal. Un journal applicatif (`app.log`, dans le dossier de la machine sous le dossier de données protégé) garde la trace des sessions, de la routine et des erreurs internes pour le support ; il ne contient aucune donnée personnelle. L'historique permet d'annuler une session ou une option, et **Tout restaurer** revient à l'état d'avant. Si une valeur a changé entre-temps, l'application le signale avant de l'écraser. Les options non réversibles ou à annulation partielle sont indiquées dans l'aperçu.

@@ -27,6 +27,12 @@ namespace GamingTweaker
             DemarrageSur.RestreindreRechercheDll();
             AssemblyLoader.Register();
             if (args.Length == 0) return LaunchUi();
+            // Démarrage avec Windows (tâche \GamingTweaker\Demarrage) : interface cachée, icône dans la zone de notification.
+            if (args.Length == 1 && string.Equals(args[0], DemarrageWindows.Argument, StringComparison.OrdinalIgnoreCase))
+            {
+                App.DemarrageEnZone = true;
+                return LaunchUi();
+            }
             return RunCommandLine(args);
         }
 
@@ -56,6 +62,7 @@ namespace GamingTweaker
             "Utilisation : GamingTweaker.exe                      lance l'interface\r\n" +
             "              GamingTweaker.exe --profile <fichier> --silent   applique un profil sans interface\r\n" +
             "              GamingTweaker.exe --uninstall [--confirm]          retire la routine et le dossier de données (aperçu sans --confirm)\r\n" +
+            "              GamingTweaker.exe --tray                           démarre réduit dans la zone de notification (Mode Jeu automatique)\r\n" +
             "Codes de sortie : 0 = tout est appliqué ou ignoré, 1 = au moins un échec, 2 = exécution impossible.";
 
         private static int RunCommandLine(string[] args)
