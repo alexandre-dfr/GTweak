@@ -178,13 +178,17 @@ namespace GamingTweaker
             auto.ConfigChangee += majAuto;
             auto.PropertyChanged += (s, ev) => { if (ev.PropertyName == "DemarrageAvecWindows") majAuto(); };
             majAuto();
-            // Mode automatique actif : fermer la fenêtre la cache (la surveillance continue) ; sinon l'application s'arrête.
+            // Icône affichée (mode automatique ou démarrage avec Windows) : fermer la fenêtre la cache ; sinon l'application s'arrête.
             fenetre.Closing += (s, ev) =>
             {
-                if (quitter || ev.Cancel || !auto.Actif) return;
+                if (quitter || ev.Cancel || !zone.Visible) return;
                 ev.Cancel = true;
                 fenetre.Hide();
-                if (!bulleMontree) { bulleMontree = true; zone.Notifier("GamingTweaker continue", "Le Mode Jeu automatique reste actif. Clic droit sur l'icône près de l'horloge pour quitter."); }
+                if (!bulleMontree)
+                {
+                    bulleMontree = true;
+                    zone.Notifier("GamingTweaker reste ouvert", (auto.Actif ? "Le Mode Jeu automatique continue. " : "") + "Clic droit sur l'icône près de l'horloge pour rouvrir ou quitter.");
+                }
             };
             fenetre.Closed += (s, ev) => { if (!quitter) Shutdown(0); };
             Exit += (s, ev) =>

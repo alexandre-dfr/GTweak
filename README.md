@@ -40,7 +40,7 @@ Dans le menu Mode Jeu, la section « Mode Jeu automatique » surveille une liste
 - **Liste de jeux** : ajoutez un `.exe`, ou choisissez parmi les jeux installés par Steam et Epic Games. Pour un jeu Steam ou Epic, tout programme lancé depuis son dossier compte (les lanceurs, outils de plantage et anti-triche sont ignorés).
 - **Réglages utilisés** : la sélection du Mode Jeu (services, processus, plan d'alimentation), reprise avec « Utiliser la sélection ci-dessus ».
 - **Fonctionnement** : quand un jeu de la liste démarre, le Mode Jeu s'active. Quand vous quittez le dernier jeu, tout est rétabli. Une notification le signale à chaque fois. Un Mode Jeu activé à la main n'est jamais rétabli automatiquement, et un Mode Jeu rétabli à la main pendant une partie n'est pas réactivé avant la partie suivante.
-- **Zone de notification** : tant que le mode automatique est actif, fermer la fenêtre la réduit en icône près de l'horloge. Clic droit sur l'icône pour rouvrir ou quitter. En quittant, un Mode Jeu activé automatiquement est rétabli.
+- **Zone de notification** : tant que le mode automatique ou le démarrage avec Windows est actif, fermer la fenêtre la réduit en icône près de l'horloge. Clic droit sur l'icône pour rouvrir ou quitter. En quittant, un Mode Jeu activé automatiquement est rétabli.
 - **Démarrer avec Windows** : crée la tâche `\GamingTweaker\Demarrage`, lancée à l'ouverture de session avec les droits administrateur (sans invite). Elle démarre `GamingTweaker.exe --tray` depuis une copie placée dans `%ProgramFiles%\GamingTweaker\Demarrage`, jamais depuis l'emplacement de l'exe portable. `--uninstall` la retire aussi.
 
 ## Annuler
