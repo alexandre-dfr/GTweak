@@ -308,13 +308,13 @@ namespace GamingTweaker.Core
                 }
                 if (c.LibererMemoire)
                 {
-                    var v = actions as IViderMemoire;
-                    if (v == null) bilan.Avertissements.Add("Libération de mémoire indisponible.");
+                    var memoire = actions as IViderMemoire;
+                    if (memoire == null) bilan.Avertissements.Add("Libération de mémoire indisponible.");
                     else
                     {
                         try
                         {
-                            var mo = v.ViderMemoire(c.Exclusions);
+                            var mo = memoire.ViderMemoire(c.Exclusions);
                             bilan.Actions.Add(mo > 0 ? "Mémoire libérée : " + mo + " Mo disponibles en plus." : "Mémoire des programmes en arrière-plan libérée.");
                         }
                         catch (Exception ex) { bilan.Avertissements.Add("Mémoire non libérée : " + ex.Message); }
