@@ -66,6 +66,37 @@ namespace GamingTweaker.Ui
             .Select(p => new KeyValuePair<ProfilNvidia, string>(p, "NVIDIA : " + ProfilsNvidia.Libelle(p))).ToList();
         /// <summary>Profil du pilote NVIDIA le temps du Mode Jeu ; rétabli ensuite (valeurs d'avant).</summary>
         public ProfilNvidia ProfilNvidia { get { return profilNvidia; } set { Set(ref profilNvidia, value); } }
+
+        /// <summary>Accès au pilote NVIDIA pour « Lire les réglages NVIDIA » (null : bouton inactif).</summary>
+        public INvidiaReglages Nvidia { get; set; }
+        private string etatNvidia = "";
+        /// <summary>Réglages lus dans le pilote, une ligne par réglage.</summary>
+        public string EtatNvidia { get { return etatNvidia; } private set { Set(ref etatNvidia, value ?? ""); } }
+        private ICommand lireNvidiaCommand;
+        public ICommand LireNvidiaCommand { get { return lireNvidiaCommand ?? (lireNvidiaCommand = new RelayCommand(_ => { var t = LireNvidiaAsync(); }, _ => Nvidia != null)); } }
+
+        /// <summary>Lit dans le pilote les réglages que le profil NVIDIA modifie (diagnostic : ce qui est réellement en place).</summary>
+        public async Task LireNvidiaAsync()
+        {
+            var nv = Nvidia;
+            if (nv == null) return;
+            EtatNvidia = "Lecture du pilote…";
+            EtatNvidia = await Task.Run(() =>
+            {
+                if (!nv.Disponible) return "Pilote NVIDIA introuvable (nvapi64.dll absent).";
+                var lignes = new List<string>();
+                foreach (var id in ProfilsNvidia.Diagnostic)
+                {
+                    try
+                    {
+                        var v = nv.Lire(id);
+                        lignes.Add(ProfilsNvidia.NomReglage(id) + " : " + ProfilsNvidia.NomValeur(id, v[1]) + (v[0] == 1 ? "" : " (non défini dans le profil global)"));
+                    }
+                    catch (Exception ex) { lignes.Add(ProfilsNvidia.NomReglage(id) + " : lecture impossible (" + ex.Message + ")"); }
+                }
+                return string.Join("\r\n", lignes);
+            });
+        }
         public string Message { get { return message; } set { Set(ref message, value ?? ""); } }
         public int NombreCoches { get { return Services.Count(s => s.IsChecked) + Processus.Count(p => p.IsChecked); } }
 

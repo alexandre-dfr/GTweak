@@ -69,6 +69,12 @@
                 </StackPanel>
             </Grid>
             <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" Margin="0,10,0,0"/>
+            <!-- Diagnostic NVIDIA : ce que le pilote contient réellement -->
+            <DockPanel Margin="0,8,0,0" Visibility="{Binding NvidiaDisponible, Converter={StaticResource BoolVis}}">
+                <Button DockPanel.Dock="Left" Content="Lire les réglages NVIDIA" Command="{Binding LireNvidiaCommand}" VerticalAlignment="Top"
+                        ToolTip="Affiche les valeurs actuellement enregistrées dans le pilote (paramètres globaux)"/>
+                <TextBlock Text="{Binding EtatNvidia}" TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" Margin="12,2,0,0"/>
+            </DockPanel>
         </StackPanel>
         <!-- Mode Jeu automatique : liste des jeux, réglages repris de la sélection ci-dessus, démarrage avec Windows. -->
         <Border Grid.Row="4" DataContext="{Binding Auto}" Background="{StaticResource PanelBrush}" CornerRadius="6" Padding="14,10" Margin="0,12,0,0"

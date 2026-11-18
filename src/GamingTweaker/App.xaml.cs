@@ -115,9 +115,11 @@ namespace GamingTweaker
                 },
             };
 
-            var modeJeu = new ModeJeu(paths.MachineDir, new ModeJeuSysteme(), nvidia: new NvidiaDrs());
+            var pilote = new NvidiaDrs();
+            var modeJeu = new ModeJeu(paths.MachineDir, new ModeJeuSysteme(), nvidia: pilote);
             vm.ModeJeu = new ModeJeuViewModel(modeJeu, ModeJeuListes.ListerServices, ModeJeuListes.ListerProcessus)
             {
+                Nvidia = pilote,
                 NvidiaDisponible = facts.GpuVendors.Any(g => string.Equals(g, "NVIDIA", StringComparison.OrdinalIgnoreCase)),
                 Confirmer = texte => MessageBox.Show(fenetre, texte, "Mode Jeu", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes,
             };

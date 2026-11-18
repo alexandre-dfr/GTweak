@@ -274,11 +274,20 @@ namespace GamingTweaker.Core
                             r.Etat = "en-cours"; Ecrire(etat);
                             nvidia.Ecrire(r.Id, r.Voulu);
                             r.Etat = "change"; n++;
+                            // Relecture : un pilote qui ignore l'écriture (identifiant inconnu de cette version) est signalé, pas annoncé comme appliqué.
+                            var apres = nvidia.Lire(r.Id);
+                            if (apres[1] != r.Voulu)
+                            {
+                                n--;
+                                bilan.Avertissements.Add(ProfilsNvidia.NomReglage(r.Id) + " : le pilote n'a pas pris la valeur (lu : " + ProfilsNvidia.NomValeur(r.Id, apres[1]) + ").");
+                                TraceAppli.Ecrire("NVIDIA : 0x" + r.Id.ToString("X8") + " écrit 0x" + r.Voulu.ToString("X") + ", relu " + apres[1]);
+                            }
                         }
                         catch (Exception ex)
                         {
-                            r.Etat = r.Etat == "en-cours" ? "echec" : "non-lance";
-                            bilan.Avertissements.Add("Réglage NVIDIA 0x" + r.Id.ToString("X8") + " non appliqué : " + ex.Message);
+                            r.Etat = r.Etat == "en-cours" ? "echec" : r.Etat == "change" ? "change" : "non-lance";
+                            bilan.Avertissements.Add(ProfilsNvidia.NomReglage(r.Id) + " : non appliqué (" + ex.Message + ").");
+                            TraceAppli.Erreur("NVIDIA : réglage 0x" + r.Id.ToString("X8"), ex);
                         }
                         Ecrire(etat);
                     }
@@ -370,7 +379,7 @@ namespace GamingTweaker.Core
                                 }
                                 r.Etat = "retabli";
                             }
-                            catch (Exception ex) { echec = true; bilan.Avertissements.Add("Réglage NVIDIA 0x" + r.Id.ToString("X8") + " non rétabli : " + ex.Message); }
+                            catch (Exception ex) { echec = true; bilan.Avertissements.Add(ProfilsNvidia.NomReglage(r.Id) + " : non rétabli (" + ex.Message + ")."); TraceAppli.Erreur("NVIDIA : rétablissement 0x" + r.Id.ToString("X8"), ex); }
                         }
                         if (n > 0) bilan.Actions.Add("Réglages NVIDIA rétablis (" + n + ").");
                     }

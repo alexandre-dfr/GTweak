@@ -46,6 +46,40 @@ namespace GamingTweaker.Core
 
         private static KeyValuePair<uint, uint> R(uint id, uint v) { return new KeyValuePair<uint, uint>(id, v); }
 
+        /// <summary>Nom lisible d'un réglage.</summary>
+        public static string NomReglage(uint id)
+        {
+            switch (id)
+            {
+                case Alimentation: return "Gestion de l'alimentation";
+                case FiltrageTextures: return "Filtrage des textures";
+                case VSync: return "Synchronisation verticale";
+                case LatenceEtat: return "Mode de faible latence";
+                case LatenceUltra: return "Faible latence Ultra (activation)";
+                case ImagesPreparees: return "Images pré-rendues";
+                default: return "0x" + id.ToString("X8");
+            }
+        }
+
+        /// <summary>Valeur lisible (-1 : valeur par défaut du pilote, non définie).</summary>
+        public static string NomValeur(uint id, long v)
+        {
+            if (v < 0) return "par défaut du pilote";
+            var u = (uint)v;
+            switch (id)
+            {
+                case Alimentation: return u == 0 ? "adaptative" : u == 1 ? "performances maximales" : u == 2 ? "optimale" : u == 3 ? "performances constantes" : "valeur " + u;
+                case FiltrageTextures: return u == 0xFFFFFFF6 ? "haute qualité" : u == 0 ? "qualité" : u == 0x0A ? "performances" : u == 0x14 ? "hautes performances" : "valeur 0x" + u.ToString("X");
+                case VSync: return u == 0x08416747 ? "désactivée" : u == 0x47814940 ? "activée" : u == 0x60925292 ? "réglage de l'application" : "valeur 0x" + u.ToString("X");
+                case LatenceEtat: return u == 0 ? "désactivé" : u == 1 ? "activé" : u == 2 ? "Ultra" : "valeur " + u;
+                case LatenceUltra: return u == 1 ? "oui" : u == 0 ? "non" : "valeur " + u;
+                default: return "valeur " + u;
+            }
+        }
+
+        /// <summary>Réglages lus pour le diagnostic (alimentation, filtrage, V-Sync, faible latence).</summary>
+        public static readonly uint[] Diagnostic = { Alimentation, FiltrageTextures, VSync, LatenceEtat, LatenceUltra };
+
         public static string Libelle(ProfilNvidia p)
         {
             return p == ProfilNvidia.Performance ? "Performance" : p == ProfilNvidia.Qualite ? "Qualité" : "Aucun (pilote inchangé)";

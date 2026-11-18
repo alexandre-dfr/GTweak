@@ -56,6 +56,57 @@ namespace GamingTweaker.Tests
             Assert.Equal(new Dictionary<uint, uint> { { ProfilsNvidia.FiltrageTextures, 0 } }, nv.Profil);   // non définis avant : retirés
         }
 
+        private class PiloteQuiIgnore : INvidiaReglages
+        {
+            public readonly FauxNvidia F = new FauxNvidia();
+            public uint Ignore;
+            public bool Disponible { get { return true; } }
+            public long[] Lire(uint id) { return F.Lire(id); }
+            public void Ecrire(uint id, uint v) { if (id != Ignore) F.Ecrire(id, v); }
+            public void Retirer(uint id) { F.Retirer(id); }
+        }
+
+        [Fact]
+        public void Un_reglage_que_le_pilote_ignore_est_signale_et_non_compte()
+        {
+            var nv = new PiloteQuiIgnore { Ignore = ProfilsNvidia.LatenceEtat };
+            var mj = new ModeJeu(dir, new Actions(), verrou, nvidia: nv);
+            var b = mj.Activate(new ModeJeuConfig { Nvidia = ProfilNvidia.Performance });
+            Assert.Contains(b.Avertissements, a => a.StartsWith("Mode de faible latence : le pilote n'a pas pris la valeur"));
+            Assert.Contains(b.Actions, a => a.Contains("(5 réglage(s))"));
+            mj.Restore();
+            Assert.Empty(nv.F.Profil);
+        }
+
+        [Fact]
+        public async System.Threading.Tasks.Task Lire_les_reglages_nvidia_affiche_des_valeurs_lisibles()
+        {
+            var nv = new FauxNvidia();
+            nv.Profil[ProfilsNvidia.Alimentation] = 1; nv.Profil[ProfilsNvidia.VSync] = 0x08416747;
+            var vm = new ModeJeuViewModel(new ModeJeu(dir, new Actions(), verrou), () => new List<ServiceChoix>(), () => new List<ProcessusChoix>()) { Nvidia = nv, NvidiaDisponible = true };
+            await vm.LireNvidiaAsync();
+            Assert.Contains("Gestion de l'alimentation : performances maximales", vm.EtatNvidia);
+            Assert.Contains("Synchronisation verticale : désactivée", vm.EtatNvidia);
+            Assert.Contains("Filtrage des textures : valeur", vm.EtatNvidia);   // le faux pilote renvoie 7 pour un réglage non défini
+            Assert.Contains("(non défini dans le profil global)", vm.EtatNvidia);
+        }
+
+        [Fact]
+        public void Le_choix_nvidia_du_mode_jeu_vaut_aussi_pour_le_mode_automatique()
+        {
+            var mjvm = new ModeJeuViewModel(new ModeJeu(dir, new Actions(), verrou), () => new List<ServiceChoix>(), () => new List<ProcessusChoix>()) { NvidiaDisponible = true };
+            var auto = new ModeJeuAutoViewModel(dir, mjvm);
+            mjvm.ProfilNvidia = ProfilNvidia.Performance;
+            Assert.Equal(ProfilNvidia.Performance, ModeJeuAutoConfig.Charger(dir).Nvidia);
+            mjvm.UtiliserPlan = false;
+            Assert.False(ModeJeuAutoConfig.Charger(dir).Plan);
+            // Au prochain lancement, le Mode Jeu reprend le choix enregistré.
+            var mjvm2 = new ModeJeuViewModel(new ModeJeu(dir, new Actions(), verrou), () => new List<ServiceChoix>(), () => new List<ProcessusChoix>());
+            new ModeJeuAutoViewModel(dir, mjvm2);
+            Assert.Equal(ProfilNvidia.Performance, mjvm2.ProfilNvidia);
+            Assert.False(mjvm2.UtiliserPlan);
+        }
+
         [Fact]
         public void Mode_jeu_qualite()
         {

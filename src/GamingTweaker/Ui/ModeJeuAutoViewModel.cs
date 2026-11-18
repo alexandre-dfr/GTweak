@@ -29,6 +29,19 @@ namespace GamingTweaker.Ui
             this.demarrageInstalle = demarrageInstalle; this.definirDemarrage = definirDemarrage;
             config = ModeJeuAutoConfig.Charger(machineDir);
             foreach (var j in config.Jeux) Jeux.Add(j);
+            if (modeJeu != null)
+            {
+                // Le profil NVIDIA et le plan choisis dans le Mode Jeu valent aussi pour le mode automatique, sans bouton à cliquer.
+                modeJeu.ProfilNvidia = config.Nvidia;
+                modeJeu.UtiliserPlan = config.Plan;
+                modeJeu.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == "ProfilNvidia" && config.Nvidia != modeJeu.ProfilNvidia)
+                    { config.Nvidia = modeJeu.ProfilNvidia; Enregistrer("Profil NVIDIA du mode automatique : " + ProfilsNvidia.Libelle(config.Nvidia) + "."); }
+                    else if (e.PropertyName == "UtiliserPlan" && config.Plan != modeJeu.UtiliserPlan)
+                    { config.Plan = modeJeu.UtiliserPlan; Enregistrer("Plan d'alimentation du mode automatique mis à jour."); }
+                };
+            }
             AjouterExeCommand = new RelayCommand(_ => AjouterExe(), _ => !occupe);
             AjouterSteamCommand = new RelayCommand(_ => AjouterDepuis("Steam", () => Core.Jeux.JeuxSteam()), _ => !occupe);
             AjouterEpicCommand = new RelayCommand(_ => AjouterDepuis("Epic Games", () => Core.Jeux.JeuxEpic()), _ => !occupe);
