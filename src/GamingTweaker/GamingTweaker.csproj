@@ -17,6 +17,8 @@
     <FileVersion>0.9.1.0</FileVersion>
     <Product>GamingTweaker</Product>
     <Company>GamingTweaker</Company>
+    <Copyright>Licence GNU AGPL-3.0</Copyright>
+    <PackageLicenseExpression>AGPL-3.0-only</PackageLicenseExpression>
     <Deterministic>true</Deterministic>
     <!-- Icône de l'exe et, par défaut, de la fenêtre WPF (générée par tools/icone.py). -->
     <ApplicationIcon>app.ico</ApplicationIcon>

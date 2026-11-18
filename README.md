@@ -67,6 +67,10 @@ Sans `--confirm`, la commande affiche seulement ce qui serait supprimé. Les ré
 - `tools/sandbox/cycle.wsb` : cycle détecter, appliquer, annuler dans Windows Sandbox (voir `tools/sandbox/start-cycle.ps1`) ; le résultat est écrit dans `tools/sandbox/resultats/cycle.json`. L'option `--cycle-test` est refusée hors du compte du bac à sable.
 - `docs/checklist-premier-pc.md` : liste de contrôle à passer sur le premier PC réel.
 
-## Licences
+## Licence
+
+GamingTweaker est distribué sous licence **GNU AGPL-3.0** (fichier [LICENSE](LICENSE)) : vous pouvez l'utiliser, l'étudier, le modifier et le redistribuer, à condition de fournir le code source sous la même licence. Ce choix découle des réglages repris de privacy.sexy (AGPL-3.0) ; ceux de WinUtil (MIT) sont compatibles.
+
+## Licences tierces
 
 Les réglages repris de projets tiers sont réécrits ; les sources et licences sont dans [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

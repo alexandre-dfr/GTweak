@@ -15,11 +15,23 @@ namespace GamingTweaker.Core
         public static Task<Dictionary<string, DetectState>> RunAsync(IEnumerable<CatalogItem> items)
             => RunAsync(items, TimeSpan.FromSeconds(120));
 
-        /// <summary>Toutes les détections dans UN processus PowerShell. Absente, en erreur ou en délai : Unknown.</summary>
+        /// <summary>Détections réparties en lots, un processus PowerShell par lot, en parallèle. Absente, en erreur ou en délai : Unknown.</summary>
         public static Task<Dictionary<string, DetectState>> RunAsync(IEnumerable<CatalogItem> items, TimeSpan timeout)
         {
             var list = items.ToList();
             return Task.Run(() => Run(list, timeout));
+        }
+
+        /// <summary>Processus PowerShell en parallèle au plus (un par lot d'au moins 8 options).</summary>
+        public static int Paralleles { get { return Math.Max(1, Math.Min(4, Environment.ProcessorCount / 2)); } }
+
+        /// <summary>Répartition en lots : un tour de rôle (les détections lentes, regroupées par menu dans le catalogue, se partagent).</summary>
+        public static List<List<CatalogItem>> Lots(IList<CatalogItem> items, int maxLots)
+        {
+            int n = Math.Max(1, Math.Min(maxLots, (items.Count + 7) / 8));
+            var lots = Enumerable.Range(0, n).Select(_ => new List<CatalogItem>()).ToList();
+            for (int i = 0; i < items.Count; i++) lots[i % n].Add(items[i]);
+            return lots;
         }
 
         private static Dictionary<string, DetectState> Run(List<CatalogItem> items, TimeSpan timeout)
@@ -27,7 +39,20 @@ namespace GamingTweaker.Core
             var res = items.ToDictionary(i => i.Id, i => DetectState.Unknown);
             var withScript = items.Where(i => !string.IsNullOrWhiteSpace(i.Detect)).ToList();
             if (withScript.Count == 0) return res;
+            // Plusieurs PowerShell en parallèle : une détection lente (applications, fonctionnalités Windows) ne retarde plus toutes les autres.
+            var chrono = Stopwatch.StartNew();
+            var lots = Lots(withScript, Paralleles);
+            Parallel.ForEach(lots, new ParallelOptions { MaxDegreeOfParallelism = Paralleles }, lot => RunLot(lot, timeout, res));
+            lock (res)
+            {
+                if (withScript.Count > 1)
+                    TraceAppli.Ecrire("détection : " + withScript.Count + " option(s) en " + chrono.Elapsed.TotalSeconds.ToString("0.0") + " s (" + lots.Count + " processus) ; inconnues : " + res.Values.Count(v => v == DetectState.Unknown));
+                return new Dictionary<string, DetectState>(res);
+            }
+        }
 
+        private static void RunLot(List<CatalogItem> withScript, TimeSpan timeout, Dictionary<string, DetectState> res)
+        {
             ScriptVerrouille script = null;
             try
             {
@@ -57,9 +82,8 @@ namespace GamingTweaker.Core
                     else PowerShellLanceur.AttendreFlux(p); // vide les flux asynchrones (borné)
                 }
             }
-            catch (Exception ex) { TraceAppli.Erreur("détection : lancement de PowerShell impossible, tout reste Inconnu", ex); }
+            catch (Exception ex) { TraceAppli.Erreur("détection : lancement de PowerShell impossible, ce lot reste Inconnu", ex); }
             finally { if (script != null) script.Dispose(); }
-            lock (res) return new Dictionary<string, DetectState>(res);
         }
 
         private static string BuildScript(List<CatalogItem> items)

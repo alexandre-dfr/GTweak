@@ -30,12 +30,22 @@ namespace GamingTweaker.Core
             public string avant, apresApply, apresRevert, resultat, raison;
         }
 
-        /// <summary>Code de sortie : 0 = cycle terminé sans échec, 1 = au moins un échec, 2 = refusé ou impossible.</summary>
-        public static int Run(string fichierResultat, string user = null)
+        /// <summary>
+        /// Machine de CI jetable de GitHub (effacée après chaque exécution) : GITHUB_ACTIONS=true, RUNNER_ENVIRONMENT=github-hosted
+        /// et GT_CYCLE_CI=1, posé uniquement par l'étape « Cycle réel » du workflow. Les trois ensemble ne se produisent pas par hasard sur un PC.
+        /// </summary>
+        public static bool EstRunnerCi(Func<string, string> env)
         {
-            if (!IsSandbox(user ?? Environment.UserName))
+            env = env ?? Environment.GetEnvironmentVariable;
+            return env("GITHUB_ACTIONS") == "true" && env("RUNNER_ENVIRONMENT") == "github-hosted" && env("GT_CYCLE_CI") == "1";
+        }
+
+        /// <summary>Code de sortie : 0 = cycle terminé sans échec, 1 = au moins un échec, 2 = refusé ou impossible.</summary>
+        public static int Run(string fichierResultat, string user = null, Func<string, string> env = null)
+        {
+            if (!IsSandbox(user ?? Environment.UserName) && !EstRunnerCi(env))
             {
-                Console.Error.WriteLine("--cycle-test n'est accepté que dans Windows Sandbox (compte " + SandboxUser + "). Refusé.");
+                Console.Error.WriteLine("--cycle-test n'est accepté que dans Windows Sandbox (compte " + SandboxUser + ") ou sur une machine de CI jetable. Refusé.");
                 return 2;
             }
             if (string.IsNullOrWhiteSpace(fichierResultat)) { Console.Error.WriteLine("Fichier de résultat manquant."); return 2; }

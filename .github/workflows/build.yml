@@ -61,6 +61,28 @@ jobs:
       - name: Tests
         run: dotnet test tests/GamingTweaker.Tests/GamingTweaker.Tests.csproj -c Release --no-restore --logger "trx;LogFileName=tests.trx" --results-directory TestResults
 
+      # Fiabilité : chaque option testable et réversible est réellement détectée, appliquée, vérifiée, annulée et revérifiée
+      # sur cette machine jetable (effacée après l'exécution). Rapport joint à la pré-version et résumé ci-dessous ; non bloquant.
+      - name: Cycle réel des options (machine jetable)
+        if: always()
+        continue-on-error: true
+        shell: pwsh
+        env:
+          GT_CYCLE_CI: '1'
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $exe = (Resolve-Path 'src/GamingTweaker/bin/Release/net48/GamingTweaker.exe').Path
+          $sortie = Join-Path $PWD 'cycle-reel.json'
+          $p = Start-Process -FilePath $exe -ArgumentList @('--cycle-test', "`"$sortie`"") -Wait -PassThru -RedirectStandardOutput cycle-reel.txt -RedirectStandardError cycle-reel.err.txt
+          Write-Host "Code de sortie : $($p.ExitCode)"
+          Get-Content cycle-reel.err.txt -ErrorAction SilentlyContinue | Select-Object -First 20
+          if (-not (Test-Path $sortie)) { "## Cycle réel : aucun résultat (code $($p.ExitCode))" >> $env:GITHUB_STEP_SUMMARY; exit 0 }
+          $r = Get-Content $sortie -Raw | ConvertFrom-Json
+          "## Cycle réel des options : $($r.resume.ok) OK, $($r.resume.echec) en échec, $($r.resume.nonCouvert) non couvertes (sur $($r.resume.total))" >> $env:GITHUB_STEP_SUMMARY
+          foreach ($o in @($r.options | Where-Object { $_.couvert -and $_.resultat -ne 'ok' })) { "- **$($o.id)** : $($o.raison)" >> $env:GITHUB_STEP_SUMMARY }
+          gh release upload test-build $sortie --clobber
+          exit 0
+
       - name: Joindre les captures d'écran à la pré-version
         if: always()
         shell: pwsh

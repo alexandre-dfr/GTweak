@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using GamingTweaker.Core;
 using Xunit;
@@ -10,7 +11,7 @@ namespace GamingTweaker.Tests
         public void Cycle_refuse_hors_sandbox()
         {
             var sortie = Path.Combine(Path.GetTempPath(), "gt-cycle-garde-" + System.Guid.NewGuid().ToString("N") + ".json");
-            Assert.Equal(2, CycleTest.Run(sortie, user: "adu"));
+            Assert.Equal(2, CycleTest.Run(sortie, user: "adu", env: _ => null));
             Assert.False(File.Exists(sortie)); // refus : rien n'est exécuté ni écrit
         }
 
@@ -41,6 +42,17 @@ namespace GamingTweaker.Tests
         {
             var src = File.ReadAllText(Path.Combine(Helpers.PsCommon.Racine(), "src", "GamingTweaker", "Core", "CycleTest.cs"));
             Assert.Contains("bool annuler = entrees.Count > 0", src);
+        }
+
+        [Fact]
+        public void Runner_de_ci_seulement_avec_les_trois_variables()
+        {
+            Func<string, string> tout = n => n == "GITHUB_ACTIONS" ? "true" : n == "RUNNER_ENVIRONMENT" ? "github-hosted" : n == "GT_CYCLE_CI" ? "1" : null;
+            Assert.True(CycleTest.EstRunnerCi(tout));
+            Assert.False(CycleTest.EstRunnerCi(n => n == "GT_CYCLE_CI" ? null : tout(n)));
+            Assert.False(CycleTest.EstRunnerCi(n => n == "RUNNER_ENVIRONMENT" ? "self-hosted" : tout(n)));
+            Assert.False(CycleTest.EstRunnerCi(n => n == "GITHUB_ACTIONS" ? null : tout(n)));
+            Assert.False(CycleTest.EstRunnerCi(_ => null));
         }
 
         [Fact] public void Cycle_accepte_le_compte_sandbox() => Assert.True(CycleTest.IsSandbox("WDAGUtilityAccount"));
