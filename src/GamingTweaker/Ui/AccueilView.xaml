@@ -1,6 +1,7 @@
 <UserControl x:Class="GamingTweaker.Ui.AccueilView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:GamingTweaker.Ui">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolVis"/>
 
@@ -174,10 +175,10 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                         <ItemsControl.Items>
-                            <x:Static Member="GamingTweaker.Ui.AccueilView.Conseil1"/>
-                            <x:Static Member="GamingTweaker.Ui.AccueilView.Conseil2"/>
-                            <x:Static Member="GamingTweaker.Ui.AccueilView.Conseil3"/>
-                            <x:Static Member="GamingTweaker.Ui.AccueilView.Conseil4"/>
+                            <x:Static Member="local:AccueilView.Conseil1"/>
+                            <x:Static Member="local:AccueilView.Conseil2"/>
+                            <x:Static Member="local:AccueilView.Conseil3"/>
+                            <x:Static Member="local:AccueilView.Conseil4"/>
                         </ItemsControl.Items>
                     </ItemsControl>
                 </StackPanel>
