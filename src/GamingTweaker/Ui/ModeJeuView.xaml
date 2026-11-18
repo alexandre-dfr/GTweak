@@ -14,47 +14,38 @@
             </CheckBox>
         </DataTemplate>
     </UserControl.Resources>
-    <Grid Margin="0,0,16,12">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+    <!-- Tout défile : listes de hauteur fixe, réglages sur leur propre ligne au-dessus des boutons. -->
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="0,0,16,12">
         <StackPanel>
             <TextBlock Text="Libère des ressources le temps d'une session : les services et processus que vous cochez sont arrêtés, puis relancés avec « Rétablir ». Les processus système critiques, la sécurité, l'audio et les pilotes d'affichage ne sont jamais proposés."
                        TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,10"/>
         </StackPanel>
-        <Border Grid.Row="1" Padding="14,10" CornerRadius="6" Background="{DynamicResource WarnBg}" Margin="0,0,0,10" Visibility="{Binding EstActif, Converter={StaticResource BoolVis}}">
+        <Border Padding="14,10" CornerRadius="6" Background="{DynamicResource WarnBg}" Margin="0,0,0,10" Visibility="{Binding EstActif, Converter={StaticResource BoolVis}}">
             <TextBlock Text="Le Mode Jeu est actif. Rétablissez-le pour redémarrer ce qui a été arrêté." TextWrapping="Wrap" Foreground="{DynamicResource AvanceFg}" FontWeight="SemiBold"/>
         </Border>
-        <Grid Grid.Row="2" IsEnabled="{Binding PeutModifier}">
+        <Grid IsEnabled="{Binding PeutModifier}" Height="240">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="16"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
-            <Border Background="{DynamicResource PanelBrush}" CornerRadius="6" Padding="14,10">
+            <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="14,10">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="Services en cours d'exécution" FontWeight="SemiBold" Margin="0,0,0,6"/>
                     <ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsControl ItemsSource="{Binding Services}" ItemTemplate="{StaticResource ChoixTemplate}"/></ScrollViewer>
                 </DockPanel>
             </Border>
-            <Border Grid.Column="2" Background="{DynamicResource PanelBrush}" CornerRadius="6" Padding="14,10">
+            <Border Grid.Column="2" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="14,10">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="Processus de votre session" FontWeight="SemiBold" Margin="0,0,0,6"/>
                     <ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsControl ItemsSource="{Binding Processus}" ItemTemplate="{StaticResource ChoixTemplate}"/></ScrollViewer>
                 </DockPanel>
             </Border>
         </Grid>
-        <StackPanel Grid.Row="3" Margin="0,12,0,0">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+        <StackPanel Margin="0,12,0,0">
+            <!-- Réglages du Mode Jeu -->
+            <WrapPanel Margin="0,0,0,10">
                     <CheckBox Content="Passer au plan Performances élevées" IsChecked="{Binding UtiliserPlan, Mode=TwoWay}" VerticalAlignment="Center" IsEnabled="{Binding PeutModifier}"/>
                     <CheckBox Content="Libérer la mémoire" IsChecked="{Binding LibererMemoire, Mode=TwoWay}" VerticalAlignment="Center" Margin="16,0,0,0" IsEnabled="{Binding PeutModifier}"
                               ToolTip="Récupère la mémoire inutilisée des programmes en arrière-plan (rien n'est fermé ; utile avec 8 ou 16 Go de RAM). Le jeu au premier plan et les jeux surveillés ne sont pas touchés."/>
@@ -62,14 +53,14 @@
                               SelectedValue="{Binding ProfilNvidia, Mode=TwoWay}" IsEnabled="{Binding PeutModifier}"
                               Visibility="{Binding NvidiaDisponible, Converter={StaticResource BoolVis}}"
                               ToolTip="Performance : performances maximales, filtrage hautes performances, V-Sync désactivée, faible latence Ultra. Qualité : performances maximales, filtrage haute qualité, V-Sync laissée au jeu. Les réglages d'avant sont remis en quittant le Mode Jeu."/>
-                </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <Button Content="Actualiser les listes" Command="{Binding ActualiserCommand}"/>
-                    <Button Content="Activer le Mode Jeu" Style="{StaticResource PrimaryButton}" Command="{Binding ActiverCommand}" Margin="8,0,0,0"/>
+            </WrapPanel>
+            <!-- Actions -->
+            <WrapPanel>
+                    <Button Content="Activer le Mode Jeu" Style="{StaticResource PrimaryButton}" Command="{Binding ActiverCommand}"/>
+                    <Button Content="Actualiser les listes" Command="{Binding ActualiserCommand}" Margin="8,0,0,0"/>
                     <Button Content="Rétablir" Command="{Binding RetablirCommand}" Margin="8,0,0,0"/>
                     <Button Content="Oublier l'état" Command="{Binding OublierCommand}" Margin="8,0,0,0" Visibility="{Binding PeutOublier, Converter={StaticResource BoolVis}}" ToolTip="Abandonner le rétablissement (après confirmation)"/>
-                </StackPanel>
-            </Grid>
+            </WrapPanel>
             <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,10,0,0"/>
             <!-- Diagnostic NVIDIA : ce que le pilote contient réellement -->
             <DockPanel Margin="0,8,0,0" Visibility="{Binding NvidiaDisponible, Converter={StaticResource BoolVis}}">
@@ -79,7 +70,7 @@
             </DockPanel>
         </StackPanel>
         <!-- Mode Jeu automatique : liste des jeux, réglages repris de la sélection ci-dessus, démarrage avec Windows. -->
-        <Border Grid.Row="4" DataContext="{Binding Auto}" Background="{DynamicResource PanelBrush}" CornerRadius="6" Padding="14,10" Margin="0,12,0,0"
+        <Border DataContext="{Binding Auto}" Background="{DynamicResource PanelBrush}" CornerRadius="6" Padding="14,10" Margin="0,12,0,0"
                 Visibility="{Binding DataContext.Auto, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource NonNulVis}}">
             <StackPanel>
                 <Grid>
@@ -120,5 +111,6 @@
                 <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0"/>
             </StackPanel>
         </Border>
-    </Grid>
+    </StackPanel>
+    </ScrollViewer>
 </UserControl>
