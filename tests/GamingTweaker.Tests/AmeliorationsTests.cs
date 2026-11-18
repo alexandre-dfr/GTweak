@@ -141,6 +141,14 @@ namespace GamingTweaker.Tests
         [Fact]
         public void Comparaison_avec_verdict_par_mesure()
         {
+            // Libellés en français (virgule décimale), quelle que soit la langue de la machine de test.
+            var avant = System.Threading.Thread.CurrentThread.CurrentCulture;
+            System.Threading.Thread.CurrentThread.CurrentCulture = new System.Globalization.CultureInfo("fr-FR");
+            try { VerifierComparaison(); } finally { System.Threading.Thread.CurrentThread.CurrentCulture = avant; }
+        }
+
+        private static void VerifierComparaison()
+        {
             var t = HistoriqueViewModel.FormaterComparaison(M("2026-11-18T10:00:00", 0.5, 4.0, 120, 8000, 12), M("2026-11-18T11:00:00", 0.2, 1.5, 100, 9000, 5));
             Assert.Contains("Temps DPC : 0,50 % → 0,20 % (-0,30 point(s)) : mieux", t);
             Assert.Contains("Processeur au repos : 4,00 % → 1,50 %", t);
