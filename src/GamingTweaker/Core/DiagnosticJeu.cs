@@ -39,6 +39,10 @@ namespace GamingTweaker.Core
         public bool? SurBatterie;
         public bool EstPortable;
         public bool? CaptureArrierePlan;
+        /// <summary>Programmes lancés à l'ouverture de session (hors entrées désactivées).</summary>
+        public int? ProgrammesDemarrage;
+        public List<HdrEcran> Hdr { get; } = new List<HdrEcran>();
+        public List<PlageEcran> Plages { get; } = new List<PlageEcran>();
     }
 
     /// <summary>
@@ -142,6 +146,35 @@ namespace GamingTweaker.Core
                 l.Add(new PointDiag { Niveau = NiveauDiag.Info, Titre = "Enregistrement en arrière-plan de la Xbox Game Bar actif",
                     Detail = "L'enregistrement continu des dernières minutes de jeu occupe le GPU et le disque en permanence.", ActionTexte = "Cocher l'option", Action = "option:opt.gamedvr-off" });
 
+            // 9. Programmes au démarrage
+            if (m.ProgrammesDemarrage.HasValue)
+            {
+                var n = m.ProgrammesDemarrage.Value;
+                if (n > 10)
+                    l.Add(new PointDiag { Niveau = NiveauDiag.Attention, Titre = n + " programmes se lancent avec Windows",
+                        Detail = "Ils ralentissent le démarrage et restent souvent en arrière-plan pendant les parties (mémoire, processeur, réseau). Désactivez ceux dont vous n'avez pas besoin dès l'ouverture de session.",
+                        ActionTexte = "Choisir les programmes", Action = "option:opt.startup" });
+                else if (n > 5)
+                    l.Add(new PointDiag { Niveau = NiveauDiag.Info, Titre = n + " programmes se lancent avec Windows",
+                        Detail = "Raisonnable ; vous pouvez désactiver ceux qui ne servent pas dès le démarrage.", ActionTexte = "Choisir les programmes", Action = "option:opt.startup" });
+                else
+                    l.Add(new PointDiag { Niveau = NiveauDiag.Ok, Titre = "Peu de programmes au démarrage (" + n + ")", Detail = "" });
+            }
+
+            // 10. HDR
+            if (m.Hdr.Any(h => h.Pris && !h.Actif))
+                l.Add(new PointDiag { Niveau = NiveauDiag.Info, Titre = "Écran compatible HDR, HDR désactivé",
+                    Detail = "Les jeux HDR gagnent en contraste et en luminosité. Certains écrans d'entrée de gamme (HDR400) rendent toutefois mieux en SDR : essayez et comparez.",
+                    ActionTexte = "Ouvrir les réglages HDR", Action = "ms-settings:display-hdr" });
+            else if (m.Hdr.Any(h => h.Actif))
+                l.Add(new PointDiag { Niveau = NiveauDiag.Ok, Titre = "HDR activé", Detail = "" });
+
+            // 11. Fréquence variable (FreeSync, G-SYNC Compatible) : annoncée par l'écran ; son activation se vérifie dans le pilote.
+            foreach (var p in m.Plages.Where(x => x.HzMax >= 75 && x.HzMax - x.HzMin >= 30))
+                l.Add(new PointDiag { Niveau = NiveauDiag.Info, Titre = "Écran à fréquence variable (" + p.HzMin + "–" + p.HzMax + " Hz)",
+                    Detail = (string.IsNullOrEmpty(p.Nom) ? "Votre écran" : p.Nom) + " gère la fréquence variable : activez G-SYNC (panneau NVIDIA) ou FreeSync (logiciel AMD et menu de l'écran) pour supprimer le déchirement sans la latence de la V-Sync. Windows propose aussi « Fréquence d'actualisation variable » pour les jeux qui ne la gèrent pas.",
+                    ActionTexte = "Graphismes avancés", Action = "ms-settings:display-advancedgraphics" });
+
             return l.OrderBy(p => p.Niveau).ToList();
         }
 
@@ -198,6 +231,9 @@ namespace GamingTweaker.Core
                     try { m.Plan = ((Guid)Marshal.PtrToStructure(g, typeof(Guid))).ToString(); } finally { LocalFree(g); }
                 }
             });
+            Essayer(() => m.ProgrammesDemarrage = Core.ProgrammesDemarrage.Compter());
+            Essayer(() => m.Hdr.AddRange(Affichage.Hdr()));
+            Essayer(() => m.Plages.AddRange(Affichage.PlagesEcrans()));
             Essayer(() =>
             {
                 var d = new DriveInfo(Path.GetPathRoot(Environment.SystemDirectory));

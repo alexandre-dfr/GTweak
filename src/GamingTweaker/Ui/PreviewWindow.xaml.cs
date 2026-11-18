@@ -14,8 +14,12 @@ namespace GamingTweaker.Ui
         {
             InitializeComponent();
             var rows = vm.BuildPreview();
-            Lignes.ItemsSource = rows;
-            Titre.Text = "Aperçu du script";
+            // Regroupement par menu (Mises à jour, Télémétrie, …), dans l'ordre des menus.
+            var vue = System.Windows.Data.CollectionViewSource.GetDefaultView(rows);
+            vue.GroupDescriptions.Add(new System.Windows.Data.PropertyGroupDescription("Menu"));
+            Lignes.ItemsSource = vue;
+            Titre.Text = "Aperçu";
+            Synthese.Text = MainViewModel.ResumeApercu(rows);
             Sous.Text = rows.Count + (rows.Count > 1 ? " options sélectionnées. " : " option sélectionnée. ") + Sous.Text;
             if (rows.Any(r => r.Reversibilite == "définitif"))
                 Sous.Text += " Les options marquées « définitif » ne pourront pas être annulées.";

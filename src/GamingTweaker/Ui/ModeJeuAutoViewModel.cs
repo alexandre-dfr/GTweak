@@ -34,12 +34,15 @@ namespace GamingTweaker.Ui
                 // Le profil NVIDIA et le plan choisis dans le Mode Jeu valent aussi pour le mode automatique, sans bouton à cliquer.
                 modeJeu.ProfilNvidia = config.Nvidia;
                 modeJeu.UtiliserPlan = config.Plan;
+                modeJeu.LibererMemoire = config.LibererMemoire;
                 modeJeu.PropertyChanged += (s, e) =>
                 {
                     if (e.PropertyName == "ProfilNvidia" && config.Nvidia != modeJeu.ProfilNvidia)
                     { config.Nvidia = modeJeu.ProfilNvidia; Enregistrer("Profil NVIDIA du mode automatique : " + ProfilsNvidia.Libelle(config.Nvidia) + "."); }
                     else if (e.PropertyName == "UtiliserPlan" && config.Plan != modeJeu.UtiliserPlan)
                     { config.Plan = modeJeu.UtiliserPlan; Enregistrer("Plan d'alimentation du mode automatique mis à jour."); }
+                    else if (e.PropertyName == "LibererMemoire" && config.LibererMemoire != modeJeu.LibererMemoire)
+                    { config.LibererMemoire = modeJeu.LibererMemoire; Enregistrer("Libération de mémoire du mode automatique mise à jour."); }
                 };
             }
             AjouterExeCommand = new RelayCommand(_ => AjouterExe(), _ => !occupe);
@@ -151,6 +154,7 @@ namespace GamingTweaker.Ui
             config.Processus = c.Processus.Select(p => new ProcessusChoix { Nom = p.Nom, Chemin = p.Chemin }).ToList();
             config.Plan = c.PlanGuid != null;
             config.Nvidia = c.Nvidia;
+            config.LibererMemoire = c.LibererMemoire;
             Raise("ResumeReglages");
             if (enregistrer) Enregistrer("Sélection du Mode Jeu enregistrée pour le mode automatique.");
         }

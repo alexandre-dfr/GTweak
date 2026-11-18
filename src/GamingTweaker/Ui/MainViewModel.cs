@@ -53,6 +53,8 @@ namespace GamingTweaker.Ui
     {
         private string taille = "—";
         public string Id { get; set; }
+        /// <summary>Menu de l'option (regroupement de l'aperçu).</summary>
+        public string Menu { get; set; }
         public string Titre { get; set; }
         public string Risque { get; set; }
         public string Reversibilite { get; set; }
@@ -641,14 +643,24 @@ namespace GamingTweaker.Ui
 
         public IReadOnlyList<PreviewRow> BuildPreview()
         {
-            return Options.Where(o => o.IsChecked).Select(o => new PreviewRow
+            return Options.Where(o => o.IsChecked).OrderBy(o => Array.IndexOf(MenusOptions, o.Menu) < 0 ? 99 : Array.IndexOf(MenusOptions, o.Menu)).Select(o => new PreviewRow
             {
-                Id = o.Id,
+                Id = o.Id, Menu = o.Menu,
                 Titre = o.Titre + (o.Liste == null ? "" : o.Liste.EstVide ? " : aucun élément choisi, non exécutée" : " (" + o.Liste.ResumeCourt + ")"), Risque = o.Risque,
                 Reversibilite = o.Reversible ? (string.IsNullOrWhiteSpace(o.Item.AnnulationPartielle) ? "Annulable" : "Annulable en partie : " + o.Item.AnnulationPartielle) : "définitif",
                 Redemarrage = o.Redemarrage ? "Redémarrage requis" : "",
                 Taille = "—",
             }).ToList();
+        }
+
+        /// <summary>Synthèse de l'aperçu : options annulables, définitives, et celles qui demandent un redémarrage.</summary>
+        public static string ResumeApercu(IReadOnlyList<PreviewRow> lignes)
+        {
+            int annulables = lignes.Count(l => l.Reversibilite != "définitif");
+            int definitives = lignes.Count(l => l.Reversibilite == "définitif");
+            int redemarrage = lignes.Count(l => !string.IsNullOrEmpty(l.Redemarrage));
+            return annulables + " annulable" + (annulables > 1 ? "s" : "") + " · " + definitives + " définitive" + (definitives > 1 ? "s" : "")
+                 + " · " + redemarrage + " nécessit" + (redemarrage > 1 ? "ent" : "e") + " un redémarrage";
         }
 
         /// <summary>

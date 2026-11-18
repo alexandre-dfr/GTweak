@@ -15,7 +15,13 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock x:Name="Titre" FontSize="22" FontWeight="SemiBold"/>
+        <DockPanel>
+            <!-- Synthèse : annulables, définitives, redémarrage -->
+            <Border DockPanel.Dock="Right" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,6" VerticalAlignment="Center">
+                <TextBlock x:Name="Synthese" FontWeight="SemiBold"/>
+            </Border>
+            <TextBlock x:Name="Titre" FontSize="22" FontWeight="SemiBold" FontFamily="{StaticResource PoliceTitre}"/>
+        </DockPanel>
         <TextBlock x:Name="Sous" Grid.Row="1" Margin="0,4,0,12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"
                    Text="Rien n'est modifié tant que vous n'avez pas cliqué sur Lancer. Le dossier de session est créé au lancement ; les options déjà appliquées ou ignorées ne seront pas exécutées."/>
 
@@ -38,6 +44,15 @@
                 </Grid>
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                     <ItemsControl x:Name="Lignes">
+                        <ItemsControl.GroupStyle>
+                            <GroupStyle>
+                                <GroupStyle.HeaderTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" Margin="12,10,12,2"/>
+                                    </DataTemplate>
+                                </GroupStyle.HeaderTemplate>
+                            </GroupStyle>
+                        </ItemsControl.GroupStyle>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Grid Margin="12,5">

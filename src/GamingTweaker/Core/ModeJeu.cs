@@ -29,6 +29,15 @@ namespace GamingTweaker.Core
         string GetPlan();
     }
 
+    /// <summary>
+    /// Libération de mémoire (facultative pour une implémentation d'IModeJeuActions) : vide le jeu de travail des processus de la session
+    /// en arrière-plan, hors chemins exclus (jeux) et fenêtre au premier plan. Renvoie les Mo de mémoire disponible gagnés.
+    /// </summary>
+    public interface IViderMemoire
+    {
+        long ViderMemoire(IEnumerable<string> exclusions);
+    }
+
     /// <summary>Arrêt refusé avant toute action : rien n'a été arrêté.</summary>
     public class ServiceRefuseException : InvalidOperationException
     {
@@ -56,6 +65,10 @@ namespace GamingTweaker.Core
         public string PlanGuid { get; set; }
         /// <summary>Profil du pilote NVIDIA appliqué le temps du Mode Jeu (Aucun : pilote inchangé).</summary>
         public ProfilNvidia Nvidia { get; set; }
+        /// <summary>Vider le jeu de travail des processus en arrière-plan à l'activation (rien à rétablir : les pages reviennent à la demande).</summary>
+        public bool LibererMemoire { get; set; }
+        /// <summary>Exécutables ou dossiers jamais touchés par la libération de mémoire (les jeux surveillés).</summary>
+        public List<string> Exclusions { get; } = new List<string>();
     }
 
     public class ModeJeuBilan
@@ -293,6 +306,20 @@ namespace GamingTweaker.Core
                     }
                     if (n > 0) bilan.Actions.Add("Profil NVIDIA " + ProfilsNvidia.Libelle(c.Nvidia) + " appliqué (" + n + " réglage(s)).");
                 }
+                if (c.LibererMemoire)
+                {
+                    var v = actions as IViderMemoire;
+                    if (v == null) bilan.Avertissements.Add("Libération de mémoire indisponible.");
+                    else
+                    {
+                        try
+                        {
+                            var mo = v.ViderMemoire(c.Exclusions);
+                            bilan.Actions.Add(mo > 0 ? "Mémoire libérée : " + mo + " Mo disponibles en plus." : "Mémoire des programmes en arrière-plan libérée.");
+                        }
+                        catch (Exception ex) { bilan.Avertissements.Add("Mémoire non libérée : " + ex.Message); }
+                    }
+                }
             }
             return bilan;
         }
@@ -458,8 +485,57 @@ namespace GamingTweaker.Core
     }
 
     /// <summary>Implémentation réelle : ServiceController avec délai, Process.Kill, powercfg.</summary>
-    public class ModeJeuSysteme : IModeJeuActions
+    public class ModeJeuSysteme : IModeJeuActions, IViderMemoire
     {
+        [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)] private static extern IntPtr OpenProcess(uint access, bool inherit, int pid);
+        [System.Runtime.InteropServices.DllImport("kernel32.dll")] private static extern bool CloseHandle(IntPtr h);
+        [System.Runtime.InteropServices.DllImport("psapi.dll", SetLastError = true)] private static extern bool EmptyWorkingSet(IntPtr h);
+        [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode, SetLastError = true)]
+        private static extern bool QueryFullProcessImageNameW(IntPtr h, int flags, StringBuilder name, ref int size);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
+        [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+        private const uint QueryLimited = 0x1000, SetQuota = 0x0100;
+
+        /// <summary>
+        /// Vide le jeu de travail des processus de la session (pas les services), sauf : processus protégés, GamingTweaker, fenêtre au premier
+        /// plan et exécutables situés sous un chemin exclu (jeux). Aucun processus n'est fermé : Windows recharge les pages à la demande.
+        /// </summary>
+        public long ViderMemoire(IEnumerable<string> exclusions)
+        {
+            var excl = (exclusions ?? Enumerable.Empty<string>()).Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.TrimEnd('\\')).ToList();
+            int session = 0, moi = 0; uint premierPlan = 0;
+            try { using (var p = Process.GetCurrentProcess()) { session = p.SessionId; moi = p.Id; } } catch (Exception) { }
+            try { GetWindowThreadProcessId(GetForegroundWindow(), out premierPlan); } catch (Exception) { }
+            var avant = MemoireDisponibleMo();
+            foreach (var p in Process.GetProcesses())
+            {
+                using (p)
+                {
+                    try
+                    {
+                        if (p.Id == moi || p.Id == premierPlan || p.SessionId != session || ModeJeu.EstProcessusProtege(p.ProcessName)) continue;
+                        var h = OpenProcess(QueryLimited | SetQuota, false, p.Id);
+                        if (h == IntPtr.Zero) continue;
+                        try
+                        {
+                            var sb = new StringBuilder(1024); int n = sb.Capacity;
+                            var chemin = QueryFullProcessImageNameW(h, 0, sb, ref n) ? sb.ToString(0, n) : null;
+                            if (chemin != null && excl.Any(e => string.Equals(chemin, e, StringComparison.OrdinalIgnoreCase) || chemin.StartsWith(e + "\\", StringComparison.OrdinalIgnoreCase))) continue;
+                            EmptyWorkingSet(h);
+                        }
+                        finally { CloseHandle(h); }
+                    }
+                    catch (Exception) { }
+                }
+            }
+            return Math.Max(0, MemoireDisponibleMo() - avant);
+        }
+
+        private static long MemoireDisponibleMo()
+        {
+            try { return Mesures.RamDisponibleMo(); } catch (Exception) { return 0; }
+        }
+
         private static readonly TimeSpan Delai = TimeSpan.FromSeconds(20);
 
         public ServiceState StopService(string nom)

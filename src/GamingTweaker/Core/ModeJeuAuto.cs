@@ -21,13 +21,16 @@ namespace GamingTweaker.Core
         [JsonProperty("plan")] public bool Plan { get; set; } = true;
         /// <summary>Jeu en cours en priorité « Haute » (désactivé par défaut).</summary>
         [JsonProperty("prioriteHaute")] public bool PrioriteHaute { get; set; }
+        [JsonProperty("libererMemoire")] public bool LibererMemoire { get; set; }
         [JsonProperty("nvidia")] [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))] public ProfilNvidia Nvidia { get; set; }
 
         public const string NomFichier = "modejeu-auto.json";
 
         public ModeJeuConfig VersModeJeu()
         {
-            var c = new ModeJeuConfig { PlanGuid = Plan ? ModeJeu.PlanPerformances : null, Nvidia = Nvidia };
+            var c = new ModeJeuConfig { PlanGuid = Plan ? ModeJeu.PlanPerformances : null, Nvidia = Nvidia, LibererMemoire = LibererMemoire };
+            // Les jeux surveillés ne sont jamais concernés par la libération de mémoire.
+            c.Exclusions.AddRange((Jeux ?? new List<JeuSurveille>()).Where(j => j != null && !string.IsNullOrWhiteSpace(j.Chemin)).Select(j => j.Chemin));
             c.Services.AddRange((Services ?? new List<string>()).Where(s => !ModeJeu.EstServiceProtege(s)));
             // Jamais fermés par le mode automatique : un jeu de la liste (il serait fermé puis relancé en boucle) et les lanceurs
             // (Steam, Epic : les fermer peut fermer le jeu en cours).

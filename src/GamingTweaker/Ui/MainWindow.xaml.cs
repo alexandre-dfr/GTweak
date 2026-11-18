@@ -99,6 +99,12 @@ namespace GamingTweaker.Ui
 
         private void Recharger_Click(object sender, RoutedEventArgs e) { vm.RechargerProfil(); }
 
+        private void Planifier_Click(object sender, RoutedEventArgs e)
+        {
+            if (vm.Routine == null) return;
+            new PlanifierWindow(vm.Routine, vm.ProfilSelectionne) { Owner = this }.ShowDialog();
+        }
+
         private async void ToutRestaurer_Click(object sender, RoutedEventArgs e)
         {
             var ok = MessageBox.Show(this,

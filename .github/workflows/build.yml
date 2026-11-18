@@ -62,10 +62,10 @@ jobs:
         run: dotnet test tests/GamingTweaker.Tests/GamingTweaker.Tests.csproj -c Release --no-restore --logger "trx;LogFileName=tests.trx" --results-directory TestResults
 
       # Fiabilité : chaque option testable et réversible est réellement détectée, appliquée, vérifiée, annulée et revérifiée
-      # sur cette machine jetable (effacée après l'exécution). Rapport joint à la pré-version et résumé ci-dessous ; non bloquant.
+      # sur cette machine jetable (effacée après l'exécution). Rapport joint à la pré-version et résumé ci-dessous.
+      # BLOQUANT : une option en échec (ou un cycle sans résultat) fait échouer le build.
       - name: Cycle réel des options (machine jetable)
         if: always()
-        continue-on-error: true
         shell: pwsh
         env:
           GT_CYCLE_CI: '1'
@@ -76,11 +76,12 @@ jobs:
           $p = Start-Process -FilePath $exe -ArgumentList @('--cycle-test', "`"$sortie`"") -Wait -PassThru -RedirectStandardOutput cycle-reel.txt -RedirectStandardError cycle-reel.err.txt
           Write-Host "Code de sortie : $($p.ExitCode)"
           Get-Content cycle-reel.err.txt -ErrorAction SilentlyContinue | Select-Object -First 20
-          if (-not (Test-Path $sortie)) { "## Cycle réel : aucun résultat (code $($p.ExitCode))" >> $env:GITHUB_STEP_SUMMARY; exit 0 }
+          if (-not (Test-Path $sortie)) { "## Cycle réel : aucun résultat (code $($p.ExitCode))" >> $env:GITHUB_STEP_SUMMARY; exit 1 }
           $r = Get-Content $sortie -Raw | ConvertFrom-Json
           "## Cycle réel des options : $($r.resume.ok) OK, $($r.resume.echec) en échec, $($r.resume.nonCouvert) non couvertes (sur $($r.resume.total))" >> $env:GITHUB_STEP_SUMMARY
           foreach ($o in @($r.options | Where-Object { $_.couvert -and $_.resultat -ne 'ok' })) { "- **$($o.id)** : $($o.raison)" >> $env:GITHUB_STEP_SUMMARY }
           gh release upload test-build $sortie --clobber
+          if ([int]$r.resume.echec -gt 0) { Write-Host "::error::$($r.resume.echec) option(s) en échec au cycle réel"; exit 1 }
           exit 0
 
       - name: Joindre les captures d'écran à la pré-version

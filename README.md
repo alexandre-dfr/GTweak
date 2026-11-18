@@ -33,6 +33,14 @@ Aucun ne contient d'option Risqué, d'option à liste (services, démarrage : le
 
 Avec une carte NVIDIA, le menu Optimisation affiche un groupe « Pilote NVIDIA » : mode de faible latence Ultra, gestion de l'alimentation en performances maximales, cache des shaders illimité, filtrage des textures en hautes performances, synchronisation verticale désactivée. Chaque option se coche séparément (niveau Avancé, jamais cochée par « Recommandé » ni par un profil intégré). Elles modifient les paramètres globaux du pilote par son interface `nvapi64.dll`, installée avec le pilote : rien n'est téléchargé. La valeur d'avant est notée dans le journal, et chaque option s'annule seule.
 
+## Diagnostic jeu
+
+Le menu « Diagnostic » (lecture seule) repère ce qui bride réellement les performances : écran utilisé sous sa fréquence maximale, mémoire sous sa vitesse nominale (XMP/EXPO) ou en simple canal, Mode Jeu de Windows et HAGS désactivés, plan d'alimentation, batterie, disque système presque plein, pilote graphique ancien, enregistrement en arrière-plan, programmes au démarrage, écran HDR non activé, écran à fréquence variable (FreeSync, G-SYNC). Chaque point propose la page des Paramètres ou l'option qui le corrige.
+
+## Mesures avant / après
+
+Historique > Mesures : un relevé de 30 s (temps DPC et d'interruptions, processeur au repos, services, processus, mémoire disponible, programmes au démarrage). Faites-en un avant d'optimiser et un après, puis « Avant / après » : chaque mesure est marquée « mieux », « moins bien » ou « stable ».
+
 ## Mode Jeu automatique
 
 Dans le menu Mode Jeu, la section « Mode Jeu automatique » surveille une liste de jeux :

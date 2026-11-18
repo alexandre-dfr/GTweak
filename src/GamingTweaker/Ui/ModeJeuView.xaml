@@ -56,6 +56,8 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <CheckBox Content="Passer au plan Performances élevées" IsChecked="{Binding UtiliserPlan, Mode=TwoWay}" VerticalAlignment="Center" IsEnabled="{Binding PeutModifier}"/>
+                    <CheckBox Content="Libérer la mémoire" IsChecked="{Binding LibererMemoire, Mode=TwoWay}" VerticalAlignment="Center" Margin="16,0,0,0" IsEnabled="{Binding PeutModifier}"
+                              ToolTip="Récupère la mémoire inutilisée des programmes en arrière-plan (rien n'est fermé ; utile avec 8 ou 16 Go de RAM). Le jeu au premier plan et les jeux surveillés ne sont pas touchés."/>
                     <ComboBox Width="230" Height="32" Margin="16,0,0,0" ItemsSource="{Binding ProfilsNvidiaDisponibles}" SelectedValuePath="Key" DisplayMemberPath="Value"
                               SelectedValue="{Binding ProfilNvidia, Mode=TwoWay}" IsEnabled="{Binding PeutModifier}"
                               Visibility="{Binding NvidiaDisponible, Converter={StaticResource BoolVis}}"
