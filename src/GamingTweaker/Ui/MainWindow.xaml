@@ -412,6 +412,10 @@
                 <Border Grid.Row="1" Grid.RowSpan="2" Visibility="{Binding EstAccueil, Converter={StaticResource BoolVis}}">
                     <local:AccueilView/>
                 </Border>
+                <!-- Diagnostic jeu -->
+                <Border Grid.Row="1" Grid.RowSpan="2" Visibility="{Binding EstDiagnostic, Converter={StaticResource BoolVis}}">
+                    <local:DiagnosticView DataContext="{Binding Diagnostic}"/>
+                </Border>
                 <!-- Mode Jeu -->
                 <Border Grid.Row="1" Grid.RowSpan="2" Visibility="{Binding EstModeJeu, Converter={StaticResource BoolVis}}">
                     <local:ModeJeuView DataContext="{Binding ModeJeu}"/>

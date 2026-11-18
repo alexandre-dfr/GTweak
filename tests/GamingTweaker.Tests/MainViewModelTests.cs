@@ -86,7 +86,7 @@ namespace GamingTweaker.Tests
         [Fact]
         public void Menus_dans_l_ordre_avec_separateur()
         {
-            Assert.Equal(new[] { "Accueil", "Mises à jour", "Télémétrie", "Nettoyage", "Optimisation", "Bloatware", "Informations", null, "Mode Jeu", "Historique" },
+            Assert.Equal(new[] { "Accueil", "Diagnostic", "Mises à jour", "Télémétrie", "Nettoyage", "Optimisation", "Bloatware", "Informations", null, "Mode Jeu", "Historique" },
                 vm.Menus.Select(m => m.EstSeparateur ? null : m.Nom).ToArray());
         }
 

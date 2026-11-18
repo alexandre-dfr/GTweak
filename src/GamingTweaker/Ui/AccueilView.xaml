@@ -133,6 +133,15 @@
                         </StackPanel>
                     </Border>
                     <TextBlock Text="Raccourcis" Style="{StaticResource TitreSection}"/>
+                    <Button Style="{StaticResource CarteBouton}" Margin="0,0,0,4" Command="{Binding AllerCommand}" CommandParameter="Diagnostic">
+                        <DockPanel Margin="16,12">
+                            <TextBlock DockPanel.Dock="Right" Text="›" FontSize="18" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,2"/>
+                            <StackPanel>
+                                <TextBlock Text="Diagnostic jeu"/>
+                                <TextBlock Text="Écran, mémoire, pilote, disque : ce qui bride vos performances" Style="{StaticResource Secondaire}" FontSize="12" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </DockPanel>
+                    </Button>
                     <Button Style="{StaticResource CarteBouton}" Margin="0,0,0,4" Command="{Binding AllerCommand}" CommandParameter="Historique">
                         <DockPanel Margin="16,12">
                             <TextBlock DockPanel.Dock="Right" Text="›" FontSize="18" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,2"/>

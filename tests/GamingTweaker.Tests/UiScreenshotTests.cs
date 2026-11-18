@@ -80,7 +80,7 @@ namespace GamingTweaker.Tests
             });
             t.SetApartmentState(ApartmentState.STA); t.Start(); t.Join();
             Assert.True(erreurs.Count == 0, string.Join(Environment.NewLine, erreurs));
-            Assert.Equal(13, Directory.GetFiles(Dossier, "*.png").Length);
+            Assert.Equal(14, Directory.GetFiles(Dossier, "*.png").Length);
         }
 
         /// <summary>Option à liste dépliée (éléments chargés, un absent du PC) : PNG dans le sous-dossier « liste ».</summary>
@@ -259,11 +259,22 @@ namespace GamingTweaker.Tests
             sec("Pilotes", new[] { "Affichage : NVIDIA GeForce RTX 4070", "32.0.15.6094, 14/09/2024", "Réseau : Realtek PCIe 2.5GbE", "10.72.0.0, 02/05/2024" });
             var info = new InfoViewModel(() => echantillon, () => null);
             vm.Info = info;
+            vm.Diagnostic = new DiagnosticViewModel(() =>
+            {
+                var m = new MesuresDiag { ModeJeuWindows = true, Hags = 1, SurBatterie = false, LibreSysteme = 12L * 1073741824, TotalSysteme = 500L * 1073741824,
+                                          DatePiloteGpu = DateTime.Now.AddDays(-400), NomGpu = "NVIDIA GeForce RTX 4070", CaptureArrierePlan = true };
+                m.Ecrans.Add(new EcranDiag { Nom = "Moniteur 27 pouces", Largeur = 2560, Hauteur = 1440, HzActuel = 60, HzMax = 165 });
+                m.Barrettes.Add(new BarretteDiag { Vitesse = 4800, Configuree = 4800, Reference = "F5-6000J3038F16G" });
+                m.Barrettes.Add(new BarretteDiag { Vitesse = 4800, Configuree = 4800, Reference = "F5-6000J3038F16G" });
+                return m;
+            });
 
-            var noms = new[] { "Accueil", "Mises à jour", "Télémétrie", "Nettoyage", "Optimisation", "Bloatware", "Informations", "Mode Jeu", "Historique" };
+            var noms = new[] { "Accueil", "Diagnostic", "Mises à jour", "Télémétrie", "Nettoyage", "Optimisation", "Bloatware", "Informations", "Mode Jeu", "Historique" };
             for (int i = 0; i < noms.Length; i++)
             {
                 vm.MenuCourant = noms[i]; Pump(d);
+                if (noms[i] == "Diagnostic")
+                    for (int k = 0; k < 40 && !vm.Diagnostic.Analyse; k++) { Thread.Sleep(50); Pump(d); }
                 if (noms[i] == "Informations")
                 {
                     for (int k = 0; k < 40 && info.Sections.Count == 0; k++) { Thread.Sleep(50); Pump(d); }

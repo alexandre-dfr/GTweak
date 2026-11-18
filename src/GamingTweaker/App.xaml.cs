@@ -101,6 +101,8 @@ namespace GamingTweaker
                 InstallerPawnIo = Info.PawnIoInstaller.Install,
             };
             vm.Info = info;
+            vm.Diagnostic = new DiagnosticViewModel(() => DiagnosticJeu.Mesurer(facts));
+            vm.OuvrirParametres = uri => SystemExe.OuvrirAvecExplorateur(uri);
             Exit += (s, ev) => info.Dispose();
 
             // Une seule racine de sessions (%ProgramFiles%\GamingTweaker\Machines) pour l'interface et la routine.

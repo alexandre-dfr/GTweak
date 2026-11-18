@@ -87,6 +87,7 @@ namespace GamingTweaker.Ui
         private readonly Dictionary<string, List<string>> listesChargees = new Dictionary<string, List<string>>();
         private ProfilListes profilListes;
         public const string MenuAccueil = "Accueil";
+        public const string MenuDiagnostic = "Diagnostic";
         private string menuCourant = MenuAccueil;
         private string recherche = "";
         private string profilSelectionne;
@@ -108,8 +109,8 @@ namespace GamingTweaker.Ui
                            .Select(i => new OptionViewModel(i, confirmerRisque, string.IsNullOrEmpty(i.Liste) || registre == null ? null : registre.Get(i.Liste))).ToList();
             foreach (var o in Options) o.CocheChanged += () => { Raise("SelectedCount"); Raise("AUneSelection"); Raise("ResumeSelection"); MajCompteurs(); };
 
-            var menus = new[] { MenuAccueil }.Concat(MenusOptions).Concat(new[] { "Informations" })
-                .Select(n => new MenuEntry { Nom = n, EstEmplacement = n == "Informations" || n == MenuAccueil }).ToList();
+            var menus = new[] { MenuAccueil, MenuDiagnostic }.Concat(MenusOptions).Concat(new[] { "Informations" })
+                .Select(n => new MenuEntry { Nom = n, EstEmplacement = n == "Informations" || n == MenuAccueil || n == MenuDiagnostic }).ToList();
             menus.Add(new MenuEntry { EstSeparateur = true });
             menus.Add(new MenuEntry { Nom = "Mode Jeu", EstEmplacement = true });
             menus.Add(new MenuEntry { Nom = "Historique", EstEmplacement = true });
@@ -138,6 +139,38 @@ namespace GamingTweaker.Ui
         /// <summary>Charge le profil intégré dont le nom (sans suffixe) est passé en paramètre.</summary>
         public ICommand ProfilRapideCommand { get; private set; }
         public bool EstAccueil { get { return !EnRecherche && menuCourant == MenuAccueil; } }
+
+        // ---------- Diagnostic jeu ----------
+
+        private DiagnosticViewModel diagnosticVm;
+        /// <summary>Diagnostic jeu (null tant que l'application ne l'a pas branché).</summary>
+        public DiagnosticViewModel Diagnostic
+        {
+            get { return diagnosticVm; }
+            set { if (Set(ref diagnosticVm, value) && value != null) value.Executer = ExecuterActionDiagnostic; }
+        }
+        public bool EstDiagnostic { get { return !EnRecherche && menuCourant == MenuDiagnostic; } }
+        /// <summary>Ouvre une page des Paramètres de Windows (« ms-settings:… ») ; branché par l'application.</summary>
+        public Action<string> OuvrirParametres { get; set; }
+
+        /// <summary>« option:id » : ouvre son menu et la coche ; « menu:nom » : ouvre le menu ; « ms-settings:… » : page des Paramètres.</summary>
+        public void ExecuterActionDiagnostic(string action)
+        {
+            if (string.IsNullOrEmpty(action)) return;
+            if (action.StartsWith("option:", StringComparison.Ordinal))
+            {
+                var o = Options.FirstOrDefault(x => x.Id == action.Substring(7));
+                if (o == null) { Message = "Cette option n'est pas disponible sur ce PC."; return; }
+                Recherche = ""; MenuCourant = o.Menu;
+                o.IsChecked = true;
+                Message = o.IsChecked ? "« " + o.Titre + " » est cochée. Vérifiez avec « Aperçu », puis « LANCER »." : "";
+            }
+            else if (action.StartsWith("menu:", StringComparison.Ordinal)) { Recherche = ""; MenuCourant = action.Substring(5); }
+            else if (action.StartsWith("ms-settings:", StringComparison.Ordinal) && OuvrirParametres != null)
+            {
+                try { OuvrirParametres(action); } catch (Exception ex) { Message = "Impossible d'ouvrir les Paramètres : " + ex.Message; }
+            }
+        }
         public ObservableCollection<LigneAccueil> EtatMenus { get; } = new ObservableCollection<LigneAccueil>();
         public IReadOnlyList<TuileProfil> ProfilsRapides
         {
@@ -241,13 +274,13 @@ namespace GamingTweaker.Ui
         public string MenuCourant
         {
             get { return menuCourant; }
-            set { if (Set(ref menuCourant, value)) { Raise("EstAccueil"); Raise("EstEmplacement"); Raise("EstMenuTelemetrie"); Raise("EstMenuOptions"); Raise("EstModeJeu"); Raise("EstHistorique"); Raise("TitreAffiche"); Raise("EstMenuInformations"); MajInfo(); Filtrer(); if (value == MenuModeJeu && modeJeuVm != null) modeJeuVm.ChargerSiBesoin(); if (value == MenuHistorique && historiqueVm != null) historiqueVm.Charger(); } }
+            set { if (Set(ref menuCourant, value)) { Raise("EstDiagnostic"); if (value == MenuDiagnostic && diagnosticVm != null) diagnosticVm.AnalyserSiBesoin(); Raise("EstAccueil"); Raise("EstEmplacement"); Raise("EstMenuTelemetrie"); Raise("EstMenuOptions"); Raise("EstModeJeu"); Raise("EstHistorique"); Raise("TitreAffiche"); Raise("EstMenuInformations"); MajInfo(); Filtrer(); if (value == MenuModeJeu && modeJeuVm != null) modeJeuVm.ChargerSiBesoin(); if (value == MenuHistorique && historiqueVm != null) historiqueVm.Charger(); } }
         }
 
         public string Recherche
         {
             get { return recherche; }
-            set { if (Set(ref recherche, value ?? "")) { Raise("EnRecherche"); Raise("EstAccueil"); CommandManager.InvalidateRequerySuggested(); Raise("TitreAffiche"); Raise("EstMenuTelemetrie"); Raise("EstMenuOptions"); Raise("EstModeJeu"); Raise("EstHistorique"); Raise("EstMenuInformations"); MajInfo(); Filtrer(); } }
+            set { if (Set(ref recherche, value ?? "")) { Raise("EnRecherche"); Raise("EstAccueil"); Raise("EstDiagnostic"); CommandManager.InvalidateRequerySuggested(); Raise("TitreAffiche"); Raise("EstMenuTelemetrie"); Raise("EstMenuOptions"); Raise("EstModeJeu"); Raise("EstHistorique"); Raise("EstMenuInformations"); MajInfo(); Filtrer(); } }
         }
 
         public bool EnRecherche { get { return Normaliser(recherche).Length > 0; } }
