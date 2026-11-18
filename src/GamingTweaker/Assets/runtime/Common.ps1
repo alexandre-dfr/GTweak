@@ -385,6 +385,13 @@ function Test-GTSchemeInList([string[]]$Lines, [string]$Guid) {
 
 function Get-GTSchemeLines { return [string[]]@(& powercfg.exe /list) }
 
+# Vrai si le plan existe, y compris caché (absent de « powercfg /list » mais lisible par « powercfg /query »). Lecture seule.
+function Test-GTSchemeExiste([string]$Guid) {
+    if (Test-GTSchemeInList (Get-GTSchemeLines) $Guid) { return $true }
+    $null = & powercfg.exe /query $Guid.ToLowerInvariant() 2>&1
+    return ($LASTEXITCODE -eq 0)
+}
+
 function Set-GTActiveScheme([string]$Guid) {
     & powercfg.exe /setactive $Guid | Out-Null
     if ($LASTEXITCODE -ne 0) { throw ('powercfg /setactive a échoué pour le plan ' + $Guid + '.') }
@@ -395,7 +402,7 @@ function Set-TweakActiveScheme {
     param([Parameter(Mandatory)][string]$Guid)
     $cur = Get-GTActiveScheme
     if ($cur -ieq $Guid) { return }
-    if (-not (Test-GTSchemeInList (Get-GTSchemeLines) $Guid)) { throw ('Plan d''alimentation ' + $Guid + ' introuvable sur cette machine.') }
+    if (-not (Test-GTSchemeExiste $Guid)) { throw ('Plan d''alimentation ' + $Guid + ' introuvable sur cette machine.') }
     Write-GTJournal 'powerplan' 'ActiveScheme' $true $cur $Guid.ToLowerInvariant()
     Set-GTActiveScheme $Guid
 }
@@ -405,11 +412,9 @@ function Set-TweakActiveScheme {
 # le plan reste disponible pour la prochaine application.
 function Initialize-GTScheme {
     param([Parameter(Mandatory)][string]$Guid)
-    if (Test-GTSchemeInList (Get-GTSchemeLines) $Guid) { return }
+    # Plan déjà présent, même caché (absent de « powercfg /list ») : il s'active tel quel, le dupliquer échouerait (GUID déjà utilisé).
+    if (Test-GTSchemeExiste $Guid) { return }
     $g = $Guid.ToLowerInvariant()
-    # Plan déjà présent mais caché (absent de « powercfg /list ») : il s'active tel quel, le dupliquer échouerait (GUID déjà utilisé).
-    $null = & powercfg.exe /query $g 2>&1
-    if ($LASTEXITCODE -eq 0) { return }
     Write-GTJournal 'powerscheme' $g $false $null $g
     $out = & powercfg.exe -duplicatescheme $g $g 2>&1
     if (($LASTEXITCODE -ne 0) -and -not (Test-GTSchemeInList (Get-GTSchemeLines) $g)) {
@@ -729,7 +734,7 @@ function Restore-GTEntry($E) {
             if ($LASTEXITCODE -ne 0) { throw ('bcdedit a échoué : ' + ($o -join ' ')) }
         }
         'powerplan' {
-            if (-not (Test-GTSchemeInList (Get-GTSchemeLines) ([string]$E.before))) { throw ('Le plan d''alimentation d''origine ' + $E.before + ' n''existe plus.') }
+            if (-not (Test-GTSchemeExiste ([string]$E.before))) { throw ('Le plan d''alimentation d''origine ' + $E.before + ' n''existe plus.') }
             Set-GTActiveScheme ([string]$E.before)
         }
         'powerscheme' { }   # le plan cree reste disponible (reutilise a la prochaine application)
