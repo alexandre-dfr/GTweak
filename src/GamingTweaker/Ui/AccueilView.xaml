@@ -9,13 +9,13 @@
             <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
             <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="CornerRadius" Value="3"/>
             <Setter Property="Padding" Value="22,18"/>
         </Style>
         <Style x:Key="TitreSection" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="18"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="FontSize" Value="20"/>
+            <Setter Property="FontFamily" Value="{StaticResource TitreFont}"/>
+            <Setter Property="Foreground" Value="{StaticResource ChromeBrush}"/>
             <Setter Property="Margin" Value="0,0,0,4"/>
         </Style>
         <Style x:Key="SousTitre" TargetType="TextBlock">
@@ -33,13 +33,14 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="b" Background="{StaticResource BgBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8">
+                        <Border x:Name="b" Background="{StaticResource BgBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="3">
                             <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="b" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                                <Setter TargetName="b" Property="BorderBrush" Value="{StaticResource AcidGradientBrush}"/>
                                 <Setter TargetName="b" Property="Background" Value="{StaticResource PanelHoverBrush}"/>
+                                <Setter TargetName="b" Property="Effect" Value="{StaticResource LueurAcide}"/>
                             </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="b" Property="BorderBrush" Value="{StaticResource AccentHoverBrush}"/></Trigger>
                         </ControlTemplate.Triggers>
@@ -60,14 +61,14 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <Border Background="{StaticResource AccentBrush}" CornerRadius="10,0,0,10"/>
+                    <Border Background="{StaticResource AcidGradientBrush}" CornerRadius="3,0,0,3"/>
                     <StackPanel Grid.Column="1" Margin="22,18">
-                        <TextBlock Text="{Binding SyntheseAccueil}" FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding SyntheseAccueil}" FontSize="24" FontFamily="{StaticResource TitreFont}" Foreground="{StaticResource ChromeBrush}" TextWrapping="Wrap"/>
                         <TextBlock Text="{Binding ResumePc}" FontSize="14" Foreground="{StaticResource MutedBrush}" Margin="0,6,0,0" TextWrapping="Wrap"/>
                     </StackPanel>
-                    <Border Grid.Column="2" Margin="0,0,22,0" VerticalAlignment="Center" Padding="14,6" CornerRadius="14" Background="{StaticResource AvanceBg}"
+                    <Border Grid.Column="2" Margin="0,0,22,0" VerticalAlignment="Center" Padding="14,6" CornerRadius="2" Background="{StaticResource AccentBrush}" Effect="{StaticResource LueurAcide}"
                             Visibility="{Binding ModeJeu.EstActif, Converter={StaticResource BoolVis}, FallbackValue=Collapsed}">
-                        <TextBlock Text="Mode Jeu actif" Foreground="{StaticResource AvanceFg}" FontWeight="SemiBold"/>
+                        <TextBlock Text="MODE JEU ACTIF" Foreground="{StaticResource AccentTextBrush}" FontFamily="{StaticResource TitreFont}"/>
                     </Border>
                 </Grid>
             </Border>
@@ -88,21 +89,27 @@
                                     <RowDefinition Height="5"/>
                                     <RowDefinition Height="*"/>
                                 </Grid.RowDefinitions>
-                                <Border x:Name="bande" Background="{StaticResource SurFg}" CornerRadius="8,8,0,0"/>
+                                <Border x:Name="bande" Background="{StaticResource AccentBrush}" CornerRadius="3,3,0,0"/>
                                 <StackPanel Grid.Row="1" Margin="18,16,18,18">
-                                    <TextBlock Text="{Binding Nom}" FontSize="19" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="nom" Text="{Binding Nom}" FontSize="22" FontFamily="{StaticResource TitreFont}" Foreground="{StaticResource AccentBrush}"/>
                                     <TextBlock Text="{Binding Accroche}" FontSize="14" TextWrapping="Wrap" Margin="0,6,0,0"/>
                                     <TextBlock Text="{Binding Description}" FontSize="13" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,8,0,14"/>
                                     <DockPanel>
                                         <TextBlock Text="{Binding NombreTexte}" FontSize="13" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
-                                        <TextBlock Text="Choisir  ›" HorizontalAlignment="Right" FontWeight="SemiBold" Foreground="{StaticResource AccentHoverBrush}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="CHOISIR  ›" HorizontalAlignment="Right" FontFamily="{StaticResource TitreFont}" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center"/>
                                     </DockPanel>
                                 </StackPanel>
                             </Grid>
                         </Button>
                         <DataTemplate.Triggers>
-                            <DataTrigger Binding="{Binding Rang}" Value="1"><Setter TargetName="bande" Property="Background" Value="{StaticResource AvanceFg}"/></DataTrigger>
-                            <DataTrigger Binding="{Binding Rang}" Value="2"><Setter TargetName="bande" Property="Background" Value="{StaticResource AccentHoverBrush}"/></DataTrigger>
+                            <DataTrigger Binding="{Binding Rang}" Value="1">
+                                <Setter TargetName="bande" Property="Background" Value="{StaticResource MagentaBrush}"/>
+                                <Setter TargetName="nom" Property="Foreground" Value="{StaticResource MagentaBrush}"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Rang}" Value="2">
+                                <Setter TargetName="bande" Property="Background" Value="{StaticResource CyanBrush}"/>
+                                <Setter TargetName="nom" Property="Foreground" Value="{StaticResource CyanBrush}"/>
+                            </DataTrigger>
                         </DataTemplate.Triggers>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
@@ -131,7 +138,7 @@
                                                 <TextBlock Text="{Binding Menu}" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                             </DockPanel>
                                             <ProgressBar Minimum="0" Maximum="1" Value="{Binding Proportion, Mode=OneWay}" Height="6" Margin="0,8,0,0"
-                                                         Foreground="{StaticResource SurFg}" Background="{StaticResource BorderBrush}" BorderThickness="0"/>
+                                                         Foreground="{StaticResource AcidGradientBrush}" Background="{StaticResource BorderBrush}" BorderThickness="0"/>
                                         </StackPanel>
                                     </Button>
                                 </DataTemplate>
@@ -169,7 +176,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <DockPanel Margin="0,0,0,10">
-                                    <TextBlock DockPanel.Dock="Left" Text="✓" Foreground="{StaticResource SurFg}" FontWeight="Bold" Width="22" FontSize="15"/>
+                                    <TextBlock DockPanel.Dock="Left" Text="▸" Foreground="{StaticResource AccentBrush}" FontWeight="Bold" Width="22" FontSize="15"/>
                                     <TextBlock Text="{Binding}" TextWrapping="Wrap" FontSize="14"/>
                                 </DockPanel>
                             </DataTemplate>
