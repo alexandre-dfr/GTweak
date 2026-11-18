@@ -558,5 +558,17 @@ namespace GamingTweaker.Tests
         {
             Assert.Contains("Update-GTMouseParams", Fonction(PsCommon.CommonText(), "Restore-GTEntry"));
         }
+
+        // Cycle réel du 18 novembre 2026 : tâches que Windows refuse de modifier, même en administrateur.
+        [Fact]
+        public void Acces_refuse_reconnu()
+        {
+            var r = string.Join("|", PsCommon.Eval(
+                "$e1 = New-Object System.Management.Automation.ErrorRecord((New-Object UnauthorizedAccessException 'x'), 'id', 'PermissionDenied', $null)\n" +
+                "$e2 = New-Object System.Management.Automation.ErrorRecord((New-Object Exception 'Access is denied.'), 'id', 'NotSpecified', $null)\n" +
+                "$e3 = New-Object System.Management.Automation.ErrorRecord((New-Object Exception 'Autre erreur'), 'id', 'NotSpecified', $null)\n" +
+                "Write-Output (Test-GTAccesRefuse $e1); Write-Output (Test-GTAccesRefuse $e2); Write-Output (Test-GTAccesRefuse $e3)"));
+            Assert.Equal("True|True|False", r);
+        }
     }
 }

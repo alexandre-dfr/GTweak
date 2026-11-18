@@ -70,7 +70,7 @@ namespace GamingTweaker.Core
                 var l = new Ligne { id = it.Id };
                 lignes.Add(l);
                 if (!Compatibilite.IsCompatible(it.Compatibilite, facts)) { l.resultat = "non couvert"; l.raison = "incompatible avec cette machine (" + facts.WindowsMajor + "/" + facts.Edition + ")"; continue; }
-                if (!it.Testable) { l.resultat = "non couvert"; l.raison = "Testable=false (matériel, effet système ou réseau)"; continue; }
+                if (!it.Testable) { l.resultat = "non couvert"; l.raison = "Testable=false (matériel, effet système, réseau, ou détection non vérifiable)"; continue; }
                 if (!it.Reversible) { l.resultat = "non couvert"; l.raison = "non réversible"; continue; }
                 l.couvert = true;
                 try { Cycle(it, facts, paths, pipeline, l); }

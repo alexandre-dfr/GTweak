@@ -53,6 +53,7 @@
     "risque": "Risque",
     "reversible": true,
     "redemarrage": true,
+    "testable": false,
     "delaiSec": 1200,
     "annulationPartielle": "réactivation par DISM, parfois impossible sans source",
     "compatibilite": {
@@ -74,6 +75,7 @@
     "risque": "Risque",
     "reversible": true,
     "redemarrage": true,
+    "testable": false,
     "delaiSec": 1200,
     "annulationPartielle": "réinstallation par Windows Update (connexion Internet requise)",
     "compatibilite": {

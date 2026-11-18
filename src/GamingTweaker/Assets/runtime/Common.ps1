@@ -260,9 +260,39 @@ function Set-TweakTask {
     if (-not $t) { Skip-GTItem ('Tâche planifiée ' + $Path + ' absente de cette machine.') }
     $before = [bool]($t.State -ne 'Disabled')
     Write-GTJournal 'task' $Path $true $before $Enabled
-    if ($Enabled) { Enable-ScheduledTask -TaskPath $p.Dir -TaskName $p.Name | Out-Null }
-    else { Disable-ScheduledTask -TaskPath $p.Dir -TaskName $p.Name | Out-Null }
+    try {
+        if ($Enabled) { Enable-ScheduledTask -TaskPath $p.Dir -TaskName $p.Name -ErrorAction Stop | Out-Null }
+        else { Disable-ScheduledTask -TaskPath $p.Dir -TaskName $p.Name -ErrorAction Stop | Out-Null }
+    } catch {
+        # Tâche protégée par Windows (accès refusé même en administrateur) : laissée telle quelle, signalée, et ignorée par la
+        # détection ensuite ; le reste de l'option s'applique.
+        if (-not (Test-GTAccesRefuse $_)) { throw }
+        Add-GTTacheProtegee $Path
+        Add-GTCleanDetail ('tâche protégée par Windows laissée telle quelle : ' + $p.Name)
+    }
     Clear-GTTaskCache
+}
+
+function Test-GTAccesRefuse($ErrorRecord) {
+    $e = $ErrorRecord.Exception
+    while ($null -ne $e) {
+        if ($e -is [UnauthorizedAccessException]) { return $true }
+        if ($e.HResult -eq -2147024891) { return $true }   # 0x80070005 E_ACCESSDENIED
+        $e = $e.InnerException
+    }
+    return [bool]([string]$ErrorRecord.Exception.Message -match '(?i)access is denied|accès refusé')
+}
+
+# Tâches que Windows refuse de modifier (même en administrateur) : HKLM\SOFTWARE\GamingTweaker\TachesProtegees, lu par la détection.
+$script:GT_CleTachesProtegees = 'HKLM:\SOFTWARE\GamingTweaker\TachesProtegees'
+function Add-GTTacheProtegee([string]$Path) {
+    try {
+        if (-not (Test-Path -LiteralPath $script:GT_CleTachesProtegees)) { New-Item -Path $script:GT_CleTachesProtegees -Force | Out-Null }
+        New-ItemProperty -LiteralPath $script:GT_CleTachesProtegees -Name $Path -Value 1 -PropertyType DWord -Force | Out-Null
+    } catch { }
+}
+function Test-GTTacheProtegee([string]$Path) {
+    try { return ($null -ne (Get-ItemProperty -LiteralPath $script:GT_CleTachesProtegees -Name $Path -ErrorAction Stop)) } catch { return $false }
 }
 
 # ---- Alimentation -----------------------------------------------------------
@@ -377,9 +407,12 @@ function Initialize-GTScheme {
     param([Parameter(Mandatory)][string]$Guid)
     if (Test-GTSchemeInList (Get-GTSchemeLines) $Guid) { return }
     $g = $Guid.ToLowerInvariant()
+    # Plan déjà présent mais caché (absent de « powercfg /list ») : il s'active tel quel, le dupliquer échouerait (GUID déjà utilisé).
+    $null = & powercfg.exe /query $g 2>&1
+    if ($LASTEXITCODE -eq 0) { return }
     Write-GTJournal 'powerscheme' $g $false $null $g
     $out = & powercfg.exe -duplicatescheme $g $g 2>&1
-    if (($LASTEXITCODE -ne 0) -or -not (Test-GTSchemeInList (Get-GTSchemeLines) $g)) {
+    if (($LASTEXITCODE -ne 0) -and -not (Test-GTSchemeInList (Get-GTSchemeLines) $g)) {
         throw ('Le plan d''alimentation ' + $g + ' n''est pas disponible sur cette machine : ' + ($out -join ' '))
     }
 }
@@ -417,6 +450,8 @@ function Set-TweakHibernate {
     if ($cur -eq $Enabled) { return }
     Write-GTJournal 'hibernate' 'Hibernate' $true $cur $Enabled
     Set-GTHibernate $Enabled
+    # Vérification : sans prise en charge de la veille prolongée (machine virtuelle, certains PC), powercfg réussit sans rien changer.
+    if ((Get-GTHibernateEnabled) -ne $Enabled) { Skip-GTItem 'La veille prolongée n''est pas prise en charge par ce PC : rien n''a changé.' }
 }
 
 # ---- Gestion d'alimentation des peripheriques (MSPower_DeviceEnable) ---------------
@@ -676,8 +711,12 @@ function Restore-GTEntry($E) {
         'service'    { Set-GTServiceStart $E.target ([string]$E.before) }
         'task' {
             $p = Split-GTTaskPath $E.target
-            if ([bool]$E.before) { Enable-ScheduledTask -TaskPath $p.Dir -TaskName $p.Name | Out-Null }
-            else { Disable-ScheduledTask -TaskPath $p.Dir -TaskName $p.Name | Out-Null }
+            $cur = Get-GTTaskEnabled $E.target
+            # Déjà dans l'état d'origine (tâche protégée jamais modifiée, ou rétablie par Windows) : rien à faire.
+            if ($null -ne $cur -and $cur -ne [bool]$E.before) {
+                if ([bool]$E.before) { Enable-ScheduledTask -TaskPath $p.Dir -TaskName $p.Name | Out-Null }
+                else { Disable-ScheduledTask -TaskPath $p.Dir -TaskName $p.Name | Out-Null }
+            }
             Clear-GTTaskCache
         }
         'power' {
@@ -694,7 +733,7 @@ function Restore-GTEntry($E) {
             Set-GTActiveScheme ([string]$E.before)
         }
         'powerscheme' { }   # le plan cree reste disponible (reutilise a la prochaine application)
-        'hibernate'   { Set-GTHibernate ([bool]$E.before) }
+        'hibernate'   { if ((Get-GTHibernateEnabled) -ne [bool]$E.before) { Set-GTHibernate ([bool]$E.before) } }
         'devicepower' {
             # Un peripherique debranche depuis n'est plus a restaurer.
             if (@(Get-GTPowerDevices | Where-Object { $_.InstanceName -eq $E.target }).Count -gt 0) { Set-GTDevicePower $E.target ([bool]$E.before) }
@@ -903,6 +942,7 @@ function Get-GTTweakState {
         $seen++; if ($cur -ne $s[1]) { return 'NotApplied' }
     }
     foreach ($t in $Task) {
+        if (Test-GTTacheProtegee $t) { continue }   # protégée par Windows : ne peut pas être modifiée, ne compte pas
         $cur = Get-GTTaskEnabled $t
         if ($null -eq $cur) { continue }
         $seen++; if ($cur) { return 'NotApplied' }

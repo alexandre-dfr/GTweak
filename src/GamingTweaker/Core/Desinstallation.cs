@@ -77,6 +77,14 @@ namespace GamingTweaker.Core
                 }
                 else b.Actions.Add("Aucun dossier de données à supprimer (" + racine + ").");
 
+                // 3. Clés de registre de l'outil : tâches protégées (HKLM) et thème de l'interface (HKCU).
+                foreach (var cle in new[] { Microsoft.Win32.Registry.LocalMachine, Microsoft.Win32.Registry.CurrentUser })
+                {
+                    try { cle.DeleteSubKeyTree(@"SOFTWARE\GamingTweaker", false); }
+                    catch (Exception ex) { b.Avertissements.Add("Clé de registre " + cle.Name + @"\SOFTWARE\GamingTweaker non supprimée : " + ex.Message); }
+                }
+                b.Actions.Add("Réglages de GamingTweaker retirés du registre.");
+
                 b.Code = b.Avertissements.Count == 0 ? 0 : 1;
                 return b;
             }
