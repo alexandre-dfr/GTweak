@@ -29,6 +29,22 @@ namespace GamingTweaker.Ui
             this.demarrageInstalle = demarrageInstalle; this.definirDemarrage = definirDemarrage;
             config = ModeJeuAutoConfig.Charger(machineDir);
             foreach (var j in config.Jeux) Jeux.Add(j);
+            if (modeJeu != null)
+            {
+                // Le profil NVIDIA et le plan choisis dans le Mode Jeu valent aussi pour le mode automatique, sans bouton à cliquer.
+                modeJeu.ProfilNvidia = config.Nvidia;
+                modeJeu.UtiliserPlan = config.Plan;
+                modeJeu.LibererMemoire = config.LibererMemoire;
+                modeJeu.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == "ProfilNvidia" && config.Nvidia != modeJeu.ProfilNvidia)
+                    { config.Nvidia = modeJeu.ProfilNvidia; Enregistrer("Profil NVIDIA du mode automatique : " + ProfilsNvidia.Libelle(config.Nvidia) + "."); }
+                    else if (e.PropertyName == "UtiliserPlan" && config.Plan != modeJeu.UtiliserPlan)
+                    { config.Plan = modeJeu.UtiliserPlan; Enregistrer("Plan d'alimentation du mode automatique mis à jour."); }
+                    else if (e.PropertyName == "LibererMemoire" && config.LibererMemoire != modeJeu.LibererMemoire)
+                    { config.LibererMemoire = modeJeu.LibererMemoire; Enregistrer("Libération de mémoire du mode automatique mise à jour."); }
+                };
+            }
             AjouterExeCommand = new RelayCommand(_ => AjouterExe(), _ => !occupe);
             AjouterSteamCommand = new RelayCommand(_ => AjouterDepuis("Steam", () => Core.Jeux.JeuxSteam()), _ => !occupe);
             AjouterEpicCommand = new RelayCommand(_ => AjouterDepuis("Epic Games", () => Core.Jeux.JeuxEpic()), _ => !occupe);
@@ -66,6 +82,18 @@ namespace GamingTweaker.Ui
                 config.Actif = value;
                 Enregistrer(value ? "Mode Jeu automatique activé : il s'active au lancement d'un jeu de la liste et tout est rétabli quand vous quittez le dernier."
                                   : "Mode Jeu automatique désactivé.");
+                Raise();
+            }
+        }
+
+        public bool PrioriteHaute
+        {
+            get { return config.PrioriteHaute; }
+            set
+            {
+                if (config.PrioriteHaute == value) return;
+                config.PrioriteHaute = value;
+                Enregistrer(value ? "Le jeu en cours passera en priorité haute (jamais « temps réel »)." : "Priorité du jeu laissée à Windows.");
                 Raise();
             }
         }
@@ -126,6 +154,7 @@ namespace GamingTweaker.Ui
             config.Processus = c.Processus.Select(p => new ProcessusChoix { Nom = p.Nom, Chemin = p.Chemin }).ToList();
             config.Plan = c.PlanGuid != null;
             config.Nvidia = c.Nvidia;
+            config.LibererMemoire = c.LibererMemoire;
             Raise("ResumeReglages");
             if (enregistrer) Enregistrer("Sélection du Mode Jeu enregistrée pour le mode automatique.");
         }

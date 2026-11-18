@@ -27,6 +27,10 @@ namespace GamingTweaker.Core
         [JsonProperty("services")] public int Services { get; set; }
         [JsonProperty("processus")] public int Processus { get; set; }
         [JsonProperty("ramDisponibleMo")] public long RamDisponibleMo { get; set; }
+        /// <summary>Charge moyenne du processeur pendant le relevé (au repos : charge des programmes en arrière-plan) ; null si indisponible.</summary>
+        [JsonProperty("cpu", NullValueHandling = NullValueHandling.Ignore)] public double? Cpu { get; set; }
+        /// <summary>Programmes lancés à l'ouverture de session.</summary>
+        [JsonProperty("demarrage", NullValueHandling = NullValueHandling.Ignore)] public int? Demarrage { get; set; }
         [JsonProperty("note", NullValueHandling = NullValueHandling.Ignore)] public string Note { get; set; }
     }
 
@@ -38,6 +42,8 @@ namespace GamingTweaker.Core
         public int Services { get; set; }
         public int Processus { get; set; }
         public long RamDisponibleMo { get; set; }
+        public double? Cpu { get; set; }
+        public int? Demarrage { get; set; }
     }
 
     public static class Mesures
@@ -53,6 +59,8 @@ namespace GamingTweaker.Core
                 Services = b.Services - a.Services,
                 Processus = b.Processus - a.Processus,
                 RamDisponibleMo = b.RamDisponibleMo - a.RamDisponibleMo,
+                Cpu = a.Cpu.HasValue && b.Cpu.HasValue ? b.Cpu - a.Cpu : null,
+                Demarrage = a.Demarrage.HasValue && b.Demarrage.HasValue ? b.Demarrage - a.Demarrage : null,
             };
         }
 
@@ -100,7 +108,7 @@ namespace GamingTweaker.Core
         private static MesureSnapshot Prendre(TimeSpan duree, IProgress<double> progress, CancellationToken ct)
         {
             var s = new MesureSnapshot { Date = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture), DureeSec = duree.TotalSeconds };
-            PerformanceCounter dpc = null, irq = null;
+            PerformanceCounter dpc = null, irq = null, cpu = null;
             try
             {
                 string objet, cDpc, cIrq;
@@ -108,6 +116,12 @@ namespace GamingTweaker.Core
                 dpc = new PerformanceCounter(objet, cDpc, "_Total", true);
                 irq = new PerformanceCounter(objet, cIrq, "_Total", true);
                 dpc.NextValue(); irq.NextValue(); // la première lecture est toujours 0
+                try
+                {
+                    var cCpu = NomCompteur("% Processor Time", IndexCpuRepli);
+                    if (cCpu != null) { cpu = new PerformanceCounter(objet, cCpu, "_Total", true); cpu.NextValue(); }
+                }
+                catch (Exception) { cpu = null; }
             }
             catch (Exception ex)
             {
@@ -116,7 +130,7 @@ namespace GamingTweaker.Core
                 if (irq != null) irq.Dispose();
                 dpc = irq = null;
             }
-            var echDpc = new List<double>(); var echIrq = new List<double>();
+            var echDpc = new List<double>(); var echIrq = new List<double>(); var echCpu = new List<double>();
             var fin = DateTime.UtcNow + duree;
             if (progress != null) progress.Report(0);
             while (true)
@@ -127,12 +141,16 @@ namespace GamingTweaker.Core
                 try
                 {
                     if (dpc != null) { echDpc.Add(dpc.NextValue()); echIrq.Add(irq.NextValue()); }
+                    if (cpu != null) echCpu.Add(cpu.NextValue());
                 }
                 catch (Exception ex) { s.Note = "Lecture des compteurs interrompue : " + ex.Message; }
                 if (progress != null) progress.Report(Math.Min(100, 100.0 * (1 - Math.Max(0, (fin - DateTime.UtcNow).TotalSeconds) / duree.TotalSeconds)));
             }
             if (dpc != null) dpc.Dispose();
             if (irq != null) irq.Dispose();
+            if (cpu != null) cpu.Dispose();
+            if (echCpu.Count > 0) s.Cpu = Math.Round(echCpu.Average(), 2);
+            try { s.Demarrage = ProgrammesDemarrage.Compter(); } catch (Exception) { }
             if (echDpc.Count > 0) { s.DpcTime = Math.Round(echDpc.Average(), 3); s.InterruptTime = Math.Round(echIrq.Average(), 3); }
             else if (s.Note == null) s.Note = "Aucun échantillon de compteur.";
 
@@ -145,7 +163,18 @@ namespace GamingTweaker.Core
 
         // ---------- Noms de compteurs : localisés, donc résolus par index ----------
 
-        private const int IndexProcessorRepli = 238, IndexDpcRepli = 696, IndexInterruptRepli = 698;
+        private const int IndexProcessorRepli = 238, IndexDpcRepli = 696, IndexInterruptRepli = 698, IndexCpuRepli = 6;
+
+        /// <summary>Nom localisé d'un compteur d'après son nom anglais (repli : index connu), ou null.</summary>
+        internal static string NomCompteur(string anglais, int repli)
+        {
+            var t = LireTable("009");
+            var e = t.FirstOrDefault(kv => string.Equals(kv.Value, anglais, StringComparison.Ordinal));
+            int i = e.Value == null ? repli : e.Key;
+            var sb = new StringBuilder(256); uint size = (uint)sb.Capacity;
+            try { if (PdhLookupPerfNameByIndex(null, (uint)i, sb, ref size) == 0 && sb.Length > 0) return sb.ToString(); } catch (Exception) { }
+            string n; return LireTable("CurrentLanguage").TryGetValue(i, out n) ? n : null;
+        }
 
         [DllImport("pdh.dll", CharSet = CharSet.Unicode)]
         private static extern uint PdhLookupPerfNameByIndex(string machine, uint index, StringBuilder buffer, ref uint size);
@@ -205,7 +234,7 @@ namespace GamingTweaker.Core
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool GlobalMemoryStatusEx([In, Out] MemoryStatusEx buffer);
 
-        private static long RamDisponibleMo()
+        internal static long RamDisponibleMo()
         {
             var m = new MemoryStatusEx();
             return GlobalMemoryStatusEx(m) ? (long)(m.ullAvailPhys / (1024 * 1024)) : 0;

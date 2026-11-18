@@ -36,6 +36,8 @@ namespace GamingTweaker
             Exit += (s, ev) => verrouInterface.Dispose();
             // La fenêtre peut être cachée (zone de notification) : l'application s'arrête explicitement (Quitter, ou fermeture hors mode automatique).
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            // Thème Windows 11 clair ou sombre (suit Windows par défaut), appliqué avant toute fenêtre.
+            ThemeApplication.Initialiser();
 
             // Avant toute lecture ou écriture de %ProgramFiles%\GamingTweaker : créé avec sa DACL protégée, ou vérifié (refus s'il n'est pas sûr).
             // Verrou d'instance pris AVANT le parcours (occupé : message, aucun parcours), libéré ensuite.
@@ -81,7 +83,11 @@ namespace GamingTweaker
             registre.Register(new GpuDriverProvider());
 
             MainWindow fenetre = null;
-            var vm = new MainViewModel(catalogue, facts, paths, its => Detection.RunAsync(its),
+            MainViewModel vm = null;
+            // Détection progressive : chaque option affiche son état dès qu'il est lu, sans attendre la fin de toutes les détections.
+            Func<IEnumerable<CatalogItem>, System.Threading.Tasks.Task<Dictionary<string, DetectState>>> detecter = its =>
+                Detection.RunAsync(its, TimeSpan.FromSeconds(120), (id, st) => Dispatcher.BeginInvoke(new Action(() => { if (vm != null) vm.AppliquerEtat(id, st); })));
+            vm = new MainViewModel(catalogue, facts, paths, detecter,
                 (req, log, ct) => pipeline.ExecuteAsync(req, log, ct), o => Ui.MainWindow.ConfirmerRisque(fenetre, o), registre);
             vm.ConfirmerElementRisque = (o, titre, detail) => MessageBox.Show(fenetre,
                 o.Titre + "\r\n\r\n" + titre + (string.IsNullOrEmpty(detail) ? "" : "\r\n" + detail)
@@ -99,6 +105,8 @@ namespace GamingTweaker
                 InstallerPawnIo = Info.PawnIoInstaller.Install,
             };
             vm.Info = info;
+            vm.Diagnostic = new DiagnosticViewModel(() => DiagnosticJeu.Mesurer(facts));
+            vm.OuvrirParametres = uri => SystemExe.OuvrirAvecExplorateur(uri);
             Exit += (s, ev) => info.Dispose();
 
             // Une seule racine de sessions (%ProgramFiles%\GamingTweaker\Machines) pour l'interface et la routine.
@@ -115,9 +123,11 @@ namespace GamingTweaker
                 },
             };
 
-            var modeJeu = new ModeJeu(paths.MachineDir, new ModeJeuSysteme(), nvidia: new NvidiaDrs());
+            var pilote = new NvidiaDrs();
+            var modeJeu = new ModeJeu(paths.MachineDir, new ModeJeuSysteme(), nvidia: pilote);
             vm.ModeJeu = new ModeJeuViewModel(modeJeu, ModeJeuListes.ListerServices, ModeJeuListes.ListerProcessus)
             {
+                Nvidia = pilote,
                 NvidiaDisponible = facts.GpuVendors.Any(g => string.Equals(g, "NVIDIA", StringComparison.OrdinalIgnoreCase)),
                 Confirmer = texte => MessageBox.Show(fenetre, texte, "Mode Jeu", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes,
             };
@@ -159,6 +169,8 @@ namespace GamingTweaker
                 fenetre.LancerControlesDemarrage(paths, facts);
                 var _ = vm.DetectAsync();
                 var __ = vm.Routine.ActualiserAsync();
+                // Diagnostic dès l'ouverture : son résumé s'affiche sur l'accueil (lecture seule, hors du thread de l'interface).
+                vm.Diagnostic.AnalyserSiBesoin();
             };
             Action ouvrir = () =>
             {

@@ -13,7 +13,7 @@
         </Grid.RowDefinitions>
         <TextBlock x:Name="Etat" FontSize="22" FontWeight="SemiBold" Text="Exécution en cours…"/>
         <ProgressBar x:Name="Barre" Grid.Row="1" Height="4" Margin="0,12,0,14" IsIndeterminate="True" BorderThickness="0"
-                     Background="{StaticResource PanelHoverBrush}" Foreground="{StaticResource AccentBrush}"/>
+                     Background="{DynamicResource PanelHoverBrush}" Foreground="{DynamicResource AccentBrush}"/>
         <TextBox x:Name="Journal" Grid.Row="2" IsReadOnly="True" FontFamily="Consolas" FontSize="13" AcceptsReturn="True" TextWrapping="Wrap"
                  VerticalScrollBarVisibility="Auto"/>
         <DockPanel Grid.Row="3" Margin="0,18,0,0" LastChildFill="False">

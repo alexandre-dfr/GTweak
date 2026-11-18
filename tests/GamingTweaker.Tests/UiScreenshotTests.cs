@@ -80,7 +80,7 @@ namespace GamingTweaker.Tests
             });
             t.SetApartmentState(ApartmentState.STA); t.Start(); t.Join();
             Assert.True(erreurs.Count == 0, string.Join(Environment.NewLine, erreurs));
-            Assert.Equal(13, Directory.GetFiles(Dossier, "*.png").Length);
+            Assert.Equal(14, Directory.GetFiles(Dossier, "*.png").Length);
         }
 
         /// <summary>Option à liste dépliée (éléments chargés, un absent du PC) : PNG dans le sous-dossier « liste ».</summary>
@@ -208,6 +208,7 @@ namespace GamingTweaker.Tests
         private static void Run()
         {
             var app = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+            app.Resources.MergedDictionaries.Add(ThemeApplication.Couleurs(true));
             app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("/GamingTweaker;component/Ui/Theme.xaml", UriKind.Relative) });
             var d = Dispatcher.CurrentDispatcher;
 
@@ -258,11 +259,22 @@ namespace GamingTweaker.Tests
             sec("Pilotes", new[] { "Affichage : NVIDIA GeForce RTX 4070", "32.0.15.6094, 14/09/2024", "Réseau : Realtek PCIe 2.5GbE", "10.72.0.0, 02/05/2024" });
             var info = new InfoViewModel(() => echantillon, () => null);
             vm.Info = info;
+            vm.Diagnostic = new DiagnosticViewModel(() =>
+            {
+                var m = new MesuresDiag { ModeJeuWindows = true, Hags = 1, SurBatterie = false, LibreSysteme = 12L * 1073741824, TotalSysteme = 500L * 1073741824,
+                                          DatePiloteGpu = DateTime.Now.AddDays(-400), NomGpu = "NVIDIA GeForce RTX 4070", CaptureArrierePlan = true };
+                m.Ecrans.Add(new EcranDiag { Nom = "Moniteur 27 pouces", Largeur = 2560, Hauteur = 1440, HzActuel = 60, HzMax = 165 });
+                m.Barrettes.Add(new BarretteDiag { Vitesse = 4800, Configuree = 4800, Reference = "F5-6000J3038F16G" });
+                m.Barrettes.Add(new BarretteDiag { Vitesse = 4800, Configuree = 4800, Reference = "F5-6000J3038F16G" });
+                return m;
+            });
 
-            var noms = new[] { "Accueil", "Mises à jour", "Télémétrie", "Nettoyage", "Optimisation", "Bloatware", "Informations", "Mode Jeu", "Historique" };
+            var noms = new[] { "Accueil", "Diagnostic", "Mises à jour", "Télémétrie", "Nettoyage", "Optimisation", "Bloatware", "Informations", "Mode Jeu", "Historique" };
             for (int i = 0; i < noms.Length; i++)
             {
                 vm.MenuCourant = noms[i]; Pump(d);
+                if (noms[i] == "Diagnostic")
+                    for (int k = 0; k < 40 && !vm.Diagnostic.Analyse; k++) { Thread.Sleep(50); Pump(d); }
                 if (noms[i] == "Informations")
                 {
                     for (int k = 0; k < 40 && info.Sections.Count == 0; k++) { Thread.Sleep(50); Pump(d); }
@@ -276,6 +288,12 @@ namespace GamingTweaker.Tests
                 }
                 Capture(win, "0" + (i + 1) + "-" + noms[i].Replace(' ', '-').Replace("à", "a").Replace("é", "e"));
             }
+            // Thème clair : mêmes écrans, couleurs remplacées à chaud (sous-dossier « clair »).
+            var dossierClair = Path.Combine(Dossier, "clair"); Directory.CreateDirectory(dossierClair);
+            app.Resources.MergedDictionaries[0] = ThemeApplication.Couleurs(false); Pump(d);
+            foreach (var m in new[] { "Accueil", "Optimisation", "Mode Jeu" }) { vm.MenuCourant = m; Pump(d); Capture(win, "clair-" + m.Replace(' ', '-'), dossierClair); }
+            app.Resources.MergedDictionaries[0] = ThemeApplication.Couleurs(true); Pump(d);
+
             // Barre de routine (tâche 16) : état simulé, aucune tâche réelle.
             vm.Routine = new RoutineViewModel(vm, c => { }, () => { }, () => new RoutineEtat { Existe = true, Jour = DayOfWeek.Sunday, Heure = new TimeSpan(20, 0, 0), ProfilChemin = @"C:\Program Files\GamingTweaker\App\gaming.json" });
             vm.Routine.ActualiserAsync().Wait(2000); Pump(d);

@@ -13,22 +13,22 @@
                 <StackPanel>
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="{Binding Titre}" FontSize="14" TextWrapping="Wrap" VerticalAlignment="Center"/>
-                        <Border x:Name="badge" Style="{StaticResource Badge}" Background="{StaticResource SurBg}" Margin="10,0,0,0">
-                            <TextBlock x:Name="badgeText" Text="{Binding Risque}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource SurFg}"/>
+                        <Border x:Name="badge" Style="{StaticResource Badge}" Background="{DynamicResource SurBg}" Margin="10,0,0,0">
+                            <TextBlock x:Name="badgeText" Text="{Binding Risque}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SurFg}"/>
                         </Border>
-                        <TextBlock x:Name="absent" Text="absent de ce PC" Margin="10,0,0,0" FontSize="12" Foreground="{StaticResource AvanceFg}" VerticalAlignment="Center" Visibility="Collapsed"/>
+                        <TextBlock x:Name="absent" Text="absent de ce PC" Margin="10,0,0,0" FontSize="12" Foreground="{DynamicResource AvanceFg}" VerticalAlignment="Center" Visibility="Collapsed"/>
                     </StackPanel>
-                    <TextBlock Text="{Binding Detail}" FontSize="12" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding Detail}" FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
                 </StackPanel>
             </CheckBox>
             <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding Risque}" Value="Avancé">
-                    <Setter TargetName="badge" Property="Background" Value="{StaticResource AvanceBg}"/>
-                    <Setter TargetName="badgeText" Property="Foreground" Value="{StaticResource AvanceFg}"/>
+                    <Setter TargetName="badge" Property="Background" Value="{DynamicResource AvanceBg}"/>
+                    <Setter TargetName="badgeText" Property="Foreground" Value="{DynamicResource AvanceFg}"/>
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Risque}" Value="Risqué">
-                    <Setter TargetName="badge" Property="Background" Value="{StaticResource RisqueBg}"/>
-                    <Setter TargetName="badgeText" Property="Foreground" Value="{StaticResource RisqueFg}"/>
+                    <Setter TargetName="badge" Property="Background" Value="{DynamicResource RisqueBg}"/>
+                    <Setter TargetName="badgeText" Property="Foreground" Value="{DynamicResource RisqueFg}"/>
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Absent}" Value="True">
                     <Setter TargetName="absent" Property="Visibility" Value="Visible"/>
@@ -43,16 +43,18 @@
         </CollectionViewSource>
 
         <Style x:Key="MenuItemStyle" TargetType="ListBoxItem">
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
                         <Grid>
-                            <Border x:Name="b" Margin="8,2" Padding="14,10" CornerRadius="6" Background="Transparent" Cursor="Hand">
-                                <TextBlock x:Name="t" Text="{Binding Libelle}" FontSize="15" TextWrapping="Wrap"/>
+                            <Border x:Name="b" Margin="6,1" Padding="16,7" CornerRadius="4" Background="Transparent" Cursor="Hand">
+                                <TextBlock x:Name="t" Text="{Binding Libelle}" FontSize="14" TextWrapping="Wrap"/>
                             </Border>
-                            <Rectangle x:Name="sep" Height="1" Margin="18,8" Fill="{StaticResource BorderBrush}" Visibility="Collapsed"/>
+                            <Border x:Name="pastille" Width="3" Height="16" CornerRadius="1.5" Margin="6,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                    Background="{DynamicResource AccentBrush}" Visibility="Collapsed"/>
+                            <Rectangle x:Name="sep" Height="1" Margin="18,8" Fill="{DynamicResource BorderBrush}" Visibility="Collapsed"/>
                         </Grid>
                         <ControlTemplate.Triggers>
                             <DataTrigger Binding="{Binding EstSeparateur}" Value="True">
@@ -60,10 +62,10 @@
                                 <Setter TargetName="sep" Property="Visibility" Value="Visible"/>
                                 <Setter Property="IsEnabled" Value="False"/>
                             </DataTrigger>
-                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="{StaticResource PanelHoverBrush}"/></Trigger>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="{DynamicResource NavHoverBrush}"/></Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="b" Property="Background" Value="{StaticResource AccentBrush}"/>
-                                <Setter TargetName="t" Property="Foreground" Value="White"/>
+                                <Setter TargetName="b" Property="Background" Value="{DynamicResource NavSelectedBrush}"/>
+                                <Setter TargetName="pastille" Property="Visibility" Value="Visible"/>
                                 <Setter TargetName="t" Property="FontWeight" Value="SemiBold"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -81,7 +83,7 @@
                             <ContentPresenter/>
                         </Border>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="{StaticResource PanelBrush}"/></Trigger>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="{DynamicResource PanelBrush}"/></Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -98,9 +100,9 @@
                             <ToggleButton IsChecked="{Binding IsExpanded, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" Focusable="False" Cursor="Hand">
                                 <ToggleButton.Template>
                                     <ControlTemplate TargetType="ToggleButton">
-                                        <Border Background="{StaticResource PanelBrush}" Padding="14,8" Margin="0,8,0,2" CornerRadius="4">
+                                        <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="14,10" Margin="0,6,0,2" CornerRadius="6">
                                             <StackPanel Orientation="Horizontal">
-                                                <Path x:Name="arrow" Data="M0,0 L4,4 L0,8" Stroke="{StaticResource MutedBrush}" StrokeThickness="1.8" VerticalAlignment="Center" Margin="0,0,12,0" RenderTransformOrigin="0.5,0.5">
+                                                <Path x:Name="arrow" Data="M0,0 L4,4 L0,8" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.8" VerticalAlignment="Center" Margin="0,0,12,0" RenderTransformOrigin="0.5,0.5">
                                                     <Path.RenderTransform><RotateTransform Angle="0"/></Path.RenderTransform>
                                                 </Path>
                                                 <ContentPresenter VerticalAlignment="Center"/>
@@ -115,7 +117,7 @@
                                 </ToggleButton.Template>
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
-                                    <TextBlock Text="{Binding ItemCount, StringFormat=' · {0}'}" Foreground="{StaticResource MutedBrush}"/>
+                                    <TextBlock Text="{Binding ItemCount, StringFormat=' · {0}'}" Foreground="{DynamicResource MutedBrush}"/>
                                 </StackPanel>
                             </ToggleButton>
                             <ContentPresenter x:Name="content" Visibility="Collapsed"/>
@@ -139,32 +141,32 @@
                 <StackPanel>
                     <TextBlock Text="{Binding Titre}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap"/>
                     <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                        <Border x:Name="badge" Style="{StaticResource Badge}" Background="{StaticResource SurBg}">
-                            <TextBlock x:Name="badgeText" Text="{Binding Risque}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource SurFg}"/>
+                        <Border x:Name="badge" Style="{StaticResource Badge}" Background="{DynamicResource SurBg}">
+                            <TextBlock x:Name="badgeText" Text="{Binding Risque}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SurFg}"/>
                         </Border>
-                        <TextBlock Text="·" Margin="8,0" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
-                        <TextBlock x:Name="etat" Text="{Binding Etat}" FontSize="13" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
+                        <TextBlock Text="·" Margin="8,0" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="etat" Text="{Binding Etat}" FontSize="13" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
                     </StackPanel>
-                    <TextBlock Text="{Binding Description}" Margin="0,4,0,0" FontSize="13" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding Description}" Margin="0,4,0,0" FontSize="13" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
                 </StackPanel>
             </CheckBox>
             <!-- Choix des éléments (options à liste) -->
             <StackPanel Margin="26,6,0,0" Visibility="{Binding ALaListe, Converter={StaticResource BoolVis}}">
                 <Button Content="{Binding Liste.Resume}" Command="{Binding BasculerListeCommand}" HorizontalAlignment="Left" Cursor="Hand"
                         Padding="10,4" ToolTip="Afficher ou masquer la liste des éléments"/>
-                <Border Margin="0,6,0,0" Padding="12,8" CornerRadius="6" Background="{StaticResource PanelHoverBrush}"
+                <Border Margin="0,6,0,0" Padding="12,8" CornerRadius="6" Background="{DynamicResource PanelHoverBrush}"
                         Visibility="{Binding ListeOuverte, Converter={StaticResource BoolVis}}">
                     <StackPanel>
-                        <TextBlock Text="Chargement…" Foreground="{StaticResource MutedBrush}"
+                        <TextBlock Text="Chargement…" Foreground="{DynamicResource MutedBrush}"
                                    Visibility="{Binding Liste.EnChargement, Converter={StaticResource BoolVis}}"/>
-                        <TextBlock Text="{Binding Liste.Erreur}" Foreground="{StaticResource RisqueFg}" TextWrapping="Wrap" Margin="0,0,0,4">
+                        <TextBlock Text="{Binding Liste.Erreur}" Foreground="{DynamicResource RisqueFg}" TextWrapping="Wrap" Margin="0,0,0,4">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
                                     <Style.Triggers><DataTrigger Binding="{Binding Liste.Erreur}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
-                        <TextBlock Text="{Binding Liste.ErreurDetail}" Foreground="{StaticResource MutedBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,4">
+                        <TextBlock Text="{Binding Liste.ErreurDetail}" Foreground="{DynamicResource MutedBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,4">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
                                     <Style.Triggers><DataTrigger Binding="{Binding Liste.ErreurDetail}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
@@ -172,7 +174,7 @@
                             </TextBlock.Style>
                         </TextBlock>
                         <StackPanel Visibility="{Binding Liste.Charge, Converter={StaticResource BoolVis}}">
-                            <TextBlock Text="{Binding Liste.Message}" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,6">
+                            <TextBlock Text="{Binding Liste.Message}" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,6">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
                                         <Style.Triggers><DataTrigger Binding="{Binding Liste.Message}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
@@ -188,7 +190,7 @@
                             </Button>
                             <CheckBox Content="Tout (y compris les éléments apparus plus tard)" IsChecked="{Binding Liste.Tous, Mode=TwoWay}" FontWeight="SemiBold" Margin="0,0,0,6"
                                       Visibility="{Binding Liste.SupporteTous, Converter={StaticResource BoolVis}}"/>
-                            <TextBlock Text="Aucun élément à proposer sur ce PC." Foreground="{StaticResource MutedBrush}">
+                            <TextBlock Text="Aucun élément à proposer sur ce PC." Foreground="{DynamicResource MutedBrush}">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
                                         <Setter Property="Visibility" Value="Collapsed"/>
@@ -206,15 +208,15 @@
             </StackPanel>
             <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding Risque}" Value="Avancé">
-                    <Setter TargetName="badge" Property="Background" Value="{StaticResource AvanceBg}"/>
-                    <Setter TargetName="badgeText" Property="Foreground" Value="{StaticResource AvanceFg}"/>
+                    <Setter TargetName="badge" Property="Background" Value="{DynamicResource AvanceBg}"/>
+                    <Setter TargetName="badgeText" Property="Foreground" Value="{DynamicResource AvanceFg}"/>
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Risque}" Value="Risqué">
-                    <Setter TargetName="badge" Property="Background" Value="{StaticResource RisqueBg}"/>
-                    <Setter TargetName="badgeText" Property="Foreground" Value="{StaticResource RisqueFg}"/>
+                    <Setter TargetName="badge" Property="Background" Value="{DynamicResource RisqueBg}"/>
+                    <Setter TargetName="badgeText" Property="Foreground" Value="{DynamicResource RisqueFg}"/>
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Etat}" Value="Déjà appliqué">
-                    <Setter TargetName="etat" Property="Foreground" Value="{StaticResource SurFg}"/>
+                    <Setter TargetName="etat" Property="Foreground" Value="{DynamicResource SurFg}"/>
                 </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
@@ -230,24 +232,24 @@
 
         <!-- Avertissement d'élévation -->
         <StackPanel Grid.Row="0">
-            <Border Background="{StaticResource WarnBg}" Padding="20,10">
+            <Border Background="{DynamicResource WarnBg}" Padding="20,10">
                 <Border.Style>
                     <Style TargetType="Border">
                         <Style.Triggers><DataTrigger Binding="{Binding Bandeau}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
                     </Style>
                 </Border.Style>
-                <TextBlock Text="{Binding Bandeau}" TextWrapping="Wrap" Foreground="{StaticResource AvanceFg}"/>
+                <TextBlock Text="{Binding Bandeau}" TextWrapping="Wrap" Foreground="{DynamicResource AvanceFg}"/>
             </Border>
             <!-- Mode Jeu laissé actif (arrêt brutal, redémarrage) -->
-            <Border Background="{StaticResource WarnBg}" Padding="20,8" Visibility="{Binding ModeJeu.EstActif, Converter={StaticResource BoolVis}, FallbackValue=Collapsed}">
+            <Border Background="{DynamicResource WarnBg}" Padding="20,8" Visibility="{Binding ModeJeu.EstActif, Converter={StaticResource BoolVis}, FallbackValue=Collapsed}">
                 <DockPanel>
                     <Button DockPanel.Dock="Right" Content="Rétablir" Command="{Binding ModeJeu.RetablirCommand}"/>
-                    <TextBlock Text="Mode Jeu encore actif : des services ou des processus sont toujours arrêtés." Foreground="{StaticResource AvanceFg}" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                    <TextBlock Text="Mode Jeu encore actif : des services ou des processus sont toujours arrêtés." Foreground="{DynamicResource AvanceFg}" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap"/>
                 </DockPanel>
             </Border>
         </StackPanel>
         <!-- Message d'information -->
-        <Border Grid.Row="1" Background="{StaticResource PanelBrush}" Padding="20,8">
+        <Border Grid.Row="1" Background="{DynamicResource PanelBrush}" Padding="20,8">
             <Border.Style>
                 <Style TargetType="Border">
                     <Style.Triggers><DataTrigger Binding="{Binding Message}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
@@ -255,7 +257,7 @@
             </Border.Style>
             <DockPanel>
                 <Button DockPanel.Dock="Right" Content="✕" Click="FermerMessage_Click" Padding="8,2" Margin="12,0,0,0" VerticalAlignment="Top" ToolTip="Masquer ce message"/>
-                <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
             </DockPanel>
         </Border>
 
@@ -265,11 +267,12 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
+            <DockPanel Background="{DynamicResource BgBrush}">
+                <TextBlock DockPanel.Dock="Top" Text="GamingTweaker" FontFamily="{StaticResource PoliceTitre}" FontSize="15" FontWeight="SemiBold" Margin="22,14,16,6"/>
                 <ListBox ItemsSource="{Binding Menus}" SelectedValuePath="Nom" SelectedValue="{Binding MenuCourant, Mode=TwoWay}"
-                         ItemContainerStyle="{StaticResource MenuItemStyle}" Background="Transparent" BorderThickness="0" Padding="0,12,0,0"
+                         ItemContainerStyle="{StaticResource MenuItemStyle}" Background="Transparent" BorderThickness="0" Padding="0,0,0,0"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
-            </Border>
+            </DockPanel>
 
             <Grid Grid.Column="1" Margin="28,22,12,0">
                 <Grid.RowDefinitions>
@@ -278,17 +281,18 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <Grid Margin="0,0,16,14">
+                <!-- En-tête : titre à gauche ; recherche et thème en haut à droite -->
+                <Grid Margin="0,0,16,16">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="260"/>
-                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="300"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="{Binding TitreAffiche}" FontSize="24" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap"/>
-                    <Grid Grid.Column="1" Margin="12,0">
-                        <TextBox x:Name="Recherche" Text="{Binding Recherche, UpdateSourceTrigger=PropertyChanged}" ToolTip="Rechercher une option (Ctrl+F ; Échap pour effacer)"/>
-                        <TextBlock Text="Rechercher…" IsHitTestVisible="False" Margin="10,0" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}">
+                    <TextBlock Text="{Binding TitreAffiche}" FontSize="28" FontWeight="SemiBold" FontFamily="{StaticResource PoliceTitre}" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                    <Grid Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
+                        <TextBox x:Name="Recherche" Text="{Binding Recherche, UpdateSourceTrigger=PropertyChanged}" Padding="34,6,10,6" ToolTip="Rechercher une option dans tous les menus (Ctrl+F ; Échap pour effacer)"/>
+                        <TextBlock Text="&#xE721;" FontFamily="{StaticResource PoliceIcones}" FontSize="14" IsHitTestVisible="False" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
+                        <TextBlock Text="Rechercher une option" IsHitTestVisible="False" Margin="35,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="Visibility" Value="Collapsed"/>
@@ -297,24 +301,21 @@
                             </TextBlock.Style>
                         </TextBlock>
                     </Grid>
-                    <Button Grid.Column="2" Content="Recommandé" Command="{Binding RecommanderCommand}" ToolTip="Coche les options sûres de ce menu">
-                        <Button.Style>
-                            <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                                <Style.Triggers><DataTrigger Binding="{Binding EstEmplacement}" Value="True"><Setter Property="Visibility" Value="Hidden"/></DataTrigger></Style.Triggers>
-                            </Style>
-                        </Button.Style>
-                    </Button>
-                    <Button Grid.Column="3" Content="Décocher" Command="{Binding DecocherCommand}" Margin="8,0,0,0" ToolTip="Décoche les options affichées">
-                        <Button.Style>
-                            <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                                <Style.Triggers><DataTrigger Binding="{Binding EstEmplacement}" Value="True"><Setter Property="Visibility" Value="Hidden"/></DataTrigger></Style.Triggers>
-                            </Style>
-                        </Button.Style>
+                    <!-- Thème : icône soleil / lune / palette ; un clic ouvre le choix -->
+                    <Button x:Name="BoutonTheme" Grid.Column="2" Style="{StaticResource BoutonIcone}" Click="BoutonTheme_Click" ToolTip="Thème de l'application" VerticalAlignment="Center">
+                        <TextBlock x:Name="IconeTheme" Text="&#xE790;" FontFamily="{StaticResource PoliceIcones}" FontSize="16"/>
+                        <Button.ContextMenu>
+                            <ContextMenu x:Name="MenuTheme" Placement="Bottom">
+                                <MenuItem Header="Comme Windows" Tag="Systeme" Click="ChoixTheme_Click"><MenuItem.Icon><TextBlock Text="&#xE790;" FontFamily="{StaticResource PoliceIcones}" FontSize="14"/></MenuItem.Icon></MenuItem>
+                                <MenuItem Header="Clair" Tag="Clair" Click="ChoixTheme_Click"><MenuItem.Icon><TextBlock Text="&#xE706;" FontFamily="{StaticResource PoliceIcones}" FontSize="14"/></MenuItem.Icon></MenuItem>
+                                <MenuItem Header="Sombre" Tag="Sombre" Click="ChoixTheme_Click"><MenuItem.Icon><TextBlock Text="&#xE708;" FontFamily="{StaticResource PoliceIcones}" FontSize="14"/></MenuItem.Icon></MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
                     </Button>
                 </Grid>
 
                 <!-- Bandeau des menus d'options : « Tout restaurer » (tous les menus) ; lien O&O ShutUp10++ sur Télémétrie seulement -->
-                <Border Grid.Row="1" Margin="0,0,16,12" Padding="14,10" CornerRadius="6" Background="{StaticResource PanelBrush}">
+                <Border Grid.Row="1" Margin="0,0,16,12" Padding="12,8" CornerRadius="8" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                     <Border.Style>
                         <Style TargetType="Border">
                             <Setter Property="Visibility" Value="Collapsed"/>
@@ -322,6 +323,10 @@
                         </Style>
                     </Border.Style>
                     <DockPanel LastChildFill="True">
+                        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                            <Button Content="Recommandé" Command="{Binding RecommanderCommand}" ToolTip="Coche les options sûres de ce menu"/>
+                            <Button Content="Décocher" Command="{Binding DecocherCommand}" Margin="8,0,16,0" ToolTip="Décoche les options affichées"/>
+                        </StackPanel>
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                             <Button Content="Tout restaurer" Click="ToutRestaurer_Click" IsEnabled="{Binding PeutToutRestaurer}"
                                     ToolTip="Annule toutes les options appliquées par GamingTweaker, dans tous les menus : par le journal, sinon par un retour aux valeurs par défaut de Windows"/>
@@ -334,9 +339,8 @@
                                 </Button.Style>
                             </Button>
                         </StackPanel>
-                        <CheckBox DockPanel.Dock="Right" Content="Masquer les options déjà appliquées" IsChecked="{Binding MasquerAppliquees, Mode=TwoWay}" VerticalAlignment="Center" Margin="0,0,16,0"
+                        <CheckBox Content="Masquer les options déjà appliquées" IsChecked="{Binding MasquerAppliquees, Mode=TwoWay}" VerticalAlignment="Center"
                                   ToolTip="N'affiche que ce qui reste à faire (une option cochée reste visible)"/>
-                        <TextBlock Text="Toutes les options appliquées par GamingTweaker (tous les menus) peuvent être annulées d'un coup ; l'historique permet d'annuler session par session." Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,12,0"/>
                     </DockPanel>
                 </Border>
 
@@ -379,7 +383,7 @@
                     </local:InfoView.Style>
                 </local:InfoView>
 
-                <TextBlock Grid.Row="2" Text="Aucune option à afficher." Foreground="{StaticResource MutedBrush}" Margin="0,8">
+                <TextBlock Grid.Row="2" Text="Aucune option à afficher." Foreground="{DynamicResource MutedBrush}" Margin="0,8">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock">
                             <Setter Property="Visibility" Value="Collapsed"/>
@@ -400,6 +404,10 @@
                 <Border Grid.Row="1" Grid.RowSpan="2" Visibility="{Binding EstAccueil, Converter={StaticResource BoolVis}}">
                     <local:AccueilView/>
                 </Border>
+                <!-- Diagnostic jeu -->
+                <Border Grid.Row="1" Grid.RowSpan="2" Visibility="{Binding EstDiagnostic, Converter={StaticResource BoolVis}}">
+                    <local:DiagnosticView DataContext="{Binding Diagnostic}"/>
+                </Border>
                 <!-- Mode Jeu -->
                 <Border Grid.Row="1" Grid.RowSpan="2" Visibility="{Binding EstModeJeu, Converter={StaticResource BoolVis}}">
                     <local:ModeJeuView DataContext="{Binding ModeJeu}"/>
@@ -413,7 +421,7 @@
         </Grid>
 
         <!-- Barre du bas -->
-        <Border Grid.Row="3" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="20,12">
+        <Border Grid.Row="3" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="20,12">
             <StackPanel>
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -425,35 +433,23 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Text="Profil" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" Margin="0,0,10,0"/>
+                <TextBlock Text="Profil" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Margin="0,0,10,0"/>
                 <ComboBox Grid.Column="1" Width="200" Height="34" ItemsSource="{Binding ProfilsDisponibles}" SelectedItem="{Binding ProfilSelectionne, Mode=TwoWay}"/>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="10,0,0,0">
                     <Button Content="Sauver" Click="Sauver_Click"/>
                     <Button Content="Recharger" Margin="8,0,0,0" Click="Recharger_Click" ToolTip="Recharge le profil sélectionné"/>
+                    <!-- Routine hebdomadaire : réglée dans une fenêtre dédiée ; l'infobulle donne son état -->
+                    <Button Margin="8,0,0,0" Click="Planifier_Click" ToolTip="{Binding Routine.EtatTexte}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE787;" FontFamily="{StaticResource PoliceIcones}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBlock Text="Planifier…"/>
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
                 <TextBlock Grid.Column="4" Text="{Binding ResumeSelection}" VerticalAlignment="Center" FontSize="15" FontWeight="SemiBold" Margin="0,0,24,0"/>
                 <Button Grid.Column="5" Content="Aperçu" IsEnabled="{Binding AUneSelection}" Click="Apercu_Click" Margin="0,0,12,0"/>
                 <Button Grid.Column="6" Content="LANCER" Style="{StaticResource PrimaryButton}" IsEnabled="{Binding AUneSelection}" Click="Lancer_Click"/>
             </Grid>
-            <!-- Routine hebdomadaire du profil sélectionné -->
-            <StackPanel Orientation="Horizontal" Margin="0,10,0,0" DataContext="{Binding Routine}">
-                <TextBlock Text="Routine" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" Margin="0,0,10,0"/>
-                <ComboBox Width="120" Height="34" ItemsSource="{Binding Jours}" SelectedValuePath="Jour" SelectedValue="{Binding Jour, Mode=TwoWay}"
-                          ToolTip="Jour de la semaine">
-                    <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Nom}"/></DataTemplate></ComboBox.ItemTemplate>
-                </ComboBox>
-                <TextBox Width="84" Margin="8,0,0,0" Text="{Binding Heure, UpdateSourceTrigger=PropertyChanged}" ToolTip="Heure, au format 20:00" VerticalContentAlignment="Center"/>
-                <Button Content="Planifier" Margin="8,0,0,0" Command="{Binding PlanifierCommand}" ToolTip="Applique chaque semaine le profil sélectionné, sans interface"/>
-                <Button Content="Supprimer la routine" Margin="8,0,0,0" Command="{Binding SupprimerCommand}"/>
-                <TextBlock Text="{Binding EtatTexte}" VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
-            </StackPanel>
-            <TextBlock DataContext="{Binding Routine}" Text="{Binding Message}" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0">
-                <TextBlock.Style>
-                    <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
-                        <Style.Triggers><DataTrigger Binding="{Binding Message}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
-                    </Style>
-                </TextBlock.Style>
-            </TextBlock>
             </StackPanel>
         </Border>
     </Grid>

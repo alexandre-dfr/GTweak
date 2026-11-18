@@ -17,6 +17,35 @@ namespace GamingTweaker.Ui
             InitializeComponent();
             DataContext = vm;
             PreviewKeyDown += Raccourcis;
+            MajIconeTheme();
+            ThemeApplication.Change += MajIconeTheme;
+            Closed += (s, e) => ThemeApplication.Change -= MajIconeTheme;
+        }
+
+        /// <summary>Icône du bouton de thème : palette (comme Windows), soleil (clair) ou lune (sombre) ; coche sur le choix actif.</summary>
+        private void MajIconeTheme()
+        {
+            var c = ThemeApplication.Choix;
+            IconeTheme.Text = c == ChoixTheme.Clair ? "\uE706" : c == ChoixTheme.Sombre ? "\uE708" : "\uE790";
+            BoutonTheme.ToolTip = "Thème : " + (c == ChoixTheme.Clair ? "clair" : c == ChoixTheme.Sombre ? "sombre" : "comme Windows");
+            foreach (var o in MenuTheme.Items)
+            {
+                var m = o as System.Windows.Controls.MenuItem;
+                if (m != null) m.IsChecked = (string)m.Tag == c.ToString();
+            }
+        }
+
+        private void BoutonTheme_Click(object sender, RoutedEventArgs e)
+        {
+            MenuTheme.PlacementTarget = BoutonTheme;
+            MenuTheme.IsOpen = true;
+        }
+
+        private void ChoixTheme_Click(object sender, RoutedEventArgs e)
+        {
+            var m = sender as System.Windows.Controls.MenuItem;
+            ChoixTheme c;
+            if (m != null && Enum.TryParse((string)m.Tag, out c)) ThemeApplication.Definir(c);
         }
 
         /// <summary>Ctrl+F : recherche ; Échap dans la recherche : l'efface.</summary>
@@ -69,6 +98,12 @@ namespace GamingTweaker.Ui
         }
 
         private void Recharger_Click(object sender, RoutedEventArgs e) { vm.RechargerProfil(); }
+
+        private void Planifier_Click(object sender, RoutedEventArgs e)
+        {
+            if (vm.Routine == null) return;
+            new PlanifierWindow(vm.Routine, vm.ProfilSelectionne) { Owner = this }.ShowDialog();
+        }
 
         private async void ToutRestaurer_Click(object sender, RoutedEventArgs e)
         {

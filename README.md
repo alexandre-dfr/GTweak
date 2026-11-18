@@ -33,6 +33,14 @@ Aucun ne contient d'option Risqué, d'option à liste (services, démarrage : le
 
 Avec une carte NVIDIA, le menu Optimisation affiche un groupe « Pilote NVIDIA » : mode de faible latence Ultra, gestion de l'alimentation en performances maximales, cache des shaders illimité, filtrage des textures en hautes performances, synchronisation verticale désactivée. Chaque option se coche séparément (niveau Avancé, jamais cochée par « Recommandé » ni par un profil intégré). Elles modifient les paramètres globaux du pilote par son interface `nvapi64.dll`, installée avec le pilote : rien n'est téléchargé. La valeur d'avant est notée dans le journal, et chaque option s'annule seule.
 
+## Diagnostic jeu
+
+Le menu « Diagnostic » (lecture seule) repère ce qui bride réellement les performances : écran utilisé sous sa fréquence maximale, mémoire sous sa vitesse nominale (XMP/EXPO) ou en simple canal, Mode Jeu de Windows et HAGS désactivés, plan d'alimentation, batterie, disque système presque plein, pilote graphique ancien, enregistrement en arrière-plan, programmes au démarrage, écran HDR non activé, écran à fréquence variable (FreeSync, G-SYNC). Chaque point propose la page des Paramètres ou l'option qui le corrige.
+
+## Mesures avant / après
+
+Historique > Mesures : un relevé de 30 s (temps DPC et d'interruptions, processeur au repos, services, processus, mémoire disponible, programmes au démarrage). Faites-en un avant d'optimiser et un après, puis « Avant / après » : chaque mesure est marquée « mieux », « moins bien » ou « stable ».
+
 ## Mode Jeu automatique
 
 Dans le menu Mode Jeu, la section « Mode Jeu automatique » surveille une liste de jeux :
@@ -67,6 +75,10 @@ Sans `--confirm`, la commande affiche seulement ce qui serait supprimé. Les ré
 - `tools/sandbox/cycle.wsb` : cycle détecter, appliquer, annuler dans Windows Sandbox (voir `tools/sandbox/start-cycle.ps1`) ; le résultat est écrit dans `tools/sandbox/resultats/cycle.json`. L'option `--cycle-test` est refusée hors du compte du bac à sable.
 - `docs/checklist-premier-pc.md` : liste de contrôle à passer sur le premier PC réel.
 
-## Licences
+## Licence
+
+GamingTweaker est distribué sous licence **GNU AGPL-3.0** (fichier [LICENSE](LICENSE)) : vous pouvez l'utiliser, l'étudier, le modifier et le redistribuer, à condition de fournir le code source sous la même licence. Ce choix découle des réglages repris de privacy.sexy (AGPL-3.0) ; ceux de WinUtil (MIT) sont compatibles.
+
+## Licences tierces
 
 Les réglages repris de projets tiers sont réécrits ; les sources et licences sont dans [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

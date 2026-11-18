@@ -65,7 +65,7 @@ namespace GamingTweaker.Ui
             {
                 DateTime d;
                 var date = DateTime.TryParseExact(Mesure.Date ?? "", "yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out d) ? d.ToString("dd/MM/yyyy HH:mm", CultureInfo.CurrentCulture) : Mesure.Date;
-                return date + " : DPC " + Pct(Mesure.DpcTime) + ", interruptions " + Pct(Mesure.InterruptTime) + ", " + Mesure.Services + " services, " + Mesure.Processus + " processus, " + Mesure.RamDisponibleMo + " Mo libres";
+                return date + " : DPC " + Pct(Mesure.DpcTime) + ", interruptions " + Pct(Mesure.InterruptTime) + (Mesure.Cpu.HasValue ? ", processeur " + Pct(Mesure.Cpu) : "") + ", " + Mesure.Services + " services, " + Mesure.Processus + " processus, " + Mesure.RamDisponibleMo + " Mo libres";
             }
         }
         internal static string Pct(double? v) { return v.HasValue ? v.Value.ToString("0.00", CultureInfo.CurrentCulture) + " %" : "n/d"; }
@@ -105,6 +105,7 @@ namespace GamingTweaker.Ui
             PurgerQuarantaineCommand = new RelayCommand(p => PurgerQuarantaine((QuarantaineLigne)p), p => p is QuarantaineLigne);
             ReleverCommand = new RelayCommand(_ => { var t = ReleverAsync(); }, _ => !enReleve);
             ComparerCommand = new RelayCommand(_ => Comparer(), _ => Releves.Count(r => r.IsChecked) == 2);
+            ComparerDerniersCommand = new RelayCommand(_ => ComparerDerniers(), _ => Releves.Count >= 2);
             DesinstallerCommand = new RelayCommand(_ => { var t = DesinstallerAsync(); }, _ => !enCours && !enReleve);
             Charger();
         }
@@ -120,6 +121,7 @@ namespace GamingTweaker.Ui
         public ICommand PurgerQuarantaineCommand { get; private set; }
         public ICommand ReleverCommand { get; private set; }
         public ICommand ComparerCommand { get; private set; }
+        public ICommand ComparerDerniersCommand { get; private set; }
         public ICommand DesinstallerCommand { get; private set; }
 
         /// <summary>Désinstallation (aperçu si faux, exécution si vrai) ; remplaçable dans les tests. Par défaut : Desinstallation.Executer.</summary>
@@ -466,14 +468,36 @@ namespace GamingTweaker.Ui
         {
             var d = Mesures.Compare(a, b);
             Func<double?, string> ec = v => v.HasValue ? (v.Value > 0 ? "+" : "") + v.Value.ToString("0.00", CultureInfo.CurrentCulture) + " point(s)" : "n/d";
+            int mieux = 0, moins = 0;
+            // Verdict d'une ligne : « moinsEstMieux » vrai si une baisse est un progrès ; en dessous du seuil, stable.
+            Func<double?, double, bool, string> verdict = (delta, seuil, moinsEstMieux) =>
+            {
+                if (!delta.HasValue || Math.Abs(delta.Value) < seuil) return "stable";
+                bool progres = moinsEstMieux ? delta.Value < 0 : delta.Value > 0;
+                if (progres) mieux++; else moins++;
+                return progres ? "mieux" : "moins bien";
+            };
             var sb = new StringBuilder();
             sb.AppendLine("Du relevé du " + a.Date + " à celui du " + b.Date + " :");
-            sb.AppendLine("Temps DPC : " + ReleveLigne.Pct(a.DpcTime) + " → " + ReleveLigne.Pct(b.DpcTime) + " (" + ec(d.DpcTime) + ")");
-            sb.AppendLine("Temps d'interruptions : " + ReleveLigne.Pct(a.InterruptTime) + " → " + ReleveLigne.Pct(b.InterruptTime) + " (" + ec(d.InterruptTime) + ")");
-            sb.AppendLine("Services en cours : " + a.Services + " → " + b.Services + " (" + Signe(d.Services) + ")");
-            sb.AppendLine("Processus : " + a.Processus + " → " + b.Processus + " (" + Signe(d.Processus) + ")");
-            sb.Append("Mémoire disponible : " + a.RamDisponibleMo + " Mo → " + b.RamDisponibleMo + " Mo (" + Signe(d.RamDisponibleMo) + " Mo)");
+            sb.AppendLine("Temps DPC : " + ReleveLigne.Pct(a.DpcTime) + " → " + ReleveLigne.Pct(b.DpcTime) + " (" + ec(d.DpcTime) + ") : " + verdict(d.DpcTime, 0.05, true));
+            sb.AppendLine("Temps d'interruptions : " + ReleveLigne.Pct(a.InterruptTime) + " → " + ReleveLigne.Pct(b.InterruptTime) + " (" + ec(d.InterruptTime) + ") : " + verdict(d.InterruptTime, 0.05, true));
+            if (a.Cpu.HasValue || b.Cpu.HasValue)
+                sb.AppendLine("Processeur au repos : " + ReleveLigne.Pct(a.Cpu) + " → " + ReleveLigne.Pct(b.Cpu) + " (" + ec(d.Cpu) + ") : " + verdict(d.Cpu, 0.5, true));
+            sb.AppendLine("Services en cours : " + a.Services + " → " + b.Services + " (" + Signe(d.Services) + ") : " + verdict(d.Services, 1, true));
+            sb.AppendLine("Processus : " + a.Processus + " → " + b.Processus + " (" + Signe(d.Processus) + ") : " + verdict(d.Processus, 3, true));
+            if (a.Demarrage.HasValue || b.Demarrage.HasValue)
+                sb.AppendLine("Programmes au démarrage : " + (a.Demarrage.HasValue ? a.Demarrage.ToString() : "n/d") + " → " + (b.Demarrage.HasValue ? b.Demarrage.ToString() : "n/d") + " : " + verdict(d.Demarrage, 1, true));
+            sb.AppendLine("Mémoire disponible : " + a.RamDisponibleMo + " Mo → " + b.RamDisponibleMo + " Mo (" + Signe(d.RamDisponibleMo) + " Mo) : " + verdict(d.RamDisponibleMo, 200, false));
+            sb.Append("Bilan : " + mieux + " mesure(s) en progrès, " + moins + " en recul. Relevés à faire dans les mêmes conditions (même programmes ouverts, PC au repos).");
             return sb.ToString();
+        }
+
+        /// <summary>Compare les deux relevés les plus récents (avant / après une optimisation), sans avoir à les cocher.</summary>
+        public void ComparerDerniers()
+        {
+            var deux = Releves.Select(r => r.Mesure).OrderByDescending(m => m.Date, StringComparer.Ordinal).Take(2).OrderBy(m => m.Date, StringComparer.Ordinal).ToList();
+            if (deux.Count < 2) { Comparaison = "Faites un relevé avant d'optimiser, puis un autre après : la comparaison montre ce qui a changé."; return; }
+            Comparaison = FormaterComparaison(deux[0], deux[1]);
         }
 
         private static string Signe(long v) { return (v > 0 ? "+" : "") + v.ToString(CultureInfo.CurrentCulture); }

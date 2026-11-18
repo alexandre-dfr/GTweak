@@ -59,6 +59,10 @@ namespace GamingTweaker.Ui
         public bool PeutOublier { get { return peutOublier; } private set { if (Set(ref peutOublier, value)) CommandManager.InvalidateRequerySuggested(); } }
         public bool UtiliserPlan { get { return utiliserPlan; } set { Set(ref utiliserPlan, value); } }
 
+        private bool libererMemoire;
+        /// <summary>Vide le jeu de travail des programmes en arrière-plan à l'activation.</summary>
+        public bool LibererMemoire { get { return libererMemoire; } set { Set(ref libererMemoire, value); } }
+
         private ProfilNvidia profilNvidia;
         /// <summary>Faux sans carte NVIDIA : le choix du profil NVIDIA est masqué.</summary>
         public bool NvidiaDisponible { get; set; }
@@ -66,6 +70,37 @@ namespace GamingTweaker.Ui
             .Select(p => new KeyValuePair<ProfilNvidia, string>(p, "NVIDIA : " + ProfilsNvidia.Libelle(p))).ToList();
         /// <summary>Profil du pilote NVIDIA le temps du Mode Jeu ; rétabli ensuite (valeurs d'avant).</summary>
         public ProfilNvidia ProfilNvidia { get { return profilNvidia; } set { Set(ref profilNvidia, value); } }
+
+        /// <summary>Accès au pilote NVIDIA pour « Lire les réglages NVIDIA » (null : bouton inactif).</summary>
+        public INvidiaReglages Nvidia { get; set; }
+        private string etatNvidia = "";
+        /// <summary>Réglages lus dans le pilote, une ligne par réglage.</summary>
+        public string EtatNvidia { get { return etatNvidia; } private set { Set(ref etatNvidia, value ?? ""); } }
+        private ICommand lireNvidiaCommand;
+        public ICommand LireNvidiaCommand { get { return lireNvidiaCommand ?? (lireNvidiaCommand = new RelayCommand(_ => { var t = LireNvidiaAsync(); }, _ => Nvidia != null)); } }
+
+        /// <summary>Lit dans le pilote les réglages que le profil NVIDIA modifie (diagnostic : ce qui est réellement en place).</summary>
+        public async Task LireNvidiaAsync()
+        {
+            var nv = Nvidia;
+            if (nv == null) return;
+            EtatNvidia = "Lecture du pilote…";
+            EtatNvidia = await Task.Run(() =>
+            {
+                if (!nv.Disponible) return "Pilote NVIDIA introuvable (nvapi64.dll absent).";
+                var lignes = new List<string>();
+                foreach (var id in ProfilsNvidia.Diagnostic)
+                {
+                    try
+                    {
+                        var v = nv.Lire(id);
+                        lignes.Add(ProfilsNvidia.NomReglage(id) + " : " + ProfilsNvidia.NomValeur(id, v[1]) + (v[0] == 1 ? "" : " (non défini dans le profil global)"));
+                    }
+                    catch (Exception ex) { lignes.Add(ProfilsNvidia.NomReglage(id) + " : lecture impossible (" + ex.Message + ")"); }
+                }
+                return string.Join("\r\n", lignes);
+            });
+        }
         public string Message { get { return message; } set { Set(ref message, value ?? ""); } }
         public int NombreCoches { get { return Services.Count(s => s.IsChecked) + Processus.Count(p => p.IsChecked); } }
 
@@ -94,7 +129,7 @@ namespace GamingTweaker.Ui
 
         public ModeJeuConfig ConstruireConfig()
         {
-            var c = new ModeJeuConfig { PlanGuid = utiliserPlan ? ModeJeu.PlanPerformances : null, Nvidia = NvidiaDisponible ? profilNvidia : ProfilNvidia.Aucun };
+            var c = new ModeJeuConfig { PlanGuid = utiliserPlan ? ModeJeu.PlanPerformances : null, Nvidia = NvidiaDisponible ? profilNvidia : ProfilNvidia.Aucun, LibererMemoire = libererMemoire };
             foreach (var s in Services.Where(x => x.IsChecked)) c.Services.Add(s.Nom);
             foreach (var p in Processus.Where(x => x.IsChecked)) c.Processus.Add(new ProcessusChoix { Nom = p.Nom, Chemin = p.Chemin });
             return c;
@@ -104,10 +139,11 @@ namespace GamingTweaker.Ui
         {
             if (enCours || actif) return;
             var cfg = ConstruireConfig();
-            if (cfg.Services.Count + cfg.Processus.Count == 0 && cfg.PlanGuid == null && cfg.Nvidia == ProfilNvidia.Aucun) { Message = "Rien n'est coché : choisissez des services, des processus, le plan d'alimentation ou un profil NVIDIA."; return; }
+            if (cfg.Services.Count + cfg.Processus.Count == 0 && cfg.PlanGuid == null && cfg.Nvidia == ProfilNvidia.Aucun && !cfg.LibererMemoire) { Message = "Rien n'est coché : choisissez des services, des processus, le plan d'alimentation ou un profil NVIDIA."; return; }
             var texte = "Le Mode Jeu va arrêter " + cfg.Services.Count + " service(s) et fermer " + cfg.Processus.Count + " processus (travail non enregistré perdu)"
                       + (cfg.PlanGuid != null ? ", et passer au plan Performances élevées" : "")
                       + (cfg.Nvidia != ProfilNvidia.Aucun ? ", et appliquer le profil NVIDIA " + ProfilsNvidia.Libelle(cfg.Nvidia) : "")
+                      + (cfg.LibererMemoire ? ", et libérer la mémoire des programmes en arrière-plan" : "")
                       + ".\r\nTout sera rétabli avec « Rétablir ».\r\n\r\nContinuer ?";
             if (Confirmer != null && !Confirmer(texte)) return;
             EnCours = true; Message = "Activation en cours…";

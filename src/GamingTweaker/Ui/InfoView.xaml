@@ -4,7 +4,7 @@
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolVis"/>
         <Style x:Key="Carte" TargetType="Border">
-            <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource PanelBrush}"/>
             <Setter Property="CornerRadius" Value="8"/>
             <Setter Property="Padding" Value="16,12"/>
             <Setter Property="Margin" Value="0,0,16,12"/>
@@ -19,7 +19,7 @@
         <DockPanel Margin="0,0,16,12">
             <Button DockPanel.Dock="Right" Content="Exporter en .txt" Click="Exporter_Click" Margin="8,0,0,0" ToolTip="Enregistre la fiche matériel dans un fichier texte"/>
             <Button DockPanel.Dock="Right" Content="Activer les capteurs" Command="{Binding ActiverCapteursCommand}" ToolTip="Températures, charges et fréquences en direct (LibreHardwareMonitor)"/>
-            <TextBlock Text="{Binding Statut}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding Statut}" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" TextWrapping="Wrap"/>
         </DockPanel>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -28,18 +28,18 @@
                 <Border Style="{StaticResource Carte}">
                     <StackPanel>
                         <TextBlock Text="Capteurs en direct" FontSize="16" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding StatutCapteurs}" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                        <TextBlock Text="{Binding StatutCapteurs}" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
                         <ItemsControl ItemsSource="{Binding Capteurs}" Margin="0,8,0,0">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <StackPanel Margin="0,6,0,0">
-                                        <TextBlock Text="{Binding Titre}" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}"/>
+                                        <TextBlock Text="{Binding Titre}" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/>
                                         <ItemsControl ItemsSource="{Binding Lignes}">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
                                                     <Grid Margin="0,2,0,0">
                                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="140"/></Grid.ColumnDefinitions>
-                                                        <TextBlock Text="{Binding Nom}" FontSize="13" Foreground="{StaticResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
+                                                        <TextBlock Text="{Binding Nom}" FontSize="13" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
                                                         <TextBlock Grid.Column="1" Text="{Binding Valeur}" FontSize="13" TextAlignment="Right"/>
                                                     </Grid>
                                                 </DataTemplate>
@@ -64,7 +64,7 @@
                                             <DataTemplate>
                                                 <Grid Margin="0,2,0,0">
                                                     <Grid.ColumnDefinitions><ColumnDefinition Width="220"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                                    <TextBlock Text="{Binding Key}" FontSize="13" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,12,0"/>
+                                                    <TextBlock Text="{Binding Key}" FontSize="13" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,12,0"/>
                                                     <TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="13" TextWrapping="Wrap"/>
                                                 </Grid>
                                             </DataTemplate>

@@ -254,6 +254,7 @@
     "risque": "Avance",
     "reversible": true,
     "redemarrage": false,
+    "testable": false,
     "delaiSec": 600,
     "compatibilite": {
       "windows": [

@@ -19,13 +19,18 @@ namespace GamingTweaker.Core
         [JsonProperty("services")] public List<string> Services { get; set; } = new List<string>();
         [JsonProperty("processus")] public List<ProcessusChoix> Processus { get; set; } = new List<ProcessusChoix>();
         [JsonProperty("plan")] public bool Plan { get; set; } = true;
+        /// <summary>Jeu en cours en priorité « Haute » (désactivé par défaut).</summary>
+        [JsonProperty("prioriteHaute")] public bool PrioriteHaute { get; set; }
+        [JsonProperty("libererMemoire")] public bool LibererMemoire { get; set; }
         [JsonProperty("nvidia")] [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))] public ProfilNvidia Nvidia { get; set; }
 
         public const string NomFichier = "modejeu-auto.json";
 
         public ModeJeuConfig VersModeJeu()
         {
-            var c = new ModeJeuConfig { PlanGuid = Plan ? ModeJeu.PlanPerformances : null, Nvidia = Nvidia };
+            var c = new ModeJeuConfig { PlanGuid = Plan ? ModeJeu.PlanPerformances : null, Nvidia = Nvidia, LibererMemoire = LibererMemoire };
+            // Les jeux surveillés ne sont jamais concernés par la libération de mémoire.
+            c.Exclusions.AddRange((Jeux ?? new List<JeuSurveille>()).Where(j => j != null && !string.IsNullOrWhiteSpace(j.Chemin)).Select(j => j.Chemin));
             c.Services.AddRange((Services ?? new List<string>()).Where(s => !ModeJeu.EstServiceProtege(s)));
             // Jamais fermés par le mode automatique : un jeu de la liste (il serait fermé puis relancé en boucle) et les lanceurs
             // (Steam, Epic : les fermer peut fermer le jeu en cours).
@@ -128,6 +133,8 @@ namespace GamingTweaker.Core
         private readonly ModeJeu modeJeu;
         private readonly Func<ModeJeuAutoConfig> config;
         private readonly Func<IEnumerable<string>> processus;
+        private readonly Func<IEnumerable<JeuSurveille>, List<string>> prioriser;
+        private readonly HashSet<string> dejaPriorises = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private readonly AutomateModeJeu automate = new AutomateModeJeu();
         private readonly object verrou = new object();
         private Timer minuteur;
@@ -136,9 +143,11 @@ namespace GamingTweaker.Core
         /// <summary>(titre, texte) : appelé hors du thread de l'interface.</summary>
         public event Action<string, string> Notification;
 
-        public SurveillanceJeux(ModeJeu modeJeu, Func<ModeJeuAutoConfig> config, Func<IEnumerable<string>> processus = null)
+        public SurveillanceJeux(ModeJeu modeJeu, Func<ModeJeuAutoConfig> config, Func<IEnumerable<string>> processus = null,
+            Func<IEnumerable<JeuSurveille>, List<string>> prioriser = null)
         {
             this.modeJeu = modeJeu; this.config = config; this.processus = processus ?? Jeux.CheminsProcessus;
+            this.prioriser = prioriser ?? Jeux.Prioriser;
         }
 
         public bool Demarree { get { return minuteur != null; } }
@@ -162,6 +171,13 @@ namespace GamingTweaker.Core
                 var c = config();
                 if (c == null || !c.Actif || c.Jeux.Count == 0) return;
                 var jeux = Jeux.EnCours(processus(), c.Jeux);
+                if (jeux.Count == 0) dejaPriorises.Clear();
+                else if (c.PrioriteHaute)
+                {
+                    // Chaque relevé : un jeu relancé ou un nouveau processus du même jeu est aussi priorisé (une seule notification par jeu).
+                    foreach (var nom in prioriser(jeux))
+                        if (dejaPriorises.Add(nom)) TraceAppli.Ecrire("Mode Jeu automatique : " + nom + " en priorité haute");
+                }
                 var action = automate.Decider(jeux.Count > 0, modeJeu.IsActive);
                 if (action == ActionAuto.Activer)
                 {

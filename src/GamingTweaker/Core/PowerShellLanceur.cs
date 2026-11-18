@@ -103,10 +103,16 @@ namespace GamingTweaker.Core
         }
 
         /// <summary>Écrit le script (UTF-8 avec BOM) dans le dossier Run et le garde verrouillé jusqu'à Dispose.</summary>
+        private static readonly object verrouRun = new object();
+
         public static ScriptVerrouille EcrireScript(string prefixe, string contenu)
         {
-            var run = PreparerDossierRun();
-            return new ScriptVerrouille(Path.Combine(run, prefixe + "-" + Guid.NewGuid().ToString("N") + ".ps1"), contenu);
+            // Sérialisé : plusieurs détections en parallèle ne doivent pas créer, sécuriser ou nettoyer le dossier Run en même temps.
+            lock (verrouRun)
+            {
+                var run = PreparerDossierRun();
+                return new ScriptVerrouille(Path.Combine(run, prefixe + "-" + Guid.NewGuid().ToString("N") + ".ps1"), contenu);
+            }
         }
 
         /// <summary>Arguments pour exécuter un fichier de script.</summary>
