@@ -5,27 +5,18 @@
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolVis"/>
 
-        <Style x:Key="Carte" TargetType="Border">
-            <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="3"/>
-            <Setter Property="Padding" Value="22,18"/>
-        </Style>
         <Style x:Key="TitreSection" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="20"/>
+            <Setter Property="FontSize" Value="22"/>
             <Setter Property="FontFamily" Value="{StaticResource TitreFont}"/>
             <Setter Property="Foreground" Value="{StaticResource ChromeBrush}"/>
-            <Setter Property="Margin" Value="0,0,0,4"/>
         </Style>
         <Style x:Key="SousTitre" TargetType="TextBlock">
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="Margin" Value="0,0,0,16"/>
         </Style>
 
-        <!-- Bouton « carte » : tout le bloc est cliquable, surbrillance au survol -->
+        <!-- Bouton « carte » : tout le bloc est cliquable ; équerres néon et lueur au survol -->
         <Style x:Key="BoutonCarte" TargetType="Button">
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
@@ -33,13 +24,18 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="b" Background="{StaticResource BgBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="3">
-                            <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
-                        </Border>
+                        <Grid>
+                            <Border x:Name="b" Background="#E607070A" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Margin="3"/>
+                            <Path x:Name="c1" Data="M0,12 L0,0 L12,0" Stroke="{StaticResource TextBrush}" StrokeThickness="1.6" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+                            <Path x:Name="c2" Data="M12,0 L12,12 L0,12" Stroke="{StaticResource TextBrush}" StrokeThickness="1.6" HorizontalAlignment="Right" VerticalAlignment="Bottom"/>
+                            <ContentPresenter Margin="3"/>
+                        </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="b" Property="BorderBrush" Value="{StaticResource AcidGradientBrush}"/>
                                 <Setter TargetName="b" Property="Background" Value="{StaticResource PanelHoverBrush}"/>
+                                <Setter TargetName="c1" Property="Stroke" Value="{StaticResource AccentBrush}"/>
+                                <Setter TargetName="c2" Property="Stroke" Value="{StaticResource AccentBrush}"/>
                                 <Setter TargetName="b" Property="Effect" Value="{StaticResource LueurAcide}"/>
                             </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="b" Property="BorderBrush" Value="{StaticResource AccentHoverBrush}"/></Trigger>
@@ -51,31 +47,58 @@
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="0,0,16,20" MaxWidth="1100" HorizontalAlignment="Left">
+        <StackPanel Margin="0,0,16,24" MaxWidth="1120" HorizontalAlignment="Left">
 
-            <!-- 1. Bandeau : ce PC en une ligne -->
-            <Border Style="{StaticResource Carte}" Margin="0,0,0,18" Padding="0">
+            <!-- ===== 1. Affiche : ce PC ===== -->
+            <ContentControl Style="{StaticResource CadreHud}" Margin="0,0,0,16" Padding="0">
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="6"/>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <Border Background="{StaticResource AcidGradientBrush}" CornerRadius="3,0,0,3"/>
-                    <StackPanel Grid.Column="1" Margin="22,18">
-                        <TextBlock Text="{Binding SyntheseAccueil}" FontSize="24" FontFamily="{StaticResource TitreFont}" Foreground="{StaticResource ChromeBrush}" TextWrapping="Wrap"/>
-                        <TextBlock Text="{Binding ResumePc}" FontSize="14" Foreground="{StaticResource MutedBrush}" Margin="0,6,0,0" TextWrapping="Wrap"/>
-                    </StackPanel>
-                    <Border Grid.Column="2" Margin="0,0,22,0" VerticalAlignment="Center" Padding="14,6" CornerRadius="2" Background="{StaticResource AccentBrush}" Effect="{StaticResource LueurAcide}"
-                            Visibility="{Binding ModeJeu.EstActif, Converter={StaticResource BoolVis}, FallbackValue=Collapsed}">
-                        <TextBlock Text="MODE JEU ACTIF" Foreground="{StaticResource AccentTextBrush}" FontFamily="{StaticResource TitreFont}"/>
+                    <!-- Mot vertical -->
+                    <Border Background="{StaticResource AccentBrush}" Padding="6,14" Margin="0,0,0,0">
+                        <TextBlock Text="GAMING" FontFamily="{StaticResource TitreFont}" FontSize="20" Foreground="{StaticResource AccentTextBrush}" VerticalAlignment="Center">
+                            <TextBlock.LayoutTransform><RotateTransform Angle="-90"/></TextBlock.LayoutTransform>
+                        </TextBlock>
                     </Border>
+                    <StackPanel Grid.Column="1" Margin="24,20,16,20" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                            <Border Style="{StaticResource Pilule}"><TextBlock Text="ÉTAT DU SYSTÈME" Style="{StaticResource PiluleTexte}"/></Border>
+                            <TextBlock Text="  -6°12'52&quot; // 106°50'42&quot;" Style="{StaticResource TexteCode}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding SyntheseAccueil}" FontSize="28" FontFamily="{StaticResource TitreFont}" Foreground="{StaticResource ChromeBrush}" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding ResumePc}" FontSize="14" Foreground="{StaticResource MutedBrush}" Margin="0,6,0,12" TextWrapping="Wrap"/>
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource GeoCodeBarres}" Style="{StaticResource FormePleine}" Stretch="Fill" Width="130" Height="18"/>
+                            <TextBlock Text="0000:1201012:0012" Style="{StaticResource TexteCode}" VerticalAlignment="Bottom" Margin="10,0,0,0"/>
+                            <Border Margin="16,0,0,0" Padding="12,3" Background="{StaticResource AccentBrush}" Effect="{StaticResource LueurAcide}" VerticalAlignment="Center"
+                                    Visibility="{Binding ModeJeu.EstActif, Converter={StaticResource BoolVis}, FallbackValue=Collapsed}">
+                                <TextBlock Text="MODE JEU ACTIF" Foreground="{StaticResource AccentTextBrush}" FontFamily="{StaticResource TitreFont}"/>
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+                    <!-- Décor : globe filaire, anneaux, étoiles -->
+                    <Grid Grid.Column="2" Width="190" Margin="0,10,18,10" IsHitTestVisible="False">
+                        <Path Data="{StaticResource GeoAnneaux}" Style="{StaticResource FormeTrait}" Width="120" HorizontalAlignment="Right" VerticalAlignment="Top"/>
+                        <Path Data="{StaticResource GeoGlobe}" Style="{StaticResource FormeTrait}" Stroke="{StaticResource MagentaBrush}" StrokeThickness="1.4"
+                              Width="118" Height="118" HorizontalAlignment="Center" VerticalAlignment="Bottom" Effect="{StaticResource LueurMagenta}"/>
+                        <Path Data="{StaticResource GeoEtoile}" Style="{StaticResource FormePleine}" Width="20" Height="20" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="4,0,0,12"/>
+                        <Path Data="{StaticResource GeoEtoile}" Style="{StaticResource FormePleine}" Fill="{StaticResource AccentBrush}" Width="12" Height="12" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,2,26"/>
+                    </Grid>
                 </Grid>
-            </Border>
+            </ContentControl>
 
-            <!-- 2. Démarrage rapide : trois tuiles -->
-            <TextBlock Text="Démarrage rapide" Style="{StaticResource TitreSection}"/>
-            <TextBlock Text="Un clic coche les options du profil. Rien ne change sur le PC avant « Aperçu » puis « LANCER », en bas de la fenêtre." Style="{StaticResource SousTitre}"/>
+            <!-- ===== Bandeau hachuré ===== -->
+            <DockPanel Margin="0,4,0,14">
+                <TextBlock DockPanel.Dock="Left" Text="DÉMARRAGE RAPIDE" Style="{StaticResource TitreSection}" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                <TextBlock DockPanel.Dock="Right" Text="01 — 03" Style="{StaticResource TexteCode}" VerticalAlignment="Center" Margin="14,0,0,0"/>
+                <Rectangle Height="12" Fill="{StaticResource HachuresBrush}" VerticalAlignment="Center"/>
+            </DockPanel>
+            <TextBlock Text="Un clic coche les options du profil. Rien ne change sur le PC avant « Aperçu » puis « LANCER », en bas de la fenêtre." Style="{StaticResource SousTitre}" Margin="0,0,0,14"/>
+
+            <!-- ===== 2. Tuiles des profils ===== -->
             <ItemsControl ItemsSource="{Binding ProfilsRapides}" Margin="0,0,0,22">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate><UniformGrid Rows="1"/></ItemsPanelTemplate>
@@ -84,31 +107,40 @@
                     <DataTemplate>
                         <Button Style="{StaticResource BoutonCarte}" Margin="0,0,14,0" ToolTip="{Binding Description}"
                                 Command="{Binding DataContext.ProfilRapideCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding Nom}">
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="5"/>
-                                    <RowDefinition Height="*"/>
-                                </Grid.RowDefinitions>
-                                <Border x:Name="bande" Background="{StaticResource AccentBrush}" CornerRadius="3,3,0,0"/>
-                                <StackPanel Grid.Row="1" Margin="18,16,18,18">
-                                    <TextBlock x:Name="nom" Text="{Binding Nom}" FontSize="22" FontFamily="{StaticResource TitreFont}" Foreground="{StaticResource AccentBrush}"/>
-                                    <TextBlock Text="{Binding Accroche}" FontSize="14" TextWrapping="Wrap" Margin="0,6,0,0"/>
-                                    <TextBlock Text="{Binding Description}" FontSize="13" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,8,0,14"/>
-                                    <DockPanel>
-                                        <TextBlock Text="{Binding NombreTexte}" FontSize="13" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
-                                        <TextBlock Text="CHOISIR  ›" HorizontalAlignment="Right" FontFamily="{StaticResource TitreFont}" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center"/>
-                                    </DockPanel>
-                                </StackPanel>
-                            </Grid>
+                            <StackPanel Margin="20,18,20,18">
+                                <DockPanel>
+                                    <Path x:Name="grille" DockPanel.Dock="Right" Data="{StaticResource GeoGrille}" Style="{StaticResource FormeTrait}" Stroke="{StaticResource AccentBrush}" Width="30" Height="30"/>
+                                    <TextBlock x:Name="nom" Text="{Binding Nom}" FontSize="24" FontFamily="{StaticResource TitreFont}" Foreground="{StaticResource AccentBrush}" TextWrapping="Wrap"/>
+                                </DockPanel>
+                                <TextBlock Text="{Binding Accroche}" FontSize="14" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                                <TextBlock Text="{Binding Description}" FontSize="13" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,14"/>
+                                <DockPanel>
+                                    <!-- Compteur façon « 34:12 » -->
+                                    <Border x:Name="compteur" DockPanel.Dock="Left" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1.5" Padding="10,2">
+                                        <StackPanel>
+                                            <TextBlock x:Name="nombre" Text="{Binding Nombre}" FontSize="26" FontFamily="{StaticResource TitreFont}" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="OPTIONS" Style="{StaticResource TexteCode}" HorizontalAlignment="Center" Margin="0,-2,0,2"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <StackPanel HorizontalAlignment="Right" VerticalAlignment="Bottom" Orientation="Horizontal">
+                                        <TextBlock Text="CHOISIR" FontFamily="{StaticResource TitreFont}" VerticalAlignment="Center"/>
+                                        <Path Data="{StaticResource GeoChevrons}" Style="{StaticResource FormeTrait}" Height="10" Margin="8,0,0,0"/>
+                                    </StackPanel>
+                                </DockPanel>
+                            </StackPanel>
                         </Button>
                         <DataTemplate.Triggers>
                             <DataTrigger Binding="{Binding Rang}" Value="1">
-                                <Setter TargetName="bande" Property="Background" Value="{StaticResource MagentaBrush}"/>
                                 <Setter TargetName="nom" Property="Foreground" Value="{StaticResource MagentaBrush}"/>
+                                <Setter TargetName="nombre" Property="Foreground" Value="{StaticResource MagentaBrush}"/>
+                                <Setter TargetName="compteur" Property="BorderBrush" Value="{StaticResource MagentaBrush}"/>
+                                <Setter TargetName="grille" Property="Stroke" Value="{StaticResource MagentaBrush}"/>
                             </DataTrigger>
                             <DataTrigger Binding="{Binding Rang}" Value="2">
-                                <Setter TargetName="bande" Property="Background" Value="{StaticResource CyanBrush}"/>
                                 <Setter TargetName="nom" Property="Foreground" Value="{StaticResource CyanBrush}"/>
+                                <Setter TargetName="nombre" Property="Foreground" Value="{StaticResource CyanBrush}"/>
+                                <Setter TargetName="compteur" Property="BorderBrush" Value="{StaticResource CyanBrush}"/>
+                                <Setter TargetName="grille" Property="Stroke" Value="{StaticResource CyanBrush}"/>
                             </DataTrigger>
                         </DataTemplate.Triggers>
                     </DataTemplate>
@@ -122,20 +154,23 @@
                     <ColumnDefinition Width="2*"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- 3. État de ce PC : une ligne par menu -->
-                <Border Style="{StaticResource Carte}">
+                <!-- ===== 3. État de ce PC ===== -->
+                <ContentControl Style="{StaticResource CadreHud}">
                     <StackPanel>
-                        <TextBlock Text="État de ce PC" Style="{StaticResource TitreSection}"/>
+                        <DockPanel Margin="0,0,0,4">
+                            <TextBlock DockPanel.Dock="Right" Text="SCAN.LOG" Style="{StaticResource TexteCode}" VerticalAlignment="Center"/>
+                            <TextBlock Text="ÉTAT DE CE PC" Style="{StaticResource TitreSection}"/>
+                        </DockPanel>
                         <TextBlock Text="Réglages déjà en place, par menu. Cliquez sur une ligne pour l'ouvrir." Style="{StaticResource SousTitre}" Margin="0,0,0,12"/>
                         <ItemsControl ItemsSource="{Binding EtatMenus}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Button Style="{StaticResource BoutonCarte}" Margin="0,0,0,8"
+                                    <Button Style="{StaticResource BoutonCarte}" Margin="0,0,0,6"
                                             Command="{Binding DataContext.AllerCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding Menu}">
                                         <StackPanel Margin="14,10">
                                             <DockPanel>
-                                                <TextBlock DockPanel.Dock="Right" Text="{Binding Texte}" FontSize="13" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
-                                                <TextBlock Text="{Binding Menu}" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                <TextBlock DockPanel.Dock="Right" Text="{Binding Texte}" Style="{StaticResource TexteCode}" FontSize="12" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding Menu}" FontSize="15" FontFamily="{StaticResource TitreFont}" VerticalAlignment="Center"/>
                                             </DockPanel>
                                             <ProgressBar Minimum="0" Maximum="1" Value="{Binding Proportion, Mode=OneWay}" Height="6" Margin="0,8,0,0"
                                                          Foreground="{StaticResource AcidGradientBrush}" Background="{StaticResource BorderBrush}" BorderThickness="0"/>
@@ -145,38 +180,49 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </StackPanel>
-                </Border>
+                </ContentControl>
 
-                <!-- 4. Mode Jeu et raccourcis -->
+                <!-- ===== 4. Mode Jeu et raccourcis ===== -->
                 <StackPanel Grid.Column="2">
-                    <Border Style="{StaticResource Carte}" Margin="0,0,0,18">
+                    <ContentControl Style="{StaticResource CadreHud}" Margin="0,0,0,16">
                         <StackPanel>
-                            <TextBlock Text="Mode Jeu" Style="{StaticResource TitreSection}"/>
+                            <DockPanel Margin="0,0,0,8">
+                                <Path DockPanel.Dock="Right" Data="{StaticResource GeoAnneaux}" Style="{StaticResource FormeTrait}" Stroke="{StaticResource AccentBrush}" Width="70"/>
+                                <TextBlock Text="MODE JEU" Style="{StaticResource TitreSection}"/>
+                            </DockPanel>
                             <TextBlock Style="{StaticResource SousTitre}" Margin="0,0,0,14"
                                        Text="Libère des ressources pendant la partie (profil NVIDIA Performance ou Qualité inclus), puis remet tout comme avant. Il peut s'activer tout seul au lancement d'un jeu."/>
-                            <Button Content="Ouvrir le Mode Jeu" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left"
+                            <Button Content="OUVRIR LE MODE JEU" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left"
                                     Command="{Binding AllerCommand}" CommandParameter="Mode Jeu"/>
                         </StackPanel>
-                    </Border>
-                    <Border Style="{StaticResource Carte}">
+                    </ContentControl>
+                    <ContentControl Style="{StaticResource CadreHud}">
                         <StackPanel>
-                            <TextBlock Text="Raccourcis" Style="{StaticResource TitreSection}" Margin="0,0,0,12"/>
-                            <Button Content="Historique et annulation" Command="{Binding AllerCommand}" CommandParameter="Historique" HorizontalContentAlignment="Left" Margin="0,0,0,8"/>
-                            <Button Content="Informations du PC" Command="{Binding AllerCommand}" CommandParameter="Informations" HorizontalContentAlignment="Left"/>
+                            <TextBlock Text="RACCOURCIS" Style="{StaticResource TitreSection}" Margin="0,0,0,12"/>
+                            <Button Command="{Binding AllerCommand}" CommandParameter="Historique" HorizontalContentAlignment="Stretch" Margin="0,0,0,8">
+                                <DockPanel><Path DockPanel.Dock="Right" Data="{StaticResource GeoChevrons}" Style="{StaticResource FormeTrait}" Height="9"/><TextBlock Text="Historique et annulation"/></DockPanel>
+                            </Button>
+                            <Button Command="{Binding AllerCommand}" CommandParameter="Informations" HorizontalContentAlignment="Stretch">
+                                <DockPanel><Path DockPanel.Dock="Right" Data="{StaticResource GeoChevrons}" Style="{StaticResource FormeTrait}" Height="9"/><TextBlock Text="Informations du PC"/></DockPanel>
+                            </Button>
                         </StackPanel>
-                    </Border>
+                    </ContentControl>
                 </StackPanel>
             </Grid>
 
-            <!-- 5. Bon à savoir -->
-            <Border Style="{StaticResource Carte}">
+            <!-- ===== 5. Bon à savoir ===== -->
+            <ContentControl Style="{StaticResource CadreHud}">
                 <StackPanel>
-                    <TextBlock Text="Bon à savoir" Style="{StaticResource TitreSection}" Margin="0,0,0,12"/>
-                    <ItemsControl>
+                    <DockPanel Margin="0,0,0,12">
+                        <Path DockPanel.Dock="Right" Data="{StaticResource GeoEtoile}" Style="{StaticResource FormePleine}" Fill="{StaticResource AccentBrush}" Width="16" Height="16"/>
+                        <TextBlock Text="BON À SAVOIR" Style="{StaticResource TitreSection}"/>
+                    </DockPanel>
+                    <ItemsControl AlternationCount="10">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <DockPanel Margin="0,0,0,10">
-                                    <TextBlock DockPanel.Dock="Left" Text="▸" Foreground="{StaticResource AccentBrush}" FontWeight="Bold" Width="22" FontSize="15"/>
+                                    <TextBlock DockPanel.Dock="Left" Width="36" FontFamily="Consolas" FontSize="13" Foreground="{StaticResource AccentBrush}"
+                                               Text="{Binding (ItemsControl.AlternationIndex), RelativeSource={RelativeSource AncestorType=ContentPresenter}, StringFormat='0{0}.'}"/>
                                     <TextBlock Text="{Binding}" TextWrapping="Wrap" FontSize="14"/>
                                 </DockPanel>
                             </DataTemplate>
@@ -188,8 +234,12 @@
                             <x:Static Member="local:AccueilView.Conseil4"/>
                         </ItemsControl.Items>
                     </ItemsControl>
+                    <DockPanel Margin="0,6,0,0" IsHitTestVisible="False">
+                        <TextBlock DockPanel.Dock="Right" Text="••••0000" Style="{StaticResource TexteCode}" Foreground="{StaticResource AccentBrush}" Margin="10,0,0,0"/>
+                        <Line X1="0" X2="2000" Stroke="{StaticResource MutedBrush}" StrokeThickness="1" StrokeDashArray="2 4" VerticalAlignment="Center" Stretch="None" ClipToBounds="True"/>
+                    </DockPanel>
                 </StackPanel>
-            </Border>
+            </ContentControl>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

@@ -56,6 +56,103 @@
     <!-- Police des titres : Bahnschrift (fournie avec Windows 10/11), repli Segoe UI -->
     <FontFamily x:Key="TitreFont">Bahnschrift SemiBold, Segoe UI</FontFamily>
 
+
+    <!-- ===== Formes Acid Wave (vectorielles, réutilisables) ===== -->
+    <!-- Étoile à quatre branches -->
+    <Geometry x:Key="GeoEtoile">M50,0 C54,38 62,46 100,50 C62,54 54,62 50,100 C46,62 38,54 0,50 C38,46 46,38 50,0 Z</Geometry>
+    <!-- Globe filaire -->
+    <GeometryGroup x:Key="GeoGlobe" FillRule="Nonzero">
+        <EllipseGeometry Center="50,50" RadiusX="48" RadiusY="48"/>
+        <EllipseGeometry Center="50,50" RadiusX="32" RadiusY="48"/>
+        <EllipseGeometry Center="50,50" RadiusX="15" RadiusY="48"/>
+        <LineGeometry StartPoint="50,2" EndPoint="50,98"/>
+        <LineGeometry StartPoint="2,50" EndPoint="98,50"/>
+        <LineGeometry StartPoint="8.4,26" EndPoint="91.6,26"/>
+        <LineGeometry StartPoint="8.4,74" EndPoint="91.6,74"/>
+    </GeometryGroup>
+    <!-- Anneaux enchaînés -->
+    <GeometryGroup x:Key="GeoAnneaux">
+        <EllipseGeometry Center="22,20" RadiusX="20" RadiusY="18"/>
+        <EllipseGeometry Center="44,20" RadiusX="20" RadiusY="18"/>
+        <EllipseGeometry Center="66,20" RadiusX="20" RadiusY="18"/>
+        <EllipseGeometry Center="88,20" RadiusX="20" RadiusY="18"/>
+    </GeometryGroup>
+    <!-- Code-barres -->
+    <Geometry x:Key="GeoCodeBarres">M0,0 h2 v40 h-2 Z M4,0 h2 v40 h-2 Z M7,0 h1 v40 h-1 Z M9,0 h2 v40 h-2 Z M12,0 h3 v40 h-3 Z M17,0 h1 v40 h-1 Z M19,0 h2 v40 h-2 Z M24,0 h1 v40 h-1 Z M27,0 h1 v40 h-1 Z M31,0 h1 v40 h-1 Z M33,0 h1 v40 h-1 Z M35,0 h3 v40 h-3 Z M41,0 h1 v40 h-1 Z M44,0 h1 v40 h-1 Z M47,0 h2 v40 h-2 Z M52,0 h1 v40 h-1 Z M54,0 h3 v40 h-3 Z M59,0 h3 v40 h-3 Z M64,0 h1 v40 h-1 Z M67,0 h2 v40 h-2 Z M70,0 h3 v40 h-3 Z M74,0 h3 v40 h-3 Z M78,0 h3 v40 h-3 Z M83,0 h2 v40 h-2 Z M88,0 h2 v40 h-2 Z M93,0 h3 v40 h-3 Z M99,0 h2 v40 h-2 Z M103,0 h1 v40 h-1 Z M106,0 h4 v40 h-4 Z M112,0 h1 v40 h-1 Z M115,0 h3 v40 h-3 Z M121,0 h2 v40 h-2 Z M126,0 h2 v40 h-2 Z M129,0 h1 v40 h-1 Z M133,0 h1 v40 h-1 Z M136,0 h1 v40 h-1 Z M140,0 h2 v40 h-2 Z M143,0 h4 v40 h-4 Z M148,0 h3 v40 h-3 Z M153,0 h2 v40 h-2 Z M157,0 h3 v40 h-3 Z M163,0 h3 v40 h-3 Z M169,0 h1 v40 h-1 Z M171,0 h2 v40 h-2 Z M176,0 h4 v40 h-4 Z M181,0 h1 v40 h-1 Z M184,0 h4 v40 h-4 Z M191,0 h2 v40 h-2 Z</Geometry>
+    <!-- Flèches ›››››› -->
+    <Geometry x:Key="GeoChevrons">M0,0 L6,6 L0,12 M9,0 L15,6 L9,12 M18,0 L24,6 L18,12 M27,0 L33,6 L27,12 M36,0 L42,6 L36,12 M45,0 L51,6 L45,12</Geometry>
+    <!-- Grille 4 x 4 -->
+    <GeometryGroup x:Key="GeoGrille">
+        <RectangleGeometry Rect="0,0,100,100"/>
+        <LineGeometry StartPoint="25,0" EndPoint="25,100"/><LineGeometry StartPoint="50,0" EndPoint="50,100"/><LineGeometry StartPoint="75,0" EndPoint="75,100"/>
+        <LineGeometry StartPoint="0,25" EndPoint="100,25"/><LineGeometry StartPoint="0,50" EndPoint="100,50"/><LineGeometry StartPoint="0,75" EndPoint="100,75"/>
+    </GeometryGroup>
+
+    <!-- Bandes hachurées (bandeau « danger ») -->
+    <DrawingBrush x:Key="HachuresBrush" TileMode="Tile" Viewport="0,0,16,16" ViewportUnits="Absolute">
+        <DrawingBrush.Drawing>
+            <GeometryDrawing Brush="#C6FF00"><GeometryDrawing.Geometry>
+                <PathGeometry Figures="M0,16 L8,0 L14,0 L6,16 Z M16,16 L14,16 L16,12 Z"/>
+            </GeometryDrawing.Geometry></GeometryDrawing>
+        </DrawingBrush.Drawing>
+    </DrawingBrush>
+
+    <Style x:Key="FormeTrait" TargetType="Path">
+        <Setter Property="Stroke" Value="{StaticResource TextBrush}"/>
+        <Setter Property="StrokeThickness" Value="1.2"/>
+        <Setter Property="Stretch" Value="Uniform"/>
+        <Setter Property="IsHitTestVisible" Value="False"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+    </Style>
+    <Style x:Key="FormePleine" TargetType="Path">
+        <Setter Property="Fill" Value="{StaticResource TextBrush}"/>
+        <Setter Property="Stretch" Value="Uniform"/>
+        <Setter Property="IsHitTestVisible" Value="False"/>
+    </Style>
+
+    <!-- Texte technique (codes, coordonnées) -->
+    <Style x:Key="TexteCode" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="Consolas"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+        <Setter Property="IsHitTestVisible" Value="False"/>
+    </Style>
+
+    <!-- Étiquette en pilule (contour) -->
+    <Style x:Key="Pilule" TargetType="Border">
+        <Setter Property="BorderBrush" Value="{StaticResource TextBrush}"/>
+        <Setter Property="BorderThickness" Value="1.2"/>
+        <Setter Property="CornerRadius" Value="11"/>
+        <Setter Property="Padding" Value="10,2"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="IsHitTestVisible" Value="False"/>
+    </Style>
+    <Style x:Key="PiluleTexte" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource TitreFont}"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+    </Style>
+
+    <!-- Cadre « HUD » : panneau à trait fin et équerres néon aux quatre coins -->
+    <Style x:Key="CadreHud" TargetType="ContentControl">
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        <Setter Property="Padding" Value="22,18"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ContentControl">
+                    <Grid>
+                        <Border Background="#E6111116" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Margin="3"/>
+                        <Path Data="M0,14 L0,0 L14,0" Stroke="{StaticResource AccentBrush}" StrokeThickness="2" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+                        <Path Data="M0,0 L14,0 L14,14" Stroke="{StaticResource AccentBrush}" StrokeThickness="2" HorizontalAlignment="Right" VerticalAlignment="Top"/>
+                        <Path Data="M0,0 L0,14 L14,14" Stroke="{StaticResource AccentBrush}" StrokeThickness="2" HorizontalAlignment="Left" VerticalAlignment="Bottom"/>
+                        <Path Data="M14,0 L14,14 L0,14" Stroke="{StaticResource AccentBrush}" StrokeThickness="2" HorizontalAlignment="Right" VerticalAlignment="Bottom"/>
+                        <ContentPresenter Margin="{TemplateBinding Padding}"/>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="AppWindow" TargetType="Window">
         <Setter Property="Background" Value="{StaticResource GrilleBrush}"/>
         <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>

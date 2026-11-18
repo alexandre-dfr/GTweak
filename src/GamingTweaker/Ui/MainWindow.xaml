@@ -272,7 +272,21 @@
                     <TextBlock Text="GAMING" FontFamily="{StaticResource TitreFont}" FontSize="26" Foreground="{StaticResource ChromeBrush}" Margin="0,0,0,-6"/>
                     <TextBlock Text="TWEAKER" FontFamily="{StaticResource TitreFont}" FontSize="26" Foreground="{StaticResource AccentBrush}" Effect="{StaticResource LueurAcide}"/>
                     <Rectangle Height="2" Fill="{StaticResource AcidGradientBrush}" Margin="0,8,0,0"/>
+                    <Grid Margin="0,8,0,0">
+                        <Path Data="{StaticResource GeoCodeBarres}" Style="{StaticResource FormePleine}" Height="14" HorizontalAlignment="Left" Stretch="Fill" Width="96"/>
+                        <TextBlock Text="EST. MMXXVI" Style="{StaticResource TexteCode}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                    </Grid>
+                    <TextBlock Text="0000:1711:0012 // SYS.OK" Style="{StaticResource TexteCode}" Margin="0,4,0,0"/>
                 </StackPanel>
+                <!-- Pied de la barre latérale : globe filaire, étoile, étiquette -->
+                <Grid DockPanel.Dock="Bottom" Margin="22,0,16,18" Height="96">
+                    <Path Data="{StaticResource GeoGlobe}" Style="{StaticResource FormeTrait}" Stroke="{StaticResource AccentBrush}" Width="78" Height="78" HorizontalAlignment="Left" VerticalAlignment="Bottom" Opacity="0.85"/>
+                    <Path Data="{StaticResource GeoEtoile}" Style="{StaticResource FormePleine}" Width="16" Height="16" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="70,0,0,0"/>
+                    <Path Data="{StaticResource GeoEtoile}" Style="{StaticResource FormePleine}" Fill="{StaticResource MagentaBrush}" Width="9" Height="9" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="92,18,0,0"/>
+                    <Border Style="{StaticResource Pilule}" HorizontalAlignment="Right" VerticalAlignment="Bottom">
+                        <TextBlock Text="SUPER TWEAK" Style="{StaticResource PiluleTexte}"/>
+                    </Border>
+                </Grid>
                 <ListBox ItemsSource="{Binding Menus}" SelectedValuePath="Nom" SelectedValue="{Binding MenuCourant, Mode=TwoWay}"
                          ItemContainerStyle="{StaticResource MenuItemStyle}" Background="Transparent" BorderThickness="0" Padding="0,12,0,0"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
@@ -293,7 +307,14 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="{Binding TitreAffiche}" FontSize="28" FontFamily="{StaticResource TitreFont}" Foreground="{StaticResource ChromeBrush}" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                    <StackPanel VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                            <Path Data="{StaticResource GeoEtoile}" Style="{StaticResource FormePleine}" Fill="{StaticResource AccentBrush}" Width="11" Height="11" Margin="0,0,8,0"/>
+                            <TextBlock Text="// GAMINGTWEAKER — MODULE" Style="{StaticResource TexteCode}"/>
+                            <Path Data="{StaticResource GeoChevrons}" Style="{StaticResource FormeTrait}" Stroke="{StaticResource AccentBrush}" Height="8" Margin="10,0,0,0"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding TitreAffiche}" FontSize="28" FontFamily="{StaticResource TitreFont}" Foreground="{StaticResource ChromeBrush}" TextWrapping="Wrap"/>
+                    </StackPanel>
                     <Grid Grid.Column="1" Margin="12,0">
                         <TextBox x:Name="Recherche" Text="{Binding Recherche, UpdateSourceTrigger=PropertyChanged}" ToolTip="Rechercher une option (Ctrl+F ; Échap pour effacer)"/>
                         <TextBlock Text="Rechercher…" IsHitTestVisible="False" Margin="10,0" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}">
@@ -423,6 +444,12 @@
         <!-- Barre du bas -->
         <Border Grid.Row="3" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource AcidGradientBrush}" BorderThickness="0,2,0,0" Padding="20,12">
             <StackPanel>
+            <!-- Bandeau hachuré et repères techniques -->
+            <DockPanel Margin="0,0,0,10" IsHitTestVisible="False">
+                <TextBlock DockPanel.Dock="Right" Text="••••0000" Style="{StaticResource TexteCode}" Foreground="{StaticResource AccentBrush}" Margin="12,0,0,0"/>
+                <TextBlock DockPanel.Dock="Left" Text="EXEC // 30:124" Style="{StaticResource TexteCode}" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                <Rectangle Height="8" Fill="{StaticResource HachuresBrush}" Opacity="0.85" VerticalAlignment="Center"/>
+            </DockPanel>
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
