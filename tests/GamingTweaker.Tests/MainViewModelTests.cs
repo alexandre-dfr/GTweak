@@ -86,7 +86,7 @@ namespace GamingTweaker.Tests
         [Fact]
         public void Menus_dans_l_ordre_avec_separateur()
         {
-            Assert.Equal(new[] { "Mises à jour", "Télémétrie", "Nettoyage", "Optimisation", "Bloatware", "Informations", null, "Mode Jeu", "Historique" },
+            Assert.Equal(new[] { "Accueil", "Mises à jour", "Télémétrie", "Nettoyage", "Optimisation", "Bloatware", "Informations", null, "Mode Jeu", "Historique" },
                 vm.Menus.Select(m => m.EstSeparateur ? null : m.Nom).ToArray());
         }
 
@@ -171,6 +171,38 @@ namespace GamingTweaker.Tests
             Assert.Equal(0, vm.SelectedCount);
             vm.ProfilSelectionne = null; vm.ProfilSelectionne = "Mon profil";
             Assert.True(Coche("opt.sur"));
+        }
+
+        [Fact]
+        public async Task L_accueil_s_ouvre_au_demarrage_et_resume_l_etat_du_pc()
+        {
+            var v = Cree(new[]
+            {
+                It("o.a", "Optimisation", "G", "A", RiskLevel.Sur), It("o.b", "Optimisation", "G", "B", RiskLevel.Sur),
+                It("t.a", "Télémétrie", "G", "C", RiskLevel.Sur),
+            }, its => Task.FromResult(its.ToDictionary(i => i.Id, i => i.Id == "o.a" ? DetectState.Applied : DetectState.NotApplied)));
+            Assert.Equal("Accueil", v.MenuCourant);
+            Assert.True(v.EstAccueil); Assert.True(v.EstEmplacement);
+            Assert.Equal("Bienvenue dans GamingTweaker", v.TitreAffiche);
+            Assert.Empty(v.Visibles);
+            await v.DetectAsync();
+            var opt = v.EtatMenus.Single(l => l.Menu == "Optimisation");
+            Assert.Equal(1, opt.Appliquees); Assert.Equal(2, opt.Total);
+            Assert.DoesNotContain(v.EtatMenus, l => l.Menu == "Bloatware");   // menu sans option : pas de ligne
+            v.AllerCommand.Execute("Télémétrie");
+            Assert.False(v.EstAccueil); Assert.Equal(new[] { "t.a" }, v.Visibles.Select(o => o.Id).ToArray());
+        }
+
+        [Fact]
+        public void Un_clic_sur_un_profil_rapide_coche_ses_options()
+        {
+            vm.ProfilRapideCommand.Execute("Gaming léger");
+            Assert.Equal("Gaming léger" + ProfilsIntegres.Suffixe, vm.ProfilSelectionne);
+            Assert.True(Coche("opt.sur")); Assert.True(Coche("tel.sur")); Assert.False(Coche("opt.avance"));
+            Assert.Contains("Aperçu", vm.Message);
+            Cocher("opt.avance");
+            vm.ProfilRapideCommand.Execute("Gaming léger");                 // second clic : profil rechargé
+            Assert.False(Coche("opt.avance"));
         }
 
         [Fact]

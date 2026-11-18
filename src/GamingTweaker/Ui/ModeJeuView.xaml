@@ -54,7 +54,13 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <CheckBox Content="Passer au plan Performances élevées" IsChecked="{Binding UtiliserPlan, Mode=TwoWay}" VerticalAlignment="Center" IsEnabled="{Binding PeutModifier}"/>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <CheckBox Content="Passer au plan Performances élevées" IsChecked="{Binding UtiliserPlan, Mode=TwoWay}" VerticalAlignment="Center" IsEnabled="{Binding PeutModifier}"/>
+                    <ComboBox Width="230" Height="32" Margin="16,0,0,0" ItemsSource="{Binding ProfilsNvidiaDisponibles}" SelectedValuePath="Key" DisplayMemberPath="Value"
+                              SelectedValue="{Binding ProfilNvidia, Mode=TwoWay}" IsEnabled="{Binding PeutModifier}"
+                              Visibility="{Binding NvidiaDisponible, Converter={StaticResource BoolVis}}"
+                              ToolTip="Performance : performances maximales, filtrage hautes performances, V-Sync désactivée, faible latence Ultra. Qualité : performances maximales, filtrage haute qualité, V-Sync laissée au jeu. Les réglages d'avant sont remis en quittant le Mode Jeu."/>
+                </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                     <Button Content="Actualiser les listes" Command="{Binding ActualiserCommand}"/>
                     <Button Content="Activer le Mode Jeu" Style="{StaticResource PrimaryButton}" Command="{Binding ActiverCommand}" Margin="8,0,0,0"/>

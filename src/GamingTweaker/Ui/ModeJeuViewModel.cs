@@ -58,6 +58,14 @@ namespace GamingTweaker.Ui
         /// <summary>Proposé après un « Rétablir » qui n'a pas pu tout rétablir (ou un état illisible).</summary>
         public bool PeutOublier { get { return peutOublier; } private set { if (Set(ref peutOublier, value)) CommandManager.InvalidateRequerySuggested(); } }
         public bool UtiliserPlan { get { return utiliserPlan; } set { Set(ref utiliserPlan, value); } }
+
+        private ProfilNvidia profilNvidia;
+        /// <summary>Faux sans carte NVIDIA : le choix du profil NVIDIA est masqué.</summary>
+        public bool NvidiaDisponible { get; set; }
+        public IReadOnlyList<KeyValuePair<ProfilNvidia, string>> ProfilsNvidiaDisponibles { get; } = new[] { ProfilNvidia.Aucun, ProfilNvidia.Performance, ProfilNvidia.Qualite }
+            .Select(p => new KeyValuePair<ProfilNvidia, string>(p, "NVIDIA : " + ProfilsNvidia.Libelle(p))).ToList();
+        /// <summary>Profil du pilote NVIDIA le temps du Mode Jeu ; rétabli ensuite (valeurs d'avant).</summary>
+        public ProfilNvidia ProfilNvidia { get { return profilNvidia; } set { Set(ref profilNvidia, value); } }
         public string Message { get { return message; } set { Set(ref message, value ?? ""); } }
         public int NombreCoches { get { return Services.Count(s => s.IsChecked) + Processus.Count(p => p.IsChecked); } }
 
@@ -86,7 +94,7 @@ namespace GamingTweaker.Ui
 
         public ModeJeuConfig ConstruireConfig()
         {
-            var c = new ModeJeuConfig { PlanGuid = utiliserPlan ? ModeJeu.PlanPerformances : null };
+            var c = new ModeJeuConfig { PlanGuid = utiliserPlan ? ModeJeu.PlanPerformances : null, Nvidia = NvidiaDisponible ? profilNvidia : ProfilNvidia.Aucun };
             foreach (var s in Services.Where(x => x.IsChecked)) c.Services.Add(s.Nom);
             foreach (var p in Processus.Where(x => x.IsChecked)) c.Processus.Add(new ProcessusChoix { Nom = p.Nom, Chemin = p.Chemin });
             return c;
@@ -96,9 +104,11 @@ namespace GamingTweaker.Ui
         {
             if (enCours || actif) return;
             var cfg = ConstruireConfig();
-            if (cfg.Services.Count + cfg.Processus.Count == 0 && cfg.PlanGuid == null) { Message = "Rien n'est coché : choisissez des services, des processus ou le plan d'alimentation."; return; }
+            if (cfg.Services.Count + cfg.Processus.Count == 0 && cfg.PlanGuid == null && cfg.Nvidia == ProfilNvidia.Aucun) { Message = "Rien n'est coché : choisissez des services, des processus, le plan d'alimentation ou un profil NVIDIA."; return; }
             var texte = "Le Mode Jeu va arrêter " + cfg.Services.Count + " service(s) et fermer " + cfg.Processus.Count + " processus (travail non enregistré perdu)"
-                      + (cfg.PlanGuid != null ? ", et passer au plan Performances élevées" : "") + ".\r\nTout sera rétabli avec « Rétablir ».\r\n\r\nContinuer ?";
+                      + (cfg.PlanGuid != null ? ", et passer au plan Performances élevées" : "")
+                      + (cfg.Nvidia != ProfilNvidia.Aucun ? ", et appliquer le profil NVIDIA " + ProfilsNvidia.Libelle(cfg.Nvidia) : "")
+                      + ".\r\nTout sera rétabli avec « Rétablir ».\r\n\r\nContinuer ?";
             if (Confirmer != null && !Confirmer(texte)) return;
             EnCours = true; Message = "Activation en cours…";
             try

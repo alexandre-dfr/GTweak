@@ -29,6 +29,88 @@ namespace GamingTweaker.Tests
             public string GetPlan() { return Plan; }
         }
 
+        // ---------- Profils NVIDIA du Mode Jeu ----------
+
+        private class FauxNvidia : INvidiaReglages
+        {
+            public bool Disponible { get; set; } = true;
+            public Dictionary<uint, uint> Profil = new Dictionary<uint, uint>();
+            public long[] Lire(uint id) { uint v; return Profil.TryGetValue(id, out v) ? new long[] { 1, v } : new long[] { 0, 7 }; }
+            public void Ecrire(uint id, uint v) { Profil[id] = v; }
+            public void Retirer(uint id) { Profil.Remove(id); }
+        }
+
+        [Fact]
+        public void Mode_jeu_performance_puis_retour_au_profil_normal()
+        {
+            var nv = new FauxNvidia();
+            nv.Profil[ProfilsNvidia.FiltrageTextures] = 0;              // réglage défini avant : remis à 0
+            var mj = new ModeJeu(dir, new Actions(), verrou, nvidia: nv);
+            var b = mj.Activate(new ModeJeuConfig { Nvidia = ProfilNvidia.Performance });
+            Assert.Equal(0x14u, nv.Profil[ProfilsNvidia.FiltrageTextures]);
+            Assert.Equal(1u, nv.Profil[ProfilsNvidia.Alimentation]);
+            Assert.Equal(0x08416747u, nv.Profil[ProfilsNvidia.VSync]);
+            Assert.Contains(b.Actions, a => a.Contains("Performance"));
+            mj.Restore();
+            Assert.False(mj.IsActive);
+            Assert.Equal(new Dictionary<uint, uint> { { ProfilsNvidia.FiltrageTextures, 0 } }, nv.Profil);   // non définis avant : retirés
+        }
+
+        [Fact]
+        public void Mode_jeu_qualite()
+        {
+            var nv = new FauxNvidia();
+            var mj = new ModeJeu(dir, new Actions(), verrou, nvidia: nv);
+            mj.Activate(new ModeJeuConfig { Nvidia = ProfilNvidia.Qualite });
+            Assert.Equal(0xFFFFFFF6u, nv.Profil[ProfilsNvidia.FiltrageTextures]);
+            Assert.False(nv.Profil.ContainsKey(ProfilsNvidia.LatenceUltra));
+            mj.Restore();
+            Assert.Empty(nv.Profil);
+        }
+
+        [Fact]
+        public void Reglage_nvidia_change_par_l_utilisateur_pendant_le_mode_jeu_est_conserve()
+        {
+            var nv = new FauxNvidia();
+            var mj = new ModeJeu(dir, new Actions(), verrou, nvidia: nv);
+            mj.Activate(new ModeJeuConfig { Nvidia = ProfilNvidia.Performance });
+            nv.Profil[ProfilsNvidia.VSync] = 0x47814940;                  // V-Sync forcée à la main entre-temps
+            mj.Restore();
+            Assert.Equal(0x47814940u, nv.Profil[ProfilsNvidia.VSync]);
+            Assert.False(nv.Profil.ContainsKey(ProfilsNvidia.FiltrageTextures));
+        }
+
+        [Fact]
+        public void Sans_pilote_nvidia_le_profil_est_ignore_avec_un_avertissement()
+        {
+            var nv = new FauxNvidia { Disponible = false };
+            var mj = new ModeJeu(dir, new Actions(), verrou, nvidia: nv);
+            var b = mj.Activate(new ModeJeuConfig { Nvidia = ProfilNvidia.Performance, PlanGuid = ModeJeu.PlanPerformances });
+            Assert.Contains(b.Avertissements, a => a.Contains("NVIDIA"));
+            Assert.Empty(nv.Profil);
+            mj.Restore();
+            Assert.False(mj.IsActive);
+        }
+
+        [Fact]
+        public void Aucun_profil_nvidia_ne_touche_pas_au_pilote()
+        {
+            var nv = new FauxNvidia();
+            var mj = new ModeJeu(dir, new Actions(), verrou, nvidia: nv);
+            mj.Activate(new ModeJeuConfig { PlanGuid = ModeJeu.PlanPerformances });
+            mj.Restore();
+            Assert.Empty(nv.Profil);
+        }
+
+        [Fact]
+        public void Le_mode_automatique_reprend_le_profil_nvidia()
+        {
+            var c = new ModeJeuAutoConfig { Nvidia = ProfilNvidia.Qualite };
+            c.Enregistrer(dir);
+            Assert.Equal(ProfilNvidia.Qualite, ModeJeuAutoConfig.Charger(dir).VersModeJeu().Nvidia);
+            Assert.Contains("\"Qualite\"", File.ReadAllText(Path.Combine(dir, ModeJeuAutoConfig.NomFichier)));
+        }
+
         // ---------- Reconnaissance des jeux ----------
 
         private static JeuSurveille Dossier(string c) => new JeuSurveille { Nom = "J", Chemin = c, Source = "Steam" };

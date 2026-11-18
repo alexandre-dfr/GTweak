@@ -88,8 +88,14 @@
             </Setter>
         </Style>
 
+        <!-- Groupes repliés à l'ouverture d'un menu ; dépliés pendant une recherche (sinon les résultats seraient cachés). -->
         <Style x:Key="GroupExpander" TargetType="Expander">
-            <Setter Property="IsExpanded" Value="True"/>
+            <Setter Property="IsExpanded" Value="False"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding DataContext.EnRecherche, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                    <Setter Property="IsExpanded" Value="True"/>
+                </DataTrigger>
+            </Style.Triggers>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Expander">
@@ -390,6 +396,10 @@
                     </TextBlock.Style>
                 </TextBlock>
 
+                <!-- Accueil -->
+                <Border Grid.Row="1" Grid.RowSpan="2" Visibility="{Binding EstAccueil, Converter={StaticResource BoolVis}}">
+                    <local:AccueilView/>
+                </Border>
                 <!-- Mode Jeu -->
                 <Border Grid.Row="1" Grid.RowSpan="2" Visibility="{Binding EstModeJeu, Converter={StaticResource BoolVis}}">
                     <local:ModeJeuView DataContext="{Binding ModeJeu}"/>

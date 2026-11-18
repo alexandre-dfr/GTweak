@@ -19,12 +19,13 @@ namespace GamingTweaker.Core
         [JsonProperty("services")] public List<string> Services { get; set; } = new List<string>();
         [JsonProperty("processus")] public List<ProcessusChoix> Processus { get; set; } = new List<ProcessusChoix>();
         [JsonProperty("plan")] public bool Plan { get; set; } = true;
+        [JsonProperty("nvidia")] [JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))] public ProfilNvidia Nvidia { get; set; }
 
         public const string NomFichier = "modejeu-auto.json";
 
         public ModeJeuConfig VersModeJeu()
         {
-            var c = new ModeJeuConfig { PlanGuid = Plan ? ModeJeu.PlanPerformances : null };
+            var c = new ModeJeuConfig { PlanGuid = Plan ? ModeJeu.PlanPerformances : null, Nvidia = Nvidia };
             c.Services.AddRange((Services ?? new List<string>()).Where(s => !ModeJeu.EstServiceProtege(s)));
             // Jamais fermés par le mode automatique : un jeu de la liste (il serait fermé puis relancé en boucle) et les lanceurs
             // (Steam, Epic : les fermer peut fermer le jeu en cours).

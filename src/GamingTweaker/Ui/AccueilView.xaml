@@ -1,0 +1,108 @@
+<UserControl x:Class="GamingTweaker.Ui.AccueilView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolVis"/>
+        <Style x:Key="Carte" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="18,14"/>
+            <Setter Property="Margin" Value="0,0,0,14"/>
+        </Style>
+        <Style x:Key="TitreCarte" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
+    </UserControl.Resources>
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,16,16">
+        <StackPanel>
+            <TextBlock Text="Votre PC, prêt pour le jeu, sans rien casser." FontSize="15" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,4"/>
+            <TextBlock Text="{Binding ResumePc}" FontSize="13" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,16" TextWrapping="Wrap"/>
+
+            <!-- Démarrage rapide : profils intégrés -->
+            <Border Style="{StaticResource Carte}">
+                <StackPanel>
+                    <TextBlock Text="Démarrage rapide" Style="{StaticResource TitreCarte}"/>
+                    <TextBlock Text="Choisissez un profil : ses options sont cochées, rien n'est appliqué avant « Aperçu » puis « LANCER »." Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                    <ItemsControl ItemsSource="{Binding ProfilsRapides}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><UniformGrid Rows="1"/></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Margin="0,0,10,0" Padding="14,12" HorizontalContentAlignment="Left" Cursor="Hand"
+                                        Command="{Binding DataContext.ProfilRapideCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding Nom}">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Nom}" FontSize="15" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding Description}" FontSize="12" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="14"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <!-- État de ce PC (après la détection) -->
+                <Border Style="{StaticResource Carte}">
+                    <StackPanel>
+                        <TextBlock Text="État de ce PC" Style="{StaticResource TitreCarte}"/>
+                        <ItemsControl ItemsSource="{Binding EtatMenus}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Command="{Binding DataContext.AllerCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding Menu}"
+                                            Margin="0,0,0,6" Padding="10,6" HorizontalContentAlignment="Stretch" Cursor="Hand" ToolTip="Ouvrir ce menu">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="110"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Menu}" VerticalAlignment="Center"/>
+                                            <ProgressBar Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding Proportion, Mode=OneWay}" Height="6" Margin="8,0"
+                                                         Foreground="{StaticResource SurFg}" Background="{StaticResource BgBrush}" BorderThickness="0" VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="2" Text="{Binding Texte}" FontSize="12" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+                <!-- Raccourcis -->
+                <Border Grid.Column="2" Style="{StaticResource Carte}">
+                    <StackPanel>
+                        <TextBlock Text="Mode Jeu" Style="{StaticResource TitreCarte}"/>
+                        <TextBlock Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,10"
+                                   Text="Libère des ressources le temps d'une partie, avec un profil NVIDIA Performance ou Qualité, puis remet tout comme avant. Il peut aussi s'activer tout seul quand un jeu démarre."/>
+                        <TextBlock Text="Le Mode Jeu est actif." Foreground="{StaticResource AvanceFg}" FontWeight="SemiBold" Margin="0,0,0,10"
+                                   Visibility="{Binding ModeJeu.EstActif, Converter={StaticResource BoolVis}, FallbackValue=Collapsed}"/>
+                        <WrapPanel>
+                            <Button Content="Ouvrir le Mode Jeu" Style="{StaticResource PrimaryButton}" Command="{Binding AllerCommand}" CommandParameter="Mode Jeu" Margin="0,0,8,6"/>
+                            <Button Content="Historique et annulation" Command="{Binding AllerCommand}" CommandParameter="Historique" Margin="0,0,8,6"/>
+                            <Button Content="Informations du PC" Command="{Binding AllerCommand}" CommandParameter="Informations" Margin="0,0,8,6"/>
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Conseils -->
+            <Border Style="{StaticResource Carte}">
+                <StackPanel>
+                    <TextBlock Text="Bon à savoir" Style="{StaticResource TitreCarte}"/>
+                    <TextBlock Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,6" Text="• Seules les options cochées s'exécutent, et « Aperçu » montre tout avant de lancer."/>
+                    <TextBlock Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,6" Text="• Badges : Sûr (sans risque), Avancé (à connaître), Risqué (confirmation demandée). « Recommandé » ne coche que du Sûr."/>
+                    <TextBlock Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,6" Text="• Tout s'annule : par session dans l'Historique, ou d'un coup avec « Tout restaurer »."/>
+                    <TextBlock Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Text="• Ctrl+F pour chercher une option dans tous les menus ; les groupes se déplient d'un clic."/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

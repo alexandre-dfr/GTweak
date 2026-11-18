@@ -259,7 +259,7 @@ namespace GamingTweaker.Tests
             var info = new InfoViewModel(() => echantillon, () => null);
             vm.Info = info;
 
-            var noms = new[] { "Mises à jour", "Télémétrie", "Nettoyage", "Optimisation", "Bloatware", "Informations", "Mode Jeu", "Historique" };
+            var noms = new[] { "Accueil", "Mises à jour", "Télémétrie", "Nettoyage", "Optimisation", "Bloatware", "Informations", "Mode Jeu", "Historique" };
             for (int i = 0; i < noms.Length; i++)
             {
                 vm.MenuCourant = noms[i]; Pump(d);
