@@ -35,6 +35,18 @@ namespace GamingTweaker.Ui
         public double Proportion { get { return Total == 0 ? 0 : (double)Appliquees / Total; } }
     }
 
+    /// <summary>Tuile de profil intégré de l'écran d'accueil.</summary>
+    public class TuileProfil
+    {
+        public string Nom { get; set; }
+        public string Accroche { get; set; }
+        public string Description { get; set; }
+        public int Nombre { get; set; }
+        public string NombreTexte { get { return Nombre + " option" + (Nombre > 1 ? "s" : ""); } }
+        /// <summary>0 : Gaming léger, 1 : Gaming max, 2 : Confidentialité (couleur de la tuile).</summary>
+        public int Rang { get; set; }
+    }
+
     public class PreviewRow : ObservableObject
     {
         private string taille = "—";
@@ -127,7 +139,31 @@ namespace GamingTweaker.Ui
         public ICommand ProfilRapideCommand { get; private set; }
         public bool EstAccueil { get { return !EnRecherche && menuCourant == MenuAccueil; } }
         public ObservableCollection<LigneAccueil> EtatMenus { get; } = new ObservableCollection<LigneAccueil>();
-        public IReadOnlyList<ProfilIntegre> ProfilsRapides { get { return ProfilsIntegres.Tous; } }
+        public IReadOnlyList<TuileProfil> ProfilsRapides
+        {
+            get
+            {
+                return ProfilsIntegres.Tous.Select((p, i) => new TuileProfil
+                {
+                    Nom = p.Nom, Accroche = p.Accroche, Description = p.Description, Rang = i,
+                    Nombre = ProfilsIntegres.Construire(p, items, facts).Options.Count,
+                }).ToList();
+            }
+        }
+
+        private int totalAppliquees, totalOptions;
+        public int TotalAppliquees { get { return totalAppliquees; } }
+        public int TotalOptions { get { return totalOptions; } }
+        /// <summary>Phrase de synthèse de l'accueil (avant la détection : « Analyse de ce PC… »).</summary>
+        public string SyntheseAccueil
+        {
+            get
+            {
+                if (Options.Any(o => o.Etat == "Détection…")) return "Analyse de ce PC en cours…";
+                if (Options.Count > 0 && Options.All(o => o.Etat == "Inconnu")) return "L'état de ce PC n'a pas pu être lu.";
+                return totalAppliquees + " réglage" + (totalAppliquees > 1 ? "s" : "") + " sur " + totalOptions + " déjà en place sur ce PC.";
+            }
+        }
 
         public string ResumePc
         {
@@ -153,6 +189,8 @@ namespace GamingTweaker.Ui
                 if (opts.Count == 0) continue;
                 EtatMenus.Add(new LigneAccueil { Menu = m, Total = opts.Count, Appliquees = opts.Count(o => o.Etat == EtatDejaApplique) });
             }
+            totalAppliquees = EtatMenus.Sum(l => l.Appliquees); totalOptions = EtatMenus.Sum(l => l.Total);
+            Raise("TotalAppliquees"); Raise("TotalOptions"); Raise("SyntheseAccueil");
         }
 
         public void ChargerProfilRapide(string nom)

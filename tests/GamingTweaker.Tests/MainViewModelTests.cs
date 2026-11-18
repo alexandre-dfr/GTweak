@@ -185,10 +185,15 @@ namespace GamingTweaker.Tests
             Assert.True(v.EstAccueil); Assert.True(v.EstEmplacement);
             Assert.Equal("Bienvenue dans GamingTweaker", v.TitreAffiche);
             Assert.Empty(v.Visibles);
+            Assert.Equal("Analyse de ce PC en cours…", v.SyntheseAccueil);
             await v.DetectAsync();
             var opt = v.EtatMenus.Single(l => l.Menu == "Optimisation");
             Assert.Equal(1, opt.Appliquees); Assert.Equal(2, opt.Total);
             Assert.DoesNotContain(v.EtatMenus, l => l.Menu == "Bloatware");   // menu sans option : pas de ligne
+            Assert.Equal("1 réglage sur 3 déjà en place sur ce PC.", v.SyntheseAccueil);
+            Assert.Equal(3, v.ProfilsRapides.Count);
+            Assert.Equal(3, v.ProfilsRapides.Single(t => t.Nom == "Gaming léger").Nombre);
+            Assert.False(string.IsNullOrEmpty(v.ProfilsRapides[0].Accroche));
             v.AllerCommand.Execute("Télémétrie");
             Assert.False(v.EstAccueil); Assert.Equal(new[] { "t.a" }, v.Visibles.Select(o => o.Id).ToArray());
         }

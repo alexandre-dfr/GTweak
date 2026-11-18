@@ -11,6 +11,8 @@ namespace GamingTweaker.Core
         /// <summary>Nom affiché dans la liste des profils (avec le suffixe « (intégré) »).</summary>
         public string NomAffiche { get { return Nom + ProfilsIntegres.Suffixe; } }
         public string Description { get; set; }
+        /// <summary>Phrase courte affichée sur la tuile de l'écran d'accueil.</summary>
+        public string Accroche { get; set; }
         internal Func<CatalogItem, bool> Retient { get; set; }
     }
 
@@ -37,18 +39,21 @@ namespace GamingTweaker.Core
             new ProfilIntegre
             {
                 Nom = "Gaming léger",
+                Accroche = "Le plus sûr : rien que des réglages sans risque.",
                 Description = "Optimisation, Télémétrie et Nettoyage : options Sûr uniquement.",
                 Retient = i => Est(i, Opt, RiskLevel.Sur) || Est(i, Tel, RiskLevel.Sur) || Est(i, Net, RiskLevel.Sur),
             },
             new ProfilIntegre
             {
                 Nom = "Gaming max",
+                Accroche = "Le plus de performances en jeu.",
                 Description = "Optimisation : options Sûr et Avancé ; Télémétrie et Nettoyage : options Sûr.",
                 Retient = i => Est(i, Opt, RiskLevel.Sur, RiskLevel.Avance) || Est(i, Tel, RiskLevel.Sur) || Est(i, Net, RiskLevel.Sur),
             },
             new ProfilIntegre
             {
                 Nom = "Confidentialité",
+                Accroche = "Le moins de données envoyées à Microsoft.",
                 Description = "Télémétrie : options Sûr et Avancé.",
                 Retient = i => Est(i, Tel, RiskLevel.Sur, RiskLevel.Avance),
             },
