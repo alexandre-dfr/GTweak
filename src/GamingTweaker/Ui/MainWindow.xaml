@@ -49,7 +49,7 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
                         <Grid>
-                            <Border x:Name="b" Margin="8,2" Padding="14,10" CornerRadius="2" Background="Transparent" Cursor="Hand">
+                            <Border x:Name="b" Margin="8,1" Padding="14,7" CornerRadius="2" Background="Transparent" Cursor="Hand">
                                 <TextBlock x:Name="t" Text="{Binding Libelle}" FontSize="15" FontFamily="{StaticResource TitreFont}" TextWrapping="Wrap"/>
                             </Border>
                             <Rectangle x:Name="sep" Height="1" Margin="18,8" Fill="{StaticResource BorderBrush}" Visibility="Collapsed"/>
@@ -268,27 +268,26 @@
             <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource AcidGradientBrush}" BorderThickness="0,0,2,0">
                 <DockPanel>
                 <!-- Logo : nom en chrome, soulignement néon -->
-                <StackPanel DockPanel.Dock="Top" Margin="22,20,16,6">
-                    <TextBlock Text="GAMING" FontFamily="{StaticResource TitreFont}" FontSize="26" Foreground="{StaticResource ChromeBrush}" Margin="0,0,0,-6"/>
-                    <TextBlock Text="TWEAKER" FontFamily="{StaticResource TitreFont}" FontSize="26" Foreground="{StaticResource AccentBrush}" Effect="{StaticResource LueurAcide}"/>
-                    <Rectangle Height="2" Fill="{StaticResource AcidGradientBrush}" Margin="0,8,0,0"/>
-                    <Grid Margin="0,8,0,0">
-                        <Path Data="{StaticResource GeoCodeBarres}" Style="{StaticResource FormePleine}" Height="14" HorizontalAlignment="Left" Stretch="Fill" Width="96"/>
+                <StackPanel DockPanel.Dock="Top" Margin="22,14,16,4">
+                    <TextBlock Text="GAMING" FontFamily="{StaticResource TitreFont}" FontSize="22" Foreground="{StaticResource ChromeBrush}" Margin="0,0,0,-5"/>
+                    <TextBlock Text="TWEAKER" FontFamily="{StaticResource TitreFont}" FontSize="22" Foreground="{StaticResource AccentBrush}" Effect="{StaticResource LueurAcide}"/>
+                    <Rectangle Height="2" Fill="{StaticResource AcidGradientBrush}" Margin="0,6,0,0"/>
+                    <Grid Margin="0,6,0,0">
+                        <Path Data="{StaticResource GeoCodeBarres}" Style="{StaticResource FormePleine}" Height="12" HorizontalAlignment="Left" Stretch="Fill" Width="90"/>
                         <TextBlock Text="EST. MMXXVI" Style="{StaticResource TexteCode}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                     </Grid>
-                    <TextBlock Text="0000:1711:0012 // SYS.OK" Style="{StaticResource TexteCode}" Margin="0,4,0,0"/>
                 </StackPanel>
                 <!-- Pied de la barre latérale : globe filaire, étoile, étiquette -->
-                <Grid DockPanel.Dock="Bottom" Margin="22,0,16,18" Height="96">
-                    <Path Data="{StaticResource GeoGlobe}" Style="{StaticResource FormeTrait}" Stroke="{StaticResource AccentBrush}" Width="78" Height="78" HorizontalAlignment="Left" VerticalAlignment="Bottom" Opacity="0.85"/>
-                    <Path Data="{StaticResource GeoEtoile}" Style="{StaticResource FormePleine}" Width="16" Height="16" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="70,0,0,0"/>
-                    <Path Data="{StaticResource GeoEtoile}" Style="{StaticResource FormePleine}" Fill="{StaticResource MagentaBrush}" Width="9" Height="9" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="92,18,0,0"/>
+                <Grid DockPanel.Dock="Bottom" Margin="22,0,16,10" Height="56">
+                    <Path Data="{StaticResource GeoGlobe}" Style="{StaticResource FormeTrait}" Stroke="{StaticResource AccentBrush}" Width="50" Height="50" HorizontalAlignment="Left" VerticalAlignment="Bottom" Opacity="0.85"/>
+                    <Path Data="{StaticResource GeoEtoile}" Style="{StaticResource FormePleine}" Width="13" Height="13" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="56,0,0,0"/>
+                    <Path Data="{StaticResource GeoEtoile}" Style="{StaticResource FormePleine}" Fill="{StaticResource MagentaBrush}" Width="8" Height="8" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="74,14,0,0"/>
                     <Border Style="{StaticResource Pilule}" HorizontalAlignment="Right" VerticalAlignment="Bottom">
                         <TextBlock Text="SUPER TWEAK" Style="{StaticResource PiluleTexte}"/>
                     </Border>
                 </Grid>
                 <ListBox ItemsSource="{Binding Menus}" SelectedValuePath="Nom" SelectedValue="{Binding MenuCourant, Mode=TwoWay}"
-                         ItemContainerStyle="{StaticResource MenuItemStyle}" Background="Transparent" BorderThickness="0" Padding="0,12,0,0"
+                         ItemContainerStyle="{StaticResource MenuItemStyle}" Background="Transparent" BorderThickness="0" Padding="0,6,0,0"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
                 </DockPanel>
             </Border>

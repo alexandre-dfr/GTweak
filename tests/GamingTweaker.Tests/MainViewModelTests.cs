@@ -183,7 +183,7 @@ namespace GamingTweaker.Tests
             }, its => Task.FromResult(its.ToDictionary(i => i.Id, i => i.Id == "o.a" ? DetectState.Applied : DetectState.NotApplied)));
             Assert.Equal("Accueil", v.MenuCourant);
             Assert.True(v.EstAccueil); Assert.True(v.EstEmplacement);
-            Assert.Equal("Bienvenue dans GamingTweaker", v.TitreAffiche);
+            Assert.Equal("Bienvenue", v.TitreAffiche);
             Assert.Empty(v.Visibles);
             Assert.Equal("Analyse de ce PC en cours…", v.SyntheseAccueil);
             await v.DetectAsync();

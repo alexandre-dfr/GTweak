@@ -281,7 +281,7 @@ namespace GamingTweaker.Ui
         /// <summary>Vue-modèle de l'historique (null tant qu'elle n'est pas configurée par l'application).</summary>
         public HistoriqueViewModel Historique { get { return historiqueVm; } set { Set(ref historiqueVm, value); } }
 
-        public string TitreAffiche { get { return EnRecherche ? "Résultats de la recherche" : menuCourant == MenuAccueil ? "Bienvenue dans GamingTweaker" : menuCourant; } }
+        public string TitreAffiche { get { return EnRecherche ? "Résultats de la recherche" : menuCourant == MenuAccueil ? "Bienvenue" : menuCourant; } }
 
         public string Message { get { return message; } set { Set(ref message, value ?? ""); } }
         /// <summary>Bandeau d'avertissement (compte d'élévation différent du bureau).</summary>
