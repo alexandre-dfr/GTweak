@@ -218,6 +218,76 @@
         </Setter>
     </Style>
 
+    <!-- Police d'icônes Windows (Segoe Fluent Icons sur Windows 11, Segoe MDL2 Assets sur Windows 10) -->
+    <FontFamily x:Key="PoliceIcones">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+
+    <!-- Bouton discret à icône (barre du haut) -->
+    <Style x:Key="BoutonIcone" TargetType="Button">
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Width" Value="36"/>
+        <Setter Property="Height" Value="34"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="4">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="{DynamicResource NavHoverBrush}"/></Trigger>
+                        <Trigger Property="IsPressed" Value="True"><Setter TargetName="b" Property="Background" Value="{DynamicResource NavSelectedBrush}"/></Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Menu contextuel façon Windows 11 : carte arrondie, éléments à surbrillance douce, coche d'accent -->
+    <Style TargetType="ContextMenu">
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="HasDropShadow" Value="True"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ContextMenu">
+                    <Border Background="{DynamicResource PopupBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="4" MinWidth="180">
+                        <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style TargetType="MenuItem">
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="MenuItem">
+                    <Border x:Name="b" Background="Transparent" CornerRadius="4" Padding="10,7" Margin="0,1">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="28"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="20"/>
+                            </Grid.ColumnDefinitions>
+                            <ContentPresenter ContentSource="Icon" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                            <ContentPresenter Grid.Column="1" ContentSource="Header" VerticalAlignment="Center" RecognizesAccessKey="True"/>
+                            <TextBlock x:Name="coche" Grid.Column="2" Text="&#xE73E;" FontFamily="{StaticResource PoliceIcones}" FontSize="12"
+                                       Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" HorizontalAlignment="Right" Visibility="Collapsed"/>
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsHighlighted" Value="True"><Setter TargetName="b" Property="Background" Value="{DynamicResource NavHoverBrush}"/></Trigger>
+                        <Trigger Property="IsChecked" Value="True"><Setter TargetName="coche" Property="Visibility" Value="Visible"/></Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Pastille de risque -->
     <Style x:Key="Badge" TargetType="Border">
         <Setter Property="CornerRadius" Value="4"/>

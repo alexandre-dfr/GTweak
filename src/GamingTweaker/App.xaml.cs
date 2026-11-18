@@ -169,6 +169,8 @@ namespace GamingTweaker
                 fenetre.LancerControlesDemarrage(paths, facts);
                 var _ = vm.DetectAsync();
                 var __ = vm.Routine.ActualiserAsync();
+                // Diagnostic dès l'ouverture : son résumé s'affiche sur l'accueil (lecture seule, hors du thread de l'interface).
+                vm.Diagnostic.AnalyserSiBesoin();
             };
             Action ouvrir = () =>
             {

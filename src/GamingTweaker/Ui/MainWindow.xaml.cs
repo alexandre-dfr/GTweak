@@ -17,16 +17,35 @@ namespace GamingTweaker.Ui
             InitializeComponent();
             DataContext = vm;
             PreviewKeyDown += Raccourcis;
-            foreach (System.Windows.Controls.ComboBoxItem i in SelecteurTheme.Items)
-                if ((string)i.Tag == ThemeApplication.Choix.ToString()) { SelecteurTheme.SelectedItem = i; break; }
+            MajIconeTheme();
+            ThemeApplication.Change += MajIconeTheme;
+            Closed += (s, e) => ThemeApplication.Change -= MajIconeTheme;
         }
 
-        private void SelecteurTheme_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        /// <summary>Icône du bouton de thème : palette (comme Windows), soleil (clair) ou lune (sombre) ; coche sur le choix actif.</summary>
+        private void MajIconeTheme()
         {
-            var i = SelecteurTheme.SelectedItem as System.Windows.Controls.ComboBoxItem;
+            var c = ThemeApplication.Choix;
+            IconeTheme.Text = c == ChoixTheme.Clair ? "\uE706" : c == ChoixTheme.Sombre ? "\uE708" : "\uE790";
+            BoutonTheme.ToolTip = "Thème : " + (c == ChoixTheme.Clair ? "clair" : c == ChoixTheme.Sombre ? "sombre" : "comme Windows");
+            foreach (var o in MenuTheme.Items)
+            {
+                var m = o as System.Windows.Controls.MenuItem;
+                if (m != null) m.IsChecked = (string)m.Tag == c.ToString();
+            }
+        }
+
+        private void BoutonTheme_Click(object sender, RoutedEventArgs e)
+        {
+            MenuTheme.PlacementTarget = BoutonTheme;
+            MenuTheme.IsOpen = true;
+        }
+
+        private void ChoixTheme_Click(object sender, RoutedEventArgs e)
+        {
+            var m = sender as System.Windows.Controls.MenuItem;
             ChoixTheme c;
-            if (!IsLoaded || i == null || !Enum.TryParse((string)i.Tag, out c) || c == ThemeApplication.Choix) return;
-            ThemeApplication.Definir(c);
+            if (m != null && Enum.TryParse((string)m.Tag, out c)) ThemeApplication.Definir(c);
         }
 
         /// <summary>Ctrl+F : recherche ; Échap dans la recherche : l'efface.</summary>

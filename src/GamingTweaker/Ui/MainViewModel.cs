@@ -45,6 +45,8 @@ namespace GamingTweaker.Ui
         public string NombreTexte { get { return Nombre + " option" + (Nombre > 1 ? "s" : ""); } }
         /// <summary>0 : Gaming léger, 1 : Gaming max, 2 : Confidentialité (couleur de la tuile).</summary>
         public int Rang { get; set; }
+        /// <summary>Icône Windows (Segoe Fluent Icons) : bouclier, éclair, cadenas.</summary>
+        public string Icone { get { return Rang == 0 ? "\uEA18" : Rang == 1 ? "\uE945" : "\uE72E"; } }
     }
 
     public class PreviewRow : ObservableObject
@@ -186,6 +188,8 @@ namespace GamingTweaker.Ui
 
         private int totalAppliquees, totalOptions;
         public int TotalAppliquees { get { return totalAppliquees; } }
+        /// <summary>Part des réglages déjà en place (0 à 1), pour la jauge de l'accueil.</summary>
+        public double ProportionAppliquees { get { return totalOptions == 0 ? 0 : (double)totalAppliquees / totalOptions; } }
         public int TotalOptions { get { return totalOptions; } }
         /// <summary>Phrase de synthèse de l'accueil (avant la détection : « Analyse de ce PC… »).</summary>
         public string SyntheseAccueil
@@ -223,7 +227,7 @@ namespace GamingTweaker.Ui
                 EtatMenus.Add(new LigneAccueil { Menu = m, Total = opts.Count, Appliquees = opts.Count(o => o.Etat == EtatDejaApplique) });
             }
             totalAppliquees = EtatMenus.Sum(l => l.Appliquees); totalOptions = EtatMenus.Sum(l => l.Total);
-            Raise("TotalAppliquees"); Raise("TotalOptions"); Raise("SyntheseAccueil");
+            Raise("TotalAppliquees"); Raise("TotalOptions"); Raise("SyntheseAccueil"); Raise("ProportionAppliquees");
         }
 
         public void ChargerProfilRapide(string nom)

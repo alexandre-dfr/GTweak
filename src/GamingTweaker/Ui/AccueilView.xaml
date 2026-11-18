@@ -8,7 +8,6 @@
         <Style x:Key="TitreSection" TargetType="TextBlock">
             <Setter Property="FontSize" Value="16"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
             <Setter Property="Margin" Value="2,0,0,10"/>
         </Style>
         <Style x:Key="Secondaire" TargetType="TextBlock">
@@ -16,8 +15,23 @@
             <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
         </Style>
+        <!-- Icône dans une pastille carrée arrondie (comme les Paramètres de Windows 11) -->
+        <Style x:Key="PastilleIcone" TargetType="Border">
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Background" Value="{DynamicResource NavSelectedBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+        </Style>
+        <Style x:Key="Icone" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{StaticResource PoliceIcones}"/>
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
 
-        <!-- Carte cliquable (style Paramètres de Windows 11) -->
+        <!-- Carte cliquable -->
         <Style x:Key="CarteBouton" TargetType="Button">
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
@@ -41,141 +55,190 @@
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="0,0,16,24" MaxWidth="1080" HorizontalAlignment="Left">
+        <!-- Toute la largeur disponible : les colonnes sont proportionnelles et suivent la taille de la fenêtre. -->
+        <StackPanel Margin="0,0,16,24">
 
-            <!-- Synthèse -->
-            <Border Style="{StaticResource CarteW11}" Padding="24,20" Margin="0,0,0,8">
-                <StackPanel>
-                    <TextBlock Text="{Binding SyntheseAccueil}" FontSize="20" FontWeight="SemiBold" FontFamily="{StaticResource PoliceTitre}" TextWrapping="Wrap"/>
-                    <TextBlock Text="{Binding ResumePc}" Style="{StaticResource Secondaire}" FontSize="14" Margin="0,4,0,0"/>
-                </StackPanel>
-            </Border>
+            <!-- ===== 1. Bandeau : état de ce PC + diagnostic ===== -->
+            <Grid Margin="0,0,0,24">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="3*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="2*"/>
+                </Grid.ColumnDefinitions>
+                <Border Style="{StaticResource CarteW11}" Padding="22,18">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource PastilleIcone}" Width="52" Height="52" CornerRadius="10" Background="{DynamicResource AccentBrush}">
+                            <TextBlock Text="&#xE7FC;" FontFamily="{StaticResource PoliceIcones}" FontSize="24" Foreground="{DynamicResource AccentTextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="18,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding SyntheseAccueil}" FontSize="20" FontWeight="SemiBold" FontFamily="{StaticResource PoliceTitre}" TextWrapping="Wrap"/>
+                            <TextBlock Text="{Binding ResumePc}" Style="{StaticResource Secondaire}" FontSize="14" Margin="0,2,0,10"/>
+                            <ProgressBar Minimum="0" Maximum="1" Value="{Binding ProportionAppliquees, Mode=OneWay}" Height="4"
+                                         Foreground="{DynamicResource AccentBrush}" Background="{DynamicResource BorderBrush}" BorderThickness="0"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                <Button Grid.Column="2" Style="{StaticResource CarteBouton}" Command="{Binding AllerCommand}" CommandParameter="Diagnostic">
+                    <Grid Margin="20,18">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource PastilleIcone}"><TextBlock Text="&#xE9D9;" Style="{StaticResource Icone}"/></Border>
+                        <StackPanel Grid.Column="1" Margin="14,0,8,0" VerticalAlignment="Center">
+                            <TextBlock Text="Diagnostic jeu" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding Diagnostic.Resume, FallbackValue='Écran, mémoire, pilote, disque'}" Style="{StaticResource Secondaire}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                        <TextBlock Grid.Column="2" Text="&#xE76C;" FontFamily="{StaticResource PoliceIcones}" FontSize="12" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                    </Grid>
+                </Button>
+            </Grid>
+
             <!-- Barre d'information : Mode Jeu actif -->
-            <Border Background="{DynamicResource WarnBg}" CornerRadius="6" Padding="16,10" Margin="0,0,0,8"
+            <Border Background="{DynamicResource WarnBg}" CornerRadius="8" Padding="16,10" Margin="0,-12,0,24"
                     Visibility="{Binding ModeJeu.EstActif, Converter={StaticResource BoolVis}, FallbackValue=Collapsed}">
                 <DockPanel>
-                    <Button DockPanel.Dock="Right" Content="Ouvrir" Command="{Binding AllerCommand}" CommandParameter="Mode Jeu"/>
+                    <Button DockPanel.Dock="Right" Content="Ouvrir le Mode Jeu" Command="{Binding AllerCommand}" CommandParameter="Mode Jeu"/>
+                    <TextBlock Text="&#xE7BA;" FontFamily="{StaticResource PoliceIcones}" Foreground="{DynamicResource AvanceFg}" VerticalAlignment="Center" Margin="0,0,10,0"/>
                     <TextBlock Text="Le Mode Jeu est actif : des services ou des processus sont arrêtés." VerticalAlignment="Center" TextWrapping="Wrap"/>
                 </DockPanel>
             </Border>
 
-            <!-- Démarrage rapide -->
-            <TextBlock Text="Démarrage rapide" Style="{StaticResource TitreSection}" Margin="2,20,0,4"/>
-            <TextBlock Text="Un clic coche les options du profil. Rien ne change avant « Aperçu » puis « LANCER »." Style="{StaticResource Secondaire}" Margin="2,0,0,12"/>
-            <ItemsControl ItemsSource="{Binding ProfilsRapides}">
+            <!-- ===== 2. Démarrage rapide ===== -->
+            <DockPanel Margin="2,0,0,10">
+                <TextBlock Text="Rien ne change avant « Aperçu » puis « LANCER »" Style="{StaticResource Secondaire}" DockPanel.Dock="Right" VerticalAlignment="Bottom"/>
+                <TextBlock Text="Démarrage rapide" Style="{StaticResource TitreSection}" Margin="0"/>
+            </DockPanel>
+            <ItemsControl ItemsSource="{Binding ProfilsRapides}" Margin="0,0,0,24">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate><UniformGrid Rows="1"/></ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Button Style="{StaticResource CarteBouton}" Margin="0,0,10,0" ToolTip="{Binding Description}"
+                        <Button Style="{StaticResource CarteBouton}" Margin="0,0,12,0" ToolTip="{Binding Description}"
                                 Command="{Binding DataContext.ProfilRapideCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding Nom}">
                             <DockPanel Margin="18,16">
-                                <DockPanel DockPanel.Dock="Bottom" Margin="0,14,0,0">
-                                    <TextBlock DockPanel.Dock="Right" Text="Choisir" Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold"/>
+                                <DockPanel DockPanel.Dock="Bottom" Margin="0,16,0,0">
+                                    <TextBlock DockPanel.Dock="Right" Text="Cocher ces options" Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold"/>
                                     <TextBlock Text="{Binding NombreTexte}" Style="{StaticResource Secondaire}"/>
                                 </DockPanel>
-                                <StackPanel>
-                                    <TextBlock Text="{Binding Nom}" FontSize="16" FontWeight="SemiBold"/>
-                                    <TextBlock Text="{Binding Accroche}" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                    <TextBlock Text="{Binding Description}" Style="{StaticResource Secondaire}" Margin="0,6,0,0"/>
-                                </StackPanel>
+                                <DockPanel>
+                                    <Border DockPanel.Dock="Left" Style="{StaticResource PastilleIcone}" Margin="0,0,14,0">
+                                        <TextBlock Text="{Binding Icone}" Style="{StaticResource Icone}"/>
+                                    </Border>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Nom}" FontSize="16" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding Accroche}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        <TextBlock Text="{Binding Description}" Style="{StaticResource Secondaire}" Margin="0,6,0,0"/>
+                                    </StackPanel>
+                                </DockPanel>
                             </DockPanel>
                         </Button>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <Grid Margin="0,22,0,0">
+            <!-- ===== 3. État par menu | Mode Jeu et raccourcis ===== -->
+            <Grid Margin="0,0,0,24">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="3*"/>
-                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="12"/>
                     <ColumnDefinition Width="2*"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- État par menu : une ligne par menu, comme les Paramètres -->
                 <StackPanel>
-                    <TextBlock Text="État de ce PC" Style="{StaticResource TitreSection}"/>
-                    <ItemsControl ItemsSource="{Binding EtatMenus}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Button Style="{StaticResource CarteBouton}" Margin="0,0,0,4"
-                                        Command="{Binding DataContext.AllerCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding Menu}">
-                                    <Grid Margin="16,12">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel>
-                                            <TextBlock Text="{Binding Menu}"/>
-                                            <ProgressBar Minimum="0" Maximum="1" Value="{Binding Proportion, Mode=OneWay}" Height="4" Margin="0,8,24,0"
+                    <TextBlock Text="Réglages par menu" Style="{StaticResource TitreSection}"/>
+                    <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8">
+                        <ItemsControl ItemsSource="{Binding EtatMenus}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Command="{Binding DataContext.AllerCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding Menu}"
+                                            Cursor="Hand" HorizontalContentAlignment="Stretch">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="b" Background="Transparent" CornerRadius="6" Margin="4,2" Padding="14,10">
+                                                    <ContentPresenter/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="{DynamicResource PanelHoverBrush}"/></Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="140"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Menu}" VerticalAlignment="Center"/>
+                                            <ProgressBar Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding Proportion, Mode=OneWay}" Height="4" Margin="0,0,16,0" VerticalAlignment="Center"
                                                          Foreground="{DynamicResource AccentBrush}" Background="{DynamicResource BorderBrush}" BorderThickness="0"/>
-                                        </StackPanel>
-                                        <TextBlock Grid.Column="1" Text="{Binding Texte}" Style="{StaticResource Secondaire}" VerticalAlignment="Center"/>
-                                        <TextBlock Grid.Column="2" Text="›" FontSize="18" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" Margin="14,0,0,2"/>
-                                    </Grid>
-                                </Button>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                                            <TextBlock Grid.Column="2" Text="{Binding Texte}" Style="{StaticResource Secondaire}" VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="3" Text="&#xE76C;" FontFamily="{StaticResource PoliceIcones}" FontSize="11" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" Margin="14,0,0,0"/>
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Border>
                 </StackPanel>
 
-                <!-- Mode Jeu et raccourcis -->
                 <StackPanel Grid.Column="2">
                     <TextBlock Text="Mode Jeu" Style="{StaticResource TitreSection}"/>
                     <Border Style="{StaticResource CarteW11}" Margin="0,0,0,16">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource Secondaire}" FontSize="14" Margin="0,0,0,14"
-                                       Text="Libère des ressources pendant la partie, avec un profil NVIDIA Performance ou Qualité, puis remet tout comme avant. Il peut s'activer tout seul au lancement d'un jeu."/>
-                            <Button Content="Ouvrir le Mode Jeu" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left"
-                                    Command="{Binding AllerCommand}" CommandParameter="Mode Jeu"/>
-                        </StackPanel>
-                    </Border>
-                    <TextBlock Text="Raccourcis" Style="{StaticResource TitreSection}"/>
-                    <Button Style="{StaticResource CarteBouton}" Margin="0,0,0,4" Command="{Binding AllerCommand}" CommandParameter="Diagnostic">
-                        <DockPanel Margin="16,12">
-                            <TextBlock DockPanel.Dock="Right" Text="›" FontSize="18" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,2"/>
+                        <DockPanel>
+                            <Border DockPanel.Dock="Left" Style="{StaticResource PastilleIcone}" Margin="0,0,14,0"><TextBlock Text="&#xE7FC;" Style="{StaticResource Icone}"/></Border>
                             <StackPanel>
-                                <TextBlock Text="Diagnostic jeu"/>
-                                <TextBlock Text="Écran, mémoire, pilote, disque : ce qui bride vos performances" Style="{StaticResource Secondaire}" FontSize="12" Margin="0,2,0,0"/>
+                                <TextBlock Style="{StaticResource Secondaire}" FontSize="14" Margin="0,0,0,12"
+                                           Text="Libère des ressources pendant la partie, avec un profil NVIDIA Performance ou Qualité, puis remet tout comme avant. Peut s'activer seul au lancement d'un jeu."/>
+                                <Button Content="Ouvrir le Mode Jeu" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left"
+                                        Command="{Binding AllerCommand}" CommandParameter="Mode Jeu"/>
                             </StackPanel>
                         </DockPanel>
-                    </Button>
+                    </Border>
+                    <TextBlock Text="Raccourcis" Style="{StaticResource TitreSection}"/>
                     <Button Style="{StaticResource CarteBouton}" Margin="0,0,0,4" Command="{Binding AllerCommand}" CommandParameter="Historique">
-                        <DockPanel Margin="16,12">
-                            <TextBlock DockPanel.Dock="Right" Text="›" FontSize="18" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,2"/>
+                        <DockPanel Margin="14,10">
+                            <TextBlock DockPanel.Dock="Left" Text="&#xE81C;" FontFamily="{StaticResource PoliceIcones}" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                            <TextBlock DockPanel.Dock="Right" Text="&#xE76C;" FontFamily="{StaticResource PoliceIcones}" FontSize="11" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
                             <TextBlock Text="Historique et annulation" VerticalAlignment="Center"/>
                         </DockPanel>
                     </Button>
                     <Button Style="{StaticResource CarteBouton}" Command="{Binding AllerCommand}" CommandParameter="Informations">
-                        <DockPanel Margin="16,12">
-                            <TextBlock DockPanel.Dock="Right" Text="›" FontSize="18" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,2"/>
+                        <DockPanel Margin="14,10">
+                            <TextBlock DockPanel.Dock="Left" Text="&#xE946;" FontFamily="{StaticResource PoliceIcones}" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                            <TextBlock DockPanel.Dock="Right" Text="&#xE76C;" FontFamily="{StaticResource PoliceIcones}" FontSize="11" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
                             <TextBlock Text="Informations du PC" VerticalAlignment="Center"/>
                         </DockPanel>
                     </Button>
                 </StackPanel>
             </Grid>
 
-            <!-- Bon à savoir -->
-            <TextBlock Text="Bon à savoir" Style="{StaticResource TitreSection}" Margin="2,22,0,10"/>
-            <Border Style="{StaticResource CarteW11}">
-                <ItemsControl>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <DockPanel Margin="0,3">
-                                <TextBlock DockPanel.Dock="Left" Text="•" Foreground="{DynamicResource AccentBrush}" Width="16" FontWeight="Bold"/>
-                                <TextBlock Text="{Binding}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}"/>
-                            </DockPanel>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                    <ItemsControl.Items>
-                        <x:Static Member="local:AccueilView.Conseil1"/>
-                        <x:Static Member="local:AccueilView.Conseil2"/>
-                        <x:Static Member="local:AccueilView.Conseil3"/>
-                        <x:Static Member="local:AccueilView.Conseil4"/>
-                    </ItemsControl.Items>
-                </ItemsControl>
+            <!-- ===== 4. Bon à savoir (barre d'information) ===== -->
+            <Border Style="{StaticResource CarteW11}" Padding="18,14">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Left" Text="&#xE946;" FontFamily="{StaticResource PoliceIcones}" FontSize="16" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Top" Margin="0,2,14,0"/>
+                    <StackPanel>
+                        <TextBlock Text="Bon à savoir" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                        <ItemsControl>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate><TextBlock Text="{Binding}" Style="{StaticResource Secondaire}" Margin="0,0,0,4"/></DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                            <ItemsControl.Items>
+                                <x:Static Member="local:AccueilView.Conseil1"/>
+                                <x:Static Member="local:AccueilView.Conseil2"/>
+                                <x:Static Member="local:AccueilView.Conseil3"/>
+                                <x:Static Member="local:AccueilView.Conseil4"/>
+                            </ItemsControl.Items>
+                        </ItemsControl>
+                    </StackPanel>
+                </DockPanel>
             </Border>
         </StackPanel>
     </ScrollViewer>

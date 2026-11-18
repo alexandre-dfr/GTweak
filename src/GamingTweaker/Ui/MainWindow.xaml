@@ -269,15 +269,6 @@
 
             <DockPanel Background="{DynamicResource BgBrush}">
                 <TextBlock DockPanel.Dock="Top" Text="GamingTweaker" FontFamily="{StaticResource PoliceTitre}" FontSize="15" FontWeight="SemiBold" Margin="22,14,16,6"/>
-                <!-- Thème : Système (suit Windows), Clair ou Sombre -->
-                <StackPanel DockPanel.Dock="Bottom" Margin="16,6,16,12">
-                    <TextBlock Text="Thème" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="2,0,0,4"/>
-                    <ComboBox x:Name="SelecteurTheme" SelectionChanged="SelecteurTheme_SelectionChanged">
-                        <ComboBoxItem Content="Comme Windows" Tag="Systeme"/>
-                        <ComboBoxItem Content="Clair" Tag="Clair"/>
-                        <ComboBoxItem Content="Sombre" Tag="Sombre"/>
-                    </ComboBox>
-                </StackPanel>
                 <ListBox ItemsSource="{Binding Menus}" SelectedValuePath="Nom" SelectedValue="{Binding MenuCourant, Mode=TwoWay}"
                          ItemContainerStyle="{StaticResource MenuItemStyle}" Background="Transparent" BorderThickness="0" Padding="0,0,0,0"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
@@ -290,17 +281,18 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <Grid Margin="0,0,16,14">
+                <!-- En-tête : titre à gauche ; recherche et thème en haut à droite -->
+                <Grid Margin="0,0,16,16">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="260"/>
-                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="300"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="{Binding TitreAffiche}" FontSize="28" FontWeight="SemiBold" FontFamily="{StaticResource PoliceTitre}" VerticalAlignment="Center" TextWrapping="Wrap"/>
-                    <Grid Grid.Column="1" Margin="12,0">
-                        <TextBox x:Name="Recherche" Text="{Binding Recherche, UpdateSourceTrigger=PropertyChanged}" ToolTip="Rechercher une option (Ctrl+F ; Échap pour effacer)"/>
-                        <TextBlock Text="Rechercher…" IsHitTestVisible="False" Margin="10,0" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}">
+                    <Grid Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
+                        <TextBox x:Name="Recherche" Text="{Binding Recherche, UpdateSourceTrigger=PropertyChanged}" Padding="34,6,10,6" ToolTip="Rechercher une option dans tous les menus (Ctrl+F ; Échap pour effacer)"/>
+                        <TextBlock Text="&#xE721;" FontFamily="{StaticResource PoliceIcones}" FontSize="14" IsHitTestVisible="False" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
+                        <TextBlock Text="Rechercher une option" IsHitTestVisible="False" Margin="35,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="Visibility" Value="Collapsed"/>
@@ -309,24 +301,21 @@
                             </TextBlock.Style>
                         </TextBlock>
                     </Grid>
-                    <Button Grid.Column="2" Content="Recommandé" Command="{Binding RecommanderCommand}" ToolTip="Coche les options sûres de ce menu">
-                        <Button.Style>
-                            <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                                <Style.Triggers><DataTrigger Binding="{Binding EstEmplacement}" Value="True"><Setter Property="Visibility" Value="Hidden"/></DataTrigger></Style.Triggers>
-                            </Style>
-                        </Button.Style>
-                    </Button>
-                    <Button Grid.Column="3" Content="Décocher" Command="{Binding DecocherCommand}" Margin="8,0,0,0" ToolTip="Décoche les options affichées">
-                        <Button.Style>
-                            <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                                <Style.Triggers><DataTrigger Binding="{Binding EstEmplacement}" Value="True"><Setter Property="Visibility" Value="Hidden"/></DataTrigger></Style.Triggers>
-                            </Style>
-                        </Button.Style>
+                    <!-- Thème : icône soleil / lune / palette ; un clic ouvre le choix -->
+                    <Button x:Name="BoutonTheme" Grid.Column="2" Style="{StaticResource BoutonIcone}" Click="BoutonTheme_Click" ToolTip="Thème de l'application" VerticalAlignment="Center">
+                        <TextBlock x:Name="IconeTheme" Text="&#xE790;" FontFamily="{StaticResource PoliceIcones}" FontSize="16"/>
+                        <Button.ContextMenu>
+                            <ContextMenu x:Name="MenuTheme" Placement="Bottom">
+                                <MenuItem Header="Comme Windows" Tag="Systeme" Click="ChoixTheme_Click"><MenuItem.Icon><TextBlock Text="&#xE790;" FontFamily="{StaticResource PoliceIcones}" FontSize="14"/></MenuItem.Icon></MenuItem>
+                                <MenuItem Header="Clair" Tag="Clair" Click="ChoixTheme_Click"><MenuItem.Icon><TextBlock Text="&#xE706;" FontFamily="{StaticResource PoliceIcones}" FontSize="14"/></MenuItem.Icon></MenuItem>
+                                <MenuItem Header="Sombre" Tag="Sombre" Click="ChoixTheme_Click"><MenuItem.Icon><TextBlock Text="&#xE708;" FontFamily="{StaticResource PoliceIcones}" FontSize="14"/></MenuItem.Icon></MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
                     </Button>
                 </Grid>
 
                 <!-- Bandeau des menus d'options : « Tout restaurer » (tous les menus) ; lien O&O ShutUp10++ sur Télémétrie seulement -->
-                <Border Grid.Row="1" Margin="0,0,16,12" Padding="14,10" CornerRadius="6" Background="{DynamicResource PanelBrush}">
+                <Border Grid.Row="1" Margin="0,0,16,12" Padding="12,8" CornerRadius="8" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                     <Border.Style>
                         <Style TargetType="Border">
                             <Setter Property="Visibility" Value="Collapsed"/>
@@ -334,6 +323,10 @@
                         </Style>
                     </Border.Style>
                     <DockPanel LastChildFill="True">
+                        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                            <Button Content="Recommandé" Command="{Binding RecommanderCommand}" ToolTip="Coche les options sûres de ce menu"/>
+                            <Button Content="Décocher" Command="{Binding DecocherCommand}" Margin="8,0,16,0" ToolTip="Décoche les options affichées"/>
+                        </StackPanel>
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                             <Button Content="Tout restaurer" Click="ToutRestaurer_Click" IsEnabled="{Binding PeutToutRestaurer}"
                                     ToolTip="Annule toutes les options appliquées par GamingTweaker, dans tous les menus : par le journal, sinon par un retour aux valeurs par défaut de Windows"/>
@@ -346,9 +339,8 @@
                                 </Button.Style>
                             </Button>
                         </StackPanel>
-                        <CheckBox DockPanel.Dock="Right" Content="Masquer les options déjà appliquées" IsChecked="{Binding MasquerAppliquees, Mode=TwoWay}" VerticalAlignment="Center" Margin="0,0,16,0"
+                        <CheckBox Content="Masquer les options déjà appliquées" IsChecked="{Binding MasquerAppliquees, Mode=TwoWay}" VerticalAlignment="Center"
                                   ToolTip="N'affiche que ce qui reste à faire (une option cochée reste visible)"/>
-                        <TextBlock Text="Toutes les options appliquées par GamingTweaker (tous les menus) peuvent être annulées d'un coup ; l'historique permet d'annuler session par session." Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,12,0"/>
                     </DockPanel>
                 </Border>
 
