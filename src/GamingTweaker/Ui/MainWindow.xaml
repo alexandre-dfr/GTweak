@@ -91,11 +91,6 @@
         <!-- Groupes repliés à l'ouverture d'un menu ; dépliés pendant une recherche (sinon les résultats seraient cachés). -->
         <Style x:Key="GroupExpander" TargetType="Expander">
             <Setter Property="IsExpanded" Value="False"/>
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding DataContext.EnRecherche, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
-                    <Setter Property="IsExpanded" Value="True"/>
-                </DataTrigger>
-            </Style.Triggers>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Expander">
@@ -131,6 +126,11 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding DataContext.EnRecherche, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                    <Setter Property="IsExpanded" Value="True"/>
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
 
         <DataTemplate x:Key="OptionTemplate">
