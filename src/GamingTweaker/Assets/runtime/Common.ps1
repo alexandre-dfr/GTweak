@@ -402,7 +402,7 @@ function Set-TweakActiveScheme {
     param([Parameter(Mandatory)][string]$Guid)
     $cur = Get-GTActiveScheme
     if ($cur -ieq $Guid) { return }
-    if (-not (Test-GTSchemeExiste $Guid)) { throw ('Plan d''alimentation ' + $Guid + ' introuvable sur cette machine.') }
+    if (-not (Test-GTSchemeInList (Get-GTSchemeLines) $Guid)) { throw ('Plan d''alimentation ' + $Guid + ' introuvable sur cette machine.') }
     Write-GTJournal 'powerplan' 'ActiveScheme' $true $cur $Guid.ToLowerInvariant()
     Set-GTActiveScheme $Guid
 }
@@ -411,12 +411,13 @@ function Set-TweakActiveScheme {
 # s'il n'existe pas encore ; sinon le reutilise. La creation est journalisee (kind powerscheme) mais n'est pas supprimee a l'annulation :
 # le plan reste disponible pour la prochaine application.
 function Initialize-GTScheme {
-    param([Parameter(Mandatory)][string]$Guid)
-    # Plan déjà présent, même caché (absent de « powercfg /list ») : il s'active tel quel, le dupliquer échouerait (GUID déjà utilisé).
-    if (Test-GTSchemeExiste $Guid) { return }
+    param([Parameter(Mandatory)][string]$Guid, [string]$Source)
+    # Plan visible : rien à créer. Sinon, copie du modèle $Source (par défaut le plan lui-même) sous l'identifiant $Guid.
+    if (Test-GTSchemeInList (Get-GTSchemeLines) $Guid) { return }
     $g = $Guid.ToLowerInvariant()
+    $src = if ([string]::IsNullOrEmpty($Source)) { $g } else { $Source.ToLowerInvariant() }
     Write-GTJournal 'powerscheme' $g $false $null $g
-    $out = & powercfg.exe -duplicatescheme $g $g 2>&1
+    $out = & powercfg.exe -duplicatescheme $src $g 2>&1
     if (($LASTEXITCODE -ne 0) -and -not (Test-GTSchemeInList (Get-GTSchemeLines) $g)) {
         throw ('Le plan d''alimentation ' + $g + ' n''est pas disponible sur cette machine : ' + ($out -join ' '))
     }
