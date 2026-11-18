@@ -313,6 +313,34 @@ namespace GamingTweaker.Tests
         }
 
         [Fact]
+        public void Priorite_haute_seulement_si_l_option_est_cochee_et_qu_un_jeu_tourne()
+        {
+            var mj = new ModeJeu(dir, new Actions(), verrou);
+            var cfg = new ModeJeuAutoConfig { Actif = true, Jeux = new List<JeuSurveille> { Dossier(@"D:\Jeux\A") } };
+            var procs = new List<string>();
+            var appels = new List<int>();
+            using (var s = new SurveillanceJeux(mj, () => cfg, () => procs, j => { appels.Add(j.Count()); return j.Select(x => x.Nom).ToList(); }))
+            {
+                procs.Add(@"D:\Jeux\A\a.exe");
+                s.Releve(); Assert.Empty(appels);              // option non cochée
+                cfg.PrioriteHaute = true;
+                s.Releve(); Assert.Equal(new[] { 1 }, appels);
+                s.Releve(); Assert.Equal(2, appels.Count);     // à chaque relevé (processus relancé)
+                procs.Clear();
+                s.Releve(); Assert.Equal(2, appels.Count);     // plus de jeu : rien
+            }
+        }
+
+        [Fact]
+        public void Priorite_haute_enregistree()
+        {
+            var vm = new ModeJeuAutoViewModel(dir, null);
+            vm.PrioriteHaute = true;
+            Assert.True(ModeJeuAutoConfig.Charger(dir).PrioriteHaute);
+            Assert.False(new ModeJeuAutoConfig().PrioriteHaute);   // désactivée par défaut
+        }
+
+        [Fact]
         public void Surveillance_inactive_si_le_mode_automatique_est_desactive()
         {
             var actions = new Actions();

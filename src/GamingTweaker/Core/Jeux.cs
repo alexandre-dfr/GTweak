@@ -198,6 +198,43 @@ namespace GamingTweaker.Core
         private static extern bool QueryFullProcessImageNameW(IntPtr h, int flags, StringBuilder name, ref int size);
         private const uint QueryLimitedInformation = 0x1000;
 
+        /// <summary>
+        /// Passe en priorité « Haute » les processus des jeux de la liste qui sont en priorité normale (jamais « Temps réel », qui peut
+        /// figer Windows ; une priorité déjà changée par le jeu ou l'utilisateur est laissée). Renvoie les noms des jeux priorisés.
+        /// </summary>
+        public static List<string> Prioriser(IEnumerable<JeuSurveille> jeux)
+        {
+            var liste = (jeux ?? Enumerable.Empty<JeuSurveille>()).ToList();
+            var res = new List<string>();
+            if (liste.Count == 0) return res;
+            foreach (var p in System.Diagnostics.Process.GetProcesses())
+            {
+                try
+                {
+                    var chemin = CheminDe(p.Id);
+                    var jeu = chemin == null ? null : liste.FirstOrDefault(j => Correspond(chemin, j));
+                    if (jeu == null || p.PriorityClass != System.Diagnostics.ProcessPriorityClass.Normal) continue;
+                    p.PriorityClass = System.Diagnostics.ProcessPriorityClass.High;
+                    if (!res.Contains(jeu.Nom)) res.Add(jeu.Nom);
+                }
+                catch (Exception) { /* processus protégé (anti-triche) ou terminé : ignoré */ }
+                finally { p.Dispose(); }
+            }
+            return res;
+        }
+
+        private static string CheminDe(int pid)
+        {
+            var h = OpenProcess(QueryLimitedInformation, false, pid);
+            if (h == IntPtr.Zero) return null;
+            try
+            {
+                var sb = new StringBuilder(1024); int n = sb.Capacity;
+                return QueryFullProcessImageNameW(h, 0, sb, ref n) ? sb.ToString(0, n) : null;
+            }
+            finally { CloseHandle(h); }
+        }
+
         /// <summary>Chemins des exécutables en cours (ceux qu'on ne peut pas lire sont ignorés).</summary>
         public static List<string> CheminsProcessus()
         {

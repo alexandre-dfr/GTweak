@@ -83,7 +83,11 @@ namespace GamingTweaker
             registre.Register(new GpuDriverProvider());
 
             MainWindow fenetre = null;
-            var vm = new MainViewModel(catalogue, facts, paths, its => Detection.RunAsync(its),
+            MainViewModel vm = null;
+            // Détection progressive : chaque option affiche son état dès qu'il est lu, sans attendre la fin de toutes les détections.
+            Func<IEnumerable<CatalogItem>, System.Threading.Tasks.Task<Dictionary<string, DetectState>>> detecter = its =>
+                Detection.RunAsync(its, TimeSpan.FromSeconds(120), (id, st) => Dispatcher.BeginInvoke(new Action(() => { if (vm != null) vm.AppliquerEtat(id, st); })));
+            vm = new MainViewModel(catalogue, facts, paths, detecter,
                 (req, log, ct) => pipeline.ExecuteAsync(req, log, ct), o => Ui.MainWindow.ConfirmerRisque(fenetre, o), registre);
             vm.ConfirmerElementRisque = (o, titre, detail) => MessageBox.Show(fenetre,
                 o.Titre + "\r\n\r\n" + titre + (string.IsNullOrEmpty(detail) ? "" : "\r\n" + detail)

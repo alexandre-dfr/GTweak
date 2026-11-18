@@ -112,6 +112,8 @@
                     <Button Content="Utiliser la sélection ci-dessus" Command="{Binding ReprendreSelectionCommand}" Margin="0,0,8,4"
                             ToolTip="Le mode automatique arrête les services et processus cochés ci-dessus, et change le plan si la case est cochée"/>
                 </WrapPanel>
+                <CheckBox Content="Priorité haute pour le jeu en cours" IsChecked="{Binding PrioriteHaute, Mode=TwoWay}" Margin="0,6,0,0"
+                          ToolTip="Le processus du jeu passe en priorité « Haute » (jamais « Temps réel ») : utile quand des programmes tournent en arrière-plan pendant la partie."/>
                 <TextBlock Text="{Binding ResumeReglages}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0"/>
                 <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0"/>
             </StackPanel>

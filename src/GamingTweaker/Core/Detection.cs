@@ -18,8 +18,14 @@ namespace GamingTweaker.Core
         /// <summary>Détections réparties en lots, un processus PowerShell par lot, en parallèle. Absente, en erreur ou en délai : Unknown.</summary>
         public static Task<Dictionary<string, DetectState>> RunAsync(IEnumerable<CatalogItem> items, TimeSpan timeout)
         {
+            return RunAsync(items, timeout, null);
+        }
+
+        /// <param name="auFil">Appelé dès qu'un état est lu (thread quelconque) : l'interface affiche chaque option sans attendre la fin.</param>
+        public static Task<Dictionary<string, DetectState>> RunAsync(IEnumerable<CatalogItem> items, TimeSpan timeout, Action<string, DetectState> auFil)
+        {
             var list = items.ToList();
-            return Task.Run(() => Run(list, timeout));
+            return Task.Run(() => Run(list, timeout, auFil));
         }
 
         /// <summary>Processus PowerShell en parallèle au plus (un par lot d'au moins 8 options).</summary>
@@ -34,7 +40,7 @@ namespace GamingTweaker.Core
             return lots;
         }
 
-        private static Dictionary<string, DetectState> Run(List<CatalogItem> items, TimeSpan timeout)
+        private static Dictionary<string, DetectState> Run(List<CatalogItem> items, TimeSpan timeout, Action<string, DetectState> auFil)
         {
             var res = items.ToDictionary(i => i.Id, i => DetectState.Unknown);
             var withScript = items.Where(i => !string.IsNullOrWhiteSpace(i.Detect)).ToList();
@@ -42,7 +48,7 @@ namespace GamingTweaker.Core
             // Plusieurs PowerShell en parallèle : une détection lente (applications, fonctionnalités Windows) ne retarde plus toutes les autres.
             var chrono = Stopwatch.StartNew();
             var lots = Lots(withScript, Paralleles);
-            Parallel.ForEach(lots, new ParallelOptions { MaxDegreeOfParallelism = Paralleles }, lot => RunLot(lot, timeout, res));
+            Parallel.ForEach(lots, new ParallelOptions { MaxDegreeOfParallelism = Paralleles }, lot => RunLot(lot, timeout, res, auFil));
             lock (res)
             {
                 if (withScript.Count > 1)
@@ -51,7 +57,7 @@ namespace GamingTweaker.Core
             }
         }
 
-        private static void RunLot(List<CatalogItem> withScript, TimeSpan timeout, Dictionary<string, DetectState> res)
+        private static void RunLot(List<CatalogItem> withScript, TimeSpan timeout, Dictionary<string, DetectState> res, Action<string, DetectState> auFil)
         {
             ScriptVerrouille script = null;
             try
@@ -66,12 +72,14 @@ namespace GamingTweaker.Core
                         if (e.Data == null || !e.Data.StartsWith("##GT|detect|", StringComparison.Ordinal)) return;
                         var parts = e.Data.Split(new[] { '|' }, 4);
                         if (parts.Length < 4) return;
+                        DetectState st;
                         lock (res)
                         {
                             if (!res.ContainsKey(parts[2])) return;
-                            res[parts[2]] = parts[3] == "Applied" ? DetectState.Applied
-                                          : parts[3] == "NotApplied" ? DetectState.NotApplied : DetectState.Unknown;
+                            st = parts[3] == "Applied" ? DetectState.Applied : parts[3] == "NotApplied" ? DetectState.NotApplied : DetectState.Unknown;
+                            res[parts[2]] = st;
                         }
+                        if (auFil != null) { try { auFil(parts[2], st); } catch (Exception) { } }
                     };
                     p.ErrorDataReceived += (s, e) => { };
                     p.Start();

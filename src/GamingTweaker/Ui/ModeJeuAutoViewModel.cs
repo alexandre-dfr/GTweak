@@ -83,6 +83,18 @@ namespace GamingTweaker.Ui
             }
         }
 
+        public bool PrioriteHaute
+        {
+            get { return config.PrioriteHaute; }
+            set
+            {
+                if (config.PrioriteHaute == value) return;
+                config.PrioriteHaute = value;
+                Enregistrer(value ? "Le jeu en cours passera en priorité haute (jamais « temps réel »)." : "Priorité du jeu laissée à Windows.");
+                Raise();
+            }
+        }
+
         public string ResumeReglages
         {
             get

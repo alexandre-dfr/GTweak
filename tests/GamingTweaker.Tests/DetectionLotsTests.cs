@@ -27,6 +27,16 @@ namespace GamingTweaker.Tests
         }
 
         [Fact]
+        public async System.Threading.Tasks.Task Detection_progressive_signale_chaque_option()
+        {
+            var items = Items(12).Select((it, i) => { it.Detect = i % 3 == 0 ? "'Applied'" : "'NotApplied'"; return it; }).ToArray();
+            var vus = new System.Collections.Concurrent.ConcurrentDictionary<string, DetectState>();
+            var r = await Detection.RunAsync(items, System.TimeSpan.FromSeconds(120), (id, st) => vus[id] = st);
+            Assert.Equal(12, vus.Count);
+            foreach (var kv in r) Assert.Equal(kv.Value, vus[kv.Key]);
+        }
+
+        [Fact]
         public async System.Threading.Tasks.Task Detection_parallele_rend_un_etat_par_option()
         {
             var items = Items(20).Select((it, i) => { it.Detect = i % 2 == 0 ? "'Applied'" : "'NotApplied'"; return it; }).ToArray();

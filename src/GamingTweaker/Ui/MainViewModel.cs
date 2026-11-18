@@ -508,6 +508,13 @@ namespace GamingTweaker.Ui
 
         // ---------- Détection ----------
 
+        /// <summary>État d'une option dès qu'il est connu (détection progressive) ; à appeler sur le thread de l'interface.</summary>
+        public void AppliquerEtat(string id, DetectState s)
+        {
+            var o = Options.FirstOrDefault(x => x.Id == id);
+            if (o != null) o.SetEtat(s);
+        }
+
         public async Task DetectAsync()
         {
             foreach (var o in Options) o.SetEtat(DetectState.Detecting);
