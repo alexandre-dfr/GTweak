@@ -80,7 +80,7 @@ namespace GamingTweaker.Tests
             });
             t.SetApartmentState(ApartmentState.STA); t.Start(); t.Join();
             Assert.True(erreurs.Count == 0, string.Join(Environment.NewLine, erreurs));
-            Assert.Equal(12, Directory.GetFiles(Dossier, "*.png").Length);
+            Assert.Equal(13, Directory.GetFiles(Dossier, "*.png").Length);
         }
 
         /// <summary>Option à liste dépliée (éléments chargés, un absent du PC) : PNG dans le sous-dossier « liste ».</summary>
@@ -259,7 +259,7 @@ namespace GamingTweaker.Tests
             var info = new InfoViewModel(() => echantillon, () => null);
             vm.Info = info;
 
-            var noms = new[] { "Mises à jour", "Télémétrie", "Nettoyage", "Optimisation", "Bloatware", "Informations", "Mode Jeu", "Historique" };
+            var noms = new[] { "Accueil", "Mises à jour", "Télémétrie", "Nettoyage", "Optimisation", "Bloatware", "Informations", "Mode Jeu", "Historique" };
             for (int i = 0; i < noms.Length; i++)
             {
                 vm.MenuCourant = noms[i]; Pump(d);

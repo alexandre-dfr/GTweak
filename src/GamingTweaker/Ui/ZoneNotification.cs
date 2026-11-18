@@ -13,17 +13,24 @@ namespace GamingTweaker.Ui
         private readonly System.Windows.Forms.ToolStripMenuItem auto;
         private readonly Func<bool> autoActif;
 
-        public ZoneNotification(Action ouvrir, Action quitter, Func<bool> autoActif, Action<bool> definirAuto)
+        public ZoneNotification(Action ouvrir, Action quitter, Func<bool> autoActif, Action<bool> definirAuto, Func<bool> modeJeuActif = null, Action retablir = null)
         {
             this.autoActif = autoActif;
             var menu = new System.Windows.Forms.ContextMenuStrip();
             menu.Items.Add("Ouvrir GamingTweaker", null, (s, e) => ouvrir());
+            var retablirItem = new System.Windows.Forms.ToolStripMenuItem("Rétablir le Mode Jeu");
+            retablirItem.Click += (s, e) => { if (retablir != null) retablir(); };
+            menu.Items.Add(retablirItem);
             auto = new System.Windows.Forms.ToolStripMenuItem("Mode Jeu automatique") { CheckOnClick = false };
             auto.Click += (s, e) => definirAuto(!autoActif());
             menu.Items.Add(auto);
             menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
             menu.Items.Add("Quitter", null, (s, e) => quitter());
-            menu.Opening += (s, e) => auto.Checked = autoActif();
+            menu.Opening += (s, e) =>
+            {
+                auto.Checked = autoActif();
+                retablirItem.Visible = retablir != null && modeJeuActif != null && modeJeuActif();
+            };
 
             icone = new System.Windows.Forms.NotifyIcon { Text = "GamingTweaker", ContextMenuStrip = menu, Icon = IconeApplication() };
             icone.DoubleClick += (s, e) => ouvrir();
@@ -41,6 +48,13 @@ namespace GamingTweaker.Ui
         }
 
         public bool Visible { get { return icone.Visible; } set { icone.Visible = value; } }
+
+        /// <summary>Infobulle de l'icône (63 caractères au plus) : état du Mode Jeu.</summary>
+        public void Etat(bool modeJeuActif, bool autoActif)
+        {
+            var t = "GamingTweaker" + (modeJeuActif ? " · Mode Jeu actif" : autoActif ? " · surveillance des jeux" : "");
+            icone.Text = t.Length > 63 ? t.Substring(0, 63) : t;
+        }
 
         public void Notifier(string titre, string texte)
         {

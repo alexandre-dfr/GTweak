@@ -16,7 +16,23 @@ namespace GamingTweaker.Ui
             this.vm = vm;
             InitializeComponent();
             DataContext = vm;
+            PreviewKeyDown += Raccourcis;
         }
+
+        /// <summary>Ctrl+F : recherche ; Échap dans la recherche : l'efface.</summary>
+        private void Raccourcis(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == System.Windows.Input.Key.F && (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) != 0)
+            {
+                Recherche.Focus(); Recherche.SelectAll(); e.Handled = true;
+            }
+            else if (e.Key == System.Windows.Input.Key.Escape && Recherche.IsKeyboardFocusWithin && !string.IsNullOrEmpty(vm.Recherche))
+            {
+                vm.Recherche = ""; e.Handled = true;
+            }
+        }
+
+        private void FermerMessage_Click(object sender, RoutedEventArgs e) { vm.Message = ""; }
 
         /// <summary>Dialogue de confirmation d'une option Risqué.</summary>
         public static bool ConfirmerRisque(Window owner, OptionViewModel o)

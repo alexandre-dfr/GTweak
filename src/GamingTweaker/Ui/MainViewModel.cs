@@ -13,12 +13,38 @@ using GamingTweaker.Lists;
 
 namespace GamingTweaker.Ui
 {
-    public class MenuEntry
+    public class MenuEntry : ObservableObject
     {
+        private int coches;
         public string Nom { get; set; }
+        /// <summary>Options cochées dans ce menu (affiché à côté du nom, 0 : rien).</summary>
+        public int Coches { get { return coches; } set { if (Set(ref coches, value)) Raise("Libelle"); } }
+        public string Libelle { get { return coches > 0 ? Nom + "  ·  " + coches : Nom; } }
         public bool EstSeparateur { get; set; }
         /// <summary>Vue réservée aux tâches suivantes : panneau neutre avec le seul titre du menu.</summary>
         public bool EstEmplacement { get; set; }
+    }
+
+    /// <summary>Ligne « état de ce PC » de l'écran d'accueil : options déjà appliquées sur le total du menu.</summary>
+    public class LigneAccueil
+    {
+        public string Menu { get; set; }
+        public int Appliquees { get; set; }
+        public int Total { get; set; }
+        public string Texte { get { return Appliquees + " / " + Total + " déjà appliquée" + (Appliquees > 1 ? "s" : ""); } }
+        public double Proportion { get { return Total == 0 ? 0 : (double)Appliquees / Total; } }
+    }
+
+    /// <summary>Tuile de profil intégré de l'écran d'accueil.</summary>
+    public class TuileProfil
+    {
+        public string Nom { get; set; }
+        public string Accroche { get; set; }
+        public string Description { get; set; }
+        public int Nombre { get; set; }
+        public string NombreTexte { get { return Nombre + " option" + (Nombre > 1 ? "s" : ""); } }
+        /// <summary>0 : Gaming léger, 1 : Gaming max, 2 : Confidentialité (couleur de la tuile).</summary>
+        public int Rang { get; set; }
     }
 
     public class PreviewRow : ObservableObject
@@ -60,7 +86,8 @@ namespace GamingTweaker.Ui
         private readonly Func<IEnumerable<CatalogItem>, Task<Dictionary<string, long?>>> estimate;
         private readonly Dictionary<string, List<string>> listesChargees = new Dictionary<string, List<string>>();
         private ProfilListes profilListes;
-        private string menuCourant = MenusOptions[0];
+        public const string MenuAccueil = "Accueil";
+        private string menuCourant = MenuAccueil;
         private string recherche = "";
         private string profilSelectionne;
         private string message = "";
@@ -79,15 +106,20 @@ namespace GamingTweaker.Ui
 
             Options = items.Where(i => Compatibilite.IsCompatible(i.Compatibilite ?? new CompatRule(), facts))
                            .Select(i => new OptionViewModel(i, confirmerRisque, string.IsNullOrEmpty(i.Liste) || registre == null ? null : registre.Get(i.Liste))).ToList();
-            foreach (var o in Options) o.CocheChanged += () => { Raise("SelectedCount"); Raise("AUneSelection"); Raise("ResumeSelection"); };
+            foreach (var o in Options) o.CocheChanged += () => { Raise("SelectedCount"); Raise("AUneSelection"); Raise("ResumeSelection"); MajCompteurs(); };
 
-            var menus = MenusOptions.Concat(new[] { "Informations" }).Select(n => new MenuEntry { Nom = n, EstEmplacement = n == "Informations" }).ToList();
+            var menus = new[] { MenuAccueil }.Concat(MenusOptions).Concat(new[] { "Informations" })
+                .Select(n => new MenuEntry { Nom = n, EstEmplacement = n == "Informations" || n == MenuAccueil }).ToList();
             menus.Add(new MenuEntry { EstSeparateur = true });
             menus.Add(new MenuEntry { Nom = "Mode Jeu", EstEmplacement = true });
             menus.Add(new MenuEntry { Nom = "Historique", EstEmplacement = true });
             Menus = menus;
 
             RecommanderCommand = new RelayCommand(_ => ApplyRecommended(MenuCourant), _ => !EstEmplacement && !EnRecherche && Visibles.Any(o => o.Recommandee));
+            AllerCommand = new RelayCommand(m => { var nom = m as string; if (!string.IsNullOrEmpty(nom)) { Recherche = ""; MenuCourant = nom; } });
+            ProfilRapideCommand = new RelayCommand(n => ChargerProfilRapide(n as string));
+            MajAccueil();
+            DecocherCommand = new RelayCommand(_ => Decocher(), _ => Visibles.Any(o => o.IsChecked));
             RafraichirProfils();
             Filtrer();
         }
@@ -98,6 +130,95 @@ namespace GamingTweaker.Ui
         public ObservableCollection<OptionViewModel> Visibles { get; } = new ObservableCollection<OptionViewModel>();
         public ObservableCollection<string> ProfilsDisponibles { get; } = new ObservableCollection<string>();
         public ICommand RecommanderCommand { get; private set; }
+
+        // ---------- Écran d'accueil ----------
+
+        /// <summary>Ouvre le menu passé en paramètre.</summary>
+        public ICommand AllerCommand { get; private set; }
+        /// <summary>Charge le profil intégré dont le nom (sans suffixe) est passé en paramètre.</summary>
+        public ICommand ProfilRapideCommand { get; private set; }
+        public bool EstAccueil { get { return !EnRecherche && menuCourant == MenuAccueil; } }
+        public ObservableCollection<LigneAccueil> EtatMenus { get; } = new ObservableCollection<LigneAccueil>();
+        public IReadOnlyList<TuileProfil> ProfilsRapides
+        {
+            get
+            {
+                return ProfilsIntegres.Tous.Select((p, i) => new TuileProfil
+                {
+                    Nom = p.Nom, Accroche = p.Accroche, Description = p.Description, Rang = i,
+                    Nombre = ProfilsIntegres.Construire(p, items, facts).Options.Count,
+                }).ToList();
+            }
+        }
+
+        private int totalAppliquees, totalOptions;
+        public int TotalAppliquees { get { return totalAppliquees; } }
+        public int TotalOptions { get { return totalOptions; } }
+        /// <summary>Phrase de synthèse de l'accueil (avant la détection : « Analyse de ce PC… »).</summary>
+        public string SyntheseAccueil
+        {
+            get
+            {
+                if (Options.Any(o => o.Etat == "Détection…")) return "Analyse de ce PC en cours…";
+                if (Options.Count > 0 && Options.All(o => o.Etat == "Inconnu")) return "L'état de ce PC n'a pas pu être lu.";
+                return totalAppliquees + " réglage" + (totalAppliquees > 1 ? "s" : "") + " sur " + totalOptions + " déjà en place sur ce PC.";
+            }
+        }
+
+        public string ResumePc
+        {
+            get
+            {
+                if (facts == null) return "";
+                var parts = new List<string>();
+                if (!string.IsNullOrEmpty(facts.WindowsMajor)) parts.Add(("Windows " + facts.WindowsMajor + " " + facts.Edition).Trim());
+                if (!string.IsNullOrEmpty(facts.CpuVendor)) parts.Add("processeur " + facts.CpuVendor);
+                if (facts.GpuVendors != null && facts.GpuVendors.Count > 0) parts.Add("carte graphique " + string.Join(" / ", facts.GpuVendors));
+                if (facts.EstPortable) parts.Add("portable");
+                return string.Join(" · ", parts);
+            }
+        }
+
+        /// <summary>Recalcule l'état par menu (après la détection).</summary>
+        private void MajAccueil()
+        {
+            EtatMenus.Clear();
+            foreach (var m in MenusOptions)
+            {
+                var opts = Options.Where(o => o.Menu == m).ToList();
+                if (opts.Count == 0) continue;
+                EtatMenus.Add(new LigneAccueil { Menu = m, Total = opts.Count, Appliquees = opts.Count(o => o.Etat == EtatDejaApplique) });
+            }
+            totalAppliquees = EtatMenus.Sum(l => l.Appliquees); totalOptions = EtatMenus.Sum(l => l.Total);
+            Raise("TotalAppliquees"); Raise("TotalOptions"); Raise("SyntheseAccueil");
+        }
+
+        public void ChargerProfilRapide(string nom)
+        {
+            var pi = ProfilsIntegres.Tous.FirstOrDefault(p => p.Nom == nom);
+            if (pi == null) return;
+            if (ProfilSelectionne == pi.NomAffiche) RechargerProfil(); else ProfilSelectionne = pi.NomAffiche;
+            var n = SelectedCount;
+            Message = pi.NomAffiche + " : " + n + " option" + (n > 1 ? "s" : "") + " cochée" + (n > 1 ? "s" : "") + " (" + pi.Description.TrimEnd('.')
+                    + "). Vérifiez avec « Aperçu », puis « LANCER ».";
+        }
+        /// <summary>Décoche les options affichées (le menu courant, ou les résultats de la recherche).</summary>
+        public ICommand DecocherCommand { get; private set; }
+
+        public void Decocher()
+        {
+            foreach (var o in Visibles.ToList()) if (o.IsChecked) o.IsChecked = false;
+        }
+
+        private bool masquerAppliquees;
+        /// <summary>Masque les options que la détection donne « Déjà appliqué » (une option cochée reste toujours visible).</summary>
+        public bool MasquerAppliquees { get { return masquerAppliquees; } set { if (Set(ref masquerAppliquees, value)) Filtrer(); } }
+
+        private void MajCompteurs()
+        {
+            foreach (var m in Menus.Where(m => !m.EstSeparateur && !m.EstEmplacement))
+                m.Coches = Options.Count(o => o.IsChecked && o.Menu == m.Nom);
+        }
 
         /// <summary>Appelée par la vue pour confirmer l'absence de point de restauration (peut venir d'un autre thread).</summary>
         public Func<string, bool> ConfirmSansPointDeRestauration { get; set; }
@@ -120,13 +241,13 @@ namespace GamingTweaker.Ui
         public string MenuCourant
         {
             get { return menuCourant; }
-            set { if (Set(ref menuCourant, value)) { Raise("EstEmplacement"); Raise("EstMenuTelemetrie"); Raise("EstMenuOptions"); Raise("EstModeJeu"); Raise("EstHistorique"); Raise("TitreAffiche"); Raise("EstMenuInformations"); MajInfo(); Filtrer(); if (value == MenuModeJeu && modeJeuVm != null) modeJeuVm.ChargerSiBesoin(); if (value == MenuHistorique && historiqueVm != null) historiqueVm.Charger(); } }
+            set { if (Set(ref menuCourant, value)) { Raise("EstAccueil"); Raise("EstEmplacement"); Raise("EstMenuTelemetrie"); Raise("EstMenuOptions"); Raise("EstModeJeu"); Raise("EstHistorique"); Raise("TitreAffiche"); Raise("EstMenuInformations"); MajInfo(); Filtrer(); if (value == MenuModeJeu && modeJeuVm != null) modeJeuVm.ChargerSiBesoin(); if (value == MenuHistorique && historiqueVm != null) historiqueVm.Charger(); } }
         }
 
         public string Recherche
         {
             get { return recherche; }
-            set { if (Set(ref recherche, value ?? "")) { Raise("EnRecherche"); CommandManager.InvalidateRequerySuggested(); Raise("TitreAffiche"); Raise("EstMenuTelemetrie"); Raise("EstMenuOptions"); Raise("EstModeJeu"); Raise("EstHistorique"); Raise("EstMenuInformations"); MajInfo(); Filtrer(); } }
+            set { if (Set(ref recherche, value ?? "")) { Raise("EnRecherche"); Raise("EstAccueil"); CommandManager.InvalidateRequerySuggested(); Raise("TitreAffiche"); Raise("EstMenuTelemetrie"); Raise("EstMenuOptions"); Raise("EstModeJeu"); Raise("EstHistorique"); Raise("EstMenuInformations"); MajInfo(); Filtrer(); } }
         }
 
         public bool EnRecherche { get { return Normaliser(recherche).Length > 0; } }
@@ -160,7 +281,7 @@ namespace GamingTweaker.Ui
         /// <summary>Vue-modèle de l'historique (null tant qu'elle n'est pas configurée par l'application).</summary>
         public HistoriqueViewModel Historique { get { return historiqueVm; } set { Set(ref historiqueVm, value); } }
 
-        public string TitreAffiche { get { return EnRecherche ? "Résultats de la recherche" : menuCourant; } }
+        public string TitreAffiche { get { return EnRecherche ? "Résultats de la recherche" : menuCourant == MenuAccueil ? "Bienvenue dans GamingTweaker" : menuCourant; } }
 
         public string Message { get { return message; } set { Set(ref message, value ?? ""); } }
         /// <summary>Bandeau d'avertissement (compte d'élévation différent du bureau).</summary>
@@ -179,6 +300,8 @@ namespace GamingTweaker.Ui
 
         // ---------- Filtre ----------
 
+        public const string EtatDejaApplique = "Déjà appliqué";
+
         public static string Normaliser(string s)
         {
             if (string.IsNullOrWhiteSpace(s)) return "";
@@ -196,6 +319,7 @@ namespace GamingTweaker.Ui
             if (q.Length > 0) src = Options.Where(o => o.SearchText.Contains(q));
             else if (EstEmplacement) src = Enumerable.Empty<OptionViewModel>();
             else src = Options.Where(o => o.Menu == menuCourant);
+            if (masquerAppliquees) src = src.Where(o => o.IsChecked || o.Etat != EtatDejaApplique);
             var liste = src.ToList();
             Visibles.Clear();
             foreach (var o in liste) Visibles.Add(o);
@@ -274,6 +398,7 @@ namespace GamingTweaker.Ui
             if (res.Incompatibles.Count > 0) infos.Add(res.Incompatibles.Count + " option(s) incompatible(s) avec ce PC ignorée(s).");
             if (refuses.Count > 0) infos.Add("Non cochée(s) faute de confirmation : " + string.Join(", ", refuses) + ".");
             Message = string.Join(" ", infos);
+            MajCompteurs();
         }
 
         // ---------- Profils ----------
@@ -361,6 +486,8 @@ namespace GamingTweaker.Ui
                 DetectState s;
                 o.SetEtat(res != null && res.TryGetValue(o.Id, out s) ? s : DetectState.Unknown);
             }
+            if (masquerAppliquees) Filtrer();
+            MajAccueil();
         }
 
         // ---------- Tout restaurer (tous les menus) ----------

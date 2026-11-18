@@ -54,6 +54,8 @@ namespace GamingTweaker.Core
         public List<ProcessusChoix> Processus { get; } = new List<ProcessusChoix>();
         /// <summary>Plan d'alimentation à activer ; vide : le plan n'est pas changé.</summary>
         public string PlanGuid { get; set; }
+        /// <summary>Profil du pilote NVIDIA appliqué le temps du Mode Jeu (Aucun : pilote inchangé).</summary>
+        public ProfilNvidia Nvidia { get; set; }
     }
 
     public class ModeJeuBilan
@@ -124,18 +126,30 @@ namespace GamingTweaker.Core
             [JsonProperty("planEtat")] public string PlanEtat { get; set; }
             [JsonProperty("services")] public List<Entree> Services { get; set; } = new List<Entree>();
             [JsonProperty("processus")] public List<Entree> Processus { get; set; } = new List<Entree>();
+            [JsonProperty("nvidia", NullValueHandling = NullValueHandling.Ignore)] public List<EntreeNvidia> Nvidia { get; set; }
+        }
+
+        /// <summary>Réglage NVIDIA : valeur d'avant (défini dans le profil global ou non), valeur posée. etat : non-lance | en-cours | change | echec | retabli.</summary>
+        private class EntreeNvidia
+        {
+            [JsonProperty("id")] public uint Id { get; set; }
+            [JsonProperty("defini")] public bool Defini { get; set; }
+            [JsonProperty("avant", NullValueHandling = NullValueHandling.Ignore)] public long? Avant { get; set; }
+            [JsonProperty("voulu")] public uint Voulu { get; set; }
+            [JsonProperty("etat")] public string Etat { get; set; }
         }
 
         private readonly string dossier;
         private readonly IModeJeuActions actions;
         private readonly string lockName;
         private readonly Action apresEtatEcrit;
+        private readonly INvidiaReglages nvidia;
 
         /// <param name="machineDir">Dossier de la machine : modejeu.json y est écrit.</param>
         /// <param name="apresEtatEcrit">Appelé après chaque écriture de l'état (tests : vérifier qu'il précède toute action).</param>
-        public ModeJeu(string machineDir, IModeJeuActions actions, string lockName = null, Action apresEtatEcrit = null)
+        public ModeJeu(string machineDir, IModeJeuActions actions, string lockName = null, Action apresEtatEcrit = null, INvidiaReglages nvidia = null)
         {
-            dossier = machineDir; this.actions = actions; this.lockName = lockName; this.apresEtatEcrit = apresEtatEcrit;
+            dossier = machineDir; this.actions = actions; this.lockName = lockName; this.apresEtatEcrit = apresEtatEcrit; this.nvidia = nvidia;
         }
 
         private string Fichier { get { return Path.Combine(dossier, "modejeu.json"); } }
@@ -186,6 +200,11 @@ namespace GamingTweaker.Core
                 }
                 var planVoulu = (c.PlanGuid ?? "").Trim();
                 if (planVoulu.Length > 0) { etat.Plan = planVoulu; etat.PlanEtat = "non-lance"; }
+                if (c.Nvidia != ProfilNvidia.Aucun)
+                {
+                    if (nvidia == null || !nvidia.Disponible) bilan.Avertissements.Add("Profil NVIDIA ignoré : pilote NVIDIA introuvable.");
+                    else etat.Nvidia = ProfilsNvidia.Reglages(c.Nvidia).Select(r => new EntreeNvidia { Id = r.Key, Voulu = r.Value, Etat = "non-lance" }).ToList();
+                }
 
                 // L'état précède toute action : un arrêt brutal laisse de quoi rétablir.
                 Ecrire(etat);
@@ -241,6 +260,29 @@ namespace GamingTweaker.Core
                         bilan.Avertissements.Add("Plan d'alimentation non changé : " + ex.Message);
                     }
                     Ecrire(etat);
+                }
+                if (etat.Nvidia != null)
+                {
+                    int n = 0;
+                    foreach (var r in etat.Nvidia)
+                    {
+                        // Valeur d'avant lue et enregistrée AVANT l'écriture : un arrêt brutal laisse de quoi la remettre.
+                        try
+                        {
+                            var avant = nvidia.Lire(r.Id);
+                            r.Defini = avant[0] == 1; r.Avant = avant[1] < 0 ? (long?)null : avant[1];
+                            r.Etat = "en-cours"; Ecrire(etat);
+                            nvidia.Ecrire(r.Id, r.Voulu);
+                            r.Etat = "change"; n++;
+                        }
+                        catch (Exception ex)
+                        {
+                            r.Etat = r.Etat == "en-cours" ? "echec" : "non-lance";
+                            bilan.Avertissements.Add("Réglage NVIDIA 0x" + r.Id.ToString("X8") + " non appliqué : " + ex.Message);
+                        }
+                        Ecrire(etat);
+                    }
+                    if (n > 0) bilan.Actions.Add("Profil NVIDIA " + ProfilsNvidia.Libelle(c.Nvidia) + " appliqué (" + n + " réglage(s)).");
                 }
             }
             return bilan;
@@ -308,6 +350,31 @@ namespace GamingTweaker.Core
                 }
                 else if (etat.PlanEtat == "en-cours")
                     bilan.Avertissements.Add("Le changement de plan d'alimentation a été interrompu : vérifiez le plan actif dans les options d'alimentation.");
+
+                if (etat.Nvidia != null && etat.Nvidia.Any(r => r.Etat == "change" || r.Etat == "en-cours" || r.Etat == "echec"))
+                {
+                    if (nvidia == null || !nvidia.Disponible) { echec = true; bilan.Avertissements.Add("Réglages NVIDIA non rétablis : pilote NVIDIA introuvable."); }
+                    else
+                    {
+                        int n = 0;
+                        foreach (var r in etat.Nvidia.Where(x => x.Etat == "change" || x.Etat == "en-cours" || x.Etat == "echec"))
+                        {
+                            try
+                            {
+                                // Seulement si la valeur est encore celle du Mode Jeu : un réglage changé depuis par l'utilisateur est conservé.
+                                var actuel = nvidia.Lire(r.Id);
+                                if (actuel[1] == r.Voulu)
+                                {
+                                    if (r.Defini && r.Avant.HasValue) nvidia.Ecrire(r.Id, (uint)r.Avant.Value); else nvidia.Retirer(r.Id);
+                                    n++;
+                                }
+                                r.Etat = "retabli";
+                            }
+                            catch (Exception ex) { echec = true; bilan.Avertissements.Add("Réglage NVIDIA 0x" + r.Id.ToString("X8") + " non rétabli : " + ex.Message); }
+                        }
+                        if (n > 0) bilan.Actions.Add("Réglages NVIDIA rétablis (" + n + ").");
+                    }
+                }
 
                 if (echec) { try { Ecrire(etat); } catch (Exception) { } }
                 else { try { File.Delete(Fichier); } catch (Exception ex) { bilan.Avertissements.Add("Fichier d'état non supprimé : " + ex.Message); } }

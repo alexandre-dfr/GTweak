@@ -50,7 +50,7 @@
                     <ControlTemplate TargetType="ListBoxItem">
                         <Grid>
                             <Border x:Name="b" Margin="8,2" Padding="14,10" CornerRadius="6" Background="Transparent" Cursor="Hand">
-                                <TextBlock x:Name="t" Text="{Binding Nom}" FontSize="15" TextWrapping="Wrap"/>
+                                <TextBlock x:Name="t" Text="{Binding Libelle}" FontSize="15" TextWrapping="Wrap"/>
                             </Border>
                             <Rectangle x:Name="sep" Height="1" Margin="18,8" Fill="{StaticResource BorderBrush}" Visibility="Collapsed"/>
                         </Grid>
@@ -88,8 +88,9 @@
             </Setter>
         </Style>
 
+        <!-- Groupes repliés à l'ouverture d'un menu ; dépliés pendant une recherche (sinon les résultats seraient cachés). -->
         <Style x:Key="GroupExpander" TargetType="Expander">
-            <Setter Property="IsExpanded" Value="True"/>
+            <Setter Property="IsExpanded" Value="False"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Expander">
@@ -125,6 +126,11 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding DataContext.EnRecherche, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                    <Setter Property="IsExpanded" Value="True"/>
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
 
         <DataTemplate x:Key="OptionTemplate">
@@ -247,7 +253,10 @@
                     <Style.Triggers><DataTrigger Binding="{Binding Message}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
                 </Style>
             </Border.Style>
-            <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}"/>
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="✕" Click="FermerMessage_Click" Padding="8,2" Margin="12,0,0,0" VerticalAlignment="Top" ToolTip="Masquer ce message"/>
+                <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
+            </DockPanel>
         </Border>
 
         <Grid Grid.Row="2">
@@ -274,10 +283,11 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="260"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="{Binding TitreAffiche}" FontSize="24" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap"/>
                     <Grid Grid.Column="1" Margin="12,0">
-                        <TextBox x:Name="Recherche" Text="{Binding Recherche, UpdateSourceTrigger=PropertyChanged}" ToolTip="Rechercher une option"/>
+                        <TextBox x:Name="Recherche" Text="{Binding Recherche, UpdateSourceTrigger=PropertyChanged}" ToolTip="Rechercher une option (Ctrl+F ; Échap pour effacer)"/>
                         <TextBlock Text="Rechercher…" IsHitTestVisible="False" Margin="10,0" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
@@ -288,6 +298,13 @@
                         </TextBlock>
                     </Grid>
                     <Button Grid.Column="2" Content="Recommandé" Command="{Binding RecommanderCommand}" ToolTip="Coche les options sûres de ce menu">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                <Style.Triggers><DataTrigger Binding="{Binding EstEmplacement}" Value="True"><Setter Property="Visibility" Value="Hidden"/></DataTrigger></Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                    <Button Grid.Column="3" Content="Décocher" Command="{Binding DecocherCommand}" Margin="8,0,0,0" ToolTip="Décoche les options affichées">
                         <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
                                 <Style.Triggers><DataTrigger Binding="{Binding EstEmplacement}" Value="True"><Setter Property="Visibility" Value="Hidden"/></DataTrigger></Style.Triggers>
@@ -317,6 +334,8 @@
                                 </Button.Style>
                             </Button>
                         </StackPanel>
+                        <CheckBox DockPanel.Dock="Right" Content="Masquer les options déjà appliquées" IsChecked="{Binding MasquerAppliquees, Mode=TwoWay}" VerticalAlignment="Center" Margin="0,0,16,0"
+                                  ToolTip="N'affiche que ce qui reste à faire (une option cochée reste visible)"/>
                         <TextBlock Text="Toutes les options appliquées par GamingTweaker (tous les menus) peuvent être annulées d'un coup ; l'historique permet d'annuler session par session." Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,12,0"/>
                     </DockPanel>
                 </Border>
@@ -377,6 +396,10 @@
                     </TextBlock.Style>
                 </TextBlock>
 
+                <!-- Accueil -->
+                <Border Grid.Row="1" Grid.RowSpan="2" Visibility="{Binding EstAccueil, Converter={StaticResource BoolVis}}">
+                    <local:AccueilView/>
+                </Border>
                 <!-- Mode Jeu -->
                 <Border Grid.Row="1" Grid.RowSpan="2" Visibility="{Binding EstModeJeu, Converter={StaticResource BoolVis}}">
                     <local:ModeJeuView DataContext="{Binding ModeJeu}"/>

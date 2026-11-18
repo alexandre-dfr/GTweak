@@ -62,7 +62,7 @@ namespace GamingTweaker.Ui
             set
             {
                 if (config.Actif == value) return;
-                if (value && config.Services.Count + config.Processus.Count == 0 && !config.Plan && modeJeu != null) ReprendreSelection(false);
+                if (value && config.Services.Count + config.Processus.Count == 0 && !config.Plan && config.Nvidia == ProfilNvidia.Aucun && modeJeu != null) ReprendreSelection(false);
                 config.Actif = value;
                 Enregistrer(value ? "Mode Jeu automatique activé : il s'active au lancement d'un jeu de la liste et tout est rétabli quand vous quittez le dernier."
                                   : "Mode Jeu automatique désactivé.");
@@ -75,7 +75,8 @@ namespace GamingTweaker.Ui
             get
             {
                 return "Réglages utilisés : " + config.Services.Count + " service(s) arrêté(s), " + config.Processus.Count + " processus fermé(s)"
-                     + (config.Plan ? ", plan Performances élevées." : ", plan d'alimentation inchangé.");
+                     + (config.Plan ? ", plan Performances élevées" : ", plan d'alimentation inchangé")
+                     + (config.Nvidia != ProfilNvidia.Aucun ? ", profil NVIDIA " + ProfilsNvidia.Libelle(config.Nvidia) + "." : ".");
             }
         }
 
@@ -124,6 +125,7 @@ namespace GamingTweaker.Ui
             config.Services = c.Services.ToList();
             config.Processus = c.Processus.Select(p => new ProcessusChoix { Nom = p.Nom, Chemin = p.Chemin }).ToList();
             config.Plan = c.PlanGuid != null;
+            config.Nvidia = c.Nvidia;
             Raise("ResumeReglages");
             if (enregistrer) Enregistrer("Sélection du Mode Jeu enregistrée pour le mode automatique.");
         }

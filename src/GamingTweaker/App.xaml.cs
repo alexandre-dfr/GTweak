@@ -115,9 +115,10 @@ namespace GamingTweaker
                 },
             };
 
-            var modeJeu = new ModeJeu(paths.MachineDir, new ModeJeuSysteme());
+            var modeJeu = new ModeJeu(paths.MachineDir, new ModeJeuSysteme(), nvidia: new NvidiaDrs());
             vm.ModeJeu = new ModeJeuViewModel(modeJeu, ModeJeuListes.ListerServices, ModeJeuListes.ListerProcessus)
             {
+                NvidiaDisponible = facts.GpuVendors.Any(g => string.Equals(g, "NVIDIA", StringComparison.OrdinalIgnoreCase)),
                 Confirmer = texte => MessageBox.Show(fenetre, texte, "Mode Jeu", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes,
             };
             var auto = new ModeJeuAutoViewModel(paths.MachineDir, vm.ModeJeu, DemarrageWindows.EstInstalle,
@@ -168,11 +169,19 @@ namespace GamingTweaker
                 premiersControles();
             };
             Action quitterApp = () => { quitter = true; fenetre.Close(); Shutdown(0); };
-            zone = new ZoneNotification(() => Dispatcher.Invoke(ouvrir), () => Dispatcher.Invoke(quitterApp), () => auto.Actif, v => Dispatcher.Invoke(() => auto.Actif = v));
-            surveillance.Notification += (titre, texte) => Dispatcher.BeginInvoke(new Action(() => { vm.ModeJeu.Synchroniser(); zone.Notifier(titre, texte); }));
+            zone = new ZoneNotification(() => Dispatcher.Invoke(ouvrir), () => Dispatcher.Invoke(quitterApp), () => auto.Actif, v => Dispatcher.Invoke(() => auto.Actif = v),
+                () => modeJeu.IsActive, () => Dispatcher.Invoke(() => { vm.ModeJeu.Synchroniser(); if (vm.ModeJeu.RetablirCommand.CanExecute(null)) vm.ModeJeu.RetablirCommand.Execute(null); }));
+            surveillance.Notification += (titre, texte) => Dispatcher.BeginInvoke(new Action(() =>
+            {
+                vm.ModeJeu.Synchroniser();
+                zone.Etat(modeJeu.IsActive, auto.Actif);
+                zone.Notifier(titre, texte);
+            }));
+            vm.ModeJeu.PropertyChanged += (s, ev) => { if (ev.PropertyName == "EstActif") zone.Etat(modeJeu.IsActive, auto.Actif); };
             Action majAuto = () =>
             {
                 zone.Visible = DemarrageEnZone || auto.Actif || auto.DemarrageAvecWindows;
+                zone.Etat(modeJeu.IsActive, auto.Actif);
                 if (auto.Actif) surveillance.Demarrer(); else surveillance.Arreter();
             };
             auto.ConfigChangee += majAuto;
