@@ -36,6 +36,8 @@ namespace GamingTweaker
             Exit += (s, ev) => verrouInterface.Dispose();
             // La fenêtre peut être cachée (zone de notification) : l'application s'arrête explicitement (Quitter, ou fermeture hors mode automatique).
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            // Thème Windows 11 clair ou sombre (suit Windows par défaut), appliqué avant toute fenêtre.
+            ThemeApplication.Initialiser();
 
             // Avant toute lecture ou écriture de %ProgramFiles%\GamingTweaker : créé avec sa DACL protégée, ou vérifié (refus s'il n'est pas sûr).
             // Verrou d'instance pris AVANT le parcours (occupé : message, aucun parcours), libéré ensuite.

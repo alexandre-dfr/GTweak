@@ -9,7 +9,7 @@
             <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}" Margin="0,3">
                 <StackPanel>
                     <TextBlock Text="{Binding Affichage}" FontSize="14" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock Text="{Binding Detail}" FontSize="12" Foreground="{StaticResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding Detail}" FontSize="12" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
             </CheckBox>
         </DataTemplate>
@@ -24,10 +24,10 @@
         </Grid.RowDefinitions>
         <StackPanel>
             <TextBlock Text="Libère des ressources le temps d'une session : les services et processus que vous cochez sont arrêtés, puis relancés avec « Rétablir ». Les processus système critiques, la sécurité, l'audio et les pilotes d'affichage ne sont jamais proposés."
-                       TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,10"/>
+                       TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,10"/>
         </StackPanel>
-        <Border Grid.Row="1" Padding="14,10" CornerRadius="6" Background="{StaticResource WarnBg}" Margin="0,0,0,10" Visibility="{Binding EstActif, Converter={StaticResource BoolVis}}">
-            <TextBlock Text="Le Mode Jeu est actif. Rétablissez-le pour redémarrer ce qui a été arrêté." TextWrapping="Wrap" Foreground="{StaticResource AvanceFg}" FontWeight="SemiBold"/>
+        <Border Grid.Row="1" Padding="14,10" CornerRadius="6" Background="{DynamicResource WarnBg}" Margin="0,0,0,10" Visibility="{Binding EstActif, Converter={StaticResource BoolVis}}">
+            <TextBlock Text="Le Mode Jeu est actif. Rétablissez-le pour redémarrer ce qui a été arrêté." TextWrapping="Wrap" Foreground="{DynamicResource AvanceFg}" FontWeight="SemiBold"/>
         </Border>
         <Grid Grid.Row="2" IsEnabled="{Binding PeutModifier}">
             <Grid.ColumnDefinitions>
@@ -35,13 +35,13 @@
                 <ColumnDefinition Width="16"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
-            <Border Background="{StaticResource PanelBrush}" CornerRadius="6" Padding="14,10">
+            <Border Background="{DynamicResource PanelBrush}" CornerRadius="6" Padding="14,10">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="Services en cours d'exécution" FontWeight="SemiBold" Margin="0,0,0,6"/>
                     <ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsControl ItemsSource="{Binding Services}" ItemTemplate="{StaticResource ChoixTemplate}"/></ScrollViewer>
                 </DockPanel>
             </Border>
-            <Border Grid.Column="2" Background="{StaticResource PanelBrush}" CornerRadius="6" Padding="14,10">
+            <Border Grid.Column="2" Background="{DynamicResource PanelBrush}" CornerRadius="6" Padding="14,10">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="Processus de votre session" FontWeight="SemiBold" Margin="0,0,0,6"/>
                     <ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsControl ItemsSource="{Binding Processus}" ItemTemplate="{StaticResource ChoixTemplate}"/></ScrollViewer>
@@ -68,16 +68,16 @@
                     <Button Content="Oublier l'état" Command="{Binding OublierCommand}" Margin="8,0,0,0" Visibility="{Binding PeutOublier, Converter={StaticResource BoolVis}}" ToolTip="Abandonner le rétablissement (après confirmation)"/>
                 </StackPanel>
             </Grid>
-            <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" Margin="0,10,0,0"/>
+            <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,10,0,0"/>
             <!-- Diagnostic NVIDIA : ce que le pilote contient réellement -->
             <DockPanel Margin="0,8,0,0" Visibility="{Binding NvidiaDisponible, Converter={StaticResource BoolVis}}">
                 <Button DockPanel.Dock="Left" Content="Lire les réglages NVIDIA" Command="{Binding LireNvidiaCommand}" VerticalAlignment="Top"
                         ToolTip="Affiche les valeurs actuellement enregistrées dans le pilote (paramètres globaux)"/>
-                <TextBlock Text="{Binding EtatNvidia}" TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" Margin="12,2,0,0"/>
+                <TextBlock Text="{Binding EtatNvidia}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="12,2,0,0"/>
             </DockPanel>
         </StackPanel>
         <!-- Mode Jeu automatique : liste des jeux, réglages repris de la sélection ci-dessus, démarrage avec Windows. -->
-        <Border Grid.Row="4" DataContext="{Binding Auto}" Background="{StaticResource PanelBrush}" CornerRadius="6" Padding="14,10" Margin="0,12,0,0"
+        <Border Grid.Row="4" DataContext="{Binding Auto}" Background="{DynamicResource PanelBrush}" CornerRadius="6" Padding="14,10" Margin="0,12,0,0"
                 Visibility="{Binding DataContext.Auto, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource NonNulVis}}">
             <StackPanel>
                 <Grid>
@@ -92,12 +92,12 @@
                               ToolTip="GamingTweaker démarre réduit près de l'horloge, avec les droits administrateur, depuis une copie protégée dans Program Files"/>
                 </Grid>
                 <ListBox ItemsSource="{Binding Jeux}" SelectedItem="{Binding JeuSelectionne, Mode=TwoWay}" Height="110" Margin="0,8,0,0"
-                         Background="{StaticResource BgBrush}" BorderBrush="{StaticResource BorderBrush}">
+                         Background="{DynamicResource BgBrush}" BorderBrush="{DynamicResource BorderBrush}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <StackPanel Margin="0,2">
-                                <TextBlock Text="{Binding Nom}" Foreground="{StaticResource TextBrush}" TextTrimming="CharacterEllipsis"/>
-                                <TextBlock FontSize="12" Foreground="{StaticResource MutedBrush}" TextTrimming="CharacterEllipsis">
+                                <TextBlock Text="{Binding Nom}" Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock FontSize="12" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis">
                                     <Run Text="{Binding Source, Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding Chemin, Mode=OneWay}"/>
                                 </TextBlock>
                             </StackPanel>
@@ -112,8 +112,8 @@
                     <Button Content="Utiliser la sélection ci-dessus" Command="{Binding ReprendreSelectionCommand}" Margin="0,0,8,4"
                             ToolTip="Le mode automatique arrête les services et processus cochés ci-dessus, et change le plan si la case est cochée"/>
                 </WrapPanel>
-                <TextBlock Text="{Binding ResumeReglages}" TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0"/>
-                <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0"/>
+                <TextBlock Text="{Binding ResumeReglages}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0"/>
+                <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0"/>
             </StackPanel>
         </Border>
     </Grid>

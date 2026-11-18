@@ -17,6 +17,16 @@ namespace GamingTweaker.Ui
             InitializeComponent();
             DataContext = vm;
             PreviewKeyDown += Raccourcis;
+            foreach (System.Windows.Controls.ComboBoxItem i in SelecteurTheme.Items)
+                if ((string)i.Tag == ThemeApplication.Choix.ToString()) { SelecteurTheme.SelectedItem = i; break; }
+        }
+
+        private void SelecteurTheme_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            var i = SelecteurTheme.SelectedItem as System.Windows.Controls.ComboBoxItem;
+            ChoixTheme c;
+            if (!IsLoaded || i == null || !Enum.TryParse((string)i.Tag, out c) || c == ThemeApplication.Choix) return;
+            ThemeApplication.Definir(c);
         }
 
         /// <summary>Ctrl+F : recherche ; Échap dans la recherche : l'efface.</summary>

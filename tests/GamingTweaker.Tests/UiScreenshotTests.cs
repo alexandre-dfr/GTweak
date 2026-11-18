@@ -208,6 +208,7 @@ namespace GamingTweaker.Tests
         private static void Run()
         {
             var app = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+            app.Resources.MergedDictionaries.Add(ThemeApplication.Couleurs(true));
             app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("/GamingTweaker;component/Ui/Theme.xaml", UriKind.Relative) });
             var d = Dispatcher.CurrentDispatcher;
 
@@ -276,6 +277,12 @@ namespace GamingTweaker.Tests
                 }
                 Capture(win, "0" + (i + 1) + "-" + noms[i].Replace(' ', '-').Replace("à", "a").Replace("é", "e"));
             }
+            // Thème clair : mêmes écrans, couleurs remplacées à chaud (sous-dossier « clair »).
+            var dossierClair = Path.Combine(Dossier, "clair"); Directory.CreateDirectory(dossierClair);
+            app.Resources.MergedDictionaries[0] = ThemeApplication.Couleurs(false); Pump(d);
+            foreach (var m in new[] { "Accueil", "Optimisation", "Mode Jeu" }) { vm.MenuCourant = m; Pump(d); Capture(win, "clair-" + m.Replace(' ', '-'), dossierClair); }
+            app.Resources.MergedDictionaries[0] = ThemeApplication.Couleurs(true); Pump(d);
+
             // Barre de routine (tâche 16) : état simulé, aucune tâche réelle.
             vm.Routine = new RoutineViewModel(vm, c => { }, () => { }, () => new RoutineEtat { Existe = true, Jour = DayOfWeek.Sunday, Heure = new TimeSpan(20, 0, 0), ProfilChemin = @"C:\Program Files\GamingTweaker\App\gaming.json" });
             vm.Routine.ActualiserAsync().Wait(2000); Pump(d);

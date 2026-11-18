@@ -18,8 +18,8 @@
                             <ContentPresenter/>
                         </Border>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="{StaticResource PanelHoverBrush}"/></Trigger>
-                            <Trigger Property="IsSelected" Value="True"><Setter TargetName="b" Property="Background" Value="{StaticResource PanelHoverBrush}"/><Setter TargetName="b" Property="BorderBrush" Value="{StaticResource AccentBrush}"/></Trigger>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="{DynamicResource PanelHoverBrush}"/></Trigger>
+                            <Trigger Property="IsSelected" Value="True"><Setter TargetName="b" Property="Background" Value="{DynamicResource PanelHoverBrush}"/><Setter TargetName="b" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/></Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -30,16 +30,16 @@
             <StackPanel>
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="{Binding DebutTexte}" FontWeight="SemiBold"/>
-                    <Border x:Name="badge" Style="{StaticResource Badge}" Background="{StaticResource SurBg}" Margin="10,0,0,0">
-                        <TextBlock x:Name="badgeText" Text="{Binding EtatLibelle}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource SurFg}"/>
+                    <Border x:Name="badge" Style="{StaticResource Badge}" Background="{DynamicResource SurBg}" Margin="10,0,0,0">
+                        <TextBlock x:Name="badgeText" Text="{Binding EtatLibelle}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SurFg}"/>
                     </Border>
                 </StackPanel>
-                <TextBlock Text="{Binding Resume}" FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding Resume}" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
             </StackPanel>
             <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding Anormale}" Value="True">
-                    <Setter TargetName="badge" Property="Background" Value="{StaticResource RisqueBg}"/>
-                    <Setter TargetName="badgeText" Property="Foreground" Value="{StaticResource RisqueFg}"/>
+                    <Setter TargetName="badge" Property="Background" Value="{DynamicResource RisqueBg}"/>
+                    <Setter TargetName="badgeText" Property="Foreground" Value="{DynamicResource RisqueFg}"/>
                 </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
@@ -52,7 +52,7 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel>
                     <TextBlock Text="{Binding Titre}" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                    <TextBlock FontSize="12" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap">
+                    <TextBlock FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap">
                         <Run Text="{Binding Statut, Mode=OneWay}"/><Run Text=" "/><Run Text="{Binding Message, Mode=OneWay}"/>
                     </TextBlock>
                 </StackPanel>
@@ -76,9 +76,9 @@
                 <StackPanel>
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="{Binding Nom}" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding TailleTexte, StringFormat=' · {0}'}" Foreground="{StaticResource MutedBrush}"/>
+                        <TextBlock Text="{Binding TailleTexte, StringFormat=' · {0}'}" Foreground="{DynamicResource MutedBrush}"/>
                     </StackPanel>
-                    <TextBlock Text="{Binding Origine}" FontSize="12" Foreground="{StaticResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding Origine}" FontSize="12" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button Content="Restaurer" Padding="10,4" CommandParameter="{Binding}" Command="{Binding DataContext.RestaurerQuarantaineCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
@@ -113,11 +113,11 @@
                 <ColumnDefinition Width="16"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
-            <Border Background="{StaticResource PanelBrush}" CornerRadius="6" Padding="8">
+            <Border Background="{DynamicResource PanelBrush}" CornerRadius="6" Padding="8">
                 <Grid>
                     <ListBox ItemsSource="{Binding Sessions}" SelectedItem="{Binding SessionSelectionnee, Mode=TwoWay}" ItemTemplate="{StaticResource SessionTemplate}"
                              ItemContainerStyle="{StaticResource SessionItemStyle}" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
-                    <TextBlock Text="Aucune session pour l'instant." Foreground="{StaticResource MutedBrush}" Margin="8">
+                    <TextBlock Text="Aucune session pour l'instant." Foreground="{DynamicResource MutedBrush}" Margin="8">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
                                 <Setter Property="Visibility" Value="Collapsed"/>
@@ -127,7 +127,7 @@
                     </TextBlock>
                 </Grid>
             </Border>
-            <Border Grid.Column="2" Background="{StaticResource PanelBrush}" CornerRadius="6" Padding="14,10">
+            <Border Grid.Column="2" Background="{DynamicResource PanelBrush}" CornerRadius="6" Padding="14,10">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -147,12 +147,12 @@
         </Grid>
 
         <!-- Quarantaine -->
-        <Border Grid.Row="1" Background="{StaticResource PanelBrush}" CornerRadius="6" Padding="14,10" Visibility="{Binding EstQuarantaine, Converter={StaticResource BoolVis}}">
+        <Border Grid.Row="1" Background="{DynamicResource PanelBrush}" CornerRadius="6" Padding="14,10" Visibility="{Binding EstQuarantaine, Converter={StaticResource BoolVis}}">
             <DockPanel>
-                <TextBlock DockPanel.Dock="Top" Text="Fichiers retirés par le nettoyage, conservés jusqu'à leur suppression définitive." Foreground="{StaticResource MutedBrush}" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                <TextBlock DockPanel.Dock="Top" Text="Fichiers retirés par le nettoyage, conservés jusqu'à leur suppression définitive." Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,8" TextWrapping="Wrap"/>
                 <Grid>
                     <ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsControl ItemsSource="{Binding Quarantaine}" ItemTemplate="{StaticResource QuarantaineTemplate}"/></ScrollViewer>
-                    <TextBlock Text="La quarantaine est vide." Foreground="{StaticResource MutedBrush}">
+                    <TextBlock Text="La quarantaine est vide." Foreground="{DynamicResource MutedBrush}">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
                                 <Setter Property="Visibility" Value="Collapsed"/>
@@ -165,7 +165,7 @@
         </Border>
 
         <!-- Mesures -->
-        <Border Grid.Row="1" Background="{StaticResource PanelBrush}" CornerRadius="6" Padding="14,10" Visibility="{Binding EstMesures, Converter={StaticResource BoolVis}}">
+        <Border Grid.Row="1" Background="{DynamicResource PanelBrush}" CornerRadius="6" Padding="14,10" Visibility="{Binding EstMesures, Converter={StaticResource BoolVis}}">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -173,8 +173,8 @@
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
-                <Border Background="{StaticResource WarnBg}" CornerRadius="4" Padding="12,8" Margin="0,0,0,10">
-                    <TextBlock Text="{Binding AvertissementInputLag}" TextWrapping="Wrap" Foreground="{StaticResource AvanceFg}"/>
+                <Border Background="{DynamicResource WarnBg}" CornerRadius="4" Padding="12,8" Margin="0,0,0,10">
+                    <TextBlock Text="{Binding AvertissementInputLag}" TextWrapping="Wrap" Foreground="{DynamicResource AvanceFg}"/>
                 </Border>
                 <Grid Grid.Row="1" Margin="0,0,0,10">
                     <Grid.ColumnDefinitions>
@@ -202,6 +202,6 @@
             </Grid>
         </Border>
 
-        <TextBlock Grid.Row="2" Text="{Binding Message}" TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" Margin="0,10,0,0"/>
+        <TextBlock Grid.Row="2" Text="{Binding Message}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,10,0,0"/>
     </Grid>
 </UserControl>

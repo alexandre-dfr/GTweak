@@ -16,10 +16,10 @@
         </Grid.RowDefinitions>
 
         <TextBlock x:Name="Titre" FontSize="22" FontWeight="SemiBold"/>
-        <TextBlock x:Name="Sous" Grid.Row="1" Margin="0,4,0,12" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap"
+        <TextBlock x:Name="Sous" Grid.Row="1" Margin="0,4,0,12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"
                    Text="Rien n'est modifié tant que vous n'avez pas cliqué sur Lancer. Le dossier de session est créé au lancement ; les options déjà appliquées ou ignorées ne seront pas exécutées."/>
 
-        <Border Grid.Row="2" Background="{StaticResource PanelBrush}" CornerRadius="6" Padding="4">
+        <Border Grid.Row="2" Background="{DynamicResource PanelBrush}" CornerRadius="6" Padding="4">
             <Grid Grid.IsSharedSizeScope="True">
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                 <Grid Margin="12,6,12,6">
@@ -30,11 +30,11 @@
                         <ColumnDefinition Width="Auto" SharedSizeGroup="D"/>
                         <ColumnDefinition Width="Auto" SharedSizeGroup="T"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="Option" Foreground="{StaticResource MutedBrush}"/>
-                    <TextBlock Grid.Column="1" Text="Risque" Margin="16,0" Foreground="{StaticResource MutedBrush}"/>
-                    <TextBlock Grid.Column="2" Text="Annulation" Margin="16,0" Foreground="{StaticResource MutedBrush}"/>
-                    <TextBlock Grid.Column="3" Text="Redémarrage" Margin="16,0" Foreground="{StaticResource MutedBrush}"/>
-                    <TextBlock Grid.Column="4" Text="Taille estimée" Margin="16,0,0,0" Foreground="{StaticResource MutedBrush}" TextAlignment="Right"/>
+                    <TextBlock Text="Option" Foreground="{DynamicResource MutedBrush}"/>
+                    <TextBlock Grid.Column="1" Text="Risque" Margin="16,0" Foreground="{DynamicResource MutedBrush}"/>
+                    <TextBlock Grid.Column="2" Text="Annulation" Margin="16,0" Foreground="{DynamicResource MutedBrush}"/>
+                    <TextBlock Grid.Column="3" Text="Redémarrage" Margin="16,0" Foreground="{DynamicResource MutedBrush}"/>
+                    <TextBlock Grid.Column="4" Text="Taille estimée" Margin="16,0,0,0" Foreground="{DynamicResource MutedBrush}" TextAlignment="Right"/>
                 </Grid>
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                     <ItemsControl x:Name="Lignes">
@@ -49,15 +49,15 @@
                                         <ColumnDefinition Width="Auto" SharedSizeGroup="T"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="{Binding Titre}" TextWrapping="Wrap"/>
-                                    <TextBlock x:Name="r" Grid.Column="1" Text="{Binding Risque}" Margin="16,0" FontWeight="SemiBold" Foreground="{StaticResource SurFg}"/>
+                                    <TextBlock x:Name="r" Grid.Column="1" Text="{Binding Risque}" Margin="16,0" FontWeight="SemiBold" Foreground="{DynamicResource SurFg}"/>
                                     <TextBlock x:Name="v" Grid.Column="2" Text="{Binding Reversibilite}" Margin="16,0"/>
-                                    <TextBlock Grid.Column="3" Text="{Binding Redemarrage}" Margin="16,0" Foreground="{StaticResource AvanceFg}"/>
-                                    <TextBlock Grid.Column="4" Text="{Binding Taille}" Margin="16,0,0,0" TextAlignment="Right" Foreground="{StaticResource MutedBrush}"/>
+                                    <TextBlock Grid.Column="3" Text="{Binding Redemarrage}" Margin="16,0" Foreground="{DynamicResource AvanceFg}"/>
+                                    <TextBlock Grid.Column="4" Text="{Binding Taille}" Margin="16,0,0,0" TextAlignment="Right" Foreground="{DynamicResource MutedBrush}"/>
                                 </Grid>
                                 <DataTemplate.Triggers>
-                                    <DataTrigger Binding="{Binding Risque}" Value="Avancé"><Setter TargetName="r" Property="Foreground" Value="{StaticResource AvanceFg}"/></DataTrigger>
-                                    <DataTrigger Binding="{Binding Risque}" Value="Risqué"><Setter TargetName="r" Property="Foreground" Value="{StaticResource RisqueFg}"/></DataTrigger>
-                                    <DataTrigger Binding="{Binding Reversibilite}" Value="définitif"><Setter TargetName="v" Property="Foreground" Value="{StaticResource RisqueFg}"/></DataTrigger>
+                                    <DataTrigger Binding="{Binding Risque}" Value="Avancé"><Setter TargetName="r" Property="Foreground" Value="{DynamicResource AvanceFg}"/></DataTrigger>
+                                    <DataTrigger Binding="{Binding Risque}" Value="Risqué"><Setter TargetName="r" Property="Foreground" Value="{DynamicResource RisqueFg}"/></DataTrigger>
+                                    <DataTrigger Binding="{Binding Reversibilite}" Value="définitif"><Setter TargetName="v" Property="Foreground" Value="{DynamicResource RisqueFg}"/></DataTrigger>
                                 </DataTemplate.Triggers>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
@@ -66,8 +66,8 @@
             </Grid>
         </Border>
 
-        <TextBlock x:Name="Total" Grid.Row="3" Margin="12,6,12,0" TextAlignment="Right" Foreground="{StaticResource MutedBrush}"/>
-        <TextBlock Grid.Row="4" Text="Script exact qui sera exécuté" Margin="0,10,0,6" Foreground="{StaticResource MutedBrush}"/>
+        <TextBlock x:Name="Total" Grid.Row="3" Margin="12,6,12,0" TextAlignment="Right" Foreground="{DynamicResource MutedBrush}"/>
+        <TextBlock Grid.Row="4" Text="Script exact qui sera exécuté" Margin="0,10,0,6" Foreground="{DynamicResource MutedBrush}"/>
         <TextBox x:Name="Script" Grid.Row="5" IsReadOnly="True" FontFamily="Consolas" FontSize="12.5" AcceptsReturn="True" TextWrapping="NoWrap"
                  HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"/>
 

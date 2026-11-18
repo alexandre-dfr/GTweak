@@ -5,13 +5,13 @@
         Width="560" Height="520" ResizeMode="CanResize" WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
     <DockPanel Margin="24">
         <TextBlock DockPanel.Dock="Top" Text="Cochez les jeux à surveiller. Le Mode Jeu s'active quand un programme de leur dossier démarre."
-                   TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,12"/>
+                   TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,12"/>
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
             <Button Content="Tout cocher" Click="ToutCocher_Click" Margin="0,0,10,0"/>
             <Button Content="Annuler" IsCancel="True" Margin="0,0,10,0"/>
             <Button Content="Ajouter" IsDefault="True" Style="{StaticResource PrimaryButton}" Click="Ok_Click"/>
         </StackPanel>
-        <Border Background="{StaticResource PanelBrush}" CornerRadius="6" Padding="14,10">
+        <Border Background="{DynamicResource PanelBrush}" CornerRadius="6" Padding="14,10">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <ItemsControl x:Name="Liste">
                     <ItemsControl.ItemTemplate>
@@ -19,7 +19,7 @@
                             <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}" Margin="0,3">
                                 <StackPanel>
                                     <TextBlock Text="{Binding Affichage}" FontSize="14" TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Text="{Binding Detail}" FontSize="12" Foreground="{StaticResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{Binding Detail}" FontSize="12" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
                                 </StackPanel>
                             </CheckBox>
                         </DataTemplate>
