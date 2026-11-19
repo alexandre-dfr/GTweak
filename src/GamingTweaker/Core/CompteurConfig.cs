@@ -11,6 +11,9 @@ namespace GamingTweaker.Core
     public enum CoinEcran { HautGauche, HautDroite, BasGauche, BasDroite, Libre }
 
     /// <summary>Taille prédéfinie, ou personnalisée (redimensionnée à la souris : voir <see cref="CompteurConfig.Echelle"/>).</summary>
+    /// <summary>Éléments du compteur dont la couleur se règle séparément (« Tout » : la couleur commune).</summary>
+    public enum ElementCompteur { Tout, Fps, Details, Courbe, Cpu, Gpu, Ram }
+
     public enum TailleCompteur { Petite, Normale, Grande, Personnalisee }
 
     /// <summary>
@@ -30,6 +33,27 @@ namespace GamingTweaker.Core
         [JsonProperty("x")] public double X { get; set; }
         [JsonProperty("y")] public double Y { get; set; }
         [JsonProperty("couleur")] public string Couleur { get; set; } = CouleurParDefaut;
+        /// <summary>Couleur propre à un élément (#RRVVBB) ; absente ou vide : la couleur commune <see cref="Couleur"/>.</summary>
+        [JsonProperty("couleurs")] public System.Collections.Generic.Dictionary<string, string> Couleurs { get; set; } = new System.Collections.Generic.Dictionary<string, string>();
+
+        /// <summary>Couleur effective d'un élément.</summary>
+        public string CouleurDe(ElementCompteur e)
+        {
+            string c;
+            if (e != ElementCompteur.Tout && Couleurs != null && Couleurs.TryGetValue(e.ToString(), out c) && CouleurValide(c)) return c.Trim().ToUpperInvariant();
+            return Couleur;
+        }
+
+        /// <summary>Fixe la couleur d'un élément ; « Tout » fixe la couleur commune et retire les couleurs propres.</summary>
+        public void DefinirCouleur(ElementCompteur e, string c)
+        {
+            if (!CouleurValide(c)) return;
+            c = c.Trim().ToUpperInvariant();
+            if (Couleurs == null) Couleurs = new System.Collections.Generic.Dictionary<string, string>();
+            if (e == ElementCompteur.Tout) { Couleur = c; Couleurs.Clear(); }
+            else if (c == Couleur) Couleurs.Remove(e.ToString());
+            else Couleurs[e.ToString()] = c;
+        }
         [JsonProperty("taille")] [JsonConverter(typeof(StringEnumConverter))] public TailleCompteur Taille { get; set; } = TailleCompteur.Normale;
         /// <summary>Échelle personnalisée (0,6 à 3), utilisée quand <see cref="Taille"/> vaut Personnalisee.</summary>
         [JsonProperty("echelle")] public double Echelle { get; set; } = 1.0;
@@ -68,6 +92,15 @@ namespace GamingTweaker.Core
         public CompteurConfig Normaliser()
         {
             Couleur = CouleurValide(Couleur) ? Couleur.Trim().ToUpperInvariant() : CouleurParDefaut;
+            var propres = new System.Collections.Generic.Dictionary<string, string>();
+            if (Couleurs != null)
+                foreach (var kv in Couleurs)
+                {
+                    ElementCompteur el;
+                    if (kv.Key != null && Enum.TryParse(kv.Key, false, out el) && el != ElementCompteur.Tout && CouleurValide(kv.Value))
+                        propres[el.ToString()] = kv.Value.Trim().ToUpperInvariant();
+                }
+            Couleurs = propres;
             if (!Enum.IsDefined(typeof(CoinEcran), Position)) Position = CoinEcran.HautDroite;
             if (!Enum.IsDefined(typeof(TailleCompteur), Taille)) Taille = TailleCompteur.Normale;
             if (double.IsNaN(Echelle) || double.IsInfinity(Echelle)) Echelle = 1.0;
@@ -82,7 +115,9 @@ namespace GamingTweaker.Core
 
         public CompteurConfig Cloner()
         {
-            return (CompteurConfig)MemberwiseClone();
+            var c = (CompteurConfig)MemberwiseClone();
+            c.Couleurs = new System.Collections.Generic.Dictionary<string, string>(Couleurs ?? new System.Collections.Generic.Dictionary<string, string>());
+            return c;
         }
 
         public static CompteurConfig Charger(string machineDir)

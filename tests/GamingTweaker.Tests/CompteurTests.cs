@@ -185,6 +185,17 @@ namespace GamingTweaker.Tests
         }
 
         [Fact]
+        public void Couleurs_propres_invalides_ignorees()
+        {
+            Directory.CreateDirectory(tmp);
+            File.WriteAllText(Path.Combine(tmp, CompteurConfig.NomFichier), "{ \"couleur\": \"#ffffff\", \"couleurs\": { \"Cpu\": \"#123456\", \"Gpu\": \"rouge\", \"Inconnu\": \"#000000\" } }");
+            var c = CompteurConfig.Charger(tmp);
+            Assert.Equal("#123456", c.CouleurDe(ElementCompteur.Cpu));
+            Assert.Equal("#FFFFFF", c.CouleurDe(ElementCompteur.Gpu));
+            Assert.Single(c.Couleurs);
+        }
+
+        [Fact]
         public void Fichier_illisible_donne_les_valeurs_par_defaut()
         {
             Directory.CreateDirectory(tmp);
@@ -323,6 +334,29 @@ namespace GamingTweaker.Tests
             var vm = new CompteurViewModel(tmp, new FausseSource(), new CompteurConfig());
             vm.Rafraichir(new ReleveCompteur { Processus = "doom", Images = new MesureImages { Fps = 200, TempsImageMs = 5, Source = "Vulkan/OpenGL" } });
             Assert.Equal("doom · Vulkan/OpenGL", vm.TexteProcessus);
+        }
+
+        [Fact]
+        public void Chaque_element_a_sa_couleur_et_tout_les_remet_en_commun()
+        {
+            var vm = new CompteurViewModel(tmp, new FausseSource(), new CompteurConfig { Couleur = "#FFFFFF" });
+            vm.ElementCouleur = ElementCompteur.Cpu; vm.Couleur = "#ff4d6d";
+            vm.ElementCouleur = ElementCompteur.Gpu; vm.Couleur = "#4CC9F0";
+            Assert.Equal("#FF4D6D", vm.CouleurDe(ElementCompteur.Cpu));
+            Assert.Equal("#4CC9F0", vm.CouleurDe(ElementCompteur.Gpu));
+            Assert.Equal("#FFFFFF", vm.CouleurDe(ElementCompteur.Fps));
+            Assert.Equal("#FFFFFF", vm.CouleurDe(ElementCompteur.Ram));
+            // Le champ affiche la couleur de l'élément choisi.
+            vm.ElementCouleur = ElementCompteur.Cpu;
+            Assert.Equal("#FF4D6D", vm.Couleur);
+            // Enregistrée et relue.
+            vm.Enregistrer();
+            var c = CompteurConfig.Charger(tmp);
+            Assert.Equal("#FF4D6D", c.CouleurDe(ElementCompteur.Cpu));
+            Assert.Equal("#FFFFFF", c.CouleurDe(ElementCompteur.Courbe));
+            // « Tout le compteur » remet la même couleur partout.
+            vm.ElementCouleur = ElementCompteur.Tout; vm.Couleur = "#FFD43B";
+            foreach (ElementCompteur e in Enum.GetValues(typeof(ElementCompteur))) Assert.Equal("#FFD43B", vm.CouleurDe(e));
         }
 
         [Fact]

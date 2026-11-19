@@ -126,17 +126,38 @@ namespace GamingTweaker.Ui
         /// <summary>Échelle en pourcentage (réglages).</summary>
         public string TexteEchelle { get { return Math.Round(Echelle * 100).ToString("0", Fr) + " %"; } }
 
+        private ElementCompteur elementCouleur = ElementCompteur.Tout;
+        /// <summary>Élément dont on règle la couleur (réglages) ; « Tout » : la même couleur partout.</summary>
+        public ElementCompteur ElementCouleur { get { return elementCouleur; } set { if (Set(ref elementCouleur, value)) Raise("Couleur"); } }
+
+        public IReadOnlyList<ChoixListe<ElementCompteur>> ElementsCouleur { get; } = new[]
+        {
+            new ChoixListe<ElementCompteur> { Valeur = ElementCompteur.Tout, Nom = "Tout le compteur" },
+            new ChoixListe<ElementCompteur> { Valeur = ElementCompteur.Fps, Nom = "FPS" },
+            new ChoixListe<ElementCompteur> { Valeur = ElementCompteur.Details, Nom = "Temps d'image et 1 % bas" },
+            new ChoixListe<ElementCompteur> { Valeur = ElementCompteur.Courbe, Nom = "Courbe" },
+            new ChoixListe<ElementCompteur> { Valeur = ElementCompteur.Cpu, Nom = "Processeur (CPU)" },
+            new ChoixListe<ElementCompteur> { Valeur = ElementCompteur.Gpu, Nom = "Carte graphique (GPU)" },
+            new ChoixListe<ElementCompteur> { Valeur = ElementCompteur.Ram, Nom = "Mémoire (RAM)" },
+        };
+
+        /// <summary>Couleur de l'élément choisi (<see cref="ElementCouleur"/>). Sur « Tout », elle s'applique partout.</summary>
         public string Couleur
         {
-            get { return config.Couleur; }
+            get { return config.CouleurDe(elementCouleur); }
             set
             {
                 if (!CompteurConfig.CouleurValide(value)) return;
-                var c = value.Trim().ToUpperInvariant();
-                if (config.Couleur == c) return;
-                config.Couleur = c; Raise(); Raise("BrosseTexte"); Modifie(false);
+                if (config.CouleurDe(elementCouleur) == value.Trim().ToUpperInvariant() && elementCouleur != ElementCompteur.Tout) return;
+                config.DefinirCouleur(elementCouleur, value);
+                Raise();
+                foreach (var b in new[] { "BrosseTexte", "BrosseFps", "BrosseDetails", "BrosseCourbe", "BrosseCpu", "BrosseGpu", "BrosseRam" }) Raise(b);
+                Modifie(false);
             }
         }
+
+        /// <summary>Couleur effective d'un élément (tests).</summary>
+        public string CouleurDe(ElementCompteur e) { return config.CouleurDe(e); }
 
         public double OpaciteFond
         {
@@ -214,13 +235,18 @@ namespace GamingTweaker.Ui
         public bool AfficherCharge { get { return config.Cpu || config.Gpu || config.Ram; } }
         public double Echelle { get { return config.EchelleEffective; } }
 
-        public Brush BrosseTexte
+        public Brush BrosseTexte { get { return Brosse(ElementCompteur.Tout); } }
+        public Brush BrosseFps { get { return Brosse(ElementCompteur.Fps); } }
+        public Brush BrosseDetails { get { return Brosse(ElementCompteur.Details); } }
+        public Brush BrosseCourbe { get { return Brosse(ElementCompteur.Courbe); } }
+        public Brush BrosseCpu { get { return Brosse(ElementCompteur.Cpu); } }
+        public Brush BrosseGpu { get { return Brosse(ElementCompteur.Gpu); } }
+        public Brush BrosseRam { get { return Brosse(ElementCompteur.Ram); } }
+
+        private Brush Brosse(ElementCompteur e)
         {
-            get
-            {
-                var b = new SolidColorBrush((Color)ColorConverter.ConvertFromString(config.Couleur));
-                b.Freeze(); return b;
-            }
+            var b = new SolidColorBrush((Color)ColorConverter.ConvertFromString(config.CouleurDe(e)));
+            b.Freeze(); return b;
         }
 
         public Brush BrosseFond

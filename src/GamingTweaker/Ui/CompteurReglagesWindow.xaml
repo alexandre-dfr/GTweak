@@ -68,8 +68,12 @@
                     <TextBlock Text="{Binding TexteEchelle}" Margin="10,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
                 </StackPanel>
 
-                <TextBlock Grid.Row="3" Text="Couleur" VerticalAlignment="Center" Margin="0,0,16,8"/>
-                <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,8">
+                <TextBlock Grid.Row="3" Text="Couleur" VerticalAlignment="Top" Margin="0,6,16,8"/>
+                <StackPanel Grid.Row="3" Grid.Column="1" Margin="0,0,0,8">
+                <ComboBox Width="240" HorizontalAlignment="Left" Margin="0,0,0,6" ItemsSource="{Binding ElementsCouleur}" SelectedValuePath="Valeur"
+                          SelectedValue="{Binding ElementCouleur, Mode=TwoWay}" DisplayMemberPath="Nom"
+                          ToolTip="Choisissez l'élément à colorer ; « Tout le compteur » remet la même couleur partout"/>
+                <StackPanel Orientation="Horizontal">
                     <ItemsControl ItemsSource="{Binding Couleurs}">
                         <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
@@ -86,6 +90,8 @@
                     </ItemsControl>
                     <TextBox Width="84" Margin="6,0,0,0" Text="{Binding Couleur, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" MaxLength="7"
                              ToolTip="Couleur libre au format #RRVVBB (validée en quittant le champ ou avec Entrée)" KeyDown="CouleurLibre_KeyDown"/>
+                    <Border Width="24" Height="24" Margin="8,0,0,0" CornerRadius="4" Background="{Binding Couleur}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" ToolTip="Couleur actuelle de l'élément choisi"/>
+                </StackPanel>
                 </StackPanel>
 
                 <TextBlock Grid.Row="4" Text="Fond" VerticalAlignment="Center" Margin="0,0,16,0"/>

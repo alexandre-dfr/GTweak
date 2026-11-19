@@ -18,20 +18,20 @@
                            Margin="0,0,0,4" Visibility="{Binding ModePlacement, Converter={StaticResource BoolVis}}"/>
                 <StackPanel Visibility="{Binding Fps, Converter={StaticResource BoolVis}}">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="FPS" Opacity="0.75" VerticalAlignment="Bottom" Margin="0,0,6,3"/>
-                        <TextBlock Text="{Binding TexteFps}" FontSize="22" FontWeight="Bold" Width="50" TextAlignment="Right"/>
-                        <TextBlock Text="{Binding TexteDetails}" VerticalAlignment="Bottom" Margin="8,0,0,3" Visibility="{Binding Details, Converter={StaticResource BoolVis}}"/>
+                        <TextBlock Text="FPS" Opacity="0.75" VerticalAlignment="Bottom" Margin="0,0,6,3" Foreground="{Binding BrosseFps}"/>
+                        <TextBlock Text="{Binding TexteFps}" FontSize="22" FontWeight="Bold" Width="50" TextAlignment="Right" Foreground="{Binding BrosseFps}"/>
+                        <TextBlock Text="{Binding TexteDetails}" VerticalAlignment="Bottom" Margin="8,0,0,3" Foreground="{Binding BrosseDetails}" Visibility="{Binding Details, Converter={StaticResource BoolVis}}"/>
                     </StackPanel>
                     <TextBlock Text="{Binding TexteProcessus}" FontSize="10" Opacity="0.6" Margin="0,0,0,2" TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
                 <Grid Width="200" Height="36" Margin="0,2,0,4" HorizontalAlignment="Left" Visibility="{Binding AfficherCourbe, Converter={StaticResource BoolVis}}">
-                    <Border BorderBrush="{Binding BrosseTexte}" BorderThickness="0,0,0,1" Opacity="0.35"/>
-                    <Polyline Points="{Binding PointsCourbe}" Stroke="{Binding BrosseTexte}" StrokeThickness="1.5" StrokeLineJoin="Round"/>
+                    <Border BorderBrush="{Binding BrosseCourbe}" BorderThickness="0,0,0,1" Opacity="0.35"/>
+                    <Polyline Points="{Binding PointsCourbe}" Stroke="{Binding BrosseCourbe}" StrokeThickness="1.5" StrokeLineJoin="Round"/>
                 </Grid>
                 <StackPanel Visibility="{Binding AfficherCharge, Converter={StaticResource BoolVis}}">
-                    <TextBlock Text="{Binding TexteCpu}" Visibility="{Binding Cpu, Converter={StaticResource BoolVis}}"/>
-                    <TextBlock Text="{Binding TexteGpu}" Visibility="{Binding Gpu, Converter={StaticResource BoolVis}}"/>
-                    <TextBlock Text="{Binding TexteRam}" Visibility="{Binding Ram, Converter={StaticResource BoolVis}}"/>
+                    <TextBlock Text="{Binding TexteCpu}" Foreground="{Binding BrosseCpu}" Visibility="{Binding Cpu, Converter={StaticResource BoolVis}}"/>
+                    <TextBlock Text="{Binding TexteGpu}" Foreground="{Binding BrosseGpu}" Visibility="{Binding Gpu, Converter={StaticResource BoolVis}}"/>
+                    <TextBlock Text="{Binding TexteRam}" Foreground="{Binding BrosseRam}" Visibility="{Binding Ram, Converter={StaticResource BoolVis}}"/>
                 </StackPanel>
             </StackPanel>
         </Border>
