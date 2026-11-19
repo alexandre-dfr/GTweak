@@ -98,7 +98,8 @@ namespace GamingTweaker.Tests
         [Fact]
         public void Un_profil_importe_ne_peut_pas_prendre_le_nom_d_un_profil_integre()
         {
-            var integre = ProfilsIntegres.Tous.First().Nom;
+            // Nom affiché d'un profil intégré (« … (intégré) ») : c'est lui qui est réservé.
+            var integre = ProfilsIntegres.Tous.First().NomAffiche;
             var fichier = Path.Combine(tmp, "x.json");
             Profils.Save(new Profil { Nom = integre, Options = new List<string> { "opt.a" } }, fichier);
             var pc = Pc("pc");
