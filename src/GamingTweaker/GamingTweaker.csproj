@@ -22,6 +22,11 @@
     <Deterministic>true</Deterministic>
     <!-- Icône de l'exe et, par défaut, de la fenêtre WPF (générée par tools/icone.py). -->
     <ApplicationIcon>app.ico</ApplicationIcon>
+    <!-- Un seul fichier à distribuer : pas de GamingTweaker.exe.config. Il ne contenait que <supportedRuntime> (inutile : .NET Framework 4.8
+         est intégré à Windows 10 1903+ et 11) ; les DLL embarquées sont résolues par nom (AssemblyLoader), sans redirection de liaison. -->
+    <GenerateSupportedRuntime>false</GenerateSupportedRuntime>
+    <AutoGenerateBindingRedirects>false</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>false</GenerateBindingRedirectsOutputType>
   </PropertyGroup>
 
   <!-- requireAdministrator en Release, asInvoker en Debug (voir global-constraints). Release : aucun symbole livré. -->

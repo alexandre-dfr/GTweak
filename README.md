@@ -4,7 +4,7 @@ Application Windows portable (un seul `GamingTweaker.exe`) qui règle un PC de j
 
 ## Lancer
 
-1. Copiez `GamingTweaker.exe` (et `GamingTweaker.exe.config`) où vous voulez, par exemple sur une clé USB.
+1. Copiez `GamingTweaker.exe` où vous voulez, par exemple sur une clé USB. C'est le seul fichier : aucune dépendance, aucun fichier de configuration (.NET Framework 4.8 est déjà dans Windows 10 1903+ et Windows 11).
 2. Double-cliquez : Windows demande les droits administrateur (obligatoire pour modifier le système).
 3. Cochez les options, cliquez sur **Aperçu** pour voir exactement ce qui sera fait, puis sur **LANCER**.
 
@@ -120,7 +120,7 @@ Le workflow `.github/workflows/build.yml` compile l'exe sur Windows, lance les t
 | push sur une autre branche | pré-version `test-<branche>`, supprimée automatiquement avec la branche |
 | tag `vX.Y.Z` | release `GamingTweaker X.Y.Z` (c'est elle que l'appli propose en mise à jour) |
 
-Un build en échec ne remplace jamais l'exe déjà publié ; le rapport du cycle réel, les captures et le résultat des tests vont dans une pré-version `<canal>-echec`, sans exe. Elle est supprimée au build vert suivant.
+Une publication contient **uniquement `GamingTweaker.exe`**. Un build en échec ne remplace jamais l'exe déjà publié ; le rapport du cycle réel, les captures et le résultat des tests vont dans une pré-version `<canal>-echec`, sans exe. Elle est supprimée au build vert suivant.
 
 Pour publier une version : mettre `<Version>` à jour dans `src/GamingTweaker/GamingTweaker.csproj` (avec `AssemblyVersion` et `FileVersion`), fusionner dans `main`, puis :
 
@@ -134,14 +134,20 @@ git push origin v0.9.2
 
 Le workflow refuse un tag qui ne correspond pas à `<Version>`.
 
-### Signature de l'exe
+### SmartScreen et signature de l'exe
 
-Un exe non signé qui demande les droits administrateur est bloqué par SmartScreen et souvent signalé par les antivirus. Le workflow signe l'exe (Authenticode SHA-256, horodaté) si deux secrets existent dans le dépôt (Settings > Secrets and variables > Actions) :
+**Pourquoi l'avertissement SmartScreen ?** Windows avertit pour tout exe téléchargé qui n'est pas signé par un certificat de signature de code ayant acquis une réputation. La licence n'y change rien : GamingTweaker est déjà sous licence libre (AGPL-3.0), et une licence MIT ne supprimerait pas l'avertissement. Seule une signature le fait disparaître, et pour un certificat neuf il s'efface progressivement, au fil des téléchargements.
 
-- `SIGN_PFX_BASE64` : le certificat de signature de code `.pfx`, encodé en base64 (`[Convert]::ToBase64String([IO.File]::ReadAllBytes('cert.pfx'))` dans PowerShell) ;
+**La voie gratuite** : [SignPath Foundation](https://signpath.org) signe gratuitement les projets open source. Conditions principales : licence libre reconnue par l'OSI (l'AGPL l'est), **dépôt public**, binaires produits par la CI (GitHub Actions est pris en charge). Il faut en faire la demande ; une fois le projet accepté, l'étape de signature du workflow est remplacée par la leur.
+
+**Avec un certificat acheté** (Certum « open source », certificat OV, etc.), le workflow signe déjà l'exe (Authenticode SHA-256, horodaté) si deux secrets existent dans le dépôt (Settings > Secrets and variables > Actions) :
+
+- `SIGN_PFX_BASE64` : le certificat `.pfx`, encodé en base64 (`[Convert]::ToBase64String([IO.File]::ReadAllBytes('cert.pfx'))` dans PowerShell) ;
 - `SIGN_PFX_PASSWORD` : son mot de passe.
 
-Sans ces secrets, l'exe est publié non signé et le résumé du build le signale. Où obtenir un certificat : un certificat de signature de code « open source » (par exemple Certum) est la voie la moins chère pour un projet AGPL ; un certificat OV classique fonctionne aussi. Les certificats récents sont souvent livrés sur clé matérielle ou dans un service cloud, sans fichier `.pfx` exportable : dans ce cas, l'étape « Signer l'exe » est à adapter à l'outil du fournisseur (par exemple Azure Trusted Signing). Un certificat neuf n'efface pas tout de suite l'avertissement SmartScreen : la réputation se construit avec les téléchargements.
+Les certificats récents sont souvent livrés sur clé matérielle ou dans un service cloud, sans `.pfx` exportable : l'étape « Signer l'exe » est alors à adapter à l'outil du fournisseur (par exemple Azure Trusted Signing). Sans signature, l'exe est publié non signé et le résumé du build le signale.
+
+**En attendant**, sur votre PC : SmartScreen ne se déclenche que pour un fichier téléchargé par un navigateur. « Informations complémentaires » puis « Exécuter quand même » suffit, une fois par version.
 
 ## Licence
 
