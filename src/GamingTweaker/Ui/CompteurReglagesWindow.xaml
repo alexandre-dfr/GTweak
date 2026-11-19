@@ -10,6 +10,9 @@
         <TextBlock Text="Compteur en jeu" FontSize="20" FontWeight="SemiBold" FontFamily="{StaticResource PoliceTitre}"/>
         <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,6,0,16"
                    Text="Affiche par-dessus le jeu ses images par seconde et la charge du PC. Le compteur lit les informations publiées par Windows : rien n'est injecté dans le jeu, il est donc compatible avec les anti-triche. Les réglages s'appliquent tout de suite."/>
+        <Border Padding="12,8" CornerRadius="6" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" Margin="0,0,0,12">
+            <TextBlock TextWrapping="Wrap" Text="Tant que cette fenêtre est ouverte, le compteur est affiché avec un cadre pointillé : faites-le glisser à la souris où vous voulez, sur n'importe quel écran. Il garde cette place."/>
+        </Border>
 
         <Border Style="{StaticResource CarteW11}">
             <StackPanel>

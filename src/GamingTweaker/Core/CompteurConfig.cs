@@ -7,7 +7,8 @@ using Newtonsoft.Json.Converters;
 
 namespace GamingTweaker.Core
 {
-    public enum CoinEcran { HautGauche, HautDroite, BasGauche, BasDroite }
+    /// <summary>Coin de l'écran principal, ou position libre (déplacée à la souris, sur n'importe quel écran).</summary>
+    public enum CoinEcran { HautGauche, HautDroite, BasGauche, BasDroite, Libre }
 
     public enum TailleCompteur { Petite, Normale, Grande }
 
@@ -24,6 +25,9 @@ namespace GamingTweaker.Core
 
         [JsonProperty("actif")] public bool Actif { get; set; }
         [JsonProperty("position")] [JsonConverter(typeof(StringEnumConverter))] public CoinEcran Position { get; set; } = CoinEcran.HautDroite;
+        /// <summary>Position libre : coin haut-gauche du compteur, en pixels logiques du bureau (tous écrans).</summary>
+        [JsonProperty("x")] public double X { get; set; }
+        [JsonProperty("y")] public double Y { get; set; }
         [JsonProperty("couleur")] public string Couleur { get; set; } = CouleurParDefaut;
         [JsonProperty("taille")] [JsonConverter(typeof(StringEnumConverter))] public TailleCompteur Taille { get; set; } = TailleCompteur.Normale;
         /// <summary>Opacité du fond (0,2 à 1).</summary>
@@ -49,6 +53,8 @@ namespace GamingTweaker.Core
             if (double.IsNaN(OpaciteFond) || double.IsInfinity(OpaciteFond)) OpaciteFond = 0.55;
             OpaciteFond = Math.Max(0.2, Math.Min(1.0, OpaciteFond));
             if (Array.IndexOf(DureesCourbe, DureeCourbe) < 0) DureeCourbe = 30;
+            if (double.IsNaN(X) || double.IsInfinity(X) || Math.Abs(X) > 100000) X = 0;
+            if (double.IsNaN(Y) || double.IsInfinity(Y) || Math.Abs(Y) > 100000) Y = 0;
             return this;
         }
 

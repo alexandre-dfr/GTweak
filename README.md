@@ -38,7 +38,8 @@ Le bouton en forme de compteur, en haut à droite (à côté du thème), ouvre l
   - temps d'image et « 1 % bas » (99e centile du temps d'image sur 10 s) ;
   - courbe des FPS sur 10, 30 ou 60 s ;
   - charge du processeur, de la carte graphique et de la mémoire en pourcentage.
-- **Apparence** : coin de l'écran, taille, couleur (7 couleurs proposées ou une couleur libre `#RRVVBB`), opacité du fond.
+- **Position** : un coin de l'écran principal, ou **n'importe où** : tant que la fenêtre des réglages est ouverte, le compteur est affiché avec un cadre pointillé et se déplace à la souris, sur n'importe quel écran. Il garde cette place.
+- **Apparence** : taille, couleur (7 couleurs proposées ou une couleur libre `#RRVVBB`), opacité du fond. Largeur fixe et police à chasse fixe : le compteur ne bouge pas quand les chiffres changent ; il est rafraîchi deux fois par seconde.
 - **Fonctionnement** : les FPS viennent des événements « Present » publiés par Windows (ETW, comme PresentMon) ; rien n'est injecté dans le jeu, le compteur est donc compatible avec les anti-triche. Processeur, mémoire et carte graphique sont mesurés comme dans le Gestionnaire des tâches. La surimpression laisse passer les clics et ne prend jamais le clavier. Rien ne tourne quand le compteur est masqué.
 - **Limites** : les FPS sont mesurés pour les jeux DirectX 9 à 12 ; un jeu Vulkan ou OpenGL affiche « — ». Le compteur s'affiche en plein écran sans bordure et en fenêtre, pas en plein écran exclusif. Comme toute surimpression, il peut empêcher Windows d'utiliser l'affichage direct (« independent flip ») d'un jeu en plein écran sans bordure. La latence d'entrée (« input lag ») n'est pas affichée : elle ne se mesure correctement qu'avec du matériel dédié.
 
@@ -69,15 +70,21 @@ Le menu « Diagnostic » (lecture seule) repère ce qui bride réellement les pe
 
 Historique > Mesures : un relevé de 30 s (temps DPC et d'interruptions, processeur au repos, services, processus, mémoire disponible, programmes au démarrage). Faites-en un avant d'optimiser et un après, puis « Avant / après » : chaque mesure est marquée « mieux », « moins bien » ou « stable ».
 
-## Mode Jeu automatique
+## Mode Jeu
 
-Dans le menu Mode Jeu, la section « Mode Jeu automatique » surveille une liste de jeux :
+Le menu Mode Jeu se lit de haut en bas :
 
-- **Liste de jeux** : ajoutez un `.exe`, ou choisissez parmi les jeux installés par Steam et Epic Games. Pour un jeu Steam ou Epic, tout programme lancé depuis son dossier compte (les lanceurs, outils de plantage et anti-triche sont ignorés).
-- **Réglages utilisés** : la sélection du Mode Jeu (services, processus, plan d'alimentation), reprise avec « Utiliser la sélection ci-dessus ».
-- **Fonctionnement** : quand un jeu de la liste démarre, le Mode Jeu s'active. Quand vous quittez le dernier jeu, tout est rétabli. Une notification le signale à chaque fois. Un Mode Jeu activé à la main n'est jamais rétabli automatiquement, et un Mode Jeu rétabli à la main pendant une partie n'est pas réactivé avant la partie suivante.
-- **Zone de notification** : tant que le mode automatique ou le démarrage avec Windows est actif, fermer la fenêtre la réduit en icône près de l'horloge. Clic droit sur l'icône pour rouvrir ou quitter. En quittant, un Mode Jeu activé automatiquement est rétabli.
-- **Démarrer avec Windows** : crée la tâche `\GamingTweaker\Demarrage`, lancée à l'ouverture de session avec les droits administrateur (sans invite). Elle démarre `GamingTweaker.exe --tray` depuis une copie placée dans `%ProgramFiles%\GamingTweaker\Demarrage`, jamais depuis l'emplacement de l'exe portable. `--uninstall` la retire aussi.
+- **État** : actif ou inactif, ce que le Mode Jeu va faire en une phrase, et le bouton **Activer maintenant** (ou **Rétablir** quand il est actif).
+- **1. Ce que fait le Mode Jeu** : plan d'alimentation Performances élevées, libération de la mémoire, profil du pilote NVIDIA, services Windows à arrêter, programmes à fermer (listes repliées, avec le nombre de cases cochées). Ces choix sont **enregistrés** : ils sont recochés au prochain lancement, et ce sont les mêmes pour le Mode Jeu manuel et automatique. Un service ou programme choisi qui ne tourne pas en ce moment reste affiché, coché.
+- **2. Mode automatique (facultatif)** :
+  - **Vos jeux** : ajoutez des jeux depuis Steam, Epic Games ou un `.exe`. Pour un jeu Steam ou Epic, tout programme lancé depuis son dossier compte (les lanceurs, outils de plantage et anti-triche sont ignorés).
+  - **Fonctionnement** : quand un jeu de la liste démarre, le Mode Jeu s'active ; quand vous quittez le dernier, tout est rétabli. Une notification le signale à chaque fois. Un Mode Jeu activé à la main n'est jamais rétabli automatiquement, et un Mode Jeu rétabli à la main pendant une partie n'est pas réactivé avant la partie suivante.
+  - **Démarrer GamingTweaker avec Windows** : crée la tâche `\GamingTweaker\Demarrage`, lancée à l'ouverture de session avec les droits administrateur (sans invite). Elle démarre `GamingTweaker.exe --tray` depuis une copie placée dans `%ProgramFiles%\GamingTweaker\Demarrage`, jamais depuis l'emplacement de l'exe portable. `--uninstall` la retire aussi. Sans cette case, le mode automatique ne fonctionne que tant que GamingTweaker est ouvert : un rappel s'affiche.
+  - **Zone de notification** : tant que le mode automatique ou le démarrage avec Windows est actif, fermer la fenêtre la réduit en icône près de l'horloge. Clic droit sur l'icône pour rouvrir ou quitter. En quittant, un Mode Jeu activé automatiquement est rétabli.
+
+## En cas d'erreur
+
+Une erreur inattendue n'est jamais silencieuse : un message l'indique et un rapport est enregistré dans `%LOCALAPPDATA%\GamingTweaker\erreurs.log` (lisible sans droits administrateur), avec le détail technique et les dernières étapes du journal. Envoyez ce fichier pour faire corriger le problème. Une erreur au démarrage ferme l'application après le message ; une erreur plus tard la laisse ouverte.
 
 ## Annuler
 

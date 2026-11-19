@@ -18,7 +18,12 @@ namespace GamingTweaker.Core
         private const long TailleMax = 1024 * 1024;
         private static readonly object sync = new object();
         private static readonly List<string> tampon = new List<string>();
+        /// <summary>Dernières lignes écrites (rapport d'erreur), gardées même après leur écriture dans le fichier.</summary>
+        private static readonly Queue<string> recentes = new Queue<string>();
         private static string chemin;
+
+        /// <summary>Les dernières lignes du journal (au plus 60), pour le rapport d'erreur.</summary>
+        public static string[] Recentes() { lock (sync) return recentes.ToArray(); }
 
         /// <summary>Chemin du journal (null tant qu'il n'est pas configuré).</summary>
         public static string Chemin { get { lock (sync) return chemin; } }
@@ -45,7 +50,10 @@ namespace GamingTweaker.Core
             if (string.IsNullOrEmpty(message)) return;
             lock (sync)
             {
-                tampon.Add(Ligne(message));
+                var l = Ligne(message);
+                recentes.Enqueue(l);
+                while (recentes.Count > 60) recentes.Dequeue();
+                tampon.Add(l);
                 if (chemin != null) Vider();
                 else if (tampon.Count > 200) tampon.RemoveAt(0);
             }

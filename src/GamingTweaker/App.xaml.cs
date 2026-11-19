@@ -17,13 +17,36 @@ namespace GamingTweaker
 
         private IDisposable verrouInterface;
 
+        /// <summary>Vrai une fois la fenêtre principale construite : une erreur avant ce point ferme l'application (après le rapport).</summary>
+        private bool demarrageTermine;
+
         public App()
         {
             // Doit être appelé avant toute résolution d'assembly embarqué.
             AssemblyLoader.Register();
+            DispatcherUnhandledException += (s, ev) =>
+            {
+                var chemin = RapportErreur.Ecrire(demarrageTermine ? "interface" : "démarrage de l'interface", ev.Exception);
+                ev.Handled = true;
+                try { MessageBox.Show(RapportErreur.Message(ev.Exception, chemin, demarrageTermine), "GamingTweaker", MessageBoxButton.OK, demarrageTermine ? MessageBoxImage.Warning : MessageBoxImage.Error); }
+                catch (Exception) { }
+                if (!demarrageTermine) Shutdown(2);
+            };
         }
 
         private void OnStartup(object sender, StartupEventArgs e)
+        {
+            TraceAppli.Ecrire("interface : démarrage" + (DemarrageEnZone ? " (zone de notification)" : ""));
+            try { Demarrer(); }
+            catch (Exception ex)
+            {
+                var chemin = RapportErreur.Ecrire("démarrage de l'interface", ex);
+                try { MessageBox.Show(RapportErreur.Message(ex, chemin, false), "GamingTweaker", MessageBoxButton.OK, MessageBoxImage.Error); } catch (Exception) { }
+                Shutdown(2);
+            }
+        }
+
+        private void Demarrer()
         {
             // Une seule interface à la fois (l'icône près de l'horloge en est une) : deux surveillances du Mode Jeu se contrediraient.
             verrouInterface = SingleInstance.TryAcquire(VerrouInterface);
@@ -53,6 +76,7 @@ namespace GamingTweaker
                 Shutdown(2); return;
             }
 
+            TraceAppli.Ecrire("interface : dossier de données vérifié");
             IReadOnlyList<CatalogItem> catalogue;
             try
             {
@@ -157,6 +181,7 @@ namespace GamingTweaker
             };
 
             fenetre = new Ui.MainWindow(vm);
+            TraceAppli.Ecrire("interface : fenêtre principale créée");
 
             // ---- Compteur en jeu (FPS, CPU, GPU, RAM) : surimpression et raccourci global ----
             var compteur = new CompteurViewModel(paths.MachineDir, new CompteurService());
@@ -240,6 +265,8 @@ namespace GamingTweaker
 
             if (DemarrageEnZone) zone.Visible = true;
             else ouvrir();
+            demarrageTermine = true;
+            TraceAppli.Ecrire("interface : prête");
         }
     }
 }

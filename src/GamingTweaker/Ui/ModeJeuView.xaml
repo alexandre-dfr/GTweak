@@ -2,6 +2,12 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:GamingTweaker.Ui">
+    <!--
+        Mode Jeu, en trois blocs lisibles de haut en bas :
+        - État : actif ou non, ce qu'il fait, bouton Activer / Rétablir ;
+        - 1. Ce que fait le Mode Jeu : les réglages (enregistrés, communs au mode manuel et automatique) ;
+        - 2. Mode automatique : la liste des jeux qui déclenchent le Mode Jeu.
+    -->
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolVis"/>
         <local:NonNulVersVisibilite x:Key="NonNulVis"/>
@@ -13,104 +19,208 @@
                 </StackPanel>
             </CheckBox>
         </DataTemplate>
+        <!-- Pastille numérotée des étapes -->
+        <Style x:Key="Pastille" TargetType="Border">
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="CornerRadius" Value="14"/>
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="Margin" Value="0,0,12,0"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+        </Style>
+        <Style x:Key="TexteAide" TargetType="TextBlock">
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
+            <Setter Property="Margin" Value="26,2,0,0"/>
+        </Style>
+        <Style x:Key="TitreReglage" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="14"/>
+        </Style>
     </UserControl.Resources>
-    <!-- Tout défile : listes de hauteur fixe, réglages sur leur propre ligne au-dessus des boutons. -->
+
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Margin="0,0,16,12">
-        <StackPanel>
-            <TextBlock Text="Libère des ressources le temps d'une session : les services et processus que vous cochez sont arrêtés, puis relancés avec « Rétablir ». Les processus système critiques, la sécurité, l'audio et les pilotes d'affichage ne sont jamais proposés."
-                       TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,10"/>
-        </StackPanel>
-        <Border Padding="14,10" CornerRadius="6" Background="{DynamicResource WarnBg}" Margin="0,0,0,10" Visibility="{Binding EstActif, Converter={StaticResource BoolVis}}">
-            <TextBlock Text="Le Mode Jeu est actif. Rétablissez-le pour redémarrer ce qui a été arrêté." TextWrapping="Wrap" Foreground="{DynamicResource AvanceFg}" FontWeight="SemiBold"/>
-        </Border>
-        <Grid IsEnabled="{Binding PeutModifier}" Height="240">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="16"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-            <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="14,10">
-                <DockPanel>
-                    <TextBlock DockPanel.Dock="Top" Text="Services en cours d'exécution" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                    <ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsControl ItemsSource="{Binding Services}" ItemTemplate="{StaticResource ChoixTemplate}"/></ScrollViewer>
-                </DockPanel>
-            </Border>
-            <Border Grid.Column="2" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="14,10">
-                <DockPanel>
-                    <TextBlock DockPanel.Dock="Top" Text="Processus de votre session" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                    <ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsControl ItemsSource="{Binding Processus}" ItemTemplate="{StaticResource ChoixTemplate}"/></ScrollViewer>
-                </DockPanel>
-            </Border>
-        </Grid>
-        <StackPanel Margin="0,12,0,0">
-            <!-- Réglages du Mode Jeu -->
-            <WrapPanel Margin="0,0,0,10">
-                    <CheckBox Content="Passer au plan Performances élevées" IsChecked="{Binding UtiliserPlan, Mode=TwoWay}" VerticalAlignment="Center" IsEnabled="{Binding PeutModifier}"/>
-                    <CheckBox Content="Libérer la mémoire" IsChecked="{Binding LibererMemoire, Mode=TwoWay}" VerticalAlignment="Center" Margin="16,0,0,0" IsEnabled="{Binding PeutModifier}"
-                              ToolTip="Récupère la mémoire inutilisée des programmes en arrière-plan (rien n'est fermé ; utile avec 8 ou 16 Go de RAM). Le jeu au premier plan et les jeux surveillés ne sont pas touchés."/>
-                    <ComboBox Width="230" Height="32" Margin="16,0,0,0" ItemsSource="{Binding ProfilsNvidiaDisponibles}" SelectedValuePath="Key" DisplayMemberPath="Value"
-                              SelectedValue="{Binding ProfilNvidia, Mode=TwoWay}" IsEnabled="{Binding PeutModifier}"
-                              Visibility="{Binding NvidiaDisponible, Converter={StaticResource BoolVis}}"
-                              ToolTip="Performance : performances maximales, filtrage hautes performances, V-Sync désactivée, faible latence Ultra. Qualité : performances maximales, filtrage haute qualité, V-Sync laissée au jeu. Les réglages d'avant sont remis en quittant le Mode Jeu."/>
-            </WrapPanel>
-            <!-- Actions -->
-            <WrapPanel>
-                    <Button Content="Activer le Mode Jeu" Style="{StaticResource PrimaryButton}" Command="{Binding ActiverCommand}"/>
-                    <Button Content="Actualiser les listes" Command="{Binding ActualiserCommand}" Margin="8,0,0,0"/>
-                    <Button Content="Rétablir" Command="{Binding RetablirCommand}" Margin="8,0,0,0"/>
-                    <Button Content="Oublier l'état" Command="{Binding OublierCommand}" Margin="8,0,0,0" Visibility="{Binding PeutOublier, Converter={StaticResource BoolVis}}" ToolTip="Abandonner le rétablissement (après confirmation)"/>
-            </WrapPanel>
-            <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,10,0,0"/>
-            <!-- Diagnostic NVIDIA : ce que le pilote contient réellement -->
-            <DockPanel Margin="0,8,0,0" Visibility="{Binding NvidiaDisponible, Converter={StaticResource BoolVis}}">
-                <Button DockPanel.Dock="Left" Content="Lire les réglages NVIDIA" Command="{Binding LireNvidiaCommand}" VerticalAlignment="Top"
-                        ToolTip="Affiche les valeurs actuellement enregistrées dans le pilote (paramètres globaux)"/>
-                <TextBlock Text="{Binding EtatNvidia}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="12,2,0,0"/>
-            </DockPanel>
-        </StackPanel>
-        <!-- Mode Jeu automatique : liste des jeux, réglages repris de la sélection ci-dessus, démarrage avec Windows. -->
-        <Border DataContext="{Binding Auto}" Background="{DynamicResource PanelBrush}" CornerRadius="6" Padding="14,10" Margin="0,12,0,0"
-                Visibility="{Binding DataContext.Auto, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource NonNulVis}}">
+    <StackPanel Margin="0,0,16,16">
+
+        <!-- ===== État ===== -->
+        <Border>
+            <Border.Style>
+                <Style TargetType="Border" BasedOn="{StaticResource CarteW11}">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding EstActif}" Value="True">
+                            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                            <Setter Property="BorderThickness" Value="2"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
             <StackPanel>
                 <Grid>
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <CheckBox IsChecked="{Binding Actif, Mode=TwoWay}" VerticalAlignment="Center">
-                        <TextBlock Text="Mode Jeu automatique : s'active quand un jeu de la liste démarre, tout est rétabli quand vous quittez le dernier" TextWrapping="Wrap" FontWeight="SemiBold"/>
-                    </CheckBox>
-                    <CheckBox Grid.Column="1" Content="Démarrer avec Windows" IsChecked="{Binding DemarrageAvecWindows, Mode=TwoWay}" Margin="16,0,0,0" VerticalAlignment="Center"
-                              ToolTip="GamingTweaker démarre réduit près de l'horloge, avec les droits administrateur, depuis une copie protégée dans Program Files"/>
+                    <TextBlock Text="&#xE7FC;" FontFamily="{StaticResource PoliceIcones}" FontSize="30" VerticalAlignment="Top" Margin="0,2,16,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
+                                <Style.Triggers><DataTrigger Binding="{Binding EstActif}" Value="True"><Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/></DataTrigger></Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Text="{Binding TitreEtat}" FontSize="20" FontWeight="SemiBold" FontFamily="{StaticResource PoliceTitre}"/>
+                        <TextBlock Text="{Binding TexteEtat}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                        <TextBlock Text="{Binding ResumeSelection}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,6,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Margin="16,0,0,0" VerticalAlignment="Center">
+                        <Button Content="Activer maintenant" Style="{StaticResource PrimaryButton}" Command="{Binding ActiverCommand}" MinWidth="170"
+                                Visibility="{Binding PeutModifier, Converter={StaticResource BoolVis}}"/>
+                        <Button Content="Rétablir (tout remettre)" Style="{StaticResource PrimaryButton}" Command="{Binding RetablirCommand}" MinWidth="170"
+                                Visibility="{Binding EstActif, Converter={StaticResource BoolVis}}"/>
+                        <Button Content="Oublier l'état" Command="{Binding OublierCommand}" Margin="0,8,0,0" MinWidth="170"
+                                Visibility="{Binding PeutOublier, Converter={StaticResource BoolVis}}" ToolTip="Abandonner le rétablissement (après confirmation)"/>
+                    </StackPanel>
                 </Grid>
-                <ListBox ItemsSource="{Binding Jeux}" SelectedItem="{Binding JeuSelectionne, Mode=TwoWay}" Height="110" Margin="0,8,0,0"
-                         Background="{DynamicResource BgBrush}" BorderBrush="{DynamicResource BorderBrush}">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <StackPanel Margin="0,2">
-                                <TextBlock Text="{Binding Nom}" Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis"/>
-                                <TextBlock FontSize="12" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis">
-                                    <Run Text="{Binding Source, Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding Chemin, Mode=OneWay}"/>
-                                </TextBlock>
-                            </StackPanel>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-                <WrapPanel Margin="0,8,0,0">
-                    <Button Content="Ajouter un .exe" Command="{Binding AjouterExeCommand}" Margin="0,0,8,4"/>
-                    <Button Content="Depuis Steam" Command="{Binding AjouterSteamCommand}" Margin="0,0,8,4"/>
-                    <Button Content="Depuis Epic Games" Command="{Binding AjouterEpicCommand}" Margin="0,0,8,4"/>
-                    <Button Content="Retirer" Command="{Binding RetirerCommand}" Margin="0,0,8,4"/>
-                    <Button Content="Utiliser la sélection ci-dessus" Command="{Binding ReprendreSelectionCommand}" Margin="0,0,8,4"
-                            ToolTip="Le mode automatique arrête les services et processus cochés ci-dessus, et change le plan si la case est cochée"/>
-                </WrapPanel>
-                <CheckBox Content="Priorité haute pour le jeu en cours" IsChecked="{Binding PrioriteHaute, Mode=TwoWay}" Margin="0,6,0,0"
-                          ToolTip="Le processus du jeu passe en priorité « Haute » (jamais « Temps réel ») : utile quand des programmes tournent en arrière-plan pendant la partie."/>
-                <TextBlock Text="{Binding ResumeReglages}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0"/>
-                <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0"/>
+                <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="46,10,0,0">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Style.Triggers><DataTrigger Binding="{Binding Message}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
             </StackPanel>
         </Border>
+
+        <!-- ===== 1. Ce que fait le Mode Jeu ===== -->
+        <DockPanel Margin="0,24,0,8">
+            <Border Style="{StaticResource Pastille}"><TextBlock Text="1" Foreground="{DynamicResource AccentTextBrush}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+            <StackPanel>
+                <TextBlock Text="Ce que fait le Mode Jeu" FontSize="18" FontWeight="SemiBold" FontFamily="{StaticResource PoliceTitre}"/>
+                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0"
+                           Text="Cochez ce qui doit changer pendant que vous jouez. Vos choix sont enregistrés et servent aussi au mode automatique. Ils ne sont modifiables que quand le Mode Jeu est inactif."/>
+            </StackPanel>
+        </DockPanel>
+        <Border Style="{StaticResource CarteW11}" IsEnabled="{Binding PeutModifier}">
+            <StackPanel>
+                <CheckBox IsChecked="{Binding UtiliserPlan, Mode=TwoWay}"><TextBlock Text="Plan d'alimentation « Performances élevées »" Style="{StaticResource TitreReglage}"/></CheckBox>
+                <TextBlock Style="{StaticResource TexteAide}" Text="Le processeur reste à pleine vitesse au lieu d'économiser l'énergie. Le plan d'avant est remis ensuite."/>
+
+                <CheckBox IsChecked="{Binding LibererMemoire, Mode=TwoWay}" Margin="0,14,0,0"><TextBlock Text="Libérer la mémoire" Style="{StaticResource TitreReglage}"/></CheckBox>
+                <TextBlock Style="{StaticResource TexteAide}" Text="Récupère la mémoire inutilisée des programmes en arrière-plan, sans rien fermer. Utile avec 8 ou 16 Go de RAM. Le jeu n'est jamais touché."/>
+
+                <StackPanel Margin="0,14,0,0" Visibility="{Binding NvidiaDisponible, Converter={StaticResource BoolVis}}">
+                    <DockPanel>
+                        <TextBlock Text="Pilote NVIDIA" Style="{StaticResource TitreReglage}" VerticalAlignment="Center" Margin="26,0,12,0"/>
+                        <ComboBox Width="240" HorizontalAlignment="Left" ItemsSource="{Binding ProfilsNvidiaDisponibles}" SelectedValuePath="Key" DisplayMemberPath="Value"
+                                  SelectedValue="{Binding ProfilNvidia, Mode=TwoWay}"/>
+                    </DockPanel>
+                    <TextBlock Style="{StaticResource TexteAide}"
+                               Text="Performance : performances maximales, filtrage rapide, V-Sync désactivée, faible latence Ultra. Qualité : performances maximales, filtrage haute qualité, V-Sync laissée au jeu. Les réglages d'avant sont remis en quittant le Mode Jeu."/>
+                    <DockPanel Margin="26,6,0,0">
+                        <Button DockPanel.Dock="Left" Content="Voir les réglages actuels du pilote" Command="{Binding LireNvidiaCommand}" VerticalAlignment="Top"/>
+                        <TextBlock Text="{Binding EtatNvidia}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" FontSize="12" Margin="12,2,0,0"/>
+                    </DockPanel>
+                </StackPanel>
+
+                <Separator Margin="0,16" Background="{DynamicResource BorderBrush}"/>
+
+                <!-- Services -->
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Command="{Binding BasculerServicesCommand}" VerticalAlignment="Top">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding TexteServices}"/>
+                            <TextBlock Text="&#xE70D;" FontFamily="{StaticResource PoliceIcones}" FontSize="11" Margin="8,2,0,0"/>
+                        </StackPanel>
+                    </Button>
+                    <StackPanel>
+                        <TextBlock Text="Services Windows à arrêter" Style="{StaticResource TitreReglage}"/>
+                        <TextBlock Style="{StaticResource TexteAide}" Margin="0,2,12,0"
+                                   Text="Services qui tournent en arrière-plan et ne servent pas en jeu (impression, indexation…). Ils sont relancés avec « Rétablir ». La sécurité, l'audio et les pilotes d'affichage ne sont jamais proposés."/>
+                    </StackPanel>
+                </DockPanel>
+                <Border Margin="0,8,0,0" Height="220" Background="{DynamicResource BgBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10,6"
+                        Visibility="{Binding ServicesOuverts, Converter={StaticResource BoolVis}}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsControl ItemsSource="{Binding Services}" ItemTemplate="{StaticResource ChoixTemplate}"/></ScrollViewer>
+                </Border>
+
+                <!-- Programmes -->
+                <DockPanel Margin="0,16,0,0">
+                    <Button DockPanel.Dock="Right" Command="{Binding BasculerProcessusCommand}" VerticalAlignment="Top">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding TexteProcessus}"/>
+                            <TextBlock Text="&#xE70D;" FontFamily="{StaticResource PoliceIcones}" FontSize="11" Margin="8,2,0,0"/>
+                        </StackPanel>
+                    </Button>
+                    <StackPanel>
+                        <TextBlock Text="Programmes à fermer" Style="{StaticResource TitreReglage}"/>
+                        <TextBlock Style="{StaticResource TexteAide}" Margin="0,2,12,0"
+                                   Text="Programmes ouverts dans votre session (navigateur, logiciels de synchronisation…). Ils sont fermés à l'activation : enregistrez votre travail avant. Ils sont relancés avec « Rétablir »."/>
+                    </StackPanel>
+                </DockPanel>
+                <Border Margin="0,8,0,0" Height="220" Background="{DynamicResource BgBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10,6"
+                        Visibility="{Binding ProcessusOuverts, Converter={StaticResource BoolVis}}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsControl ItemsSource="{Binding Processus}" ItemTemplate="{StaticResource ChoixTemplate}"/></ScrollViewer>
+                </Border>
+
+                <Button Content="Actualiser les listes" Command="{Binding ActualiserCommand}" HorizontalAlignment="Left" Margin="0,12,0,0"
+                        ToolTip="Relit les services et programmes en cours (vos choix enregistrés restent cochés)"/>
+            </StackPanel>
+        </Border>
+
+        <!-- ===== 2. Mode automatique ===== -->
+        <StackPanel DataContext="{Binding Auto}"
+                    Visibility="{Binding DataContext.Auto, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource NonNulVis}}">
+            <DockPanel Margin="0,24,0,8">
+                <Border Style="{StaticResource Pastille}"><TextBlock Text="2" Foreground="{DynamicResource AccentTextBrush}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                <StackPanel>
+                    <TextBlock Text="Mode automatique (facultatif)" FontSize="18" FontWeight="SemiBold" FontFamily="{StaticResource PoliceTitre}"/>
+                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0"
+                               Text="Plus besoin de cliquer : le Mode Jeu s'active quand un de vos jeux démarre, et tout est rétabli quand vous quittez le dernier. Une notification le signale à chaque fois."/>
+                </StackPanel>
+            </DockPanel>
+            <Border Style="{StaticResource CarteW11}">
+                <StackPanel>
+                    <CheckBox IsChecked="{Binding Actif, Mode=TwoWay}"><TextBlock Text="Activer le Mode Jeu automatiquement" Style="{StaticResource TitreReglage}"/></CheckBox>
+
+                    <TextBlock Text="Vos jeux" Style="{StaticResource TitreReglage}" Margin="0,16,0,0"/>
+                    <TextBlock Style="{StaticResource TexteAide}" Margin="0,2,0,0" Text="{Binding ResumeReglages}"/>
+                    <ListBox ItemsSource="{Binding Jeux}" SelectedItem="{Binding JeuSelectionne, Mode=TwoWay}" Height="130" Margin="0,8,0,0"
+                             Background="{DynamicResource BgBrush}" BorderBrush="{DynamicResource BorderBrush}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="0,2">
+                                    <TextBlock Text="{Binding Nom}" Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock FontSize="12" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis">
+                                        <Run Text="{Binding Source, Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding Chemin, Mode=OneWay}"/>
+                                    </TextBlock>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <WrapPanel Margin="0,8,0,0">
+                        <Button Content="Depuis Steam" Command="{Binding AjouterSteamCommand}" Margin="0,0,8,4" ToolTip="Liste les jeux Steam installés sur ce PC"/>
+                        <Button Content="Depuis Epic Games" Command="{Binding AjouterEpicCommand}" Margin="0,0,8,4" ToolTip="Liste les jeux Epic Games installés sur ce PC"/>
+                        <Button Content="Ajouter un .exe…" Command="{Binding AjouterExeCommand}" Margin="0,0,8,4" ToolTip="Pour un jeu d'une autre boutique : choisissez son fichier .exe"/>
+                        <Button Content="Retirer le jeu sélectionné" Command="{Binding RetirerCommand}" Margin="0,0,8,4"/>
+                    </WrapPanel>
+
+                    <CheckBox IsChecked="{Binding PrioriteHaute, Mode=TwoWay}" Margin="0,14,0,0"><TextBlock Text="Priorité haute pour le jeu en cours" Style="{StaticResource TitreReglage}"/></CheckBox>
+                    <TextBlock Style="{StaticResource TexteAide}" Text="Windows donne la priorité au jeu quand des programmes tournent en arrière-plan (jamais la priorité « temps réel »)."/>
+
+                    <CheckBox IsChecked="{Binding DemarrageAvecWindows, Mode=TwoWay}" Margin="0,14,0,0"><TextBlock Text="Démarrer GamingTweaker avec Windows" Style="{StaticResource TitreReglage}"/></CheckBox>
+                    <TextBlock Style="{StaticResource TexteAide}" Text="GamingTweaker démarre réduit près de l'horloge, sans fenêtre : le mode automatique fonctionne sans que vous ayez à ouvrir l'application."/>
+
+                    <Border Padding="12,8" CornerRadius="6" Background="{DynamicResource WarnBg}" Margin="0,12,0,0" Visibility="{Binding RappelDemarrage, Converter={StaticResource BoolVis}}">
+                        <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource AvanceFg}"
+                                   Text="Le mode automatique ne fonctionne que tant que GamingTweaker est ouvert ou réduit près de l'horloge. Cochez « Démarrer GamingTweaker avec Windows » pour ne pas avoir à y penser."/>
+                    </Border>
+                    <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,10,0,0"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
     </StackPanel>
     </ScrollViewer>
 </UserControl>

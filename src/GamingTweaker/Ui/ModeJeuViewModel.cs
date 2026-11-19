@@ -36,6 +36,59 @@ namespace GamingTweaker.Ui
             OublierCommand = new RelayCommand(_ => { var t = OublierAsync(); }, _ => !enCours && actif && peutOublier);
         }
 
+        /// <summary>
+        /// Sélection enregistrée (services, processus) : cochée à nouveau à chaque chargement des listes, y compris ce qui ne tourne pas en ce moment.
+        /// Branchée par le mode automatique, qui enregistre la même sélection : le Mode Jeu manuel et automatique utilisent toujours les mêmes réglages.
+        /// </summary>
+        public Func<Tuple<IReadOnlyList<string>, IReadOnlyList<ProcessusChoix>>> SelectionEnregistree { get; set; }
+
+        /// <summary>Une case de service ou de processus a changé (pas lors du chargement des listes).</summary>
+        public event Action SelectionChangee;
+
+        /// <summary>Vrai une fois les listes chargées : avant, la sélection enregistrée ne doit pas être écrasée par des listes vides.</summary>
+        public bool ListesChargees { get { return listesChargees; } }
+
+        private bool servicesOuverts, processusOuverts, precochage;
+        /// <summary>Liste des services dépliée.</summary>
+        public bool ServicesOuverts { get { return servicesOuverts; } set { Set(ref servicesOuverts, value); } }
+        public bool ProcessusOuverts { get { return processusOuverts; } set { Set(ref processusOuverts, value); } }
+        private ICommand basculerServices, basculerProcessus;
+        public ICommand BasculerServicesCommand { get { return basculerServices ?? (basculerServices = new RelayCommand(_ => ServicesOuverts = !ServicesOuverts)); } }
+        public ICommand BasculerProcessusCommand { get { return basculerProcessus ?? (basculerProcessus = new RelayCommand(_ => ProcessusOuverts = !ProcessusOuverts)); } }
+
+        public int NombreServices { get { return Services.Count(s => s.IsChecked); } }
+        public int NombreProcessus { get { return Processus.Count(p => p.IsChecked); } }
+        public string TexteServices { get { return Pluriel(NombreServices, "service coché", "services cochés"); } }
+        public string TexteProcessus { get { return Pluriel(NombreProcessus, "programme coché", "programmes cochés"); } }
+        private static string Pluriel(int n, string un, string plusieurs) { return n == 0 ? "aucun " + un.Split(' ')[0] + " coché" : n + " " + (n > 1 ? plusieurs : un); }
+
+        /// <summary>Ce que fait le Mode Jeu avec les réglages actuels, en une phrase.</summary>
+        public string ResumeSelection
+        {
+            get
+            {
+                var p = new List<string>();
+                if (NombreServices > 0) p.Add("arrête " + Pluriel(NombreServices, "service", "services").Replace(" coché", ""));
+                if (NombreProcessus > 0) p.Add("ferme " + Pluriel(NombreProcessus, "programme", "programmes").Replace(" coché", ""));
+                if (utiliserPlan) p.Add("passe en Performances élevées");
+                if (libererMemoire) p.Add("libère la mémoire");
+                if (NvidiaDisponible && profilNvidia != ProfilNvidia.Aucun) p.Add("applique le profil NVIDIA " + ProfilsNvidia.Libelle(profilNvidia));
+                if (p.Count == 0) return "Rien n'est choisi : cochez au moins un réglage ci-dessous.";
+                return "Le Mode Jeu " + string.Join(", ", p) + ". Tout est remis comme avant avec « Rétablir ».";
+            }
+        }
+
+        /// <summary>Titre de la carte d'état.</summary>
+        public string TitreEtat { get { return enCours ? "Un instant…" : actif ? "Mode Jeu actif" : "Mode Jeu inactif"; } }
+        public string TexteEtat
+        {
+            get
+            {
+                if (actif) return "Votre PC est en configuration jeu. Quand vous avez fini de jouer, cliquez sur « Rétablir » : tout ce qui a été arrêté est relancé.";
+                return "Activez-le juste avant de jouer, ou laissez le mode automatique (plus bas) s'en charger au lancement de vos jeux.";
+            }
+        }
+
         public ObservableCollection<ChoixModeJeu> Services { get; } = new ObservableCollection<ChoixModeJeu>();
         public ObservableCollection<ChoixModeJeu> Processus { get; } = new ObservableCollection<ChoixModeJeu>();
         public ICommand ActiverCommand { get; private set; }
@@ -52,16 +105,16 @@ namespace GamingTweaker.Ui
         /// <summary>Confirmation avant d'activer (texte, renvoie vrai pour continuer).</summary>
         public Func<string, bool> Confirmer { get; set; }
 
-        public bool EstActif { get { return actif; } private set { if (Set(ref actif, value)) { Raise("PeutModifier"); CommandManager.InvalidateRequerySuggested(); } } }
-        public bool EnCours { get { return enCours; } private set { if (Set(ref enCours, value)) { Raise("PeutModifier"); CommandManager.InvalidateRequerySuggested(); } } }
+        public bool EstActif { get { return actif; } private set { if (Set(ref actif, value)) { Raise("PeutModifier"); Raise("TitreEtat"); Raise("TexteEtat"); CommandManager.InvalidateRequerySuggested(); } } }
+        public bool EnCours { get { return enCours; } private set { if (Set(ref enCours, value)) { Raise("PeutModifier"); Raise("TitreEtat"); CommandManager.InvalidateRequerySuggested(); } } }
         public bool PeutModifier { get { return !enCours && !actif; } }
         /// <summary>Proposé après un « Rétablir » qui n'a pas pu tout rétablir (ou un état illisible).</summary>
         public bool PeutOublier { get { return peutOublier; } private set { if (Set(ref peutOublier, value)) CommandManager.InvalidateRequerySuggested(); } }
-        public bool UtiliserPlan { get { return utiliserPlan; } set { Set(ref utiliserPlan, value); } }
+        public bool UtiliserPlan { get { return utiliserPlan; } set { if (Set(ref utiliserPlan, value)) Raise("ResumeSelection"); } }
 
         private bool libererMemoire;
         /// <summary>Vide le jeu de travail des programmes en arrière-plan à l'activation.</summary>
-        public bool LibererMemoire { get { return libererMemoire; } set { Set(ref libererMemoire, value); } }
+        public bool LibererMemoire { get { return libererMemoire; } set { if (Set(ref libererMemoire, value)) Raise("ResumeSelection"); } }
 
         private ProfilNvidia profilNvidia;
         /// <summary>Faux sans carte NVIDIA : le choix du profil NVIDIA est masqué.</summary>
@@ -69,7 +122,7 @@ namespace GamingTweaker.Ui
         public IReadOnlyList<KeyValuePair<ProfilNvidia, string>> ProfilsNvidiaDisponibles { get; } = new[] { ProfilNvidia.Aucun, ProfilNvidia.Performance, ProfilNvidia.Qualite }
             .Select(p => new KeyValuePair<ProfilNvidia, string>(p, "NVIDIA : " + ProfilsNvidia.Libelle(p))).ToList();
         /// <summary>Profil du pilote NVIDIA le temps du Mode Jeu ; rétabli ensuite (valeurs d'avant).</summary>
-        public ProfilNvidia ProfilNvidia { get { return profilNvidia; } set { Set(ref profilNvidia, value); } }
+        public ProfilNvidia ProfilNvidia { get { return profilNvidia; } set { if (Set(ref profilNvidia, value)) Raise("ResumeSelection"); } }
 
         /// <summary>Accès au pilote NVIDIA pour « Lire les réglages NVIDIA » (null : bouton inactif).</summary>
         public INvidiaReglages Nvidia { get; set; }
@@ -119,13 +172,58 @@ namespace GamingTweaker.Ui
         {
             listesChargees = true;
             var res = await Task.Run(() => Tuple.Create(servicesSource(), processusSource()));
-            Services.Clear(); Processus.Clear();
-            foreach (var s in res.Item1) Services.Add(Suivre(new ChoixModeJeu { Nom = s.Nom, Affichage = s.Affichage, Detail = s.Nom }));
-            foreach (var p in res.Item2) Processus.Add(Suivre(new ChoixModeJeu { Nom = p.Nom, Affichage = p.Nom, Detail = p.Chemin, Chemin = p.Chemin }));
-            Raise("NombreCoches");
+            precochage = true;
+            try
+            {
+                Services.Clear(); Processus.Clear();
+                foreach (var s in res.Item1) Services.Add(Suivre(new ChoixModeJeu { Nom = s.Nom, Affichage = s.Affichage, Detail = s.Nom }));
+                foreach (var p in res.Item2) Processus.Add(Suivre(new ChoixModeJeu { Nom = p.Nom, Affichage = p.Nom, Detail = p.Chemin, Chemin = p.Chemin }));
+                var sel = SelectionEnregistree == null ? null : SelectionEnregistree();
+                if (sel != null) Precocher(sel.Item1, sel.Item2);
+            }
+            finally { precochage = false; }
+            RaiseCompteurs();
         }
 
-        private ChoixModeJeu Suivre(ChoixModeJeu c) { c.PropertyChanged += (s, e) => { if (e.PropertyName == "IsChecked") Raise("NombreCoches"); }; return c; }
+        /// <summary>
+        /// Coche la sélection enregistrée. Un service ou programme enregistré qui ne tourne pas en ce moment est ajouté en tête de liste, coché,
+        /// pour qu'il reste visible et décochable.
+        /// </summary>
+        public void Precocher(IEnumerable<string> services, IEnumerable<ProcessusChoix> processus)
+        {
+            int i = 0;
+            foreach (var nom in services ?? Enumerable.Empty<string>())
+            {
+                var c = Services.FirstOrDefault(x => string.Equals(x.Nom, nom, StringComparison.OrdinalIgnoreCase));
+                if (c == null) Services.Insert(i++, c = Suivre(new ChoixModeJeu { Nom = nom, Affichage = nom, Detail = "Pas démarré en ce moment" }));
+                c.IsChecked = true;
+            }
+            i = 0;
+            foreach (var p in processus ?? Enumerable.Empty<ProcessusChoix>())
+            {
+                if (p == null) continue;
+                var c = Processus.FirstOrDefault(x => string.Equals(x.Nom, p.Nom, StringComparison.OrdinalIgnoreCase)
+                                                    && (string.IsNullOrEmpty(p.Chemin) || string.Equals(x.Chemin, p.Chemin, StringComparison.OrdinalIgnoreCase)));
+                if (c == null) Processus.Insert(i++, c = Suivre(new ChoixModeJeu { Nom = p.Nom, Affichage = p.Nom, Detail = (p.Chemin ?? "") + " (pas lancé en ce moment)", Chemin = p.Chemin }));
+                c.IsChecked = true;
+            }
+        }
+
+        private void RaiseCompteurs()
+        {
+            Raise("NombreCoches"); Raise("NombreServices"); Raise("NombreProcessus"); Raise("TexteServices"); Raise("TexteProcessus"); Raise("ResumeSelection");
+        }
+
+        private ChoixModeJeu Suivre(ChoixModeJeu c)
+        {
+            c.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName != "IsChecked" || precochage) return;
+                RaiseCompteurs();
+                var h = SelectionChangee; if (h != null) h();
+            };
+            return c;
+        }
 
         public ModeJeuConfig ConstruireConfig()
         {
@@ -139,7 +237,7 @@ namespace GamingTweaker.Ui
         {
             if (enCours || actif) return;
             var cfg = ConstruireConfig();
-            if (cfg.Services.Count + cfg.Processus.Count == 0 && cfg.PlanGuid == null && cfg.Nvidia == ProfilNvidia.Aucun && !cfg.LibererMemoire) { Message = "Rien n'est coché : choisissez des services, des processus, le plan d'alimentation ou un profil NVIDIA."; return; }
+            if (cfg.Services.Count + cfg.Processus.Count == 0 && cfg.PlanGuid == null && cfg.Nvidia == ProfilNvidia.Aucun && !cfg.LibererMemoire) { Message = "Rien n'est choisi : cochez au moins un réglage dans « Ce que fait le Mode Jeu »."; return; }
             var texte = "Le Mode Jeu va arrêter " + cfg.Services.Count + " service(s) et fermer " + cfg.Processus.Count + " processus (travail non enregistré perdu)"
                       + (cfg.PlanGuid != null ? ", et passer au plan Performances élevées" : "")
                       + (cfg.Nvidia != ProfilNvidia.Aucun ? ", et appliquer le profil NVIDIA " + ProfilsNvidia.Libelle(cfg.Nvidia) : "")

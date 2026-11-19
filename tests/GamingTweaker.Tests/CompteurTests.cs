@@ -55,7 +55,28 @@ namespace GamingTweaker.Tests
         {
             var c = Regulier(60, 2);
             Assert.NotNull(c.Mesurer(102.0));
-            Assert.Null(c.Mesurer(103.5));
+            Assert.NotNull(c.Mesurer(104.0)); // paquet ETW pas encore arrivé : la mesure reste
+            Assert.Null(c.Mesurer(105.0));
+        }
+
+        [Fact]
+        public void Images_recues_par_paquets_et_dans_le_desordre_donnent_des_fps_stables()
+        {
+            // 144 FPS pendant 3 s, livrées par paquets d'une seconde, dont une partie en retard (autre processeur) :
+            // la mesure ne doit ni chuter entre deux paquets, ni perdre les images en retard.
+            var c = new CompteurImages();
+            var pas = 1.0 / 144;
+            for (int paquet = 0; paquet < 3; paquet++)
+            {
+                double debut = 100 + paquet, reception = debut + 1.0;
+                var lot = Enumerable.Range(0, 144).Select(i => debut + i * pas).ToList();
+                foreach (var t in lot.Where((x, i) => i % 2 == 0)) c.Ajouter(t, reception);
+                foreach (var t in lot.Where((x, i) => i % 2 == 1)) c.Ajouter(t, reception); // en retard sur les autres
+                // Juste avant le paquet suivant (0,9 s après réception), les FPS restent ceux de la dernière seconde reçue.
+                var m = c.Mesurer(reception + 0.9);
+                Assert.NotNull(m);
+                Assert.InRange(m.Fps, 143, 145);
+            }
         }
 
         [Fact]
@@ -219,16 +240,47 @@ namespace GamingTweaker.Tests
                 Charge = new ChargeSysteme { Cpu = 23.4, Gpu = 87.6, Ram = 54.2, RamUtiliseeGo = 17.3, RamTotaleGo = 32 },
             });
             Assert.Equal("144", vm.TexteFps);
-            Assert.Equal("7,0 ms  ·  1% bas 97", vm.TexteDetails);
-            Assert.Equal("CPU 23 %", vm.TexteCpu);
-            Assert.Equal("GPU 88 %", vm.TexteGpu);
-            Assert.StartsWith("RAM 54 %", vm.TexteRam);
+            Assert.Equal("  7,0 ms  ·  1% bas  97", vm.TexteDetails);
+            Assert.Equal("CPU  23 %", vm.TexteCpu);
+            Assert.Equal("GPU  88 %", vm.TexteGpu);
+            Assert.StartsWith("RAM  54 %", vm.TexteRam);
             Assert.Equal("jeu", vm.TexteProcessus);
 
             vm.Rafraichir(new ReleveCompteur { Processus = "explorer" });
             Assert.Equal("—", vm.TexteFps);
-            Assert.Equal("GPU —", vm.TexteGpu);
+            Assert.Equal("GPU   —  ", vm.TexteGpu);
             Assert.Contains("aucune image", vm.TexteProcessus);
+        }
+
+        [Fact]
+        public void Placement_affiche_le_compteur_meme_desactive_et_le_deplacement_le_met_en_position_libre()
+        {
+            var src = new FausseSource();
+            var vm = new CompteurViewModel(tmp, src, new CompteurConfig());
+            Assert.False(vm.Visible);
+            vm.ModePlacement = true;
+            Assert.True(vm.Visible);
+            Assert.Equal(1, src.Demarrages);
+            vm.DeplaceA(1920.4, 300.6);
+            Assert.Equal(CoinEcran.Libre, vm.Position);
+            vm.ModePlacement = false;
+            Assert.False(vm.Visible);
+            Assert.Equal(1, src.Arrets);
+            vm.Enregistrer();
+            var c = CompteurConfig.Charger(tmp);
+            Assert.Equal(CoinEcran.Libre, c.Position);
+            Assert.Equal(1920, c.X);
+            Assert.Equal(301, c.Y);
+        }
+
+        [Fact]
+        public void Fermer_le_placement_laisse_tourner_un_compteur_actif()
+        {
+            var src = new FausseSource();
+            var vm = new CompteurViewModel(tmp, src, new CompteurConfig { Actif = true });
+            vm.ModePlacement = true; vm.ModePlacement = false;
+            Assert.True(vm.Visible);
+            Assert.Equal(0, src.Arrets);
         }
 
         [Fact]

@@ -18,12 +18,12 @@ namespace GamingTweaker.Ui
 
     /// <summary>
     /// Compteur en jeu : réglages (enregistrés dans compteur.json, appliqués tout de suite) et valeurs affichées par la surimpression
-    /// (<see cref="CompteurWindow"/>), rafraîchies 4 fois par seconde tant que le compteur est actif.
+    /// (<see cref="CompteurWindow"/>), rafraîchies 2 fois par seconde tant que le compteur est actif (assez pour suivre, assez peu pour rester lisible).
     /// </summary>
     public class CompteurViewModel : ObservableObject, IDisposable
     {
         public const double LargeurCourbe = 200, HauteurCourbe = 36;
-        public const int RelevesParSeconde = 4;
+        public const int RelevesParSeconde = 2;
         public const string Raccourci = "Ctrl+Maj+F11";
         private static readonly CultureInfo Fr = CultureInfo.GetCultureInfo("fr-FR");
 
@@ -60,7 +60,7 @@ namespace GamingTweaker.Ui
             {
                 if (config.Actif == value) return;
                 config.Actif = value;
-                if (value) DemarrerSource(); else ArreterSource();
+                if (value) DemarrerSource(); else if (!modePlacement) ArreterSource();
                 Raise(); Raise("EtatBouton"); Modifie(true);
             }
         }
@@ -69,6 +69,38 @@ namespace GamingTweaker.Ui
         public void Basculer() { Actif = !Actif; }
 
         public CoinEcran Position { get { return config.Position; } set { if (config.Position != value) { config.Position = value; Raise(); Modifie(true); } } }
+
+        /// <summary>Position libre (pixels logiques du bureau), utilisée quand <see cref="Position"/> vaut Libre.</summary>
+        public double X { get { return config.X; } }
+        public double Y { get { return config.Y; } }
+
+        /// <summary>Le compteur a été déplacé à la souris : il garde cette position (n'importe quel écran).</summary>
+        public void DeplaceA(double x, double y)
+        {
+            if (double.IsNaN(x) || double.IsNaN(y)) return;
+            config.X = Math.Round(x); config.Y = Math.Round(y);
+            if (config.Position != CoinEcran.Libre) { config.Position = CoinEcran.Libre; Raise("Position"); }
+            Modifie(false);
+        }
+
+        private bool modePlacement;
+        /// <summary>
+        /// Placement (fenêtre des réglages ouverte) : le compteur est affiché même désactivé, entouré d'un cadre, et se déplace à la souris.
+        /// Hors placement, il laisse passer les clics.
+        /// </summary>
+        public bool ModePlacement
+        {
+            get { return modePlacement; }
+            set
+            {
+                if (!Set(ref modePlacement, value)) return;
+                if (value) DemarrerSource(); else if (!config.Actif) ArreterSource();
+                var h = AffichageChange; if (h != null) h();
+            }
+        }
+
+        /// <summary>La surimpression doit être visible (compteur actif, ou réglages ouverts).</summary>
+        public bool Visible { get { return config.Actif || modePlacement; } }
         public TailleCompteur Taille { get { return config.Taille; } set { if (config.Taille != value) { config.Taille = value; Raise(); Raise("Echelle"); Modifie(true); } } }
 
         public string Couleur
@@ -112,6 +144,7 @@ namespace GamingTweaker.Ui
             new ChoixListe<CoinEcran> { Valeur = CoinEcran.HautDroite, Nom = "En haut à droite" },
             new ChoixListe<CoinEcran> { Valeur = CoinEcran.BasGauche, Nom = "En bas à gauche" },
             new ChoixListe<CoinEcran> { Valeur = CoinEcran.BasDroite, Nom = "En bas à droite" },
+            new ChoixListe<CoinEcran> { Valeur = CoinEcran.Libre, Nom = "Libre (déplacé à la souris)" },
         };
 
         public IReadOnlyList<ChoixListe<TailleCompteur>> Tailles { get; } = new[]
@@ -181,7 +214,8 @@ namespace GamingTweaker.Ui
             if (r == null) return;
             var m = r.Images;
             TexteFps = m == null ? "—" : Math.Round(m.Fps).ToString("0", Fr);
-            TexteDetails = m == null ? "" : m.TempsImageMs.ToString("0.0", Fr) + " ms" + (m.UnPourcentBas.HasValue ? "  ·  1% bas " + Math.Round(m.UnPourcentBas.Value).ToString("0", Fr) : "");
+            // Largeurs fixes (police à chasse fixe) : le compteur ne « danse » pas quand les chiffres changent.
+            TexteDetails = m == null ? "" : m.TempsImageMs.ToString("0.0", Fr).PadLeft(5) + " ms" + (m.UnPourcentBas.HasValue ? "  ·  1% bas " + Math.Round(m.UnPourcentBas.Value).ToString("0", Fr).PadLeft(3) : "");
             TexteProcessus = m == null ? (string.IsNullOrEmpty(r.Processus) ? "" : r.Processus + " : aucune image DirectX") : r.Processus;
             var c = r.Charge ?? new ChargeSysteme();
             TexteCpu = Pourcent("CPU", c.Cpu);
@@ -195,7 +229,7 @@ namespace GamingTweaker.Ui
             Raise("Erreur");
         }
 
-        private static string Pourcent(string nom, double? v) { return nom + " " + (v.HasValue ? Math.Round(v.Value).ToString("0", Fr) + " %" : "—"); }
+        private static string Pourcent(string nom, double? v) { return nom + " " + (v.HasValue ? Math.Round(v.Value).ToString("0", Fr).PadLeft(3) + " %" : "  —  "); }
 
         /// <summary>
         /// Points de la courbe des FPS : les valeurs les plus récentes à droite, sur <paramref name="capacite"/> relevés ;

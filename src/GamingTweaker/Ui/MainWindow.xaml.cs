@@ -44,10 +44,16 @@ namespace GamingTweaker.Ui
         /// <summary>Le raccourci global du compteur a pu être enregistré (sinon les réglages le signalent).</summary>
         public bool RaccourciCompteurDisponible { get; set; }
 
+        private CompteurReglagesWindow reglagesCompteur;
+
+        /// <summary>Réglages du compteur, non modaux : une fenêtre modale bloquerait le glisser-déposer du compteur.</summary>
         private void BoutonCompteur_Click(object sender, RoutedEventArgs e)
         {
             if (vm.Compteur == null) return;
-            new CompteurReglagesWindow(vm.Compteur, RaccourciCompteurDisponible) { Owner = this }.ShowDialog();
+            if (reglagesCompteur != null) { reglagesCompteur.Activate(); return; }
+            reglagesCompteur = new CompteurReglagesWindow(vm.Compteur, RaccourciCompteurDisponible) { Owner = this };
+            reglagesCompteur.Closed += (s, ev) => reglagesCompteur = null;
+            reglagesCompteur.Show();
         }
 
         private void ChoixTheme_Click(object sender, RoutedEventArgs e)

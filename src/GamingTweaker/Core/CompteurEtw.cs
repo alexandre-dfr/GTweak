@@ -118,11 +118,12 @@ namespace GamingTweaker.Core
                 var pid = Marshal.ReadInt32(e, 12);
                 if (pid == monPid) return; // l'interface WPF et le compteur lui-même passent par Direct3D 9
                 var t = Marshal.ReadInt64(e, 16) / frequence;
+                var reception = Maintenant;
                 lock (verrou)
                 {
                     CompteurImages c;
                     if (!parProcessus.TryGetValue(pid, out c)) parProcessus[pid] = c = new CompteurImages();
-                    c.Ajouter(t);
+                    c.Ajouter(t, reception);
                 }
             }
             catch (Exception) { /* jamais d'exception vers le code natif */ }
@@ -174,10 +175,12 @@ namespace GamingTweaker.Core
             Marshal.Copy(g, 0, p + 24, 16);                           // Wnode.Guid
             Marshal.WriteInt32(p, 40, 1);                             // Wnode.ClientContext : QueryPerformanceCounter
             Marshal.WriteInt32(p, 44, 0x00020000);                    // Wnode.Flags : WNODE_FLAG_TRACED_GUID
-            Marshal.WriteInt32(p, 48, 64);                            // BufferSize (Ko)
+            Marshal.WriteInt32(p, 48, 16);                            // BufferSize (Ko) : petits tampons, livrés plus souvent
             Marshal.WriteInt32(p, 52, 4);                             // MinimumBuffers
-            Marshal.WriteInt32(p, 56, 32);                            // MaximumBuffers
-            Marshal.WriteInt32(p, 64, 0x00000100);                    // LogFileMode : EVENT_TRACE_REAL_TIME_MODE
+            Marshal.WriteInt32(p, 56, 64);                            // MaximumBuffers
+            // EVENT_TRACE_REAL_TIME_MODE | EVENT_TRACE_NO_PER_PROCESSOR_BUFFERING : un seul tampon commun, les événements arrivent dans l'ordre
+            // (avec un tampon par processeur, les images d'un cœur arrivent après celles d'un autre et faussaient les FPS).
+            Marshal.WriteInt32(p, 64, 0x00000100 | 0x10000000);
             Marshal.WriteInt32(p, 68, 1);                             // FlushTimer : 1 s
             Marshal.WriteInt32(p, 116, Natif.TailleProprietes);       // LoggerNameOffset
             return p;

@@ -15,6 +15,9 @@ namespace GamingTweaker.Ui
             InitializeComponent();
             DataContext = vm;
             TexteRaccourci.Text = raccourciDisponible ? CompteurViewModel.Raccourci : CompteurViewModel.Raccourci + " (indisponible : déjà utilisé par une autre application)";
+            // Tant que les réglages sont ouverts, le compteur est visible et se déplace à la souris.
+            Loaded += (s, e) => vm.ModePlacement = true;
+            Closed += (s, e) => { vm.ModePlacement = false; vm.Enregistrer(); };
         }
 
         private void Couleur_Click(object sender, RoutedEventArgs e)
