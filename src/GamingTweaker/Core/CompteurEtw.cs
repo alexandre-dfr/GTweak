@@ -9,10 +9,12 @@ using System.Threading;
 namespace GamingTweaker.Core
 {
     /// <summary>
-    /// Compte les images affichées par chaque processus en lisant, en temps réel, les événements « Present » publiés par Windows
-    /// (ETW : fournisseurs Microsoft-Windows-DXGI pour DirectX 10/11/12 et Microsoft-Windows-D3D9 pour DirectX 9), comme PresentMon.
-    /// Rien n'est injecté dans le jeu : compatible avec les anti-triche. Les jeux Vulkan ou OpenGL qui ne passent pas par DXGI
-    /// ne publient pas ces événements : leurs FPS restent inconnus. Droits administrateur requis (session ETW).
+    /// Compte les images affichées par chaque processus en lisant, en temps réel, les événements publiés par Windows (ETW), comme PresentMon :
+    /// - source principale : « Present » des fournisseurs Microsoft-Windows-DXGI (DirectX 10/11/12) et Microsoft-Windows-D3D9 (DirectX 9) ;
+    /// - source de secours, pour les jeux Vulkan ou OpenGL : le noyau graphique (Microsoft-Windows-DxgKrnl), qui voit passer les images
+    ///   de toutes les API (événements « PresentHistory », reconnus par leur nom dans le manifeste du fournisseur).
+    /// La source principale est toujours préférée quand le processus en publie. Rien n'est injecté dans le jeu : compatible avec les anti-triche.
+    /// Droits administrateur requis (session ETW).
     /// </summary>
     public sealed class CompteurEtw : IDisposable
     {
@@ -22,12 +24,27 @@ namespace GamingTweaker.Core
         private static readonly Guid D3d9 = new Guid("783ACA0A-790E-4D7F-8451-AA850511C6B9");
         private const ushort DxgiPresentStart = 42;
         private const ushort D3d9PresentStart = 1;
+        private static readonly Guid DxgKrnl = new Guid("802EC45A-1E99-4B83-9920-87C98277BA9D");
+        /// <summary>Mots-clés DxgKrnl : Base et le canal Performance (ceux qu'utilise PresentMon), sans les événements mémoire très bavards.</summary>
+        private const ulong MotsClesDxgKrnl = 0x8000000000000001UL;
+
+        /// <summary>Images vues par source, pour un processus.</summary>
+        private sealed class Sources
+        {
+            public readonly CompteurImages Api = new CompteurImages();
+            /// <summary>Noyau graphique, par sorte d'événement (index = <see cref="SorteNoyau"/> - 1).</summary>
+            public readonly CompteurImages[] Noyau = { new CompteurImages(), new CompteurImages(), new CompteurImages() };
+            public double Dernier { get { return Math.Max(Api.Dernier, Noyau.Max(n => n.Dernier)); } }
+        }
+
+        /// <summary>Sorte d'un événement du noyau graphique, d'après son nom (cache par identifiant d'événement).</summary>
+        private readonly Dictionary<ushort, int> sortesNoyau = new Dictionary<ushort, int>();
 
         private readonly object verrou = new object();
-        private readonly Dictionary<int, CompteurImages> parProcessus = new Dictionary<int, CompteurImages>();
+        private readonly Dictionary<int, Sources> parProcessus = new Dictionary<int, Sources>();
         private readonly int monPid = Process.GetCurrentProcess().Id;
         private readonly double frequence = Stopwatch.Frequency;
-        private readonly long dxgiA, dxgiB, d3d9A, d3d9B;
+        private readonly long dxgiA, dxgiB, d3d9A, d3d9B, noyauA, noyauB;
 
         private ulong session;
         private ulong lecture = InvalidHandle;
@@ -41,6 +58,7 @@ namespace GamingTweaker.Core
         {
             var a = Dxgi.ToByteArray(); dxgiA = BitConverter.ToInt64(a, 0); dxgiB = BitConverter.ToInt64(a, 8);
             var b = D3d9.ToByteArray(); d3d9A = BitConverter.ToInt64(b, 0); d3d9B = BitConverter.ToInt64(b, 8);
+            var k = DxgKrnl.ToByteArray(); noyauA = BitConverter.ToInt64(k, 0); noyauB = BitConverter.ToInt64(k, 8);
         }
 
         /// <summary>Dernière erreur de démarrage (null si la session lit les événements).</summary>
@@ -74,6 +92,10 @@ namespace GamingTweaker.Core
                     int r = Natif.EnableTraceEx2(session, ref guid, 1 /* ENABLE */, 5, 0, 0, 0, IntPtr.Zero);
                     if (r != 0) throw new Win32Exception(r);
                 }
+                // Source de secours (Vulkan, OpenGL) : un refus n'empêche pas la mesure DirectX.
+                var noyau = DxgKrnl;
+                int rn = Natif.EnableTraceEx2(session, ref noyau, 1, 4, MotsClesDxgKrnl, 0, 0, IntPtr.Zero);
+                if (rn != 0) TraceAppli.Ecrire("compteur en jeu : noyau graphique indisponible (" + rn + "), FPS Vulkan/OpenGL non mesurés");
 
                 rappel = SurEvenement;
                 nomSession = Marshal.StringToHGlobalUni(NomSession);
@@ -113,23 +135,53 @@ namespace GamingTweaker.Core
             {
                 var a = Marshal.ReadInt64(e, 24); var b = Marshal.ReadInt64(e, 32);
                 var id = (ushort)Marshal.ReadInt16(e, 40);
-                bool present = (a == dxgiA && b == dxgiB && id == DxgiPresentStart) || (a == d3d9A && b == d3d9B && id == D3d9PresentStart);
-                if (!present) return;
+                bool api = (a == dxgiA && b == dxgiB && id == DxgiPresentStart) || (a == d3d9A && b == d3d9B && id == D3d9PresentStart);
+                int sorte = 0;
+                if (!api)
+                {
+                    if (a != noyauA || b != noyauB) return;
+                    if (!sortesNoyau.TryGetValue(id, out sorte)) sortesNoyau[id] = sorte = SorteNoyau(e);
+                    if (sorte == 0) return;
+                }
                 var pid = Marshal.ReadInt32(e, 12);
-                if (pid == monPid) return; // l'interface WPF et le compteur lui-même passent par Direct3D 9
+                if (pid == monPid || pid <= 4) return; // l'interface WPF et le compteur lui-même passent par Direct3D 9 ; 0/4 : système
                 var t = Marshal.ReadInt64(e, 16) / frequence;
                 var reception = Maintenant;
                 lock (verrou)
                 {
-                    CompteurImages c;
-                    if (!parProcessus.TryGetValue(pid, out c)) parProcessus[pid] = c = new CompteurImages();
-                    c.Ajouter(t, reception);
+                    Sources s;
+                    if (!parProcessus.TryGetValue(pid, out s)) parProcessus[pid] = s = new Sources();
+                    (api ? s.Api : s.Noyau[sorte - 1]).Ajouter(t, reception);
                 }
             }
             catch (Exception) { /* jamais d'exception vers le code natif */ }
         }
 
-        /// <summary>Mesure du processus <paramref name="pid"/> (null : il n'affiche rien, ou ses images ne sont pas visibles par ETW).</summary>
+        /// <summary>
+        /// Sorte d'événement du noyau graphique retenue comme « une image » : 1 = PresentHistoryDetailed (début), 2 = PresentHistory (début),
+        /// 3 = Present (info) ; 0 = autre. Lue dans le manifeste du fournisseur (noms de tâche et d'opcode), pas devinée d'un numéro.
+        /// </summary>
+        private static int SorteNoyau(IntPtr e)
+        {
+            string tache, opcode;
+            if (!Natif.NomsEvenement(e, out tache, out opcode)) return 0;
+            return SorteSelonNoms(tache, opcode);
+        }
+
+        /// <summary>Classement par nom de tâche et d'opcode (public pour les tests).</summary>
+        public static int SorteSelonNoms(string tache, string opcode)
+        {
+            tache = (tache ?? "").Trim(); opcode = (opcode ?? "").Trim();
+            if (string.Equals(tache, "PresentHistoryDetailed", StringComparison.OrdinalIgnoreCase) && string.Equals(opcode, "Start", StringComparison.OrdinalIgnoreCase)) return 1;
+            if (string.Equals(tache, "PresentHistory", StringComparison.OrdinalIgnoreCase) && string.Equals(opcode, "Start", StringComparison.OrdinalIgnoreCase)) return 2;
+            if (string.Equals(tache, "Present", StringComparison.OrdinalIgnoreCase) && string.Equals(opcode, "Info", StringComparison.OrdinalIgnoreCase)) return 3;
+            return 0;
+        }
+
+        /// <summary>
+        /// Mesure du processus <paramref name="pid"/> (null : il n'affiche rien). DirectX si le processus en publie ; sinon le noyau graphique
+        /// (Vulkan, OpenGL), une seule sorte d'événement à la fois pour ne jamais compter deux fois la même image.
+        /// </summary>
         public MesureImages Mesurer(int pid)
         {
             var maintenant = Maintenant;
@@ -138,8 +190,17 @@ namespace GamingTweaker.Core
                 // Processus silencieux depuis la fenêtre complète : oubliés.
                 foreach (var k in parProcessus.Where(kv => maintenant - kv.Value.Dernier > CompteurImages.FenetreSecondes).Select(kv => kv.Key).ToList())
                     parProcessus.Remove(k);
-                CompteurImages c;
-                return parProcessus.TryGetValue(pid, out c) ? c.Mesurer(maintenant) : null;
+                Sources s;
+                if (!parProcessus.TryGetValue(pid, out s)) return null;
+                var m = s.Api.Mesurer(maintenant);
+                if (m != null) { m.Source = "DirectX"; return m; }
+                if (maintenant - s.Api.Dernier < CompteurImages.SilenceSecondes * 2) return null; // DirectX vient de s'arrêter : pas de bascule hâtive
+                foreach (var n in s.Noyau)
+                {
+                    m = n.Mesurer(maintenant);
+                    if (m != null) { m.Source = "Vulkan/OpenGL"; return m; }
+                }
+                return null;
             }
         }
 
@@ -217,6 +278,28 @@ namespace GamingTweaker.Core
 
             [DllImport("advapi32.dll")]
             public static extern int CloseTrace(ulong traceHandle);
+
+            [DllImport("tdh.dll")]
+            private static extern int TdhGetEventInformation(IntPtr eventRecord, uint tdhContextCount, IntPtr tdhContext, IntPtr buffer, ref uint bufferSize);
+
+            /// <summary>Noms de tâche et d'opcode d'un événement (TRACE_EVENT_INFO : TaskNameOffset à 68, OpcodeNameOffset à 72).</summary>
+            public static bool NomsEvenement(IntPtr e, out string tache, out string opcode)
+            {
+                tache = opcode = null;
+                uint taille = 0;
+                int r = TdhGetEventInformation(e, 0, IntPtr.Zero, IntPtr.Zero, ref taille);
+                if (r != 122 /* ERROR_INSUFFICIENT_BUFFER */ || taille == 0 || taille > 1 << 20) return false;
+                var buf = Marshal.AllocHGlobal((int)taille);
+                try
+                {
+                    if (TdhGetEventInformation(e, 0, IntPtr.Zero, buf, ref taille) != 0) return false;
+                    int ot = Marshal.ReadInt32(buf, 68), oo = Marshal.ReadInt32(buf, 72);
+                    if (ot > 0 && ot < taille) tache = Marshal.PtrToStringUni(buf + ot);
+                    if (oo > 0 && oo < taille) opcode = Marshal.PtrToStringUni(buf + oo);
+                    return tache != null;
+                }
+                finally { Marshal.FreeHGlobal(buf); }
+            }
         }
     }
 }

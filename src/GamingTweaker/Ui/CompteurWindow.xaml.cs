@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media;
 using System.Windows.Threading;
 using GamingTweaker.Core;
 
@@ -22,6 +23,24 @@ namespace GamingTweaker.Ui
         private readonly CompteurViewModel vm;
         private readonly DispatcherTimer premierPlan = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         private bool deplacement;
+        private const double LargeurBase = 260;
+        private double echelleDepart;
+        private Point departSouris;
+
+        /// <summary>Souris à l'écran, en pixels logiques (DPI de la fenêtre).</summary>
+        private Point Souris()
+        {
+            PointEcran p;
+            if (!GetCursorPos(out p)) return departSouris;
+            var dpi = VisualTreeHelper.GetDpi(this);
+            return new Point(p.X / dpi.DpiScaleX, p.Y / dpi.DpiScaleY);
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct PointEcran { public int X, Y; }
+
+        [DllImport("user32.dll")]
+        private static extern bool GetCursorPos(out PointEcran p);
 
         public CompteurWindow(CompteurViewModel vm)
         {
@@ -33,6 +52,22 @@ namespace GamingTweaker.Ui
             premierPlan.Tick += (s, e) => RemettreAuPremierPlan();
             IsVisibleChanged += (s, e) => { if (IsVisible) premierPlan.Start(); else premierPlan.Stop(); };
             MouseLeftButtonDown += Glisser;
+            // Position absolue de la souris (la poignée bouge avec la fenêtre qui grandit : ses écarts relatifs s'emballeraient).
+            Poignee.DragStarted += (s, e) => { deplacement = true; echelleDepart = vm.Echelle; departSouris = Souris(); };
+            Poignee.DragDelta += (s, e) =>
+            {
+                // Largeur de base 260 (non agrandie) : l'échelle suit la largeur visée par la souris, coin haut-gauche fixe.
+                var p = Souris();
+                var ecart = ((p.X - departSouris.X) + (p.Y - departSouris.Y)) / 2;
+                vm.Redimensionner(echelleDepart + ecart / LargeurBase);
+            };
+            Poignee.DragCompleted += (s, e) => { deplacement = false; Placer(); };
+            MouseWheel += (s, e) =>
+            {
+                if (!vm.ModePlacement || (Keyboard.Modifiers & ModifierKeys.Control) == 0) return;
+                vm.Redimensionner(vm.Echelle + (e.Delta > 0 ? 0.05 : -0.05));
+                e.Handled = true;
+            };
             vm.PropertyChanged += (s, e) => { if (e.PropertyName == "ModePlacement") StylesEtendus(); };
         }
 

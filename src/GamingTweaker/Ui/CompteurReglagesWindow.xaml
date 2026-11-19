@@ -11,7 +11,7 @@
         <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,6,0,16"
                    Text="Affiche par-dessus le jeu ses images par seconde et la charge du PC. Le compteur lit les informations publiées par Windows : rien n'est injecté dans le jeu, il est donc compatible avec les anti-triche. Les réglages s'appliquent tout de suite."/>
         <Border Padding="12,8" CornerRadius="6" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" Margin="0,0,0,12">
-            <TextBlock TextWrapping="Wrap" Text="Tant que cette fenêtre est ouverte, le compteur est affiché avec un cadre pointillé : faites-le glisser à la souris où vous voulez, sur n'importe quel écran. Il garde cette place."/>
+            <TextBlock TextWrapping="Wrap" Text="Tant que cette fenêtre est ouverte, le compteur est affiché avec un cadre pointillé : faites-le glisser à la souris où vous voulez, sur n'importe quel écran, et tirez le coin ◢ (ou Ctrl+molette) pour changer sa taille. Il garde cette place et cette taille."/>
         </Border>
 
         <Border Style="{StaticResource CarteW11}">
@@ -63,8 +63,10 @@
                           ItemsSource="{Binding Positions}" SelectedValuePath="Valeur" SelectedValue="{Binding Position, Mode=TwoWay}" DisplayMemberPath="Nom"/>
 
                 <TextBlock Grid.Row="2" Text="Taille" VerticalAlignment="Center" Margin="0,0,16,8"/>
-                <ComboBox Grid.Row="2" Grid.Column="1" Width="200" HorizontalAlignment="Left" Margin="0,0,0,8"
-                          ItemsSource="{Binding Tailles}" SelectedValuePath="Valeur" SelectedValue="{Binding Taille, Mode=TwoWay}" DisplayMemberPath="Nom"/>
+                <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,8">
+                    <ComboBox Width="200" ItemsSource="{Binding Tailles}" SelectedValuePath="Valeur" SelectedValue="{Binding Taille, Mode=TwoWay}" DisplayMemberPath="Nom"/>
+                    <TextBlock Text="{Binding TexteEchelle}" Margin="10,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
+                </StackPanel>
 
                 <TextBlock Grid.Row="3" Text="Couleur" VerticalAlignment="Center" Margin="0,0,16,8"/>
                 <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,8">
@@ -102,7 +104,7 @@
             </TextBlock.Style>
         </TextBlock>
         <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" FontSize="12" Margin="0,12,0,0"
-                   Text="Limites : les FPS sont mesurés pour les jeux DirectX 9 à 12 (la grande majorité) ; un jeu Vulkan ou OpenGL affiche « — ». Le compteur s'affiche en plein écran sans bordure et en fenêtre, pas en plein écran exclusif. Le processeur, la carte graphique et la mémoire sont mesurés comme dans le Gestionnaire des tâches."/>
+                   Text="Les FPS des jeux DirectX 9 à 12 sont lus directement ; ceux des jeux Vulkan et OpenGL sont lus dans le noyau graphique de Windows (la source est indiquée sous les FPS). Le compteur s'affiche en plein écran sans bordure et en fenêtre, pas en plein écran exclusif. Le processeur, la carte graphique et la mémoire sont mesurés comme dans le Gestionnaire des tâches."/>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
             <Button Content="Fermer" IsCancel="True" Click="Fermer_Click"/>
         </StackPanel>

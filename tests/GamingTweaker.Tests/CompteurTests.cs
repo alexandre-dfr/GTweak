@@ -175,6 +175,16 @@ namespace GamingTweaker.Tests
         }
 
         [Fact]
+        public void Echelle_hors_bornes_ramenee()
+        {
+            Directory.CreateDirectory(tmp);
+            File.WriteAllText(Path.Combine(tmp, CompteurConfig.NomFichier), "{ \"taille\": \"Personnalisee\", \"echelle\": 50 }");
+            var c = CompteurConfig.Charger(tmp);
+            Assert.Equal(TailleCompteur.Personnalisee, c.Taille);
+            Assert.Equal(CompteurConfig.EchelleMax, c.EchelleEffective);
+        }
+
+        [Fact]
         public void Fichier_illisible_donne_les_valeurs_par_defaut()
         {
             Directory.CreateDirectory(tmp);
@@ -284,6 +294,38 @@ namespace GamingTweaker.Tests
         }
 
         [Fact]
+        public void Redimensionner_passe_en_taille_personnalisee_bornee_et_enregistree()
+        {
+            var vm = new CompteurViewModel(tmp, new FausseSource(), new CompteurConfig());
+            Assert.Equal(1.0, vm.Echelle);
+            vm.Redimensionner(1.734);
+            Assert.Equal(TailleCompteur.Personnalisee, vm.Taille);
+            Assert.Equal(1.73, vm.Echelle, 3);
+            Assert.Equal("173 %", vm.TexteEchelle);
+            vm.Redimensionner(9);
+            Assert.Equal(CompteurConfig.EchelleMax, vm.Echelle);
+            vm.Redimensionner(0.1);
+            Assert.Equal(CompteurConfig.EchelleMin, vm.Echelle);
+            vm.Enregistrer();
+            var c = CompteurConfig.Charger(tmp);
+            Assert.Equal(TailleCompteur.Personnalisee, c.Taille);
+            Assert.Equal(CompteurConfig.EchelleMin, c.Echelle);
+            // Revenir à une taille prédéfinie ; repasser en personnalisée reprend l'échelle courante.
+            vm.Taille = TailleCompteur.Grande;
+            Assert.Equal(1.3, vm.Echelle);
+            vm.Taille = TailleCompteur.Personnalisee;
+            Assert.Equal(1.3, vm.Echelle);
+        }
+
+        [Fact]
+        public void La_source_des_images_est_affichee()
+        {
+            var vm = new CompteurViewModel(tmp, new FausseSource(), new CompteurConfig());
+            vm.Rafraichir(new ReleveCompteur { Processus = "doom", Images = new MesureImages { Fps = 200, TempsImageMs = 5, Source = "Vulkan/OpenGL" } });
+            Assert.Equal("doom · Vulkan/OpenGL", vm.TexteProcessus);
+        }
+
+        [Fact]
         public void Couleur_invalide_ignoree()
         {
             var vm = new CompteurViewModel(tmp, new FausseSource(), new CompteurConfig());
@@ -307,6 +349,19 @@ namespace GamingTweaker.Tests
     /// <summary>Session ETW réelle (droits administrateur : la CI GitHub les a).</summary>
     public class CompteurEtwTests
     {
+        [Theory]
+        [InlineData("PresentHistoryDetailed", "Start", 1)]
+        [InlineData("PresentHistory", "Start", 2)]
+        [InlineData("Present", "Info", 3)]
+        [InlineData("PresentHistory", "Info", 0)]   // fin de l'image : déjà comptée au début
+        [InlineData("VSyncDPC", "Info", 0)]
+        [InlineData("Flip", "Info", 0)]
+        [InlineData(null, null, 0)]
+        public void Evenements_du_noyau_graphique_retenus_par_leur_nom(string tache, string opcode, int sorte)
+        {
+            Assert.Equal(sorte, CompteurEtw.SorteSelonNoms(tache, opcode));
+        }
+
         [Fact]
         public void Session_demarre_et_s_arrete_proprement()
         {

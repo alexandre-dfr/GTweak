@@ -10,7 +10,8 @@ namespace GamingTweaker.Core
     /// <summary>Coin de l'écran principal, ou position libre (déplacée à la souris, sur n'importe quel écran).</summary>
     public enum CoinEcran { HautGauche, HautDroite, BasGauche, BasDroite, Libre }
 
-    public enum TailleCompteur { Petite, Normale, Grande }
+    /// <summary>Taille prédéfinie, ou personnalisée (redimensionnée à la souris : voir <see cref="CompteurConfig.Echelle"/>).</summary>
+    public enum TailleCompteur { Petite, Normale, Grande, Personnalisee }
 
     /// <summary>
     /// Réglages du compteur en jeu (FPS, processeur, carte graphique, mémoire), enregistrés dans le dossier de la machine.
@@ -30,6 +31,25 @@ namespace GamingTweaker.Core
         [JsonProperty("y")] public double Y { get; set; }
         [JsonProperty("couleur")] public string Couleur { get; set; } = CouleurParDefaut;
         [JsonProperty("taille")] [JsonConverter(typeof(StringEnumConverter))] public TailleCompteur Taille { get; set; } = TailleCompteur.Normale;
+        /// <summary>Échelle personnalisée (0,6 à 3), utilisée quand <see cref="Taille"/> vaut Personnalisee.</summary>
+        [JsonProperty("echelle")] public double Echelle { get; set; } = 1.0;
+
+        public const double EchelleMin = 0.6, EchelleMax = 3.0;
+
+        /// <summary>Échelle effective : celle de la taille prédéfinie, ou l'échelle personnalisée.</summary>
+        public double EchelleEffective
+        {
+            get
+            {
+                switch (Taille)
+                {
+                    case TailleCompteur.Petite: return 0.85;
+                    case TailleCompteur.Grande: return 1.3;
+                    case TailleCompteur.Personnalisee: return Echelle;
+                    default: return 1.0;
+                }
+            }
+        }
         /// <summary>Opacité du fond (0,2 à 1).</summary>
         [JsonProperty("opaciteFond")] public double OpaciteFond { get; set; } = 0.55;
         [JsonProperty("fps")] public bool Fps { get; set; } = true;
@@ -50,6 +70,8 @@ namespace GamingTweaker.Core
             Couleur = CouleurValide(Couleur) ? Couleur.Trim().ToUpperInvariant() : CouleurParDefaut;
             if (!Enum.IsDefined(typeof(CoinEcran), Position)) Position = CoinEcran.HautDroite;
             if (!Enum.IsDefined(typeof(TailleCompteur), Taille)) Taille = TailleCompteur.Normale;
+            if (double.IsNaN(Echelle) || double.IsInfinity(Echelle)) Echelle = 1.0;
+            Echelle = Math.Round(Math.Max(EchelleMin, Math.Min(EchelleMax, Echelle)), 2);
             if (double.IsNaN(OpaciteFond) || double.IsInfinity(OpaciteFond)) OpaciteFond = 0.55;
             OpaciteFond = Math.Max(0.2, Math.Min(1.0, OpaciteFond));
             if (Array.IndexOf(DureesCourbe, DureeCourbe) < 0) DureeCourbe = 30;

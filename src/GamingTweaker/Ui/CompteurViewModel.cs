@@ -101,7 +101,30 @@ namespace GamingTweaker.Ui
 
         /// <summary>La surimpression doit être visible (compteur actif, ou réglages ouverts).</summary>
         public bool Visible { get { return config.Actif || modePlacement; } }
-        public TailleCompteur Taille { get { return config.Taille; } set { if (config.Taille != value) { config.Taille = value; Raise(); Raise("Echelle"); Modifie(true); } } }
+        public TailleCompteur Taille
+        {
+            get { return config.Taille; }
+            set
+            {
+                if (config.Taille == value) return;
+                if (value == TailleCompteur.Personnalisee) config.Echelle = config.EchelleEffective;
+                config.Taille = value; Raise(); Raise("Echelle"); Raise("TexteEchelle"); Modifie(true);
+            }
+        }
+
+        /// <summary>Redimensionnement à la souris (poignée du cadre, Ctrl+molette) : passe en taille personnalisée.</summary>
+        public void Redimensionner(double echelle)
+        {
+            if (double.IsNaN(echelle) || double.IsInfinity(echelle)) return;
+            var e = Math.Round(Math.Max(CompteurConfig.EchelleMin, Math.Min(CompteurConfig.EchelleMax, echelle)), 2);
+            if (config.Taille == TailleCompteur.Personnalisee && Math.Abs(config.Echelle - e) < 0.005) return;
+            config.Echelle = e;
+            if (config.Taille != TailleCompteur.Personnalisee) { config.Taille = TailleCompteur.Personnalisee; Raise("Taille"); }
+            Raise("Echelle"); Raise("TexteEchelle"); Modifie(false);
+        }
+
+        /// <summary>Échelle en pourcentage (réglages).</summary>
+        public string TexteEchelle { get { return Math.Round(Echelle * 100).ToString("0", Fr) + " %"; } }
 
         public string Couleur
         {
@@ -152,6 +175,7 @@ namespace GamingTweaker.Ui
             new ChoixListe<TailleCompteur> { Valeur = TailleCompteur.Petite, Nom = "Petite" },
             new ChoixListe<TailleCompteur> { Valeur = TailleCompteur.Normale, Nom = "Normale" },
             new ChoixListe<TailleCompteur> { Valeur = TailleCompteur.Grande, Nom = "Grande" },
+            new ChoixListe<TailleCompteur> { Valeur = TailleCompteur.Personnalisee, Nom = "Personnalisée (à la souris)" },
         };
 
         public IReadOnlyList<ChoixListe<int>> Durees { get; } = CompteurConfig.DureesCourbe.Select(d => new ChoixListe<int> { Valeur = d, Nom = d + " s" }).ToList();
@@ -188,7 +212,7 @@ namespace GamingTweaker.Ui
         public PointCollection PointsCourbe { get { return points; } private set { points = value; Raise(); } }
         public bool AfficherCourbe { get { return config.Fps && config.Courbe; } }
         public bool AfficherCharge { get { return config.Cpu || config.Gpu || config.Ram; } }
-        public double Echelle { get { return config.Taille == TailleCompteur.Petite ? 0.85 : config.Taille == TailleCompteur.Grande ? 1.3 : 1.0; } }
+        public double Echelle { get { return config.EchelleEffective; } }
 
         public Brush BrosseTexte
         {
@@ -216,7 +240,8 @@ namespace GamingTweaker.Ui
             TexteFps = m == null ? "—" : Math.Round(m.Fps).ToString("0", Fr);
             // Largeurs fixes (police à chasse fixe) : le compteur ne « danse » pas quand les chiffres changent.
             TexteDetails = m == null ? "" : m.TempsImageMs.ToString("0.0", Fr).PadLeft(5) + " ms" + (m.UnPourcentBas.HasValue ? "  ·  1% bas " + Math.Round(m.UnPourcentBas.Value).ToString("0", Fr).PadLeft(3) : "");
-            TexteProcessus = m == null ? (string.IsNullOrEmpty(r.Processus) ? "" : r.Processus + " : aucune image DirectX") : r.Processus;
+            TexteProcessus = m == null ? (string.IsNullOrEmpty(r.Processus) ? "" : r.Processus + " : aucune image")
+                           : r.Processus + (string.IsNullOrEmpty(m.Source) ? "" : " · " + m.Source);
             var c = r.Charge ?? new ChargeSysteme();
             TexteCpu = Pourcent("CPU", c.Cpu);
             TexteGpu = Pourcent("GPU", c.Gpu);

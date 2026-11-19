@@ -14,7 +14,7 @@
                 <ScaleTransform ScaleX="{Binding Echelle}" ScaleY="{Binding Echelle}"/>
             </Border.LayoutTransform>
             <StackPanel TextElement.Foreground="{Binding BrosseTexte}" TextElement.FontFamily="Consolas" TextElement.FontSize="13">
-                <TextBlock x:Name="Consigne" Text="Glissez pour placer le compteur" FontFamily="Segoe UI" FontSize="11" Foreground="White" Opacity="0.85"
+                <TextBlock x:Name="Consigne" Text="Glissez pour déplacer · coin ◢ ou Ctrl+molette pour la taille" FontFamily="Segoe UI" FontSize="11" Foreground="White" Opacity="0.85" TextWrapping="Wrap"
                            Margin="0,0,0,4" Visibility="{Binding ModePlacement, Converter={StaticResource BoolVis}}"/>
                 <StackPanel Visibility="{Binding Fps, Converter={StaticResource BoolVis}}">
                     <StackPanel Orientation="Horizontal">
@@ -35,8 +35,18 @@
                 </StackPanel>
             </StackPanel>
         </Border>
-        <!-- Cadre pointillé du mode placement -->
+        <!-- Cadre pointillé du mode placement, et poignée de redimensionnement dans le coin bas-droit -->
         <Rectangle IsHitTestVisible="False" RadiusX="6" RadiusY="6" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2" StrokeDashArray="3 2"
                    Visibility="{Binding ModePlacement, Converter={StaticResource BoolVis}}"/>
+        <Thumb x:Name="Poignee" Width="18" Height="18" HorizontalAlignment="Right" VerticalAlignment="Bottom" Cursor="SizeNWSE"
+               ToolTip="Glissez pour agrandir ou réduire le compteur" Visibility="{Binding ModePlacement, Converter={StaticResource BoolVis}}">
+            <Thumb.Template>
+                <ControlTemplate TargetType="Thumb">
+                    <Grid Background="Transparent">
+                        <Path Data="M 16,3 L 16,16 L 3,16 Z" Fill="{DynamicResource AccentBrush}"/>
+                    </Grid>
+                </ControlTemplate>
+            </Thumb.Template>
+        </Thumb>
     </Grid>
 </Window>

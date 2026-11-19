@@ -12,6 +12,8 @@ namespace GamingTweaker.Core
         public double TempsImageMs { get; set; }
         /// <summary>« 1 % low » : FPS correspondant au 99e centile du temps d'image sur les 10 dernières secondes (null : pas assez d'images).</summary>
         public double? UnPourcentBas { get; set; }
+        /// <summary>D'où viennent les images : « DirectX » ou « Vulkan/OpenGL » (noyau graphique).</summary>
+        public string Source { get; set; }
     }
 
     /// <summary>
