@@ -29,6 +29,19 @@ Trois profils sont fournis en tête de la liste des profils, en lecture seule :
 
 Aucun ne contient d'option Risqué, d'option à liste (services, démarrage : leur contenu se choisit sur votre PC) ni d'option que « Recommandé » ne coche pas. Pour en modifier un ou le planifier, enregistrez-le sous votre propre nom avec « Sauver ».
 
+## Partager un profil
+
+Le bouton **Partager** (à côté de « Recharger ») propose :
+
+- **Exporter la sélection…** : enregistre ce qui est coché dans un fichier `.json` de votre choix (par défaut sur le Bureau).
+- **Importer un profil…** : sur l'autre PC, choisissez ce fichier. Il est vérifié comme un profil enregistré (version, identifiants d'options, noms d'éléments), puis réécrit dans le dossier des profils et chargé. Les options Risqué demandent la même confirmation qu'au chargement. Si un profil du même nom existe, l'appli demande avant de le remplacer. Un nom de profil intégré reçoit le suffixe « (importé) ».
+
+Comme tout profil, le fichier ne contient que des identifiants d'options et des noms d'éléments, jamais de commande. Les options incompatibles avec l'autre PC sont ignorées et signalées.
+
+## Nouvelle version
+
+Au démarrage de l'interface, l'appli demande à GitHub la dernière release publiée (`api.github.com`, sans identifiant de la machine ni de l'utilisateur ; les pré-versions de test sont ignorées). Si elle est plus récente, un bandeau propose « Voir la nouvelle version », qui ouvre la page de la release dans le navigateur. **Rien n'est téléchargé ni installé automatiquement.** Hors ligne, ou si GitHub ne répond pas en 10 s, rien ne s'affiche. La routine planifiée et le mode `--silent` ne font pas cette vérification.
+
 ## Réglages du pilote NVIDIA
 
 Avec une carte NVIDIA, le menu Optimisation affiche un groupe « Pilote NVIDIA » : mode de faible latence Ultra, gestion de l'alimentation en performances maximales, cache des shaders illimité, filtrage des textures en hautes performances, synchronisation verticale désactivée. Chaque option se coche séparément (niveau Avancé, jamais cochée par « Recommandé » ni par un profil intégré). Elles modifient les paramètres globaux du pilote par son interface `nvapi64.dll`, installée avec le pilote : rien n'est téléchargé. La valeur d'avant est notée dans le journal, et chaque option s'annule seule.
@@ -74,6 +87,39 @@ Sans `--confirm`, la commande affiche seulement ce qui serait supprimé. Les ré
 - `dotnet test` : tests automatiques (aucune modification du système en dehors de `HKCU\Software\GamingTweakerTest` et du dossier temporaire).
 - `tools/sandbox/cycle.wsb` : cycle détecter, appliquer, annuler dans Windows Sandbox (voir `tools/sandbox/start-cycle.ps1`) ; le résultat est écrit dans `tools/sandbox/resultats/cycle.json`. L'option `--cycle-test` est refusée hors du compte du bac à sable.
 - `docs/checklist-premier-pc.md` : liste de contrôle à passer sur le premier PC réel.
+
+## Publication (CI)
+
+Le workflow `.github/workflows/build.yml` compile l'exe sur Windows, lance les tests puis le cycle réel des options sur la machine jetable de GitHub. **L'exe n'est publié que si tout est vert** :
+
+| Déclencheur | Publication (onglet Releases) |
+|---|---|
+| push sur `main` | pré-version `test-build` |
+| push sur une autre branche | pré-version `test-<branche>`, supprimée automatiquement avec la branche |
+| tag `vX.Y.Z` | release `GamingTweaker X.Y.Z` (c'est elle que l'appli propose en mise à jour) |
+
+Un build en échec ne remplace jamais l'exe déjà publié ; le rapport du cycle réel, les captures et le résultat des tests vont dans une pré-version `<canal>-echec`, sans exe. Elle est supprimée au build vert suivant.
+
+Pour publier une version : mettre `<Version>` à jour dans `src/GamingTweaker/GamingTweaker.csproj` (avec `AssemblyVersion` et `FileVersion`), fusionner dans `main`, puis :
+
+```bash
+git tag v0.9.2
+```
+
+```bash
+git push origin v0.9.2
+```
+
+Le workflow refuse un tag qui ne correspond pas à `<Version>`.
+
+### Signature de l'exe
+
+Un exe non signé qui demande les droits administrateur est bloqué par SmartScreen et souvent signalé par les antivirus. Le workflow signe l'exe (Authenticode SHA-256, horodaté) si deux secrets existent dans le dépôt (Settings > Secrets and variables > Actions) :
+
+- `SIGN_PFX_BASE64` : le certificat de signature de code `.pfx`, encodé en base64 (`[Convert]::ToBase64String([IO.File]::ReadAllBytes('cert.pfx'))` dans PowerShell) ;
+- `SIGN_PFX_PASSWORD` : son mot de passe.
+
+Sans ces secrets, l'exe est publié non signé et le résumé du build le signale. Où obtenir un certificat : un certificat de signature de code « open source » (par exemple Certum) est la voie la moins chère pour un projet AGPL ; un certificat OV classique fonctionne aussi. Les certificats récents sont souvent livrés sur clé matérielle ou dans un service cloud, sans fichier `.pfx` exportable : dans ce cas, l'étape « Signer l'exe » est à adapter à l'outil du fournisseur (par exemple Azure Trusted Signing). Un certificat neuf n'efface pas tout de suite l'avertissement SmartScreen : la réputation se construit avec les téléchargements.
 
 ## Licence
 

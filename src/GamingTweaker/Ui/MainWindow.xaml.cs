@@ -99,6 +99,52 @@ namespace GamingTweaker.Ui
 
         private void Recharger_Click(object sender, RoutedEventArgs e) { vm.RechargerProfil(); }
 
+        // ---------- Partage de profil (fichier .json) ----------
+
+        private const string FiltreProfil = "Profil GamingTweaker (*.json)|*.json";
+
+        private void BoutonPartage_Click(object sender, RoutedEventArgs e)
+        {
+            MenuPartage.PlacementTarget = BoutonPartage;
+            MenuPartage.IsOpen = true;
+        }
+
+        private void ExporterProfil_Click(object sender, RoutedEventArgs e)
+        {
+            var nom = MainViewModel.NettoyerNom(vm.NomPourEnregistrer);
+            var d = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "Exporter la sélection", Filter = FiltreProfil, DefaultExt = ".json", AddExtension = true, OverwritePrompt = true,
+                FileName = nom.Length > 0 ? nom : "Mon profil",
+                InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+            };
+            if (d.ShowDialog(this) != true) return;
+            var err = vm.ExporterProfil(d.FileName);
+            if (err != null) MessageBox.Show(this, err, "Exporter un profil", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+
+        private void ImporterProfil_Click(object sender, RoutedEventArgs e)
+        {
+            var d = new Microsoft.Win32.OpenFileDialog { Title = "Importer un profil", Filter = FiltreProfil, CheckFileExists = true };
+            if (d.ShowDialog(this) != true) return;
+            var err = vm.ImporterProfil(d.FileName, nom => MessageBox.Show(this,
+                "Un profil « " + nom + " » existe déjà. Le remplacer par le profil importé ?", "Importer un profil",
+                MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) == MessageBoxResult.Yes);
+            if (err != null) MessageBox.Show(this, err, "Importer un profil", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+
+        // ---------- Nouvelle version ----------
+
+        private void VoirNouvelleVersion_Click(object sender, RoutedEventArgs e)
+        {
+            var url = vm.NouvelleVersion == null ? null : vm.NouvelleVersion.Url;
+            if (!Core.SystemExe.UrlAcceptee(url)) return;
+            try { Core.SystemExe.OuvrirUrl(url); }
+            catch (Exception ex) { vm.Message = "Impossible d'ouvrir le navigateur (" + ex.Message + "). Adresse : " + url; }
+        }
+
+        private void MasquerNouvelleVersion_Click(object sender, RoutedEventArgs e) { vm.NouvelleVersionMasquee = true; }
+
         private void Planifier_Click(object sender, RoutedEventArgs e)
         {
             if (vm.Routine == null) return;
@@ -155,6 +201,11 @@ namespace GamingTweaker.Ui
             {
                 if (t.Status == TaskStatus.RanToCompletion && !t.Result)
                     vm.Bandeau = ("Les options du profil utilisateur seront ignorées : l'application est exécutée sous un autre compte administrateur. " + vm.Bandeau).Trim();
+            }, TaskScheduler.FromCurrentSynchronizationContext());
+
+            MiseAJour.VerifierAsync().ContinueWith(t =>
+            {
+                if (t.Status == TaskStatus.RanToCompletion && t.Result != null) vm.NouvelleVersion = t.Result;
             }, TaskScheduler.FromCurrentSynchronizationContext());
 
             SessionInterrompue s = null;

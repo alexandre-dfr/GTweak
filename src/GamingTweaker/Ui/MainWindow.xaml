@@ -240,6 +240,15 @@
                 </Border.Style>
                 <TextBlock Text="{Binding Bandeau}" TextWrapping="Wrap" Foreground="{DynamicResource AvanceFg}"/>
             </Border>
+            <!-- Nouvelle version publiée sur GitHub (rien n'est téléchargé : le bouton ouvre la page de la release) -->
+            <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,8"
+                    Visibility="{Binding NouvelleVersionVisible, Converter={StaticResource BoolVis}, FallbackValue=Collapsed}">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Content="✕" Click="MasquerNouvelleVersion_Click" Padding="8,2" Margin="8,0,0,0" ToolTip="Masquer jusqu'au prochain lancement"/>
+                    <Button DockPanel.Dock="Right" Content="Voir la nouvelle version" Click="VoirNouvelleVersion_Click"/>
+                    <TextBlock Text="{Binding TexteNouvelleVersion}" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                </DockPanel>
+            </Border>
             <!-- Mode Jeu laissé actif (arrêt brutal, redémarrage) -->
             <Border Background="{DynamicResource WarnBg}" Padding="20,8" Visibility="{Binding ModeJeu.EstActif, Converter={StaticResource BoolVis}, FallbackValue=Collapsed}">
                 <DockPanel>
@@ -438,6 +447,19 @@
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="10,0,0,0">
                     <Button Content="Sauver" Click="Sauver_Click"/>
                     <Button Content="Recharger" Margin="8,0,0,0" Click="Recharger_Click" ToolTip="Recharge le profil sélectionné"/>
+                    <!-- Import / export d'un profil (fichier .json) pour le reprendre sur un autre PC -->
+                    <Button x:Name="BoutonPartage" Margin="8,0,0,0" Click="BoutonPartage_Click" ToolTip="Importer ou exporter un profil (fichier .json, pour un autre PC)">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE8AB;" FontFamily="{StaticResource PoliceIcones}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBlock Text="Partager"/>
+                        </StackPanel>
+                        <Button.ContextMenu>
+                            <ContextMenu x:Name="MenuPartage" Placement="Top">
+                                <MenuItem Header="Exporter la sélection…" Click="ExporterProfil_Click"><MenuItem.Icon><TextBlock Text="&#xEDE1;" FontFamily="{StaticResource PoliceIcones}" FontSize="14"/></MenuItem.Icon></MenuItem>
+                                <MenuItem Header="Importer un profil…" Click="ImporterProfil_Click"><MenuItem.Icon><TextBlock Text="&#xE8B5;" FontFamily="{StaticResource PoliceIcones}" FontSize="14"/></MenuItem.Icon></MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                    </Button>
                     <!-- Routine hebdomadaire : réglée dans une fenêtre dédiée ; l'infobulle donne son état -->
                     <Button Margin="8,0,0,0" Click="Planifier_Click" ToolTip="{Binding Routine.EtatTexte}">
                         <StackPanel Orientation="Horizontal">
