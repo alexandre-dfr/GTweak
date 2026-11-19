@@ -179,7 +179,7 @@ jobs:
           SIGNE: ${{ steps.exe.outputs.signe }}
         run: |
           $fichiers = @('publication/GamingTweaker.exe', 'publication/GamingTweaker.exe.config', 'publication/SHA256.txt')
-          $fichiers += @(Get-ChildItem diagnostics -File -ErrorAction SilentlyContinue | Where-Object { $_.Extension -in '.json', '.png' } | ForEach-Object { $_.FullName })
+          $fichiers += @(Get-ChildItem diagnostics -File -ErrorAction SilentlyContinue | Where-Object { $_.Extension -in '.json', '.png' -and $_.Length -gt 0 } | ForEach-Object { $_.FullName })
           $verif = "Vérifier le hash avant de lancer : ``Get-FileHash GamingTweaker.exe`` doit donner $env:HASH."
           $signature = if ($env:SIGNE -eq 'oui') { 'Exe signé (Authenticode).' } else { 'Exe non signé : SmartScreen avertira.' }
           if ($env:TYPE -eq 'release') {
@@ -210,8 +210,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.canal.outputs.tag }}
         run: |
-          $fichiers = @(Get-ChildItem diagnostics -File -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })
-          $fichiers += @(Get-ChildItem TestResults -Filter *.trx -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })
+          # Un fichier vide est refusé par l'envoi (HTTP 400) : seuls les fichiers non vides sont joints.
+          $fichiers = @(Get-ChildItem diagnostics -File -ErrorAction SilentlyContinue | Where-Object { $_.Length -gt 0 } | ForEach-Object { $_.FullName })
+          $fichiers += @(Get-ChildItem TestResults -Filter *.trx -ErrorAction SilentlyContinue | Where-Object { $_.Length -gt 0 } | ForEach-Object { $_.FullName })
           if ($fichiers.Count -eq 0) { Write-Host 'aucun diagnostic'; exit 0 }
           $diag = "$env:TAG-echec"
           gh release delete $diag --yes --cleanup-tag 2>$null
