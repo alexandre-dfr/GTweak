@@ -1561,7 +1561,14 @@ function Get-TweakPathSize {
 function Invoke-GTNative([string]$Exe, [string[]]$Arguments = @()) {
     $old = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
-    try { $o = & $Exe @Arguments 2>&1; $code = $LASTEXITCODE } finally { $ErrorActionPreference = $old }
+    # winget écrit ses fichiers temporaires (téléchargements, journaux) dans %TEMP% : il reçoit le dossier temporaire de l'utilisateur
+    # du bureau, comme s'il était lancé par lui, et jamais le dossier Run protégé (des éléments à son nom y bloquaient le démarrage).
+    $tempAvant = $env:TEMP; $tmpAvant = $env:TMP
+    $userTemp = Get-GTUserTemp
+    $estWinget = ([IO.Path]::GetFileName($Exe) -ieq 'winget.exe')
+    if ($estWinget -and $userTemp) { $env:TEMP = $userTemp; $env:TMP = $userTemp }
+    try { $o = & $Exe @Arguments 2>&1; $code = $LASTEXITCODE }
+    finally { $ErrorActionPreference = $old; if ($estWinget) { $env:TEMP = $tempAvant; $env:TMP = $tmpAvant } }
     return [pscustomobject]@{ ExitCode = $code; Output = @($o | ForEach-Object { [string]$_ }) }
 }
 

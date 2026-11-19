@@ -162,7 +162,58 @@ namespace GamingTweaker.Core
             if (string.IsNullOrWhiteSpace(racine)) throw new ArgumentException("Dossier à sécuriser non précisé.");
             racine = Path.GetFullPath(racine).TrimEnd('\\');
             if (!Existe(racine)) CreerDossier(racine, definirProprietaire);
+            // Run\ ne contient que des fichiers temporaires des scripts : il est vidé avant le contrôle. Un outil lancé par un script
+            // (winget dans les versions précédentes) a pu y laisser des éléments appartenant à l'utilisateur, ce qui bloquait le démarrage.
+            if (definirProprietaire)
+            {
+                var run = Path.Combine(racine, "Run");
+                if (Existe(run)) ViderSansSuivre(run);
+            }
             Traiter(racine, true, definirProprietaire, 0);
+        }
+
+        /// <summary>
+        /// Supprime le contenu d'un dossier sans jamais suivre de lien. Le dossier est tenu ouvert sans partage en suppression pendant tout
+        /// le traitement (il ne peut être ni renommé ni remplacé par une jonction) ; chaque sous-dossier est vidé de la même façon puis
+        /// supprimé par sa poignée ; une jonction, un lien ou un fichier est supprimé lui-même (FILE_FLAG_OPEN_REPARSE_POINT). Un élément
+        /// impossible à supprimer (utilisé, droits) est laissé : le contrôle qui suit le signale.
+        /// </summary>
+        internal static void ViderSansSuivre(string dossier)
+        {
+            using (var h = CreateFile(@"\\?\" + dossier, FILE_READ_ATTRIBUTES | FILE_READ_DATA | SYNCHRONIZE, FILE_SHARE_READ | FILE_SHARE_WRITE, IntPtr.Zero, 3,
+                FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, IntPtr.Zero))
+            {
+                if (h.IsInvalid) return;
+                BY_HANDLE_FILE_INFORMATION info;
+                if (!GetFileInformationByHandle(h, out info)) return;
+                if ((info.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0 || (info.FileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0) return;
+                string[] enfants;
+                try { enfants = Directory.GetFileSystemEntries(dossier); } catch (Exception) { return; }
+                foreach (var e in enfants) SupprimerSansSuivre(e);
+            }
+        }
+
+        private static void SupprimerSansSuivre(string chemin)
+        {
+            uint attrs = GetFileAttributes(@"\\?\" + chemin);
+            if (attrs == INVALID_FILE_ATTRIBUTES) return;
+            // Dossier ordinaire : vidé d'abord (avec sa propre poignée tenue) ; un lien n'est jamais parcouru.
+            if ((attrs & FILE_ATTRIBUTE_DIRECTORY) != 0 && (attrs & FILE_ATTRIBUTE_REPARSE_POINT) == 0) ViderSansSuivre(chemin);
+            using (var h = CreateFile(@"\\?\" + chemin, DELETE | FILE_READ_ATTRIBUTES | FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, IntPtr.Zero, 3,
+                FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, IntPtr.Zero))
+            {
+                if (h.IsInvalid) return;
+                BY_HANDLE_FILE_INFORMATION info;
+                if (GetFileInformationByHandle(h, out info) && (info.FileAttributes & FILE_ATTRIBUTE_READONLY) != 0)
+                {
+                    // Lecture seule : levée sur la même poignée, sinon la suppression est refusée.
+                    uint a = info.FileAttributes & ~FILE_ATTRIBUTE_READONLY;
+                    var b = new FILE_BASIC_INFO { FileAttributes = a == 0 ? 0x80u : a };
+                    SetFileInformationByHandle(h, 0 /* FileBasicInfo */, ref b, (uint)Marshal.SizeOf(typeof(FILE_BASIC_INFO)));
+                }
+                var d = new FILE_DISPOSITION_INFO { DeleteFile = 1 };
+                SetFileInformationByHandle(h, 4 /* FileDispositionInfo */, ref d, 1);
+            }
         }
 
         /// <summary>
@@ -264,7 +315,18 @@ namespace GamingTweaker.Core
         // ---------- Win32 ----------
 
         private const uint FILE_READ_DATA = 0x0001, READ_CONTROL = 0x00020000, WRITE_DAC = 0x00040000, FILE_READ_ATTRIBUTES = 0x0080;
-        private const uint FILE_SHARE_READ = 0x1;
+        private const uint FILE_SHARE_READ = 0x1, FILE_SHARE_WRITE = 0x2, FILE_SHARE_DELETE = 0x4, DELETE = 0x00010000, SYNCHRONIZE = 0x00100000;
+
+        private const uint FILE_WRITE_ATTRIBUTES = 0x0100, FILE_ATTRIBUTE_READONLY = 0x1;
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct FILE_DISPOSITION_INFO { public byte DeleteFile; }
+        [StructLayout(LayoutKind.Sequential)]
+        private struct FILE_BASIC_INFO { public long CreationTime, LastAccessTime, LastWriteTime, ChangeTime; public uint FileAttributes; }
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool SetFileInformationByHandle(SafeFileHandle h, int classe, ref FILE_BASIC_INFO info, uint taille);
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool SetFileInformationByHandle(SafeFileHandle h, int classe, ref FILE_DISPOSITION_INFO info, uint taille);
         private const uint FILE_FLAG_BACKUP_SEMANTICS = 0x02000000, FILE_FLAG_OPEN_REPARSE_POINT = 0x00200000;
         private const uint FILE_ATTRIBUTE_DIRECTORY = 0x10, FILE_ATTRIBUTE_REPARSE_POINT = 0x400, INVALID_FILE_ATTRIBUTES = 0xFFFFFFFF;
         private const int SE_FILE_OBJECT = 1;
