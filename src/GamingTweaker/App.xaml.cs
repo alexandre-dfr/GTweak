@@ -158,6 +158,23 @@ namespace GamingTweaker
 
             fenetre = new Ui.MainWindow(vm);
 
+            // ---- Compteur en jeu (FPS, CPU, GPU, RAM) : surimpression et raccourci global ----
+            var compteur = new CompteurViewModel(paths.MachineDir, new CompteurService());
+            vm.Compteur = compteur;
+            var surimpression = new CompteurWindow(compteur);
+            compteur.AffichageChange += () => surimpression.Appliquer();
+            RaccourciClavier raccourci = null;
+            try { raccourci = new RaccourciClavier(RaccourciClavier.Ctrl | RaccourciClavier.Maj, 0x7A /* F11 */, () => Dispatcher.BeginInvoke(new Action(compteur.Basculer))); }
+            catch (Exception ex) { TraceAppli.Erreur("raccourci du compteur en jeu", ex); }
+            fenetre.RaccourciCompteurDisponible = raccourci != null && raccourci.Enregistre;
+            surimpression.Appliquer();
+            Exit += (s, ev) =>
+            {
+                if (raccourci != null) raccourci.Dispose();
+                compteur.Dispose();
+                surimpression.Close();
+            };
+
             // ---- Mode Jeu automatique et zone de notification ----
             var surveillance = new SurveillanceJeux(modeJeu, () => auto.Config);
             bool quitter = false, bulleMontree = false, premiereOuverture = true;

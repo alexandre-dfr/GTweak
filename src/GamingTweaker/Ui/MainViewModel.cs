@@ -285,6 +285,10 @@ namespace GamingTweaker.Ui
 
         public string Message { get { return message; } set { Set(ref message, value ?? ""); } }
 
+        private CompteurViewModel compteurVm;
+        /// <summary>Compteur en jeu (null tant que l'application ne l'a pas branché).</summary>
+        public CompteurViewModel Compteur { get { return compteurVm; } set { Set(ref compteurVm, value); } }
+
         // ---------- Nouvelle version ----------
 
         private VersionDisponible nouvelleVersion;

@@ -296,6 +296,7 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="300"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="{Binding TitreAffiche}" FontSize="28" FontWeight="SemiBold" FontFamily="{StaticResource PoliceTitre}" VerticalAlignment="Center" TextWrapping="Wrap"/>
                     <Grid Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
@@ -310,8 +311,19 @@
                             </TextBlock.Style>
                         </TextBlock>
                     </Grid>
+                    <!-- Compteur en jeu (FPS, CPU, GPU, RAM) : un clic ouvre ses réglages ; icône en couleur d'accent quand il est affiché -->
+                    <Button x:Name="BoutonCompteur" Grid.Column="2" Click="BoutonCompteur_Click" ToolTip="{Binding Compteur.EtatBouton}" VerticalAlignment="Center" Margin="0,0,4,0">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource BoutonIcone}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Compteur.Actif}" Value="True"><Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/></DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <TextBlock Text="&#xEC4A;" FontFamily="{StaticResource PoliceIcones}" FontSize="16"/>
+                    </Button>
                     <!-- Thème : icône soleil / lune / palette ; un clic ouvre le choix -->
-                    <Button x:Name="BoutonTheme" Grid.Column="2" Style="{StaticResource BoutonIcone}" Click="BoutonTheme_Click" ToolTip="Thème de l'application" VerticalAlignment="Center">
+                    <Button x:Name="BoutonTheme" Grid.Column="3" Style="{StaticResource BoutonIcone}" Click="BoutonTheme_Click" ToolTip="Thème de l'application" VerticalAlignment="Center">
                         <TextBlock x:Name="IconeTheme" Text="&#xE790;" FontFamily="{StaticResource PoliceIcones}" FontSize="16"/>
                         <Button.ContextMenu>
                             <ContextMenu x:Name="MenuTheme" Placement="Bottom">

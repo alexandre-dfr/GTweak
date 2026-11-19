@@ -41,6 +41,15 @@ namespace GamingTweaker.Ui
             MenuTheme.IsOpen = true;
         }
 
+        /// <summary>Le raccourci global du compteur a pu être enregistré (sinon les réglages le signalent).</summary>
+        public bool RaccourciCompteurDisponible { get; set; }
+
+        private void BoutonCompteur_Click(object sender, RoutedEventArgs e)
+        {
+            if (vm.Compteur == null) return;
+            new CompteurReglagesWindow(vm.Compteur, RaccourciCompteurDisponible) { Owner = this }.ShowDialog();
+        }
+
         private void ChoixTheme_Click(object sender, RoutedEventArgs e)
         {
             var m = sender as System.Windows.Controls.MenuItem;

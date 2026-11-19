@@ -29,6 +29,21 @@ Trois profils sont fournis en tête de la liste des profils, en lecture seule :
 
 Aucun ne contient d'option Risqué, d'option à liste (services, démarrage : leur contenu se choisit sur votre PC) ni d'option que « Recommandé » ne coche pas. Pour en modifier un ou le planifier, enregistrez-le sous votre propre nom avec « Sauver ».
 
+## Compteur en jeu (FPS, CPU, GPU, RAM)
+
+Le bouton en forme de compteur, en haut à droite (à côté du thème), ouvre les réglages du compteur affiché par-dessus le jeu. Il est désactivé par défaut. **Ctrl+Maj+F11** l'affiche ou le masque pendant une partie.
+
+- **Contenu**, chaque élément activable séparément :
+  - images par seconde de la fenêtre au premier plan ;
+  - temps d'image et « 1 % bas » (99e centile du temps d'image sur 10 s) ;
+  - courbe des FPS sur 10, 30 ou 60 s ;
+  - charge du processeur, de la carte graphique et de la mémoire en pourcentage.
+- **Apparence** : coin de l'écran, taille, couleur (7 couleurs proposées ou une couleur libre `#RRVVBB`), opacité du fond.
+- **Fonctionnement** : les FPS viennent des événements « Present » publiés par Windows (ETW, comme PresentMon) ; rien n'est injecté dans le jeu, le compteur est donc compatible avec les anti-triche. Processeur, mémoire et carte graphique sont mesurés comme dans le Gestionnaire des tâches. La surimpression laisse passer les clics et ne prend jamais le clavier. Rien ne tourne quand le compteur est masqué.
+- **Limites** : les FPS sont mesurés pour les jeux DirectX 9 à 12 ; un jeu Vulkan ou OpenGL affiche « — ». Le compteur s'affiche en plein écran sans bordure et en fenêtre, pas en plein écran exclusif. Comme toute surimpression, il peut empêcher Windows d'utiliser l'affichage direct (« independent flip ») d'un jeu en plein écran sans bordure. La latence d'entrée (« input lag ») n'est pas affichée : elle ne se mesure correctement qu'avec du matériel dédié.
+
+Les réglages sont dans `compteur.json`, dans le dossier de la machine.
+
 ## Partager un profil
 
 Le bouton **Partager** (à côté de « Recharger ») propose :
