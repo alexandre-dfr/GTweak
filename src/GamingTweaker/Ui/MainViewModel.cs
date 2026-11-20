@@ -52,11 +52,11 @@ namespace GamingTweaker.Ui
                            .Select(i => new OptionViewModel(i, confirmerRisque, string.IsNullOrEmpty(i.Liste) || registre == null ? null : registre.Get(i.Liste))).ToList();
             foreach (var o in Options) o.CocheChanged += () => { Raise("SelectedCount"); Raise("AUneSelection"); Raise("ResumeSelection"); MajCompteurs(); };
 
-            var menus = new[] { MenuAccueil, MenuDiagnostic }.Concat(MenusOptions).Concat(new[] { "Informations" })
-                .Select(n => new MenuEntry { Nom = n, EstEmplacement = n == "Informations" || n == MenuAccueil || n == MenuDiagnostic }).ToList();
+            // Ordre de la barre latérale : accueil et diagnostic, menus d'options, Mode Jeu ; puis Historique, Informations et Paramètres en dernier.
+            var menus = new[] { MenuAccueil, MenuDiagnostic }.Concat(MenusOptions).Concat(new[] { MenuModeJeu })
+                .Select(n => new MenuEntry { Nom = n, EstEmplacement = Array.IndexOf(MenusOptions, n) < 0 }).ToList();
             menus.Add(new MenuEntry { EstSeparateur = true });
-            menus.Add(new MenuEntry { Nom = "Mode Jeu", EstEmplacement = true });
-            menus.Add(new MenuEntry { Nom = "Historique", EstEmplacement = true });
+            foreach (var n in new[] { MenuHistorique, MenuInformations, MenuParametres }) menus.Add(new MenuEntry { Nom = n, EstEmplacement = true });
             Menus = menus;
 
             RecommanderCommand = new RelayCommand(_ => ApplyRecommended(MenuCourant), _ => !EstEmplacement && !EnRecherche && Visibles.Any(o => o.Recommandee));
@@ -143,6 +143,14 @@ namespace GamingTweaker.Ui
             }
         }
 
+        private IReadOnlyList<TuileMateriel> tuilesMateriel = MaterielPc.EnLecture();
+        /// <summary>Processeur, carte graphique, mémoire et disque système (tuiles « Lecture… » tant que l'application ne les a pas lues).</summary>
+        public IReadOnlyList<TuileMateriel> TuilesMateriel
+        {
+            get { return tuilesMateriel; }
+            set { Set(ref tuilesMateriel, value ?? MaterielPc.EnLecture()); }
+        }
+
         public string ResumePc
         {
             get
@@ -221,7 +229,10 @@ namespace GamingTweaker.Ui
             get { return menuCourant; }
             set
             {
+                var precedent = menuCourant;
                 if (!Set(ref menuCourant, value)) return;
+                // En quittant les Paramètres : fin du placement du compteur, réglages enregistrés.
+                if (precedent == MenuParametres && compteurVm != null) { compteurVm.ModePlacement = false; compteurVm.Enregistrer(); }
                 if (value == MenuDiagnostic && diagnosticVm != null) diagnosticVm.AnalyserSiBesoin();
                 MajVueAffichee();
                 if (value == MenuModeJeu && modeJeuVm != null) modeJeuVm.ChargerSiBesoin();
@@ -244,7 +255,7 @@ namespace GamingTweaker.Ui
         /// <summary>Le menu courant ou la recherche a changé : signale toutes les propriétés « quelle vue est affichée », puis refiltre.</summary>
         private void MajVueAffichee()
         {
-            foreach (var p in new[] { "EstAccueil", "EstDiagnostic", "EstEmplacement", "EstMenuTelemetrie", "EstMenuOptions", "EstModeJeu", "EstHistorique", "EstMenuInformations", "TitreAffiche" })
+            foreach (var p in new[] { "EstAccueil", "EstDiagnostic", "EstEmplacement", "EstMenuTelemetrie", "EstMenuOptions", "EstModeJeu", "EstHistorique", "EstMenuInformations", "EstParametres", "TitreAffiche" })
                 Raise(p);
             MajInfo();
             Filtrer();
@@ -266,6 +277,9 @@ namespace GamingTweaker.Ui
         public bool EstMenuOptions { get { return !EnRecherche && Array.IndexOf(MenusOptions, menuCourant) >= 0; } }
         public const string MenuModeJeu = "Mode Jeu";
         public const string MenuHistorique = "Historique";
+        public const string MenuParametres = "Paramètres";
+        /// <summary>Menu Paramètres : réglages de l'application et du compteur en jeu.</summary>
+        public bool EstParametres { get { return !EnRecherche && menuCourant == MenuParametres; } }
         public bool EstModeJeu { get { return !EnRecherche && menuCourant == MenuModeJeu; } }
         public bool EstHistorique { get { return !EnRecherche && menuCourant == MenuHistorique; } }
 
@@ -307,6 +321,18 @@ namespace GamingTweaker.Ui
             try { if (paths != null && !string.IsNullOrEmpty(paths.MachineDir)) { Directory.CreateDirectory(paths.MachineDir); File.WriteAllText(Path.Combine(paths.MachineDir, FichierGuideVu), DateTime.Now.ToString("o")); } }
             catch (Exception ex) { TraceAppli.Erreur("guide de l'accueil : témoin non écrit", ex); }
             Raise("AfficherGuide");
+        }
+
+        private ICommand reafficherGuide;
+        /// <summary>Paramètres : le guide de l'accueil s'affiche de nouveau (fichier témoin supprimé).</summary>
+        public ICommand ReafficherGuideCommand { get { return reafficherGuide ?? (reafficherGuide = new RelayCommand(_ => ReafficherGuide())); } }
+        public void ReafficherGuide()
+        {
+            guideMasque = false;
+            try { if (paths != null && !string.IsNullOrEmpty(paths.MachineDir)) File.Delete(Path.Combine(paths.MachineDir, FichierGuideVu)); }
+            catch (Exception ex) { TraceAppli.Erreur("guide de l'accueil : témoin non supprimé", ex); }
+            Raise("AfficherGuide");
+            Message = "Le guide de démarrage s'affiche de nouveau sur l'accueil.";
         }
 
         public string TexteVersion { get { return "GamingTweaker " + VersionAppli.Texte; } }

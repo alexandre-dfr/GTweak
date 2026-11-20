@@ -311,7 +311,7 @@
                             </TextBlock.Style>
                         </TextBlock>
                     </Grid>
-                    <!-- Compteur en jeu (FPS, CPU, GPU, RAM) : un clic ouvre ses réglages ; icône en couleur d'accent quand il est affiché -->
+                    <!-- Compteur en jeu (FPS, CPU, GPU, RAM) : un clic l'affiche ou le masque (réglages dans Paramètres) ; icône en couleur d'accent quand il est affiché -->
                     <Button x:Name="BoutonCompteur" Grid.Column="2" Click="BoutonCompteur_Click" ToolTip="{Binding Compteur.EtatBouton}" VerticalAlignment="Center" Margin="0,0,4,0">
                         <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource BoutonIcone}">
@@ -322,16 +322,9 @@
                         </Button.Style>
                         <TextBlock Text="&#xEC4A;" FontFamily="{StaticResource PoliceIcones}" FontSize="16"/>
                     </Button>
-                    <!-- Thème : icône soleil / lune / palette ; un clic ouvre le choix -->
+                    <!-- Thème : un clic passe du clair au sombre et inversement (« Comme Windows » dans Paramètres) -->
                     <Button x:Name="BoutonTheme" Grid.Column="3" Style="{StaticResource BoutonIcone}" Click="BoutonTheme_Click" ToolTip="Thème de l'application" VerticalAlignment="Center">
-                        <TextBlock x:Name="IconeTheme" Text="&#xE790;" FontFamily="{StaticResource PoliceIcones}" FontSize="16"/>
-                        <Button.ContextMenu>
-                            <ContextMenu x:Name="MenuTheme" Placement="Bottom">
-                                <MenuItem Header="Comme Windows" Tag="Systeme" Click="ChoixTheme_Click"><MenuItem.Icon><TextBlock Text="&#xE790;" FontFamily="{StaticResource PoliceIcones}" FontSize="14"/></MenuItem.Icon></MenuItem>
-                                <MenuItem Header="Clair" Tag="Clair" Click="ChoixTheme_Click"><MenuItem.Icon><TextBlock Text="&#xE706;" FontFamily="{StaticResource PoliceIcones}" FontSize="14"/></MenuItem.Icon></MenuItem>
-                                <MenuItem Header="Sombre" Tag="Sombre" Click="ChoixTheme_Click"><MenuItem.Icon><TextBlock Text="&#xE708;" FontFamily="{StaticResource PoliceIcones}" FontSize="14"/></MenuItem.Icon></MenuItem>
-                            </ContextMenu>
-                        </Button.ContextMenu>
+                        <TextBlock x:Name="IconeTheme" Text="&#xE706;" FontFamily="{StaticResource PoliceIcones}" FontSize="16"/>
                     </Button>
                 </Grid>
 
@@ -432,6 +425,11 @@
                 <!-- Mode Jeu -->
                 <Border Grid.Row="1" Grid.RowSpan="2" Visibility="{Binding EstModeJeu, Converter={StaticResource BoolVis}}">
                     <local:ModeJeuView DataContext="{Binding ModeJeu}"/>
+                </Border>
+
+                <!-- Paramètres -->
+                <Border Grid.Row="1" Grid.RowSpan="2" Visibility="{Binding EstParametres, Converter={StaticResource BoolVis}}">
+                    <local:ParametresView/>
                 </Border>
 
                 <!-- Historique -->

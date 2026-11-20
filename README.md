@@ -6,7 +6,7 @@ Application Windows portable (un seul `GamingTweaker.exe`) qui règle un PC de j
 
 1. Copiez `GamingTweaker.exe` où vous voulez, par exemple sur une clé USB. C'est le seul fichier : aucune dépendance, aucun fichier de configuration (.NET Framework 4.8 est déjà dans Windows 10 1903+ et Windows 11).
 2. Double-cliquez : Windows demande les droits administrateur (obligatoire pour modifier le système).
-3. Cochez les options, cliquez sur **Aperçu** pour voir exactement ce qui sera fait, puis sur **LANCER**. Au premier lancement, un encadré de l'accueil résume ces étapes (bouton « Compris » pour le masquer).
+3. Cochez les options, cliquez sur **Aperçu** pour voir exactement ce qui sera fait, puis sur **LANCER**. Au premier lancement, un encadré de l'accueil résume ces étapes (bouton « Compris » pour le masquer, « Réafficher le guide » dans Paramètres).
 
 Rien n'est installé. Les capteurs matériels (menu Informations) ne sont chargés qu'à la demande.
 
@@ -29,9 +29,14 @@ Trois profils sont fournis en tête de la liste des profils, en lecture seule :
 
 Aucun ne contient d'option Risqué, d'option à liste (services, démarrage : leur contenu se choisit sur votre PC) ni d'option que « Recommandé » ne coche pas. Pour en modifier un ou le planifier, enregistrez-le sous votre propre nom avec **Profil ▾ > Enregistrer la sélection sous…**.
 
+## Accueil et Paramètres
+
+- **Accueil** : le matériel de ce PC (processeur, carte graphique et sa mémoire vidéo, mémoire vive, disque système avec son type et son espace libre), les profils intégrés en un clic, l'état des réglages par menu, le diagnostic et le Mode Jeu.
+- **Paramètres** (dernier menu) : thème (comme Windows, clair ou sombre), démarrage avec Windows, guide de l'accueil, version, et tous les réglages du compteur en jeu. Les deux boutons en haut à droite ne font que basculer : le compteur (affiché / masqué) et le thème (clair / sombre).
+
 ## Compteur en jeu (FPS, CPU, GPU, RAM)
 
-Le bouton en forme de compteur, en haut à droite (à côté du thème), ouvre les réglages du compteur affiché par-dessus le jeu. Il est désactivé par défaut. **Ctrl+Maj+F11** l'affiche ou le masque pendant une partie ; la combinaison se change dans les réglages (« Changer… », puis appuyez sur la nouvelle combinaison : elle doit contenir Ctrl ou Alt).
+Le bouton en forme de compteur, en haut à droite (à côté du thème), affiche ou masque le compteur par-dessus le jeu ; ses réglages sont dans le menu **Paramètres**. Il est désactivé par défaut. **Ctrl+Maj+F11** l'affiche ou le masque pendant une partie ; la combinaison se change dans Paramètres (« Changer… », puis appuyez sur la nouvelle combinaison : elle doit contenir Ctrl ou Alt).
 
 - **Contenu**, chaque élément activable séparément :
   - images par seconde de la fenêtre au premier plan ;
@@ -39,7 +44,7 @@ Le bouton en forme de compteur, en haut à droite (à côté du thème), ouvre l
   - courbe des FPS sur 10, 30 ou 60 s ;
   - charge du processeur, de la carte graphique et de la mémoire en pourcentage ;
   - températures de la carte graphique (lue par le pilote NVIDIA ou AMD, rien à installer) et du processeur (demande le pilote PawnIO, proposé dans le menu Informations ; son comportement face aux anti-triche n'a pas été vérifié). Désactivées par défaut.
-- **Position** : un coin de l'écran principal, ou **n'importe où** : tant que la fenêtre des réglages est ouverte, le compteur est affiché avec un cadre pointillé et se déplace à la souris, sur n'importe quel écran ; tirez le coin ◢ du cadre (ou Ctrl+molette) pour l'agrandir ou le réduire (60 à 300 %). Il garde cette place et cette taille.
+- **Position** : un coin de l'écran principal, ou **n'importe où** : avec « Placer le compteur à l'écran » (Paramètres), le compteur est affiché avec un cadre pointillé jusqu'à ce que vous quittiez les Paramètres et se déplace à la souris, sur n'importe quel écran ; tirez le coin ◢ du cadre (ou Ctrl+molette) pour l'agrandir ou le réduire (60 à 300 %). Il garde cette place et cette taille.
 - **Apparence** : taille, opacité du fond et **couleurs** : choisissez l'élément (FPS, temps d'image et 1 % bas, courbe, CPU, GPU, RAM) puis sa couleur, parmi 7 proposées ou une couleur libre `#RRVVBB` ; « Tout le compteur » remet la même couleur partout. Largeur fixe et police à chasse fixe : le compteur ne bouge pas quand les chiffres changent ; il est rafraîchi deux fois par seconde.
 - **Fonctionnement** : les FPS viennent des événements publiés par Windows (ETW, comme PresentMon) : « Present » de DirectX 9 à 12 en priorité, sinon le noyau graphique (DxgKrnl), qui voit aussi les images des jeux Vulkan et OpenGL. La source est indiquée sous les FPS ; rien n'est injecté dans le jeu, le compteur est donc compatible avec les anti-triche. Processeur, mémoire et carte graphique sont mesurés comme dans le Gestionnaire des tâches. La surimpression laisse passer les clics et ne prend jamais le clavier. Rien ne tourne quand le compteur est masqué.
 - **Limites** : la mesure Vulkan/OpenGL par le noyau graphique n'a pas pu être vérifiée par la CI (pas de carte graphique) ; si un jeu Vulkan ou OpenGL affiche « — », signalez-le. Le compteur s'affiche en plein écran sans bordure et en fenêtre, pas en plein écran exclusif. Comme toute surimpression, il peut empêcher Windows d'utiliser l'affichage direct (« independent flip ») d'un jeu en plein écran sans bordure. La latence d'entrée (« input lag ») n'est pas affichée : elle ne se mesure correctement qu'avec du matériel dédié.
@@ -89,7 +94,7 @@ Une erreur inattendue n'est jamais silencieuse : un message l'indique et un rapp
 
 Chaque étape du démarrage est aussi notée dans `%LOCALAPPDATA%\GamingTweaker\demarrage.log`. Si l'application se ferme **sans aucun message** (un antivirus peut arrêter un exe non signé : voir Sécurité Windows > Historique de protection), le lancement suivant l'indique en haut de la fenêtre, avec la dernière étape atteinte.
 
-La version exacte (par exemple `0.9.1 (build 58)`, le numéro de build de la CI) est affichée en bas de l'accueil et en tête de chaque rapport.
+La version exacte (par exemple `0.9.1 (build 58)`, le numéro de build de la CI) est affichée en bas de l'accueil, dans Paramètres et en tête de chaque rapport.
 
 ## Annuler
 

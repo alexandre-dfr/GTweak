@@ -22,42 +22,27 @@ namespace GamingTweaker.Ui
             Closed += (s, e) => ThemeApplication.Change -= MajIconeTheme;
         }
 
-        /// <summary>Icône du bouton de thème : palette (comme Windows), soleil (clair) ou lune (sombre) ; coche sur le choix actif.</summary>
+        /// <summary>Icône du bouton de thème : soleil en clair, lune en sombre (thème réellement affiché, même en « Comme Windows »).</summary>
         private void MajIconeTheme()
         {
+            var sombre = ThemeApplication.Sombre;
+            IconeTheme.Text = sombre ? "\uE708" : "\uE706";
             var c = ThemeApplication.Choix;
-            IconeTheme.Text = c == ChoixTheme.Clair ? "\uE706" : c == ChoixTheme.Sombre ? "\uE708" : "\uE790";
-            BoutonTheme.ToolTip = "Thème : " + (c == ChoixTheme.Clair ? "clair" : c == ChoixTheme.Sombre ? "sombre" : "comme Windows");
-            foreach (var o in MenuTheme.Items)
-            {
-                var m = o as System.Windows.Controls.MenuItem;
-                if (m != null) m.IsChecked = (string)m.Tag == c.ToString();
-            }
+            BoutonTheme.ToolTip = "Thème " + (sombre ? "sombre" : "clair") + (c == ChoixTheme.Systeme ? " (comme Windows)" : "")
+                                + " : cliquer pour passer au thème " + (sombre ? "clair" : "sombre");
         }
 
+        /// <summary>Bascule clair / sombre ; le choix « Comme Windows » se fait dans Paramètres.</summary>
         private void BoutonTheme_Click(object sender, RoutedEventArgs e)
         {
-            MenuTheme.PlacementTarget = BoutonTheme;
-            MenuTheme.IsOpen = true;
+            ThemeApplication.Definir(ThemeApplication.Sombre ? ChoixTheme.Clair : ChoixTheme.Sombre);
         }
 
-        private CompteurReglagesWindow reglagesCompteur;
-
-        /// <summary>Réglages du compteur, non modaux : une fenêtre modale bloquerait le glisser-déposer du compteur.</summary>
+        /// <summary>Affiche ou masque le compteur ; ses réglages sont dans le menu Paramètres.</summary>
         private void BoutonCompteur_Click(object sender, RoutedEventArgs e)
         {
             if (vm.Compteur == null) return;
-            if (reglagesCompteur != null) { reglagesCompteur.Activate(); return; }
-            reglagesCompteur = new CompteurReglagesWindow(vm.Compteur) { Owner = this };
-            reglagesCompteur.Closed += (s, ev) => reglagesCompteur = null;
-            reglagesCompteur.Show();
-        }
-
-        private void ChoixTheme_Click(object sender, RoutedEventArgs e)
-        {
-            var m = sender as System.Windows.Controls.MenuItem;
-            ChoixTheme c;
-            if (m != null && Enum.TryParse((string)m.Tag, out c)) ThemeApplication.Definir(c);
+            vm.Compteur.Basculer();
         }
 
         /// <summary>Ctrl+F : recherche ; Échap dans la recherche : l'efface.</summary>

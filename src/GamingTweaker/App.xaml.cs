@@ -232,6 +232,11 @@ namespace GamingTweaker
                 var __ = vm.Routine.ActualiserAsync();
                 // Diagnostic dès l'ouverture : son résumé s'affiche sur l'accueil (lecture seule, hors du thread de l'interface).
                 vm.Diagnostic.AnalyserSiBesoin();
+                // Matériel de l'accueil (processeur, carte graphique, mémoire, disque système) : lu hors du thread de l'interface.
+                System.Threading.Tasks.Task.Run(() => MaterielPc.Lire()).ContinueWith(t =>
+                {
+                    if (t.Status == System.Threading.Tasks.TaskStatus.RanToCompletion) vm.TuilesMateriel = t.Result;
+                }, System.Threading.Tasks.TaskScheduler.FromCurrentSynchronizationContext());
             };
             Action ouvrir = () =>
             {
