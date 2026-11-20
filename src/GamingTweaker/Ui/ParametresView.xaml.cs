@@ -1,26 +1,51 @@
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 
 namespace GamingTweaker.Ui
 {
-    /// <summary>Réglages du compteur en jeu (bouton en haut à droite de la fenêtre principale).</summary>
-    public partial class CompteurReglagesWindow : Window
+    /// <summary>Menu Paramètres : réglages de l'application (thème, démarrage, guide, version) et du compteur en jeu.</summary>
+    public partial class ParametresView : UserControl
     {
-        private readonly CompteurViewModel vm;
-
         private bool captureRaccourci;
+        private bool majTheme;
 
-        public CompteurReglagesWindow(CompteurViewModel vm)
+        public ParametresView()
         {
-            this.vm = vm;
             InitializeComponent();
-            DataContext = vm;
             PreviewKeyDown += CapturerRaccourci;
-            // Tant que les réglages sont ouverts, le compteur est visible et se déplace à la souris.
-            Loaded += (s, e) => vm.ModePlacement = true;
-            Closed += (s, e) => { vm.ModePlacement = false; vm.Enregistrer(); };
+            Loaded += (s, e) => { MajTheme(); ThemeApplication.Change -= MajTheme; ThemeApplication.Change += MajTheme; };
+            Unloaded += (s, e) => ThemeApplication.Change -= MajTheme;
         }
+
+        private CompteurViewModel Compteur { get { var vm = DataContext as MainViewModel; return vm == null ? null : vm.Compteur; } }
+
+        // ---------- Thème ----------
+
+        /// <summary>Coche le choix enregistré (il change aussi par le bouton en haut à droite).</summary>
+        private void MajTheme()
+        {
+            majTheme = true;
+            try
+            {
+                var c = ThemeApplication.Choix;
+                ThemeSysteme.IsChecked = c == ChoixTheme.Systeme;
+                ThemeClair.IsChecked = c == ChoixTheme.Clair;
+                ThemeSombre.IsChecked = c == ChoixTheme.Sombre;
+            }
+            finally { majTheme = false; }
+        }
+
+        private void Theme_Checked(object sender, RoutedEventArgs e)
+        {
+            if (majTheme) return;
+            ChoixTheme c;
+            var tag = (sender as FrameworkElement)?.Tag as string;
+            if (tag != null && Enum.TryParse(tag, out c) && c != ThemeApplication.Choix) ThemeApplication.Definir(c);
+        }
+
+        // ---------- Raccourci du compteur ----------
 
         private void ChangerRaccourci_Click(object sender, RoutedEventArgs e)
         {
@@ -29,6 +54,7 @@ namespace GamingTweaker.Ui
             ErreurRaccourci.Visibility = Visibility.Collapsed;
             BoutonRaccourci.IsEnabled = false;
             Focus();
+            Keyboard.Focus(this);
         }
 
         private void FinCapture()
@@ -51,15 +77,19 @@ namespace GamingTweaker.Ui
             if ((Keyboard.Modifiers & ModifierKeys.Alt) != 0) mods |= 1;
             if ((Keyboard.Modifiers & ModifierKeys.Control) != 0) mods |= 2;
             if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0) mods |= 4;
-            var refus = vm.DefinirRaccourci(mods, (uint)KeyInterop.VirtualKeyFromKey(touche));
+            var c = Compteur;
+            var refus = c == null ? null : c.DefinirRaccourci(mods, (uint)KeyInterop.VirtualKeyFromKey(touche));
             FinCapture();
             if (refus != null) { ErreurRaccourci.Text = refus; ErreurRaccourci.Visibility = Visibility.Visible; }
         }
 
+        // ---------- Couleur du compteur ----------
+
         private void Couleur_Click(object sender, RoutedEventArgs e)
         {
-            var c = (sender as Button)?.Tag as string;
-            if (c != null) vm.Couleur = c;
+            var couleur = (sender as Button)?.Tag as string;
+            var c = Compteur;
+            if (couleur != null && c != null) c.Couleur = couleur;
         }
 
         private void CouleurLibre_KeyDown(object sender, KeyEventArgs e)
@@ -69,7 +99,5 @@ namespace GamingTweaker.Ui
             if (t != null) t.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
             e.Handled = true;
         }
-
-        private void Fermer_Click(object sender, RoutedEventArgs e) { vm.Enregistrer(); Close(); }
     }
 }

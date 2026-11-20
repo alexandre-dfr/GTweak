@@ -2,7 +2,7 @@ using System.Windows.Controls;
 
 namespace GamingTweaker.Ui
 {
-    /// <summary>Écran d'accueil : synthèse de ce PC, profils intégrés en un clic, état par menu, Mode Jeu, raccourcis et conseils.</summary>
+    /// <summary>Écran d'accueil : matériel de ce PC, profils intégrés en un clic, état par menu, diagnostic, Mode Jeu et conseils.</summary>
     public partial class AccueilView : UserControl
     {
         public const string Conseil1 = "Seules les options cochées s'exécutent. « Aperçu » montre tout ce qui va être fait avant de lancer.";

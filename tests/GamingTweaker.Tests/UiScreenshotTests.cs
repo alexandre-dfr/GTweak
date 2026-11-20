@@ -143,13 +143,21 @@ namespace GamingTweaker.Tests
                     Images = new MesureImages { Fps = 140 + 10 * Math.Sin(i / 5.0), TempsImageMs = 7.0, UnPourcentBas = 98, Source = "DirectX" },
                     Charge = new ChargeSysteme { Cpu = 34, Gpu = 91, Ram = 52, RamUtiliseeGo = 16.6, RamTotaleGo = 32, TempCpu = 61, TempGpu = 72 },
                 });
-            var reglages = new CompteurReglagesWindow(c); Prepare(reglages, 560, 900); reglages.SizeToContent = SizeToContent.Height;
-            reglages.Show(); Pump(d);
-            Capture(reglages, "19-compteur-reglages", dossier);
+            // Réglages du compteur : menu Paramètres de la fenêtre principale.
+            var paths = new DataPaths { ProfilsDir = Path.Combine(tmp, "ProfilsC"), MachineDir = Path.Combine(tmp, "machine-c"), SessionsDir = Path.Combine(tmp, "SC"), QuarantineDir = Path.Combine(tmp, "QC") };
+            var vm = new MainViewModel(Exemples(), new MachineFacts { WindowsMajor = "11", Edition = "Pro" }, paths,
+                its => Task.FromResult(its.ToDictionary(i => i.Id, i => DetectState.NotApplied)), null, o => true) { Compteur = c };
+            var w = new MainWindow(vm); Prepare(w, 1280, 900);
+            vm.MenuCourant = "Paramètres";
+            w.Show(); Pump(d);
+            Capture(w, "19-compteur-reglages", dossier);
+            c.ModePlacement = true;
             var surimpression = new CompteurWindow(c);
             surimpression.Show(); Pump(d);   // ModePlacement : cadre pointillé et poignée visibles
             Capture(surimpression, "20-compteur-placement", dossier);
-            reglages.Close(); Pump(d);       // fin du placement : sans cadre
+            vm.MenuCourant = "Accueil"; Pump(d);   // quitter les Paramètres termine le placement : sans cadre
+            if (c.ModePlacement) throw new InvalidOperationException("Le placement du compteur continue après la sortie des Paramètres.");
+            w.Close(); Pump(d);
             c.Actif = true; surimpression.Appliquer(); Pump(d);
             Capture(surimpression, "21-compteur", dossier);
             surimpression.Close(); Pump(d);
@@ -308,7 +316,20 @@ namespace GamingTweaker.Tests
                 return m;
             });
 
-            var noms = new[] { "Accueil", "Diagnostic", "Mises à jour", "Télémétrie", "Nettoyage", "Optimisation", "Bloatware", "Informations", "Mode Jeu", "Historique" };
+            // Accueil : matériel d'exemple ; Paramètres : compteur d'exemple (aucune source réelle).
+            vm.TuilesMateriel = new[]
+            {
+                new TuileMateriel { Libelle = "Processeur", Icone = MaterielPc.IconeCpu, Valeur = "AMD Ryzen 7 7800X3D", Detail = "8 cœurs · 16 threads" },
+                MaterielPc.TuileGraphique(new[] { new CarteGraphique { Nom = "NVIDIA GeForce RTX 4070", Memoire = 12L * 1073741824, Pilote = "32.0.15.6094" } }),
+                MaterielPc.TuileMemoire(32L * 1073741824, "DDR5", 6000, 2, 17.4 * 1073741824),
+                MaterielPc.TuileDisque(@"C:\", "SSD NVMe", "Samsung SSD 990 PRO 1TB", 1000204886016d, 412L * 1073741824),
+            };
+            vm.TuilesMateriel[1].Libelle = "Carte graphique"; vm.TuilesMateriel[1].Icone = MaterielPc.IconeGpu;
+            vm.TuilesMateriel[2].Libelle = "Mémoire"; vm.TuilesMateriel[2].Icone = MaterielPc.IconeRam;
+            vm.TuilesMateriel[3].Libelle = "Disque système"; vm.TuilesMateriel[3].Icone = MaterielPc.IconeDisque;
+            vm.Compteur = new CompteurViewModel(Path.Combine(tmp, "compteur-principal"), new SourceExemple());
+
+            var noms = new[] { "Accueil", "Diagnostic", "Mises à jour", "Télémétrie", "Nettoyage", "Optimisation", "Bloatware", "Mode Jeu", "Historique", "Informations", "Paramètres" };
             for (int i = 0; i < noms.Length; i++)
             {
                 vm.MenuCourant = noms[i]; Pump(d);
@@ -325,7 +346,7 @@ namespace GamingTweaker.Tests
                         new GamingTweaker.Info.SensorReading { Materiel = "NVIDIA GeForce RTX 4070", Nom = "GPU Core", Type = "Clock", Value = 2490f } });
                     Pump(d);
                 }
-                Capture(win, "0" + (i + 1) + "-" + noms[i].Replace(' ', '-').Replace("à", "a").Replace("é", "e"));
+                Capture(win, (i + 1).ToString("00") + "-" + noms[i].Replace(' ', '-').Replace("à", "a").Replace("é", "e").Replace("è", "e"));
             }
             // Thème clair : mêmes écrans, couleurs remplacées à chaud (sous-dossier « clair »).
             var dossierClair = Path.Combine(Dossier, "clair"); Directory.CreateDirectory(dossierClair);

@@ -86,8 +86,53 @@ namespace GamingTweaker.Tests
         [Fact]
         public void Menus_dans_l_ordre_avec_separateur()
         {
-            Assert.Equal(new[] { "Accueil", "Diagnostic", "Mises à jour", "Télémétrie", "Nettoyage", "Optimisation", "Bloatware", "Informations", null, "Mode Jeu", "Historique" },
+            Assert.Equal(new[] { "Accueil", "Diagnostic", "Mises à jour", "Télémétrie", "Nettoyage", "Optimisation", "Bloatware", "Mode Jeu", null, "Historique", "Informations", "Paramètres" },
                 vm.Menus.Select(m => m.EstSeparateur ? null : m.Nom).ToArray());
+        }
+
+        [Fact]
+        public void Parametres_est_le_dernier_menu_et_quitter_termine_le_placement_du_compteur()
+        {
+            Assert.Equal("Paramètres", vm.Menus.Last().Nom);
+            var compteur = new CompteurViewModel(Path.Combine(tmp, "compteur"), new SourceVide(), new CompteurConfig());
+            vm.Compteur = compteur;
+            vm.MenuCourant = "Paramètres";
+            Assert.True(vm.EstParametres); Assert.True(vm.EstEmplacement); Assert.False(vm.EstAccueil);
+            Assert.Equal("Paramètres", vm.TitreAffiche);
+            compteur.ModePlacement = true;
+            vm.MenuCourant = "Accueil";
+            Assert.False(vm.EstParametres);
+            Assert.False(compteur.ModePlacement);
+            compteur.Dispose();
+        }
+
+        [Fact]
+        public void Le_guide_masque_peut_etre_reaffiche_depuis_les_parametres()
+        {
+            Assert.True(vm.AfficherGuide);
+            vm.MasquerGuide();
+            Assert.False(vm.AfficherGuide);
+            vm.ReafficherGuide();
+            Assert.True(vm.AfficherGuide);
+        }
+
+        [Fact]
+        public void Les_tuiles_materiel_attendent_la_lecture()
+        {
+            Assert.Equal(new[] { "Processeur", "Carte graphique", "Mémoire", "Disque système" }, vm.TuilesMateriel.Select(t => t.Libelle).ToArray());
+            Assert.All(vm.TuilesMateriel, t => Assert.Equal(MaterielPc.Lecture, t.Valeur));
+            vm.TuilesMateriel = null;
+            Assert.Equal(4, vm.TuilesMateriel.Count);
+        }
+
+        private class SourceVide : ISourceCompteur
+        {
+            public void Demarrer() { }
+            public void Arreter() { }
+            public void Choisir(bool cpu, bool gpu, bool ram) { }
+            public void ChoisirTemperatures(bool cpu, bool gpu) { }
+            public ReleveCompteur Lire() { return null; }
+            public string Erreur { get { return null; } }
         }
 
         [Fact]
