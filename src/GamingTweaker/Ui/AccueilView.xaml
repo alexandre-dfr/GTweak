@@ -58,6 +58,22 @@
         <!-- Toute la largeur disponible : les colonnes sont proportionnelles et suivent la taille de la fenêtre. -->
         <StackPanel Margin="0,0,16,24">
 
+            <!-- ===== 0. Guide du premier lancement (masquable, ne revient pas) ===== -->
+            <Border Style="{StaticResource CarteW11}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" Margin="0,0,0,16"
+                    Visibility="{Binding AfficherGuide, Converter={StaticResource BoolVis}}">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Content="Compris" Command="{Binding MasquerGuideCommand}" VerticalAlignment="Top" Margin="16,0,0,0"
+                            ToolTip="Masquer ce guide (il ne reviendra pas)"/>
+                    <StackPanel>
+                        <TextBlock Text="Bienvenue ! Par où commencer ?" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <TextBlock Style="{StaticResource Secondaire}" Margin="0,0,0,4" Text="1.  Diagnostic : repère ce qui bride vraiment votre PC (écran, mémoire, plan d'alimentation…) et propose la correction."/>
+                        <TextBlock Style="{StaticResource Secondaire}" Margin="0,0,0,4" Text="2.  Démarrage rapide : choisissez « Gaming léger » (sans risque) ; il coche les bonnes options pour vous."/>
+                        <TextBlock Style="{StaticResource Secondaire}" Margin="0,0,0,4" Text="3.  « Aperçu » montre exactement ce qui sera fait, puis « LANCER ». Tout reste annulable depuis l'Historique."/>
+                        <TextBlock Style="{StaticResource Secondaire}" Text="En jeu : le Mode Jeu libère des ressources le temps d'une partie, et le compteur (en haut à droite) affiche FPS, CPU, GPU et RAM."/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
             <!-- ===== 1. Bandeau : état de ce PC + diagnostic ===== -->
             <Grid Margin="0,0,0,24">
                 <Grid.ColumnDefinitions>
@@ -240,6 +256,9 @@
                     </StackPanel>
                 </DockPanel>
             </Border>
+
+            <!-- Version (support : « quel exe ai-je lancé ? ») -->
+            <TextBlock Text="{Binding TexteVersion}" Style="{StaticResource Secondaire}" FontSize="12" HorizontalAlignment="Right" Margin="0,12,4,0"/>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

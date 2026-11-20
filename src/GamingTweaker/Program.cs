@@ -21,9 +21,28 @@ namespace GamingTweaker
         [STAThread]
         public static int Main(string[] args)
         {
+            bool interfaceGraphique = args.Length == 0 || (args.Length == 1 && string.Equals(args[0], DemarrageWindows.Argument, StringComparison.OrdinalIgnoreCase));
+            if (interfaceGraphique) RapportErreur.DebutDemarrage();
+            // Toute exception non rattrapée laisse un rapport lisible (%LOCALAPPDATA%\GamingTweaker\erreurs.log) au lieu d'une fermeture muette.
+            AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+            {
+                var ex = e.ExceptionObject as Exception;
+                var chemin = RapportErreur.Ecrire("exception non rattrapée", ex);
+                if (args.Length == 0 || App.DemarrageEnZone)
+                {
+                    try { System.Windows.MessageBox.Show(RapportErreur.Message(ex, chemin, false), "GamingTweaker", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error); }
+                    catch (Exception) { }
+                }
+            };
+            System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (s, e) =>
+            {
+                RapportErreur.Ecrire("tâche en échec non observée", e.Exception);
+                e.SetObserved();
+            };
             // Tout en haut, avant tout type Newtonsoft/LHM : une DLL du même nom qu'une DLL embarquée à côté de l'exe serait chargée à sa place.
             var refus = VerifierDllsAuDemarrage(args);
-            if (refus != 0) return refus;
+            if (refus != 0) { if (interfaceGraphique) RapportErreur.Jalon("arrêt : DLL en conflit à côté de l'exe"); return refus; }
+            if (interfaceGraphique) RapportErreur.Jalon("DLL vérifiées");
             DemarrageSur.RestreindreRechercheDll();
             AssemblyLoader.Register();
             if (args.Length == 0) return LaunchUi();
@@ -53,9 +72,22 @@ namespace GamingTweaker
 
         private static int LaunchUi()
         {
-            var app = new App();
-            app.InitializeComponent();
-            return app.Run();
+            try
+            {
+                var app = new App();
+                app.InitializeComponent();
+                RapportErreur.Jalon("interface : thème chargé");
+                var code = app.Run();
+                RapportErreur.Jalon(RapportErreur.JalonFin);
+                return code;
+            }
+            catch (Exception ex)
+            {
+                var chemin = RapportErreur.Ecrire("lancement de l'interface", ex);
+                try { System.Windows.MessageBox.Show(RapportErreur.Message(ex, chemin, false), "GamingTweaker", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error); }
+                catch (Exception) { }
+                return 2;
+            }
         }
 
         private const string Usage =

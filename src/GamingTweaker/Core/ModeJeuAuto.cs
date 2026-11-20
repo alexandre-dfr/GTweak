@@ -124,7 +124,9 @@ namespace GamingTweaker.Core
     }
 
     /// <summary>
-    /// Surveillance périodique des processus : applique les décisions de l'automate au Mode Jeu et signale chaque changement (notification).
+    /// Surveillance des processus : applique les décisions de l'automate au Mode Jeu et signale chaque changement (notification).
+    /// Relevé toutes les 5 s, et dès qu'un programme démarre si <see cref="EcouterDemarrages"/> a été appelé (événement WMI
+    /// Win32_ProcessStartTrace, droits administrateur) : le Mode Jeu s'active à peine plus d'une seconde après le lancement du jeu.
     /// </summary>
     public sealed class SurveillanceJeux : IDisposable
     {
@@ -139,6 +141,10 @@ namespace GamingTweaker.Core
         private readonly object verrou = new object();
         private Timer minuteur;
         private bool enCours;
+        /// <summary>Délai entre un démarrage de programme et le relevé : laisse au jeu le temps de lancer ses processus.</summary>
+        public static readonly TimeSpan DelaiApresDemarrage = TimeSpan.FromSeconds(1.5);
+        private DateTime prochainReleve = DateTime.MaxValue;
+        private System.Management.ManagementEventWatcher ecoute;
 
         /// <summary>(titre, texte) : appelé hors du thread de l'interface.</summary>
         public event Action<string, string> Notification;
@@ -154,18 +160,58 @@ namespace GamingTweaker.Core
 
         public void Demarrer()
         {
-            lock (verrou) { if (minuteur == null) minuteur = new Timer(_ => Releve(), null, TimeSpan.Zero, Intervalle); }
+            lock (verrou)
+            {
+                if (minuteur != null) return;
+                minuteur = new Timer(_ => Releve(), null, TimeSpan.Zero, Intervalle);
+                prochainReleve = DateTime.UtcNow;
+            }
         }
 
         public void Arreter()
         {
-            lock (verrou) { if (minuteur != null) { minuteur.Dispose(); minuteur = null; } }
+            lock (verrou) { if (minuteur != null) { minuteur.Dispose(); minuteur = null; prochainReleve = DateTime.MaxValue; } }
+        }
+
+        /// <summary>
+        /// Avance le prochain relevé à <see cref="DelaiApresDemarrage"/> si un programme vient de démarrer. Jamais repoussé :
+        /// des démarrages en rafale n'empêchent pas le relevé (public pour les tests).
+        /// </summary>
+        public void SignalerDemarrage()
+        {
+            lock (verrou)
+            {
+                if (minuteur == null) return;
+                var cible = DateTime.UtcNow + DelaiApresDemarrage;
+                if (prochainReleve <= cible) return;
+                prochainReleve = cible;
+                minuteur.Change(DelaiApresDemarrage, Intervalle);
+            }
+        }
+
+        /// <summary>Écoute les démarrages de programmes (WMI). Sans effet si WMI refuse : le relevé toutes les 5 s continue.</summary>
+        public void EcouterDemarrages()
+        {
+            lock (verrou) { if (ecoute != null) return; }
+            try
+            {
+                var w = new System.Management.ManagementEventWatcher(new System.Management.WqlEventQuery("SELECT ProcessID FROM Win32_ProcessStartTrace"));
+                w.EventArrived += (s, e) => { try { SignalerDemarrage(); } catch (Exception) { } };
+                w.Start();
+                lock (verrou) ecoute = w;
+            }
+            catch (Exception ex) { TraceAppli.Erreur("Mode Jeu automatique : écoute des démarrages indisponible, relevé toutes les 5 s", ex); }
         }
 
         /// <summary>Un relevé (public pour les tests) ; jamais deux en même temps.</summary>
         public void Releve()
         {
-            lock (verrou) { if (enCours) return; enCours = true; }
+            lock (verrou)
+            {
+                if (enCours) return;
+                enCours = true;
+                if (minuteur != null) prochainReleve = DateTime.UtcNow + Intervalle;
+            }
             try
             {
                 var c = config();
@@ -221,6 +267,12 @@ namespace GamingTweaker.Core
             if (n != null) n(titre, texte);
         }
 
-        public void Dispose() { Arreter(); }
+        public void Dispose()
+        {
+            Arreter();
+            System.Management.ManagementEventWatcher w;
+            lock (verrou) { w = ecoute; ecoute = null; }
+            if (w != null) { try { w.Stop(); w.Dispose(); } catch (Exception) { } }
+        }
     }
 }

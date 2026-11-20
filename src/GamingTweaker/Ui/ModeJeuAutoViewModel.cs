@@ -35,6 +35,9 @@ namespace GamingTweaker.Ui
                 modeJeu.ProfilNvidia = config.Nvidia;
                 modeJeu.UtiliserPlan = config.Plan;
                 modeJeu.LibererMemoire = config.LibererMemoire;
+                // Services et processus : une seule sélection, enregistrée à chaque case cochée et recochée au chargement des listes.
+                modeJeu.SelectionEnregistree = () => Tuple.Create<IReadOnlyList<string>, IReadOnlyList<ProcessusChoix>>(config.Services.ToList(), config.Processus.ToList());
+                modeJeu.SelectionChangee += () => { if (modeJeu.ListesChargees) ReprendreSelection(true, null); };
                 modeJeu.PropertyChanged += (s, e) =>
                 {
                     if (e.PropertyName == "ProfilNvidia" && config.Nvidia != modeJeu.ProfilNvidia)
@@ -78,11 +81,10 @@ namespace GamingTweaker.Ui
             set
             {
                 if (config.Actif == value) return;
-                if (value && config.Services.Count + config.Processus.Count == 0 && !config.Plan && config.Nvidia == ProfilNvidia.Aucun && modeJeu != null) ReprendreSelection(false);
                 config.Actif = value;
                 Enregistrer(value ? "Mode Jeu automatique activé : il s'active au lancement d'un jeu de la liste et tout est rétabli quand vous quittez le dernier."
                                   : "Mode Jeu automatique désactivé.");
-                Raise();
+                Raise(); Raise("RappelDemarrage");
             }
         }
 
@@ -102,11 +104,14 @@ namespace GamingTweaker.Ui
         {
             get
             {
-                return "Réglages utilisés : " + config.Services.Count + " service(s) arrêté(s), " + config.Processus.Count + " processus fermé(s)"
-                     + (config.Plan ? ", plan Performances élevées" : ", plan d'alimentation inchangé")
-                     + (config.Nvidia != ProfilNvidia.Aucun ? ", profil NVIDIA " + ProfilsNvidia.Libelle(config.Nvidia) + "." : ".");
+                if (config.Jeux.Count == 0 && Jeux.Count == 0) return "Ajoutez au moins un jeu : le Mode Jeu s'activera quand il démarre.";
+                return Jeux.Count + " jeu" + (Jeux.Count > 1 ? "x" : "") + " surveillé" + (Jeux.Count > 1 ? "s" : "")
+                     + ". Le mode automatique utilise les mêmes réglages que l'étape 1.";
             }
         }
+
+        /// <summary>Le mode automatique ne marche que si GamingTweaker tourne : rappel quand il est actif sans démarrage avec Windows.</summary>
+        public bool RappelDemarrage { get { return config.Actif && !demarrage; } }
 
         public bool DemarrageAvecWindows
         {
@@ -126,7 +131,7 @@ namespace GamingTweaker.Ui
             if (demarrageInstalle == null) return;
             bool installe;
             try { installe = await Task.Run(demarrageInstalle); } catch (Exception) { installe = false; }
-            demarrage = installe; Raise("DemarrageAvecWindows");
+            demarrage = installe; Raise("DemarrageAvecWindows"); Raise("RappelDemarrage");
         }
 
         private async Task DefinirDemarrageAsync(bool valeur)
@@ -140,13 +145,13 @@ namespace GamingTweaker.Ui
                                  : "GamingTweaker ne démarrera plus avec Windows.";
             }
             catch (Exception ex) { Message = (valeur ? "Démarrage avec Windows non activé : " : "Démarrage avec Windows non retiré : ") + ex.Message; }
-            finally { Occupe = false; Raise("DemarrageAvecWindows"); }
+            finally { Occupe = false; Raise("DemarrageAvecWindows"); Raise("RappelDemarrage"); }
         }
 
         /// <summary>Reprend la sélection actuelle du Mode Jeu (services, processus, plan) pour le mode automatique.</summary>
-        public void ReprendreSelection() { ReprendreSelection(true); }
+        public void ReprendreSelection() { ReprendreSelection(true, "Sélection du Mode Jeu enregistrée pour le mode automatique."); }
 
-        private void ReprendreSelection(bool enregistrer)
+        private void ReprendreSelection(bool enregistrer, string messageOk)
         {
             if (modeJeu == null) return;
             var c = modeJeu.ConstruireConfig();
@@ -156,7 +161,7 @@ namespace GamingTweaker.Ui
             config.Nvidia = c.Nvidia;
             config.LibererMemoire = c.LibererMemoire;
             Raise("ResumeReglages");
-            if (enregistrer) Enregistrer("Sélection du Mode Jeu enregistrée pour le mode automatique.");
+            if (enregistrer) Enregistrer(messageOk);
         }
 
         public void AjouterExe()
@@ -204,7 +209,7 @@ namespace GamingTweaker.Ui
         private void Enregistrer(string messageOk)
         {
             config.Jeux = Jeux.ToList();
-            try { config.Enregistrer(machineDir); Message = messageOk; }
+            try { config.Enregistrer(machineDir); if (messageOk != null) Message = messageOk; }
             catch (Exception ex) { Message = "Réglages du Mode Jeu automatique non enregistrés : " + ex.Message; }
             Raise("ResumeReglages");
             var h = ConfigChangee;

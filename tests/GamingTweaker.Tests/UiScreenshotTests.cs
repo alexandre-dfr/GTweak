@@ -117,6 +117,44 @@ namespace GamingTweaker.Tests
             w.Close(); Pump(d);
         }
 
+        /// <summary>Source d'exemple du compteur (aucune session ETW, aucun capteur).</summary>
+        private sealed class SourceExemple : ISourceCompteur
+        {
+            public void Demarrer() { }
+            public void Arreter() { }
+            public void Choisir(bool cpu, bool gpu, bool ram) { }
+            public void ChoisirTemperatures(bool cpu, bool gpu) { }
+            public ReleveCompteur Lire() { return null; }
+            public string Erreur { get { return null; } }
+        }
+
+        /// <summary>Compteur en jeu : réglages (mode placement) et surimpression avec des valeurs d'exemple, PNG dans le sous-dossier « compteur ».</summary>
+        private static void CapturerCompteur(Dispatcher d, string tmp)
+        {
+            var dossier = Path.Combine(Dossier, "compteur");
+            Directory.CreateDirectory(dossier);
+            var cfg = new CompteurConfig { TempCpu = true, TempGpu = true };
+            cfg.DefinirCouleur(ElementCompteur.Cpu, "#FF9F1C");
+            var c = new CompteurViewModel(Path.Combine(tmp, "compteur"), new SourceExemple(), cfg);
+            for (int i = 0; i < 60; i++)
+                c.Rafraichir(new ReleveCompteur
+                {
+                    Processus = "MonJeu",
+                    Images = new MesureImages { Fps = 140 + 10 * Math.Sin(i / 5.0), TempsImageMs = 7.0, UnPourcentBas = 98, Source = "DirectX" },
+                    Charge = new ChargeSysteme { Cpu = 34, Gpu = 91, Ram = 52, RamUtiliseeGo = 16.6, RamTotaleGo = 32, TempCpu = 61, TempGpu = 72 },
+                });
+            var reglages = new CompteurReglagesWindow(c); Prepare(reglages, 560, 900); reglages.SizeToContent = SizeToContent.Height;
+            reglages.Show(); Pump(d);
+            Capture(reglages, "19-compteur-reglages", dossier);
+            var surimpression = new CompteurWindow(c);
+            surimpression.Show(); Pump(d);   // ModePlacement : cadre pointillé et poignée visibles
+            Capture(surimpression, "20-compteur-placement", dossier);
+            reglages.Close(); Pump(d);       // fin du placement : sans cadre
+            c.Actif = true; surimpression.Appliquer(); Pump(d);
+            Capture(surimpression, "21-compteur", dossier);
+            surimpression.Close(); Pump(d);
+        }
+
         /// <summary>Vues des tâches 14 à 16 avec des données d'exemple : PNG dans le sous-dossier « taches-14-16 ».</summary>
         private static void CapturerVuesAvancees(Dispatcher d)
         {
@@ -151,6 +189,7 @@ namespace GamingTweaker.Tests
             vm.MenuCourant = "Mode Jeu";
             w.Show(); Pump(d);
             Capture(w, "14-mode-jeu", sousDossier);
+            CapturerCompteur(d, tmp);
 
             // Historique : sessions d'exemple (terminée avec un échec, interrompue), un fichier en quarantaine, deux relevés.
             var sess = paths.SessionsDir;

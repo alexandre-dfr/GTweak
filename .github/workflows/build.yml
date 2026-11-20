@@ -1,20 +1,38 @@
 name: Build
 
-# Compile l'exe Release (net48, WPF) sur Windows, le publie dans la pré-version « test-build » du dépôt
-# (onglet Releases ; le quota de stockage des artefacts Actions du compte est épuisé, les releases n'y sont pas soumises),
-# puis lance les tests : un échec des tests fait échouer le job mais l'exe est déjà publié.
+# Compile l'exe Release (net48, WPF) sur Windows, lance les tests et le cycle réel des options, puis publie l'exe.
+# L'exe n'est publié QUE si tout est vert : une pré-version déjà publiée n'est jamais remplacée par un exe en échec.
+#
+# Où va l'exe (onglet Releases ; le quota de stockage des artefacts Actions du compte est épuisé, les releases n'y sont pas soumises) :
+#   - branche main          → pré-version « test-build » ;
+#   - autre branche         → pré-version « test-<branche> » (supprimée quand la branche est supprimée) ;
+#   - tag vX.Y.Z            → release « GamingTweaker X.Y.Z » (pas une pré-version : c'est elle que l'appli propose en mise à jour).
+# En cas d'échec, seuls les diagnostics (rapport du cycle réel, captures) vont dans la pré-version « <canal>-echec », sans exe.
+#
+# Signature Authenticode : faite si les secrets SIGN_PFX_BASE64 (certificat .pfx en base64) et SIGN_PFX_PASSWORD existent ;
+# sinon l'exe est publié non signé, avec un avertissement dans le résumé.
 on:
   push:
     branches: ['**']
+    tags: ['v*']
+  delete:
   workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: build-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
+    if: github.event_name != 'delete'
     runs-on: windows-latest
     timeout-minutes: 60
+    env:
+      # Numéro de build lu par le .csproj (révision de la version : 0.9.1.<numéro>), identique pour la compilation et les tests.
+      GT_BUILD: ${{ github.run_number }}
     steps:
       - uses: actions/checkout@v4
 
@@ -22,83 +40,73 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      - name: Canal de publication
+        id: canal
+        shell: pwsh
+        run: |
+          $ref = $env:GITHUB_REF_NAME
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            if ($ref -notmatch '^v(\d+\.\d+\.\d+)$') { throw "Tag « $ref » : la forme attendue est vX.Y.Z." }
+            $attendu = $Matches[1]
+            [xml]$proj = Get-Content src/GamingTweaker/GamingTweaker.csproj
+            $version = ($proj.Project.PropertyGroup | ForEach-Object { $_.Version } | Where-Object { $_ } | Select-Object -First 1)
+            if ($version -ne $attendu) { throw "Le tag $ref ne correspond pas à la version du projet ($version) : mettez <Version> à jour dans GamingTweaker.csproj." }
+            "type=release" >> $env:GITHUB_OUTPUT
+            "tag=$ref" >> $env:GITHUB_OUTPUT
+          } else {
+            if ($ref -eq 'main') { $tag = 'test-build' }
+            else {
+              $slug = ($ref.ToLowerInvariant() -replace '[^a-z0-9]+', '-').Trim('-')
+              if ($slug.Length -gt 60) { $slug = $slug.Substring(0, 60).Trim('-') }
+              $tag = "test-$slug"
+            }
+            "type=prerelease" >> $env:GITHUB_OUTPUT
+            "tag=$tag" >> $env:GITHUB_OUTPUT
+          }
+          Get-Content $env:GITHUB_OUTPUT
+
       - name: Restaurer
         run: dotnet restore GamingTweaker.sln
 
       - name: Compiler (Release, requireAdministrator)
         run: dotnet build src/GamingTweaker/GamingTweaker.csproj -c Release --no-restore
 
-      - name: Vérifier l'exe et préparer la publication
-        id: exe
-        shell: pwsh
-        run: |
-          $exe = 'src/GamingTweaker/bin/Release/net48/GamingTweaker.exe'
-          if (-not (Test-Path $exe)) { throw "exe introuvable : $exe" }
-          $txt = [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($exe))
-          if ($txt -notmatch 'requireAdministrator') { throw 'Le manifeste requireAdministrator est absent de l''exe Release.' }
-          if ($txt -notmatch 'PerMonitorV2') { throw 'Le manifeste DPI PerMonitorV2 est absent de l''exe Release.' }
-          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash
-          $ver = (Get-Item $exe).VersionInfo.FileVersion
-          "version=$ver" >> $env:GITHUB_OUTPUT
-          "hash=$hash" >> $env:GITHUB_OUTPUT
-          New-Item -ItemType Directory -Force publication | Out-Null
-          Copy-Item $exe, 'src/GamingTweaker/bin/Release/net48/GamingTweaker.exe.config' publication/
-          "GamingTweaker.exe $ver`nSHA-256 : $hash`nCommit : $env:GITHUB_SHA`nBranche : $env:GITHUB_REF_NAME" | Set-Content publication/SHA256.txt -Encoding utf8
-          Get-Content publication/SHA256.txt
-
-      - name: Publier dans la pré-version test-build
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          $tag = 'test-build'
-          gh release delete $tag --yes --cleanup-tag 2>$null; if ($LASTEXITCODE -ne 0) { Write-Host 'aucune pré-version précédente' }
-          $notes = "Build de test automatique, non signé (SmartScreen avertira).`n`nBranche : $env:GITHUB_REF_NAME`nCommit : $env:GITHUB_SHA`nVersion : ${{ steps.exe.outputs.version }}`nSHA-256 : ${{ steps.exe.outputs.hash }}`n`nLancer GamingTweaker.exe (UAC), vérifier le hash avec ``Get-FileHash GamingTweaker.exe``."
-          gh release create $tag publication/GamingTweaker.exe publication/GamingTweaker.exe.config publication/SHA256.txt --prerelease --target $env:GITHUB_SHA --title "Build de test ($env:GITHUB_REF_NAME, ${{ steps.exe.outputs.version }})" --notes $notes
-          if ($LASTEXITCODE -ne 0) { throw 'Publication de la pré-version impossible.' }
-          Write-Host "::notice::Exe publié : https://github.com/$env:GITHUB_REPOSITORY/releases/tag/$tag"
-
       - name: Tests
         run: dotnet test tests/GamingTweaker.Tests/GamingTweaker.Tests.csproj -c Release --no-restore --logger "trx;LogFileName=tests.trx" --results-directory TestResults
 
       # Fiabilité : chaque option testable et réversible est réellement détectée, appliquée, vérifiée, annulée et revérifiée
-      # sur cette machine jetable (effacée après l'exécution). Rapport joint à la pré-version et résumé ci-dessous.
+      # sur cette machine jetable (effacée après l'exécution). Résumé ci-dessous, rapport joint à la publication.
       # BLOQUANT : une option en échec (ou un cycle sans résultat) fait échouer le build.
       - name: Cycle réel des options (machine jetable)
         if: always()
         shell: pwsh
         env:
           GT_CYCLE_CI: '1'
-          GH_TOKEN: ${{ github.token }}
         run: |
+          New-Item -ItemType Directory -Force diagnostics | Out-Null
           $exe = (Resolve-Path 'src/GamingTweaker/bin/Release/net48/GamingTweaker.exe').Path
-          $sortie = Join-Path $PWD 'cycle-reel.json'
-          $p = Start-Process -FilePath $exe -ArgumentList @('--cycle-test', "`"$sortie`"") -Wait -PassThru -RedirectStandardOutput cycle-reel.txt -RedirectStandardError cycle-reel.err.txt
+          $sortie = Join-Path $PWD 'diagnostics/cycle-reel.json'
+          $p = Start-Process -FilePath $exe -ArgumentList @('--cycle-test', "`"$sortie`"") -Wait -PassThru -RedirectStandardOutput diagnostics/cycle-reel.txt -RedirectStandardError diagnostics/cycle-reel.err.txt
           Write-Host "Code de sortie : $($p.ExitCode)"
-          Get-Content cycle-reel.err.txt -ErrorAction SilentlyContinue | Select-Object -First 20
+          Get-Content diagnostics/cycle-reel.err.txt -ErrorAction SilentlyContinue | Select-Object -First 20
           if (-not (Test-Path $sortie)) { "## Cycle réel : aucun résultat (code $($p.ExitCode))" >> $env:GITHUB_STEP_SUMMARY; exit 1 }
           $r = Get-Content $sortie -Raw | ConvertFrom-Json
           "## Cycle réel des options : $($r.resume.ok) OK, $($r.resume.echec) en échec, $($r.resume.nonCouvert) non couvertes (sur $($r.resume.total))" >> $env:GITHUB_STEP_SUMMARY
           foreach ($o in @($r.options | Where-Object { $_.couvert -and $_.resultat -ne 'ok' })) { "- **$($o.id)** : $($o.raison)" >> $env:GITHUB_STEP_SUMMARY }
-          gh release upload test-build $sortie --clobber
           if ([int]$r.resume.echec -gt 0) { Write-Host "::error::$($r.resume.echec) option(s) en échec au cycle réel"; exit 1 }
           exit 0
 
-      - name: Joindre les captures d'écran à la pré-version
+      - name: Rassembler les captures d'écran
         if: always()
         shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
+          New-Item -ItemType Directory -Force diagnostics | Out-Null
           $dir = Join-Path $env:TEMP 'GamingTweakerShots'
           if (-not (Test-Path $dir)) { Write-Host 'aucune capture'; exit 0 }
-          New-Item -ItemType Directory -Force captures | Out-Null
           Get-ChildItem $dir -Recurse -Filter *.png | ForEach-Object {
             $rel = $_.FullName.Substring($dir.Length + 1) -replace '[\\/]', '_'
-            Copy-Item $_.FullName (Join-Path captures ('capture_' + $rel))
+            Copy-Item $_.FullName (Join-Path diagnostics ('capture_' + $rel))
           }
-          $files = @(Get-ChildItem captures -Filter *.png | ForEach-Object { $_.FullName })
-          if ($files.Count -gt 0) { gh release upload test-build @files --clobber; if ($LASTEXITCODE -ne 0) { Write-Host 'envoi des captures impossible' } }
           exit 0
 
       - name: Résumé des tests
@@ -113,3 +121,121 @@ jobs:
           foreach ($r in $x.TestRun.Results.UnitTestResult | Where-Object { $_.outcome -eq 'Failed' }) {
             "- **$($r.testName)** : " + (($r.Output.ErrorInfo.Message -split "`n")[0]) >> $env:GITHUB_STEP_SUMMARY
           }
+
+      # Après les tests : rien ne recompile l'exe une fois signé.
+      - name: Signer l'exe (si un certificat est configuré)
+        id: signature
+        shell: pwsh
+        env:
+          SIGN_PFX_BASE64: ${{ secrets.SIGN_PFX_BASE64 }}
+          SIGN_PFX_PASSWORD: ${{ secrets.SIGN_PFX_PASSWORD }}
+        run: |
+          if ([string]::IsNullOrEmpty($env:SIGN_PFX_BASE64)) {
+            "signe=non" >> $env:GITHUB_OUTPUT
+            "> Exe **non signé** : ajoutez les secrets SIGN_PFX_BASE64 et SIGN_PFX_PASSWORD pour le signer (voir README)." >> $env:GITHUB_STEP_SUMMARY
+            exit 0
+          }
+          $exe = (Resolve-Path 'src/GamingTweaker/bin/Release/net48/GamingTweaker.exe').Path
+          $pfx = Join-Path $env:RUNNER_TEMP 'signature.pfx'
+          try {
+            [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGN_PFX_BASE64))
+            $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue |
+              Where-Object { $_.FullName -match '\\x64\\' } | Sort-Object FullName -Descending | Select-Object -First 1
+            if (-not $signtool) { throw 'signtool.exe introuvable sur le runner.' }
+            & $signtool.FullName sign /fd SHA256 /f $pfx /p $env:SIGN_PFX_PASSWORD /tr http://timestamp.digicert.com /td SHA256 /d GamingTweaker $exe
+            if ($LASTEXITCODE -ne 0) { throw "Signature impossible (code $LASTEXITCODE)." }
+            & $signtool.FullName verify /pa $exe
+            if ($LASTEXITCODE -ne 0) { throw 'La signature posée ne se vérifie pas.' }
+          } finally {
+            Remove-Item $pfx -Force -ErrorAction SilentlyContinue
+          }
+          "signe=oui" >> $env:GITHUB_OUTPUT
+
+      - name: Vérifier l'exe et préparer la publication
+        id: exe
+        shell: pwsh
+        run: |
+          $exe = 'src/GamingTweaker/bin/Release/net48/GamingTweaker.exe'
+          if (-not (Test-Path $exe)) { throw "exe introuvable : $exe" }
+          $txt = [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($exe))
+          if ($txt -notmatch 'requireAdministrator') { throw 'Le manifeste requireAdministrator est absent de l''exe Release.' }
+          if ($txt -notmatch 'PerMonitorV2') { throw 'Le manifeste DPI PerMonitorV2 est absent de l''exe Release.' }
+          # Un seul fichier distribué : aucun GamingTweaker.exe.config ne doit être produit (le cycle réel tourne donc sans).
+          if (Test-Path 'src/GamingTweaker/bin/Release/net48/GamingTweaker.exe.config') { throw 'GamingTweaker.exe.config a été généré : l''exe doit fonctionner seul.' }
+          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash
+          $ver = (Get-Item $exe).VersionInfo.FileVersion
+          $signe = if ('${{ steps.signature.outputs.signe }}' -eq 'oui') { 'oui' } else { 'non' }
+          "version=$ver" >> $env:GITHUB_OUTPUT
+          "hash=$hash" >> $env:GITHUB_OUTPUT
+          "signe=$signe" >> $env:GITHUB_OUTPUT
+          New-Item -ItemType Directory -Force publication | Out-Null
+          Copy-Item $exe publication/
+          "GamingTweaker.exe $ver · SHA-256 $hash · signé : $signe" | Write-Host
+
+      - name: Publier
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TYPE: ${{ steps.canal.outputs.type }}
+          TAG: ${{ steps.canal.outputs.tag }}
+          VERSION: ${{ steps.exe.outputs.version }}
+          HASH: ${{ steps.exe.outputs.hash }}
+          SIGNE: ${{ steps.exe.outputs.signe }}
+        run: |
+          # Publication = l'exe seul (rien d'autre à télécharger ni à vérifier). Les diagnostics ne sont joints qu'en cas d'échec.
+          $fichiers = @('publication/GamingTweaker.exe')
+          $signature = if ($env:SIGNE -eq 'oui') { 'Exe signé.' } else { 'Exe non signé : Windows SmartScreen peut afficher un avertissement (« Informations complémentaires » puis « Exécuter quand même »).' }
+          if ($env:TYPE -eq 'release') {
+            $notes = "Téléchargez GamingTweaker.exe et lancez-le : rien à installer, aucun autre fichier.`n`n$signature"
+            gh release view $env:TAG 2>$null | Out-Null
+            if ($LASTEXITCODE -eq 0) {
+              gh release upload $env:TAG @fichiers --clobber
+            } else {
+              gh release create $env:TAG @fichiers --verify-tag --title "GamingTweaker $($env:TAG.TrimStart('v'))" --notes $notes --generate-notes
+            }
+            if ($LASTEXITCODE -ne 0) { throw 'Publication de la release impossible.' }
+          } else {
+            $notes = "Build de test (branche $env:GITHUB_REF_NAME, version $env:VERSION). Téléchargez GamingTweaker.exe et lancez-le : aucun autre fichier.`n`n$signature"
+            gh release delete $env:TAG --yes --cleanup-tag 2>$null; if ($LASTEXITCODE -ne 0) { Write-Host 'aucune pré-version précédente' }
+            gh release create $env:TAG @fichiers --prerelease --target $env:GITHUB_SHA --title "Build de test ($env:GITHUB_REF_NAME, $env:VERSION)" --notes $notes
+            if ($LASTEXITCODE -ne 0) { throw 'Publication de la pré-version impossible.' }
+          }
+          # Le build est vert : les diagnostics d'un échec précédent ne servent plus.
+          gh release delete "$env:TAG-echec" --yes --cleanup-tag 2>$null
+          Write-Host "::notice::Exe publié : https://github.com/$env:GITHUB_REPOSITORY/releases/tag/$env:TAG"
+          exit 0
+
+      # Build en échec : l'exe n'est PAS publié (la publication précédente reste en place) ; seuls les diagnostics le sont.
+      - name: Publier les diagnostics de l'échec (sans exe)
+        if: failure() && steps.canal.outputs.tag != ''
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.canal.outputs.tag }}
+        run: |
+          # Un fichier vide est refusé par l'envoi (HTTP 400) : seuls les fichiers non vides sont joints.
+          $fichiers = @(Get-ChildItem diagnostics -File -ErrorAction SilentlyContinue | Where-Object { $_.Length -gt 0 } | ForEach-Object { $_.FullName })
+          $fichiers += @(Get-ChildItem TestResults -Filter *.trx -ErrorAction SilentlyContinue | Where-Object { $_.Length -gt 0 } | ForEach-Object { $_.FullName })
+          if ($fichiers.Count -eq 0) { Write-Host 'aucun diagnostic'; exit 0 }
+          $diag = "$env:TAG-echec"
+          gh release delete $diag --yes --cleanup-tag 2>$null
+          $notes = "Build en ÉCHEC : aucun exe publié, la publication « $env:TAG » précédente reste en place.`n`nRéférence : $env:GITHUB_REF_NAME`nCommit : $env:GITHUB_SHA`nRun : $env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"
+          gh release create $diag @fichiers --prerelease --target $env:GITHUB_SHA --title "Diagnostics d'échec ($env:GITHUB_REF_NAME)" --notes $notes
+          Write-Host "::warning::Diagnostics publiés : https://github.com/$env:GITHUB_REPOSITORY/releases/tag/$diag"
+          exit 0
+
+  # Branche supprimée : sa pré-version de test (et ses diagnostics) disparaissent avec elle.
+  nettoyage:
+    if: github.event_name == 'delete' && github.event.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Supprimer la pré-version de la branche
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCHE: ${{ github.event.ref }}
+        run: |
+          slug=$(printf '%s' "$BRANCHE" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//' | cut -c1-60 | sed -E 's/-+$//')
+          [ "$BRANCHE" = "main" ] && exit 0
+          for t in "test-$slug" "test-$slug-echec"; do
+            gh release delete "$t" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag && echo "supprimée : $t" || echo "absente : $t"
+          done

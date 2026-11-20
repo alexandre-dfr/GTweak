@@ -240,6 +240,15 @@
                 </Border.Style>
                 <TextBlock Text="{Binding Bandeau}" TextWrapping="Wrap" Foreground="{DynamicResource AvanceFg}"/>
             </Border>
+            <!-- Nouvelle version publiée sur GitHub (rien n'est téléchargé : le bouton ouvre la page de la release) -->
+            <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,8"
+                    Visibility="{Binding NouvelleVersionVisible, Converter={StaticResource BoolVis}, FallbackValue=Collapsed}">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Content="✕" Click="MasquerNouvelleVersion_Click" Padding="8,2" Margin="8,0,0,0" ToolTip="Masquer jusqu'au prochain lancement"/>
+                    <Button DockPanel.Dock="Right" Content="Voir la nouvelle version" Click="VoirNouvelleVersion_Click"/>
+                    <TextBlock Text="{Binding TexteNouvelleVersion}" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                </DockPanel>
+            </Border>
             <!-- Mode Jeu laissé actif (arrêt brutal, redémarrage) -->
             <Border Background="{DynamicResource WarnBg}" Padding="20,8" Visibility="{Binding ModeJeu.EstActif, Converter={StaticResource BoolVis}, FallbackValue=Collapsed}">
                 <DockPanel>
@@ -287,6 +296,7 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="300"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="{Binding TitreAffiche}" FontSize="28" FontWeight="SemiBold" FontFamily="{StaticResource PoliceTitre}" VerticalAlignment="Center" TextWrapping="Wrap"/>
                     <Grid Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
@@ -301,8 +311,19 @@
                             </TextBlock.Style>
                         </TextBlock>
                     </Grid>
+                    <!-- Compteur en jeu (FPS, CPU, GPU, RAM) : un clic ouvre ses réglages ; icône en couleur d'accent quand il est affiché -->
+                    <Button x:Name="BoutonCompteur" Grid.Column="2" Click="BoutonCompteur_Click" ToolTip="{Binding Compteur.EtatBouton}" VerticalAlignment="Center" Margin="0,0,4,0">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource BoutonIcone}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Compteur.Actif}" Value="True"><Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/></DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <TextBlock Text="&#xEC4A;" FontFamily="{StaticResource PoliceIcones}" FontSize="16"/>
+                    </Button>
                     <!-- Thème : icône soleil / lune / palette ; un clic ouvre le choix -->
-                    <Button x:Name="BoutonTheme" Grid.Column="2" Style="{StaticResource BoutonIcone}" Click="BoutonTheme_Click" ToolTip="Thème de l'application" VerticalAlignment="Center">
+                    <Button x:Name="BoutonTheme" Grid.Column="3" Style="{StaticResource BoutonIcone}" Click="BoutonTheme_Click" ToolTip="Thème de l'application" VerticalAlignment="Center">
                         <TextBlock x:Name="IconeTheme" Text="&#xE790;" FontFamily="{StaticResource PoliceIcones}" FontSize="16"/>
                         <Button.ContextMenu>
                             <ContextMenu x:Name="MenuTheme" Placement="Bottom">
@@ -436,14 +457,23 @@
                 <TextBlock Text="Profil" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Margin="0,0,10,0"/>
                 <ComboBox Grid.Column="1" Width="200" Height="34" ItemsSource="{Binding ProfilsDisponibles}" SelectedItem="{Binding ProfilSelectionne, Mode=TwoWay}"/>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="10,0,0,0">
-                    <Button Content="Sauver" Click="Sauver_Click"/>
-                    <Button Content="Recharger" Margin="8,0,0,0" Click="Recharger_Click" ToolTip="Recharge le profil sélectionné"/>
-                    <!-- Routine hebdomadaire : réglée dans une fenêtre dédiée ; l'infobulle donne son état -->
-                    <Button Margin="8,0,0,0" Click="Planifier_Click" ToolTip="{Binding Routine.EtatTexte}">
+                    <!-- Toutes les actions de profil dans un seul menu : la barre garde Aperçu et LANCER bien visibles. -->
+                    <Button x:Name="BoutonProfil" Click="BoutonProfil_Click" ToolTip="Enregistrer, recharger, partager ou planifier le profil">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE787;" FontFamily="{StaticResource PoliceIcones}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                            <TextBlock Text="Planifier…"/>
+                            <TextBlock Text="Profil"/>
+                            <TextBlock Text="&#xE70D;" FontFamily="{StaticResource PoliceIcones}" FontSize="11" VerticalAlignment="Center" Margin="8,1,0,0"/>
                         </StackPanel>
+                        <Button.ContextMenu>
+                            <ContextMenu x:Name="MenuProfil" Placement="Top">
+                                <MenuItem Header="Enregistrer la sélection sous…" Click="Sauver_Click"><MenuItem.Icon><TextBlock Text="&#xE74E;" FontFamily="{StaticResource PoliceIcones}" FontSize="14"/></MenuItem.Icon></MenuItem>
+                                <MenuItem Header="Recharger le profil" Click="Recharger_Click" ToolTip="Annule les cases changées depuis le chargement du profil"><MenuItem.Icon><TextBlock Text="&#xE72C;" FontFamily="{StaticResource PoliceIcones}" FontSize="14"/></MenuItem.Icon></MenuItem>
+                                <Separator/>
+                                <MenuItem Header="Exporter la sélection (pour un autre PC)…" Click="ExporterProfil_Click"><MenuItem.Icon><TextBlock Text="&#xEDE1;" FontFamily="{StaticResource PoliceIcones}" FontSize="14"/></MenuItem.Icon></MenuItem>
+                                <MenuItem Header="Importer un profil…" Click="ImporterProfil_Click"><MenuItem.Icon><TextBlock Text="&#xE8B5;" FontFamily="{StaticResource PoliceIcones}" FontSize="14"/></MenuItem.Icon></MenuItem>
+                                <Separator/>
+                                <MenuItem Header="Planifier une routine hebdomadaire…" Click="Planifier_Click" ToolTip="{Binding Routine.EtatTexte}"><MenuItem.Icon><TextBlock Text="&#xE787;" FontFamily="{StaticResource PoliceIcones}" FontSize="14"/></MenuItem.Icon></MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
                     </Button>
                 </StackPanel>
                 <TextBlock Grid.Column="4" Text="{Binding ResumeSelection}" VerticalAlignment="Center" FontSize="15" FontWeight="SemiBold" Margin="0,0,24,0"/>

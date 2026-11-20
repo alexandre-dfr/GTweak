@@ -13,72 +13,11 @@ using GamingTweaker.Lists;
 
 namespace GamingTweaker.Ui
 {
-    public class MenuEntry : ObservableObject
-    {
-        private int coches;
-        public string Nom { get; set; }
-        /// <summary>Options cochées dans ce menu (affiché à côté du nom, 0 : rien).</summary>
-        public int Coches { get { return coches; } set { if (Set(ref coches, value)) Raise("Libelle"); } }
-        public string Libelle { get { return coches > 0 ? Nom + "  ·  " + coches : Nom; } }
-        public bool EstSeparateur { get; set; }
-        /// <summary>Vue réservée aux tâches suivantes : panneau neutre avec le seul titre du menu.</summary>
-        public bool EstEmplacement { get; set; }
-    }
-
-    /// <summary>Ligne « état de ce PC » de l'écran d'accueil : options déjà appliquées sur le total du menu.</summary>
-    public class LigneAccueil
-    {
-        public string Menu { get; set; }
-        public int Appliquees { get; set; }
-        public int Total { get; set; }
-        public string Texte { get { return Appliquees + " / " + Total + " déjà appliquée" + (Appliquees > 1 ? "s" : ""); } }
-        public double Proportion { get { return Total == 0 ? 0 : (double)Appliquees / Total; } }
-    }
-
-    /// <summary>Tuile de profil intégré de l'écran d'accueil.</summary>
-    public class TuileProfil
-    {
-        public string Nom { get; set; }
-        public string Accroche { get; set; }
-        public string Description { get; set; }
-        public int Nombre { get; set; }
-        public string NombreTexte { get { return Nombre + " option" + (Nombre > 1 ? "s" : ""); } }
-        /// <summary>0 : Gaming léger, 1 : Gaming max, 2 : Confidentialité (couleur de la tuile).</summary>
-        public int Rang { get; set; }
-        /// <summary>Icône Windows (Segoe Fluent Icons) : bouclier, éclair, cadenas.</summary>
-        public string Icone { get { return Rang == 0 ? "\uEA18" : Rang == 1 ? "\uE945" : "\uE72E"; } }
-    }
-
-    public class PreviewRow : ObservableObject
-    {
-        private string taille = "—";
-        public string Id { get; set; }
-        /// <summary>Menu de l'option (regroupement de l'aperçu).</summary>
-        public string Menu { get; set; }
-        public string Titre { get; set; }
-        public string Risque { get; set; }
-        public string Reversibilite { get; set; }
-        public string Redemarrage { get; set; }
-        /// <summary>Estimation de taille ; « — » tant qu'elle n'est pas connue ou si l'option n'en a pas.</summary>
-        public string Taille { get { return taille; } set { Set(ref taille, value); } }
-    }
-
-    /// <summary>Bilan de « Tout restaurer ».</summary>
-    public class ResultatRestauration
-    {
-        public int AnnuleesParJournal { get; set; }
-        public int AnnuleesParRevert { get; set; }
-        /// <summary>Une ligne « id : message » par option dont l'annulation a échoué.</summary>
-        public List<string> Echecs { get; } = new List<string>();
-        /// <summary>Options appliquées mais impossibles à restaurer (ni journal, ni script revert).</summary>
-        public List<string> Ignorees { get; } = new List<string>();
-        /// <summary>Annulations réussies avec une réserve (par exemple une réinstallation manuelle).</summary>
-        public List<string> Remarques { get; } = new List<string>();
-        /// <summary>Options HKCU ignorées parce que l'application tourne sous un autre compte que le bureau.</summary>
-        public List<string> IgnoreesAutreCompte { get; } = new List<string>();
-    }
-
-    public class MainViewModel : ObservableObject
+    /// <summary>
+    /// Vue-modèle de la fenêtre principale. Réparti en fichiers partiels : navigation, filtre, sélection et détection ici ;
+    /// profils (MainViewModel.Profils.cs), « Tout restaurer » (MainViewModel.Restauration.cs), aperçu et exécution (MainViewModel.Execution.cs).
+    /// </summary>
+    public partial class MainViewModel : ObservableObject
     {
         public static readonly string[] MenusOptions = { "Mises à jour", "Télémétrie", "Nettoyage", "Optimisation", "Bloatware" };
 
@@ -280,13 +219,35 @@ namespace GamingTweaker.Ui
         public string MenuCourant
         {
             get { return menuCourant; }
-            set { if (Set(ref menuCourant, value)) { Raise("EstDiagnostic"); if (value == MenuDiagnostic && diagnosticVm != null) diagnosticVm.AnalyserSiBesoin(); Raise("EstAccueil"); Raise("EstEmplacement"); Raise("EstMenuTelemetrie"); Raise("EstMenuOptions"); Raise("EstModeJeu"); Raise("EstHistorique"); Raise("TitreAffiche"); Raise("EstMenuInformations"); MajInfo(); Filtrer(); if (value == MenuModeJeu && modeJeuVm != null) modeJeuVm.ChargerSiBesoin(); if (value == MenuHistorique && historiqueVm != null) historiqueVm.Charger(); } }
+            set
+            {
+                if (!Set(ref menuCourant, value)) return;
+                if (value == MenuDiagnostic && diagnosticVm != null) diagnosticVm.AnalyserSiBesoin();
+                MajVueAffichee();
+                if (value == MenuModeJeu && modeJeuVm != null) modeJeuVm.ChargerSiBesoin();
+                if (value == MenuHistorique && historiqueVm != null) historiqueVm.Charger();
+            }
         }
 
         public string Recherche
         {
             get { return recherche; }
-            set { if (Set(ref recherche, value ?? "")) { Raise("EnRecherche"); Raise("EstAccueil"); Raise("EstDiagnostic"); CommandManager.InvalidateRequerySuggested(); Raise("TitreAffiche"); Raise("EstMenuTelemetrie"); Raise("EstMenuOptions"); Raise("EstModeJeu"); Raise("EstHistorique"); Raise("EstMenuInformations"); MajInfo(); Filtrer(); } }
+            set
+            {
+                if (!Set(ref recherche, value ?? "")) return;
+                Raise("EnRecherche");
+                CommandManager.InvalidateRequerySuggested();
+                MajVueAffichee();
+            }
+        }
+
+        /// <summary>Le menu courant ou la recherche a changé : signale toutes les propriétés « quelle vue est affichée », puis refiltre.</summary>
+        private void MajVueAffichee()
+        {
+            foreach (var p in new[] { "EstAccueil", "EstDiagnostic", "EstEmplacement", "EstMenuTelemetrie", "EstMenuOptions", "EstModeJeu", "EstHistorique", "EstMenuInformations", "TitreAffiche" })
+                Raise(p);
+            MajInfo();
+            Filtrer();
         }
 
         public bool EnRecherche { get { return Normaliser(recherche).Length > 0; } }
@@ -323,19 +284,64 @@ namespace GamingTweaker.Ui
         public string TitreAffiche { get { return EnRecherche ? "Résultats de la recherche" : menuCourant == MenuAccueil ? "Bienvenue" : menuCourant; } }
 
         public string Message { get { return message; } set { Set(ref message, value ?? ""); } }
+
+        // ---------- Guide du premier lancement, version ----------
+
+        public const string FichierGuideVu = "guide-vu";
+        private bool guideMasque;
+        /// <summary>Le guide de l'accueil s'affiche tant qu'il n'a pas été masqué sur ce PC (fichier témoin dans le dossier de la machine).</summary>
+        public bool AfficherGuide
+        {
+            get
+            {
+                if (guideMasque) return false;
+                try { return paths == null || string.IsNullOrEmpty(paths.MachineDir) || !File.Exists(Path.Combine(paths.MachineDir, FichierGuideVu)); }
+                catch (Exception) { return true; }
+            }
+        }
+        private ICommand masquerGuide;
+        public ICommand MasquerGuideCommand { get { return masquerGuide ?? (masquerGuide = new RelayCommand(_ => MasquerGuide())); } }
+        public void MasquerGuide()
+        {
+            guideMasque = true;
+            try { if (paths != null && !string.IsNullOrEmpty(paths.MachineDir)) { Directory.CreateDirectory(paths.MachineDir); File.WriteAllText(Path.Combine(paths.MachineDir, FichierGuideVu), DateTime.Now.ToString("o")); } }
+            catch (Exception ex) { TraceAppli.Erreur("guide de l'accueil : témoin non écrit", ex); }
+            Raise("AfficherGuide");
+        }
+
+        public string TexteVersion { get { return "GamingTweaker " + VersionAppli.Texte; } }
+
+        private CompteurViewModel compteurVm;
+        /// <summary>Compteur en jeu (null tant que l'application ne l'a pas branché).</summary>
+        public CompteurViewModel Compteur { get { return compteurVm; } set { Set(ref compteurVm, value); } }
+
+        // ---------- Nouvelle version ----------
+
+        private VersionDisponible nouvelleVersion;
+        private bool nouvelleVersionMasquee;
+        /// <summary>Release plus récente trouvée sur GitHub au démarrage (null : à jour, hors ligne ou vérification impossible).</summary>
+        public VersionDisponible NouvelleVersion
+        {
+            get { return nouvelleVersion; }
+            set { if (Set(ref nouvelleVersion, value)) { Raise("NouvelleVersionVisible"); Raise("TexteNouvelleVersion"); } }
+        }
+        /// <summary>Bandeau fermé par l'utilisateur (jusqu'au prochain lancement).</summary>
+        public bool NouvelleVersionMasquee
+        {
+            get { return nouvelleVersionMasquee; }
+            set { if (Set(ref nouvelleVersionMasquee, value)) Raise("NouvelleVersionVisible"); }
+        }
+        public bool NouvelleVersionVisible { get { return nouvelleVersion != null && !nouvelleVersionMasquee; } }
+        public string TexteNouvelleVersion
+        {
+            get
+            {
+                return nouvelleVersion == null ? "" : "GamingTweaker " + nouvelleVersion.Version + " est disponible (vous avez la version " + MiseAJour.VersionCourante + ").";
+            }
+        }
         /// <summary>Bandeau d'avertissement (compte d'élévation différent du bureau).</summary>
         public string Bandeau { get { return bannière; } set { Set(ref bannière, value ?? ""); } }
 
-        public string ProfilSelectionne
-        {
-            get { return profilSelectionne; }
-            set
-            {
-                if (!Set(ref profilSelectionne, value)) return;
-                Raise("ProfilIntegreSelectionne");
-                if (!chargementProfil && !string.IsNullOrEmpty(value)) ChargerProfilNomme(value);
-            }
-        }
 
         // ---------- Filtre ----------
 
@@ -393,125 +399,6 @@ namespace GamingTweaker.Ui
             return s;
         }
 
-        public Profil ToProfil(string nom)
-        {
-            var p = new Profil { Nom = nom, Options = Options.Where(o => o.IsChecked).Select(o => o.Id).ToList() };
-            p.Listes = profilListes == null ? new ProfilListes() : profilListes.Cloner();
-            avertissementProfil = "";
-            var perdues = new List<string>();
-            // Le profil reflète exactement ce qui est coché : la clé de chaque option à liste est retirée puis réécrite si elle est cochée et non vide.
-            foreach (var o in Options.Where(o => o.Liste != null)) Profils.RetirerListe(p.Listes, o.Item.Liste);
-            foreach (var o in Options.Where(o => o.IsChecked && o.Liste != null))
-            {
-                var ecartes = new List<string>();
-                var sel = o.Liste.VersSelection();
-                if (sel.Count == 0) continue;
-                if (!Profils.AjouterListe(p.Listes, o.Item.Liste, sel, ecartes)) perdues.Add(o.Titre);
-                else if (ecartes.Count > 0) perdues.Add(o.Titre + " (" + string.Join(", ", ecartes) + ")");
-            }
-            if (perdues.Count > 0)
-                avertissementProfil = "Éléments non enregistrés dans le profil (nom non pris en charge) : " + string.Join(" ; ", perdues) + ".";
-            return p;
-        }
-
-        public void LoadProfil(Profil p)
-        {
-            foreach (var o in Options) o.ForceUnchecked();
-            foreach (var o in Options.Where(o => o.Liste != null)) o.Liste.DepuisSelection(null);
-            listesChargees.Clear();
-            profilListes = p.Listes;
-            var res = Profils.Resolve(p, items, facts);
-            foreach (var kv in res.Selection.Listes) listesChargees[kv.Key] = kv.Value;
-            var refuses = new List<string>();
-            foreach (var o in Options.Where(o => res.Selection.OptionIds.Contains(o.Id)))
-            {
-                List<string> sel;
-                if (o.Liste != null && res.Selection.Listes.TryGetValue(o.Id, out sel)) o.Liste.DepuisSelection(sel);
-                o.IsChecked = true;
-                if (!o.IsChecked) { refuses.Add(o.Titre); continue; }
-                // Éléments Risqué du profil : même confirmation que pour une option Risqué ; les refusés sont retirés de la sélection.
-                if (o.Liste != null) refuses.AddRange(o.Liste.ConfirmerSelectionProfil().Select(x => o.Titre + " : " + x));
-            }
-            var infos = new List<string>();
-            if (res.Inconnues.Count > 0) infos.Add(res.Inconnues.Count + " option(s) inconnue(s) ignorée(s).");
-            if (res.Incompatibles.Count > 0) infos.Add(res.Incompatibles.Count + " option(s) incompatible(s) avec ce PC ignorée(s).");
-            if (refuses.Count > 0) infos.Add("Non cochée(s) faute de confirmation : " + string.Join(", ", refuses) + ".");
-            Message = string.Join(" ", infos);
-            MajCompteurs();
-        }
-
-        // ---------- Profils ----------
-
-        public void RafraichirProfils()
-        {
-            var noms = new List<string>();
-            try
-            {
-                if (paths != null && Directory.Exists(paths.ProfilsDir))
-                    noms = Directory.GetFiles(paths.ProfilsDir, "*.json").Select(Path.GetFileNameWithoutExtension).OrderBy(n => n, StringComparer.CurrentCultureIgnoreCase).ToList();
-            }
-            catch (Exception) { /* dossier illisible : liste vide */ }
-            ProfilsDisponibles.Clear();
-            // Profils intégrés d'abord ; un fichier qui porterait leur nom affiché n'est pas listé (il serait masqué).
-            foreach (var pi in ProfilsIntegres.Tous) ProfilsDisponibles.Add(pi.NomAffiche);
-            foreach (var n in noms.Where(n => !ProfilsIntegres.EstReserve(n))) ProfilsDisponibles.Add(n);
-        }
-
-        /// <summary>Recharge le profil actuellement sélectionné (annule les modifications de cases depuis son chargement).</summary>
-        public void RechargerProfil()
-        {
-            if (!string.IsNullOrEmpty(profilSelectionne)) ChargerProfilNomme(profilSelectionne);
-        }
-
-        public string CheminProfil(string nom) { return Path.Combine(paths.ProfilsDir, nom + ".json"); }
-
-        /// <summary>Vrai si le profil sélectionné est un profil intégré (lecture seule).</summary>
-        public bool ProfilIntegreSelectionne { get { return ProfilsIntegres.Trouver(profilSelectionne) != null; } }
-
-        /// <summary>Nom proposé par « Sauver » : celui du profil sélectionné, sans le suffixe « (intégré) ».</summary>
-        public string NomPourEnregistrer
-        {
-            get
-            {
-                var pi = ProfilsIntegres.Trouver(profilSelectionne);
-                return pi != null ? pi.Nom : profilSelectionne ?? "";
-            }
-        }
-
-        private void ChargerProfilNomme(string nom)
-        {
-            var integre = ProfilsIntegres.Trouver(nom);
-            if (integre != null)
-            {
-                LoadProfil(ProfilsIntegres.Construire(integre, items, facts));
-                Message = (integre.NomAffiche + " : " + integre.Description + " " + Message).Trim();
-                return;
-            }
-            var load = Profils.Load(CheminProfil(nom), items.Where(c => !string.IsNullOrEmpty(c.Liste)).Select(c => c.Liste).Distinct());
-            if (load.Erreur != null) { Message = load.Erreur; return; }
-            LoadProfil(load.Profil);
-            if (load.Avertissements.Count > 0) Message = (Message + " " + string.Join(" ", load.Avertissements)).Trim();
-        }
-
-        /// <summary>Enregistre la sélection sous ce nom. Renvoie un message d'erreur, ou null si tout va bien (ou si l'utilisateur annule).</summary>
-        public string SauverProfil(string nom)
-        {
-            nom = (nom ?? "").Trim();
-            var invalides = Path.GetInvalidFileNameChars();
-            nom = new string(nom.Where(c => !invalides.Contains(c)).ToArray()).Trim().TrimEnd('.');
-            if (nom.Length == 0) return "Donnez un nom au profil (sans caractères spéciaux).";
-            if (ProfilsIntegres.EstReserve(nom)) return ProfilsIntegres.MessageNomReserve;
-            var risques = Options.Where(o => o.IsChecked && (o.NiveauRisque == RiskLevel.Risque || (o.Liste != null && o.Liste.ElementsRisques().Count > 0))).ToList();
-            if (risques.Count > 0 && (ConfirmerProfilRisque == null || !ConfirmerProfilRisque(risques))) return null;
-            try { Profils.Save(ToProfil(nom), CheminProfil(nom)); }
-            catch (Exception ex) { return "Le profil n'a pas pu être enregistré : " + ex.Message; }
-            RafraichirProfils();
-            chargementProfil = true;
-            try { ProfilSelectionne = nom; } finally { chargementProfil = false; }
-            Message = ("Profil « " + nom + " » enregistré. " + avertissementProfil).Trim();
-            return null;
-        }
-
         // ---------- Détection ----------
 
         /// <summary>État d'une option dès qu'il est connu (détection progressive) ; à appeler sur le thread de l'interface.</summary>
@@ -534,236 +421,6 @@ namespace GamingTweaker.Ui
             }
             if (masquerAppliquees) Filtrer();
             MajAccueil();
-        }
-
-        // ---------- Tout restaurer (tous les menus) ----------
-
-        /// <summary>Service d'annulation utilisé par « Tout restaurer » (journal, sinon script revert).</summary>
-        public IRestauration Restauration { get; set; }
-
-        private bool restaurationEnCours;
-        public bool RestaurationEnCours { get { return restaurationEnCours; } private set { if (Set(ref restaurationEnCours, value)) Raise("PeutToutRestaurer"); } }
-        public bool PeutToutRestaurer { get { return !restaurationEnCours; } }
-
-        /// <summary>
-        /// Annule les options réversibles de tous les menus : toute option qui a des entrées actives dans un journal est annulée par TOUS ses journaux
-        /// (du plus récent au plus ancien), quel que soit son état de détection ; une option détectée « appliquée » sans journal passe par son
-        /// script revert (valeurs par défaut de Windows). Une annulation par journal en échec n'est jamais remplacée par le script revert.
-        /// Même verrou d'instance et même règle de compte que l'exécution : les options HKCU sont ignorées sous un autre compte.
-        /// Les valeurs modifiées depuis par l'utilisateur ne sont pas comparées. Redétecte ensuite.
-        /// </summary>
-        public async Task<ResultatRestauration> ToutRestaurerAsync()
-        {
-            var res = new ResultatRestauration();
-            var svc = Restauration;
-            if (svc == null) { Message = "Tout restaurer est indisponible : aucun service d'annulation n'est configuré."; return res; }
-            if (RestaurationEnCours) return res;
-            RestaurationEnCours = true;
-            try
-            {
-                using (var verrou = svc.PrendreVerrou())
-                {
-                    if (verrou == null) { Message = "Une autre exécution de GamingTweaker est en cours : rien n'a été restauré."; return res; }
-
-                    var tel = Options.Where(o => Array.IndexOf(MenusOptions, o.Menu) >= 0).Select(o => o.Item).ToList();
-                    bool memeUtilisateur = svc.MemeUtilisateur();
-                    Dictionary<string, DetectState> etats = null;
-                    string erreurDetection = null;
-                    try { etats = await detect(tel); }
-                    catch (Exception ex) { erreurDetection = ex.Message; }
-                    Func<CatalogItem, bool> appliquee = i => { DetectState s; return etats != null && etats.TryGetValue(i.Id, out s) && s == DetectState.Applied; };
-
-                    var restaures = new List<string>();
-                    int candidats = 0;
-                    foreach (var it in tel)
-                    {
-                        try
-                        {
-                            var journaux = svc.TrouverJournauxActifs(it.Id);
-                            if (journaux.Count == 0 && !appliquee(it)) continue;
-                            candidats++;
-                            if (!memeUtilisateur && it.Hkcu) { res.IgnoreesAutreCompte.Add(it.Id); continue; }
-
-                            ItemOutcome o = null;
-                            bool parJournal = journaux.Count > 0;
-                            if (parJournal)
-                            {
-                                foreach (var j in journaux)
-                                {
-                                    o = await svc.AnnulerParJournalAsync(j, it.Id);
-                                    if (o == null || o.Status == OutcomeStatus.Failed) break;
-                                    if (o.Status == OutcomeStatus.Skipped && !string.IsNullOrWhiteSpace(o.Message)) res.Remarques.Add(it.Id + " : " + o.Message.Trim());
-                                }
-                            }
-                            else if (it.Reversible && !string.IsNullOrWhiteSpace(it.Revert)) o = await svc.ExecuterRevertAsync(it);
-                            else { res.Ignorees.Add(it.Id); continue; }
-
-                            if (o == null || o.Status == OutcomeStatus.Failed)
-                                res.Echecs.Add(it.Id + " : " + (o == null || string.IsNullOrWhiteSpace(o.Message) ? "échec de l'annulation" : o.Message.Trim()));
-                            else if (!parJournal && o.Status == OutcomeStatus.Skipped)
-                            {
-                                // Le script revert n'a rien restauré (ex. état d'origine connu du seul journal) : ni compté ni oublié.
-                                res.Ignorees.Add(it.Id);
-                                if (!string.IsNullOrWhiteSpace(o.Message)) res.Remarques.Add(it.Id + " : " + o.Message.Trim());
-                            }
-                            else
-                            {
-                                if (parJournal) res.AnnuleesParJournal++; else res.AnnuleesParRevert++;
-                                restaures.Add(it.Id);
-                            }
-                        }
-                        catch (Exception ex) { res.Echecs.Add(it.Id + " : " + ex.Message); }
-                    }
-
-                    if (restaures.Count > 0) svc.OublierDernieresApplications(restaures);
-
-                    if (candidats == 0)
-                    {
-                        Message = erreurDetection != null ? "Détection impossible, rien n'a été restauré : " + erreurDetection
-                                                          : "Rien à restaurer : aucune option appliquée par GamingTweaker.";
-                        return res;
-                    }
-
-                    var sb = new StringBuilder("Tout restaurer : ");
-                    sb.Append(res.AnnuleesParJournal).Append(" annulée(s) par le journal, ").Append(res.AnnuleesParRevert).Append(" remise(s) aux valeurs par défaut de Windows");
-                    if (res.Echecs.Count > 0) sb.Append(", ").Append(res.Echecs.Count).Append(" échec(s) (").Append(string.Join(" ; ", res.Echecs)).Append(')');
-                    if (res.Ignorees.Count > 0) sb.Append(", ").Append(res.Ignorees.Count).Append(" sans moyen de restauration (").Append(string.Join(", ", res.Ignorees)).Append(')');
-                    if (res.IgnoreesAutreCompte.Count > 0) sb.Append(", ").Append(res.IgnoreesAutreCompte.Count).Append(" ignorée(s) car l'application tourne sous un autre compte que le bureau (").Append(string.Join(", ", res.IgnoreesAutreCompte)).Append(')');
-                    sb.Append('.');
-                    if (res.Remarques.Count > 0) sb.Append(' ').Append(string.Join(" ", res.Remarques));
-                    Message = sb.ToString();
-                }
-                await DetectAsync();
-                return res;
-            }
-            finally { RestaurationEnCours = false; }
-        }
-
-        // ---------- Aperçu et exécution ----------
-
-        public IReadOnlyList<PreviewRow> BuildPreview()
-        {
-            return Options.Where(o => o.IsChecked).OrderBy(o => Array.IndexOf(MenusOptions, o.Menu) < 0 ? 99 : Array.IndexOf(MenusOptions, o.Menu)).Select(o => new PreviewRow
-            {
-                Id = o.Id, Menu = o.Menu,
-                Titre = o.Titre + (o.Liste == null ? "" : o.Liste.EstVide ? " : aucun élément choisi, non exécutée" : " (" + o.Liste.ResumeCourt + ")"), Risque = o.Risque,
-                Reversibilite = o.Reversible ? (string.IsNullOrWhiteSpace(o.Item.AnnulationPartielle) ? "Annulable" : "Annulable en partie : " + o.Item.AnnulationPartielle) : "définitif",
-                Redemarrage = o.Redemarrage ? "Redémarrage requis" : "",
-                Taille = "—",
-            }).ToList();
-        }
-
-        /// <summary>Synthèse de l'aperçu : options annulables, définitives, et celles qui demandent un redémarrage.</summary>
-        public static string ResumeApercu(IReadOnlyList<PreviewRow> lignes)
-        {
-            int annulables = lignes.Count(l => l.Reversibilite != "définitif");
-            int definitives = lignes.Count(l => l.Reversibilite == "définitif");
-            int redemarrage = lignes.Count(l => !string.IsNullOrEmpty(l.Redemarrage));
-            return annulables + " annulable" + (annulables > 1 ? "s" : "") + " · " + definitives + " définitive" + (definitives > 1 ? "s" : "")
-                 + " · " + redemarrage + " nécessit" + (redemarrage > 1 ? "ent" : "e") + " un redémarrage";
-        }
-
-        /// <summary>
-        /// Lance les estimations de taille des options de l'aperçu (scripts en lecture seule) et renseigne la colonne Taille.
-        /// Renvoie le texte du total (« Total estimé : 1,2 Go »), ou une chaîne vide si aucune estimation n'est disponible.
-        /// </summary>
-        public async Task<string> EstimerAsync(IReadOnlyList<PreviewRow> lignes)
-        {
-            var parId = items.GroupBy(i => i.Id).ToDictionary(g => g.Key, g => g.First());
-            var concernes = lignes.Where(l => l.Id != null && parId.ContainsKey(l.Id) && !string.IsNullOrWhiteSpace(parId[l.Id].Estimate))
-                                  .Select(l => parId[l.Id]).ToList();
-            if (concernes.Count == 0) return "";
-            Dictionary<string, long?> res;
-            try { res = await estimate(concernes); }
-            catch (Exception) { return ""; }
-            if (res == null) return "";
-            long total = 0; int connues = 0;
-            foreach (var l in lignes)
-            {
-                long? v;
-                if (l.Id == null || !res.TryGetValue(l.Id, out v) || v == null) continue;
-                l.Taille = Estimation.FormatTaille(v.Value);
-                total += v.Value; connues++;
-            }
-            if (connues == 0) return "";
-            return "Total estimé : " + Estimation.FormatTaille(total) + (connues < lignes.Count ? " (options sans estimation exclues)" : "");
-        }
-
-        /// <summary>Le script exact qui sera exécuté (le dossier de session réel n'existe qu'au lancement).</summary>
-        public string BuildPreviewScript()
-        {
-            return ScriptBuilder.Build(items, BuildSelection(), @"<dossier de la session>\journal.jsonl", paths == null ? null : paths.QuarantineDir);
-        }
-
-        public const string NoteApercu = "Le dossier de session est créé au lancement ; les options déjà appliquées ou ignorées ne seront pas exécutées.";
-
-        /// <summary>Script à exporter : le script de l'aperçu précédé d'un en-tête explicatif.</summary>
-        public string BuildExportScript()
-        {
-            var script = BuildPreviewScript();
-            return "# GamingTweaker : script exporté depuis l'aperçu.\r\n# " + NoteApercu + "\r\n\r\n" + script;
-        }
-
-        public Task<SessionReport> LancerAsync(IProgress<string> log, CancellationToken ct)
-        {
-            var req = new RunRequest
-            {
-                Selection = BuildSelection(), CatalogItems = items, Facts = facts, Paths = paths,
-                ConfirmSansPointDeRestauration = ConfirmSansPointDeRestauration,
-            };
-            if (run == null) throw new InvalidOperationException("Aucun exécuteur configuré.");
-            // Le pipeline prend le verrou et crée le point de restauration avant son premier await : hors du thread de l'interface.
-            return Task.Run(() => run(req, log, ct));
-        }
-
-        /// <summary>Ligne lisible pour le journal en direct ; null pour les lignes techniques à masquer.</summary>
-        public string FormaterLigne(string line)
-        {
-            if (string.IsNullOrWhiteSpace(line)) return null;
-            if (!line.StartsWith("##GT|", StringComparison.Ordinal)) return line;
-            var p = line.Split(new[] { '|' }, 4);
-            if (p.Length < 3) return null;
-            var o = Options.FirstOrDefault(x => x.Id == p[2]);
-            var t = o == null ? p[2] : o.Titre;
-            var msg = p.Length > 3 && !string.IsNullOrWhiteSpace(p[3]) ? " (" + p[3].Trim() + ")" : "";
-            switch (p[1])
-            {
-                case "start": return "En cours : " + t;
-                case "ok": return "Appliqué : " + t + msg;
-                case "fail": return "Échec : " + t + msg;
-                case "skip": return "Ignoré : " + t + msg;
-                default: return null;
-            }
-        }
-
-        public static string RapportTexte(SessionReport r, IReadOnlyList<CatalogItem> catalogue)
-        {
-            var titres = catalogue.ToDictionary(c => c.Id, c => c.Titre);
-            var sb = new StringBuilder();
-            if (r.SessionDir == null)
-            {
-                sb.AppendLine("Rien n'a été exécuté.");
-            }
-            else
-            {
-                foreach (var it in r.Items)
-                {
-                    string t; if (!titres.TryGetValue(it.Id, out t)) t = it.Id;
-                    var st = it.Status == OutcomeStatus.Ok ? "Appliqué" : it.Status == OutcomeStatus.AlreadyApplied ? "Déjà appliqué"
-                           : it.Status == OutcomeStatus.Skipped ? "Ignoré" : "Échec";
-                    sb.Append(st).Append(" : ").Append(t);
-                    if (!string.IsNullOrWhiteSpace(it.Message)) sb.Append(" (").Append(it.Message.Trim()).Append(')');
-                    sb.AppendLine();
-                }
-                if (r.Retablies.Count > 0) sb.AppendLine().AppendLine("Rétablies automatiquement : " + string.Join(", ", r.Retablies));
-            }
-            if (r.Avertissements.Count > 0)
-            {
-                sb.AppendLine().AppendLine("Avertissements :");
-                foreach (var w in r.Avertissements) sb.AppendLine("- " + w);
-            }
-            if (r.RedemarrageRequis) sb.AppendLine().AppendLine("Un redémarrage est nécessaire pour terminer. Il n'est jamais lancé automatiquement.");
-            return sb.ToString().TrimEnd();
         }
     }
 }

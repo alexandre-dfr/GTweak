@@ -1,0 +1,128 @@
+<Window x:Class="GamingTweaker.Ui.CompteurReglagesWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Style="{StaticResource AppWindow}" Title="Compteur en jeu"
+        Width="560" SizeToContent="Height" ResizeMode="NoResize" WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolVis"/>
+    </Window.Resources>
+    <StackPanel Margin="24">
+        <TextBlock Text="Compteur en jeu" FontSize="20" FontWeight="SemiBold" FontFamily="{StaticResource PoliceTitre}"/>
+        <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,6,0,16"
+                   Text="Affiche par-dessus le jeu ses images par seconde et la charge du PC. Le compteur lit les informations publiées par Windows : rien n'est injecté dans le jeu, il est donc compatible avec les anti-triche. Les réglages s'appliquent tout de suite."/>
+        <Border Padding="12,8" CornerRadius="6" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" Margin="0,0,0,12">
+            <TextBlock TextWrapping="Wrap" Text="Tant que cette fenêtre est ouverte, le compteur est affiché avec un cadre pointillé : faites-le glisser à la souris où vous voulez, sur n'importe quel écran, et tirez le coin ◢ (ou Ctrl+molette) pour changer sa taille. Il garde cette place et cette taille."/>
+        </Border>
+
+        <Border Style="{StaticResource CarteW11}">
+            <StackPanel>
+                <CheckBox IsChecked="{Binding Actif, Mode=TwoWay}" FontWeight="SemiBold" Content="Afficher le compteur en jeu"/>
+                <TextBlock Foreground="{DynamicResource MutedBrush}" Margin="26,6,0,4" TextWrapping="Wrap" Text="Raccourci pour l'afficher ou le masquer pendant une partie :"/>
+                <DockPanel Margin="26,0,0,0">
+                    <Button x:Name="BoutonRaccourci" DockPanel.Dock="Right" Content="Changer…" Click="ChangerRaccourci_Click" VerticalAlignment="Center" Margin="12,0,0,0"
+                            ToolTip="Puis appuyez sur la combinaison voulue (Échap pour annuler)"/>
+                    <TextBlock x:Name="TexteRaccourci" Text="{Binding TexteRaccourci}" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                </DockPanel>
+                <TextBlock x:Name="ErreurRaccourci" Margin="26,4,0,0" TextWrapping="Wrap" Foreground="{DynamicResource AvanceFg}" Visibility="Collapsed"/>
+            </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource CarteW11}" Margin="0,12,0,0">
+            <StackPanel>
+                <TextBlock Text="Contenu" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                <CheckBox IsChecked="{Binding Fps, Mode=TwoWay}" Content="Images par seconde (FPS)"/>
+                <StackPanel Margin="26,6,0,0" IsEnabled="{Binding Fps}">
+                    <CheckBox IsChecked="{Binding Details, Mode=TwoWay}" Content="Temps d'image (ms) et 1 % bas"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                        <CheckBox IsChecked="{Binding Courbe, Mode=TwoWay}" Content="Courbe des FPS sur" VerticalAlignment="Center"/>
+                        <ComboBox Width="80" Margin="8,0,0,0" ItemsSource="{Binding Durees}" SelectedValuePath="Valeur" SelectedValue="{Binding DureeCourbe, Mode=TwoWay}" DisplayMemberPath="Nom" IsEnabled="{Binding Courbe}"/>
+                    </StackPanel>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                    <CheckBox IsChecked="{Binding Cpu, Mode=TwoWay}" Content="Processeur (%)" Margin="0,0,20,0"/>
+                    <CheckBox IsChecked="{Binding Gpu, Mode=TwoWay}" Content="Carte graphique (%)" Margin="0,0,20,0"/>
+                    <CheckBox IsChecked="{Binding Ram, Mode=TwoWay}" Content="Mémoire (%)"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <CheckBox IsChecked="{Binding TempGpu, Mode=TwoWay}" IsEnabled="{Binding Gpu}" Content="Température carte graphique" Margin="0,0,20,0"
+                              ToolTip="Lue par le pilote NVIDIA ou AMD, sans rien installer"/>
+                    <CheckBox IsChecked="{Binding TempCpu, Mode=TwoWay}" IsEnabled="{Binding Cpu}" Content="Température processeur"/>
+                </StackPanel>
+                <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0"
+                           Text="La température du processeur demande le pilote PawnIO (à installer depuis le menu Informations, bouton des capteurs) ; sans lui, elle affiche « — ». Le comportement de PawnIO face aux anti-triche (Vanguard, FACEIT) n'a pas été vérifié : en cas de doute, gardez seulement celle de la carte graphique."/>
+            </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource CarteW11}" Margin="0,12,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Text="Apparence" FontWeight="SemiBold" Grid.ColumnSpan="2" Margin="0,0,0,8"/>
+
+                <TextBlock Grid.Row="1" Text="Position" VerticalAlignment="Center" Margin="0,0,16,8"/>
+                <ComboBox Grid.Row="1" Grid.Column="1" Width="200" HorizontalAlignment="Left" Margin="0,0,0,8"
+                          ItemsSource="{Binding Positions}" SelectedValuePath="Valeur" SelectedValue="{Binding Position, Mode=TwoWay}" DisplayMemberPath="Nom"/>
+
+                <TextBlock Grid.Row="2" Text="Taille" VerticalAlignment="Center" Margin="0,0,16,8"/>
+                <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,8">
+                    <ComboBox Width="200" ItemsSource="{Binding Tailles}" SelectedValuePath="Valeur" SelectedValue="{Binding Taille, Mode=TwoWay}" DisplayMemberPath="Nom"/>
+                    <TextBlock Text="{Binding TexteEchelle}" Margin="10,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
+                </StackPanel>
+
+                <TextBlock Grid.Row="3" Text="Couleur" VerticalAlignment="Top" Margin="0,6,16,8"/>
+                <StackPanel Grid.Row="3" Grid.Column="1" Margin="0,0,0,8">
+                <ComboBox Width="240" HorizontalAlignment="Left" Margin="0,0,0,6" ItemsSource="{Binding ElementsCouleur}" SelectedValuePath="Valeur"
+                          SelectedValue="{Binding ElementCouleur, Mode=TwoWay}" DisplayMemberPath="Nom"
+                          ToolTip="Choisissez l'élément à colorer ; « Tout le compteur » remet la même couleur partout"/>
+                <StackPanel Orientation="Horizontal">
+                    <ItemsControl ItemsSource="{Binding Couleurs}">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Width="24" Height="24" Margin="0,0,6,0" Padding="0" Tag="{Binding Valeur}" ToolTip="{Binding Nom}" Click="Couleur_Click" Cursor="Hand">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{Binding Valeur}" CornerRadius="12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"/>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBox Width="84" Margin="6,0,0,0" Text="{Binding Couleur, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" MaxLength="7"
+                             ToolTip="Couleur libre au format #RRVVBB (validée en quittant le champ ou avec Entrée)" KeyDown="CouleurLibre_KeyDown"/>
+                    <Border Width="24" Height="24" Margin="8,0,0,0" CornerRadius="4" Background="{Binding Couleur}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" ToolTip="Couleur actuelle de l'élément choisi"/>
+                </StackPanel>
+                </StackPanel>
+
+                <TextBlock Grid.Row="4" Text="Fond" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal">
+                    <Slider Width="200" Minimum="0.2" Maximum="1" SmallChange="0.05" LargeChange="0.1" Value="{Binding OpaciteFond, Mode=TwoWay}" VerticalAlignment="Center" ToolTip="Opacité du fond"/>
+                    <TextBlock Text="{Binding OpaciteFond, StringFormat={}{0:P0}}" Margin="10,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <TextBlock Text="{Binding Erreur}" TextWrapping="Wrap" Foreground="{DynamicResource AvanceFg}" Margin="0,12,0,0">
+            <TextBlock.Style>
+                <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                    <Style.Triggers><DataTrigger Binding="{Binding Erreur}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+                </Style>
+            </TextBlock.Style>
+        </TextBlock>
+        <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" FontSize="12" Margin="0,12,0,0"
+                   Text="Les FPS des jeux DirectX 9 à 12 sont lus directement ; ceux des jeux Vulkan et OpenGL sont lus dans le noyau graphique de Windows (la source est indiquée sous les FPS). Le compteur s'affiche en plein écran sans bordure et en fenêtre, pas en plein écran exclusif. Le processeur, la carte graphique et la mémoire sont mesurés comme dans le Gestionnaire des tâches."/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+            <Button Content="Fermer" IsCancel="True" Click="Fermer_Click"/>
+        </StackPanel>
+    </StackPanel>
+</Window>
