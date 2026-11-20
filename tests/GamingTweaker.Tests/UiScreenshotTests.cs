@@ -80,7 +80,7 @@ namespace GamingTweaker.Tests
             });
             t.SetApartmentState(ApartmentState.STA); t.Start(); t.Join();
             Assert.True(erreurs.Count == 0, string.Join(Environment.NewLine, erreurs));
-            Assert.Equal(14, Directory.GetFiles(Dossier, "*.png").Length);
+            Assert.Equal(15, Directory.GetFiles(Dossier, "*.png").Length);   // + Paramètres
         }
 
         /// <summary>Option à liste dépliée (éléments chargés, un absent du PC) : PNG dans le sous-dossier « liste ».</summary>
