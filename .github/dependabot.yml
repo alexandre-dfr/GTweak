@@ -1,0 +1,25 @@
+# Mises à jour proposées par pull request (une par semaine au plus par écosystème).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "CI"
+
+  - package-ecosystem: nuget
+    directories:
+      - /src/GamingTweaker
+      - /tests/GamingTweaker.Tests
+    schedule:
+      interval: weekly
+    # L'appli cible .NET Framework 4.8 : les versions majeures (souvent sans net48) se font à la main.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      nuget:
+        patterns: ["*"]
+    commit-message:
+      prefix: "NuGet"

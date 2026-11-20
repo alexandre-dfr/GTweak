@@ -83,7 +83,7 @@ namespace GamingTweaker.Tests
         }
 
         [Theory]
-        [InlineData("tel.copilot-off")] [InlineData("tel.recall-off")] [InlineData("tel.ai-off")]
+        [InlineData("tel.copilot-off")] [InlineData("tel.recall-off")] [InlineData("tel.ai-off")] [InlineData("tel.clicktodo-off")] [InlineData("tel.start-reco-off")]
         public void Les_options_Windows_11_sont_restreintes_a_Windows_11(string id)
         {
             Assert.Equal(new[] { "11" }, Catalogue()[id].Compatibilite.Windows);

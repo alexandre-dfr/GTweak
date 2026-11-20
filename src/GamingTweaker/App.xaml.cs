@@ -102,6 +102,7 @@ namespace GamingTweaker
             registre.Register(ServicesProvider.Standard());
             registre.Register(ServicesProvider.Xbox());
             registre.Register(new StartupProvider());
+            registre.Register(new TachesProvider());
             registre.Register(BloatwareProvider.Standard());
             registre.Register(BloatwareProvider.Tierces());
             registre.Register(new WingetProvider());

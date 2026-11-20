@@ -59,6 +59,8 @@ namespace GamingTweaker.Core
         {
             var catalogue = Catalogue.LoadEmbedded();
             var facts = SystemInfo.Detect();
+            // Le cycle vérifie les scripts : les conditions de pertinence (logiciel installé, service présent, RAM) ne l'écartent pas.
+            var factsCycle = Compatibilite.SansPertinence(facts);
             var racine = Path.Combine(Path.GetTempPath(), "GamingTweakerCycle-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(racine);
             var paths = DataPaths.Resolve(racine, facts, racine);
@@ -69,11 +71,11 @@ namespace GamingTweaker.Core
             {
                 var l = new Ligne { id = it.Id };
                 lignes.Add(l);
-                if (!Compatibilite.IsCompatible(it.Compatibilite, facts)) { l.resultat = "non couvert"; l.raison = "incompatible avec cette machine (" + facts.WindowsMajor + "/" + facts.Edition + ")"; continue; }
+                if (!Compatibilite.IsCompatible(it.Compatibilite, factsCycle)) { l.resultat = "non couvert"; l.raison = "incompatible avec cette machine (" + facts.WindowsMajor + "/" + facts.Edition + ")"; continue; }
                 if (!it.Testable) { l.resultat = "non couvert"; l.raison = "Testable=false (matériel, effet système, réseau, ou détection non vérifiable)"; continue; }
                 if (!it.Reversible) { l.resultat = "non couvert"; l.raison = "non réversible"; continue; }
                 l.couvert = true;
-                try { Cycle(it, facts, paths, pipeline, l); }
+                try { Cycle(it, factsCycle, paths, pipeline, l); }
                 catch (Exception ex) { l.resultat = "échec"; l.raison = "exception : " + ex.Message; }
                 Console.WriteLine(l.id + " : " + l.resultat + (l.raison != null ? " (" + l.raison + ")" : ""));
                 try { Ecrire(Path.ChangeExtension(fichierResultat, ".partiel.json"), Resume(lignes), lignes); } catch (Exception) { }

@@ -1,0 +1,23 @@
+# Règles de base des fichiers texte, vérifiées en CI par « python -I tools/style.py ».
+root = true
+
+[*]
+charset = utf-8
+indent_style = space
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{cs,xaml,csproj,ps1,py}]
+indent_size = 4
+
+[*.{json,yml,yaml}]
+indent_size = 2
+
+[*.cs]
+csharp_new_line_before_open_brace = all
+csharp_preserve_single_line_statements = true
+csharp_preserve_single_line_blocks = true
+
+[{tests/GamingTweaker.Tests/fixtures/**,tools/inventaire/**}]
+insert_final_newline = unset
+trim_trailing_whitespace = unset
