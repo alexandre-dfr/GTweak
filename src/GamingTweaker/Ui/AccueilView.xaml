@@ -92,22 +92,58 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Background="{DynamicResource BgBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="0,0,10,0">
+                                <Button Margin="0,0,10,0" Cursor="Hand" FocusVisualStyle="{x:Null}" HorizontalContentAlignment="Stretch" VerticalAlignment="Stretch"
+                                        Command="{Binding DataContext.OuvrirInformationsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding Section}"
+                                        ToolTip="Voir le détail dans Informations">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="b" Background="{DynamicResource BgBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="14,12">
+                                                <ContentPresenter/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/></Trigger>
+                                                <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="b" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/></Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
                                     <StackPanel>
-                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                            <TextBlock Text="{Binding Icone}" FontFamily="{StaticResource PoliceIcones}" FontSize="16" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                            <TextBlock Text="{Binding Libelle}" Style="{StaticResource Secondaire}" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                        <TextBlock Text="{Binding Valeur}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" ToolTip="{Binding Valeur}"/>
+                                        <DockPanel Margin="0,0,0,6">
+                                            <TextBlock DockPanel.Dock="Right" Text="&#xE76C;" FontFamily="{StaticResource PoliceIcones}" FontSize="10" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Icone}" FontFamily="{StaticResource PoliceIcones}" FontSize="16" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <TextBlock Text="{Binding Libelle}" Style="{StaticResource Secondaire}" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </DockPanel>
+                                        <TextBlock Text="{Binding Valeur}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap"/>
                                         <TextBlock Text="{Binding Detail}" Style="{StaticResource Secondaire}" FontSize="12" Margin="0,2,0,0"/>
-                                        <ProgressBar Minimum="0" Maximum="1" Value="{Binding ValeurJauge, Mode=OneWay}" Height="4" Margin="0,8,0,0"
+                                        <ProgressBar x:Name="jauge" Minimum="0" Maximum="1" Value="{Binding ValeurJauge, Mode=OneWay}" Height="4" Margin="0,8,0,0"
                                                      Foreground="{DynamicResource AccentBrush}" Background="{DynamicResource BorderBrush}" BorderThickness="0"
                                                      Visibility="{Binding AJauge, Converter={StaticResource BoolVis}}"/>
+                                        <TextBlock Text="{Binding Alerte}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource AvanceFg}" TextWrapping="Wrap" Margin="0,6,0,0"
+                                                   Visibility="{Binding AAlerte, Converter={StaticResource BoolVis}}"/>
                                     </StackPanel>
-                                </Border>
+                                </Button>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding AAlerte}" Value="True"><Setter TargetName="jauge" Property="Foreground" Value="{DynamicResource AvanceFg}"/></DataTrigger>
+                                </DataTemplate.Triggers>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                    <!-- Disque système presque plein : même seuil que le diagnostic -->
+                    <Border Background="{DynamicResource WarnBg}" CornerRadius="6" Padding="12,8" Margin="0,12,0,0">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers><DataTrigger Binding="{Binding AlerteMateriel}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Content="Ouvrir le Nettoyage" Command="{Binding AllerCommand}" CommandParameter="Nettoyage" Margin="12,0,0,0"/>
+                            <TextBlock TextWrapping="Wrap" VerticalAlignment="Center" Foreground="{DynamicResource AvanceFg}">
+                                <Run Text="{Binding AlerteMateriel, Mode=OneWay}" FontWeight="SemiBold"/>
+                                <Run Text=" Windows, le cache des shaders et les mises à jour des jeux ont besoin de place : sous 10 % libres, chargements et mises à jour ralentissent."/>
+                            </TextBlock>
+                        </DockPanel>
+                    </Border>
                 </StackPanel>
             </Border>
 

@@ -34,6 +34,81 @@ namespace GamingTweaker.Tests
             }
         }
 
+        /// <summary>Point de restauration impossible tant que la protection n'est pas activée.</summary>
+        private class FauxProtection : IRestorePoint, IProtectionSysteme
+        {
+            public int Creations, Activations; public bool ActivationReussie = true;
+            public RestorePointResult TryCreate(string description)
+            {
+                Creations++;
+                return new RestorePointResult { ProtectionDesactivee = true, Message = "Point de restauration impossible : la protection du système est désactivée." };
+            }
+            public RestorePointResult ActiverEtCreer(string description)
+            {
+                Activations++;
+                return ActivationReussie ? new RestorePointResult { Created = true } : new RestorePointResult { Message = "Activation de la protection du système impossible." };
+            }
+        }
+
+        [Fact]
+        public async Task Protection_desactivee_activee_sur_accord_puis_point_cree()
+        {
+            var a = Item("a", "1");
+            var rp = new FauxProtection();
+            var demandes = 0; var sansPoint = 0;
+            var req = Req(new[] { a }, false, m => { sansPoint++; return false; }, "a");
+            req.ConfirmActiverProtection = m => { demandes++; Assert.Contains("désactivée", m); return true; };
+            var r = await Pipe(rp).ExecuteAsync(req, null, CancellationToken.None);
+            Assert.Equal(1, demandes); Assert.Equal(1, rp.Activations); Assert.Equal(0, sansPoint);
+            Assert.Equal(OutcomeStatus.Ok, Statut(r, "a"));
+            Assert.Contains(r.Avertissements, x => x.Contains("protection du système a été activée"));
+        }
+
+        [Fact]
+        public async Task Protection_refusee_ou_mode_silencieux_rien_n_est_active()
+        {
+            var a = Item("a", "1");
+            var rp = new FauxProtection();
+            var req = Req(new[] { a }, false, m => false, "a");
+            req.ConfirmActiverProtection = m => false;
+            var r = await Pipe(rp).ExecuteAsync(req, null, CancellationToken.None);
+            Assert.Equal(0, rp.Activations); Assert.Equal(2, r.ExitCode);   // refus de continuer sans point : exécution annulée
+
+            var silencieux = Req(new[] { a }, true, null, "a");
+            silencieux.ConfirmActiverProtection = m => true;
+            await Pipe(rp).ExecuteAsync(silencieux, null, CancellationToken.None);
+            Assert.Equal(0, rp.Activations);   // la routine n'active jamais rien d'elle-même
+        }
+
+        [Fact]
+        public async Task Activation_en_echec_revient_a_la_question_sans_point()
+        {
+            var a = Item("a", "1");
+            var rp = new FauxProtection { ActivationReussie = false };
+            string question = null;
+            var req = Req(new[] { a }, false, m => { question = m; return true; }, "a");
+            req.ConfirmActiverProtection = m => true;
+            var r = await Pipe(rp).ExecuteAsync(req, null, CancellationToken.None);
+            Assert.Equal(1, rp.Activations);
+            Assert.Contains("Activation de la protection", question);
+            Assert.Equal(OutcomeStatus.Ok, Statut(r, "a"));
+        }
+
+        [Theory]
+        [InlineData("OK", true, false)]
+        [InlineData("avertissement\nOK", true, false)]
+        [InlineData("LIMIT", false, false)]
+        [InlineData("FAIL|Accès refusé", false, false)]
+        [InlineData("FAILOFF|Le service est désactivé", false, true)]
+        [InlineData("", false, false)]
+        public void Sortie_du_script_de_point_de_restauration(string sortie, bool cree, bool desactivee)
+        {
+            var r = RestorePoint.Interpreter(sortie.Replace("\\n", "\n"));
+            Assert.Equal(cree, r.Created);
+            Assert.Equal(desactivee, r.ProtectionDesactivee);
+            if (!cree) Assert.False(string.IsNullOrEmpty(r.Message));
+        }
+
         private static CatalogItem Item(string id, string valeur, bool reversible = true, bool hkcu = false, bool redem = false)
         {
             var k = "HKCU:\\" + Cle;

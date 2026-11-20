@@ -67,8 +67,105 @@ namespace GamingTweaker.Ui
         public bool RaccourciDisponible { get { return raccourciDisponible; } set { if (Set(ref raccourciDisponible, value)) { Raise("TexteRaccourci"); Raise("EtatBouton"); } } }
         public string TexteRaccourci { get { return Raccourci + (raccourciDisponible ? "" : " (indisponible : déjà utilisé par une autre application, choisissez-en un autre)"); } }
 
-        /// <summary>La combinaison a changé : l'application la réenregistre auprès de Windows.</summary>
+        /// <summary>Une combinaison (compteur ou enregistrement) a changé : l'application les réenregistre auprès de Windows.</summary>
         public event Action RaccourciChange;
+
+        // ---------- Enregistrement d'une partie ----------
+
+        public string RaccourciEnregistrement { get { return TexteCombinaison(config.RaccourciEnregistrementModificateurs, config.RaccourciEnregistrementTouche); } }
+        public uint RaccourciEnregistrementModificateurs { get { return config.RaccourciEnregistrementModificateurs; } }
+        public uint RaccourciEnregistrementTouche { get { return config.RaccourciEnregistrementTouche; } }
+        private bool raccourciEnregistrementDisponible = true;
+        public bool RaccourciEnregistrementDisponible
+        {
+            get { return raccourciEnregistrementDisponible; }
+            set { if (Set(ref raccourciEnregistrementDisponible, value)) Raise("TexteRaccourciEnregistrement"); }
+        }
+        public string TexteRaccourciEnregistrement
+        {
+            get { return RaccourciEnregistrement + (raccourciEnregistrementDisponible ? "" : " (indisponible : déjà utilisé par une autre application, choisissez-en un autre)"); }
+        }
+
+        public string DefinirRaccourciEnregistrement(uint modificateurs, uint touche)
+        {
+            var refus = CompteurConfig.RefusRaccourci(modificateurs, touche);
+            if (refus != null) return refus;
+            if (modificateurs == config.RaccourciModificateurs && touche == config.RaccourciTouche) return "Cette combinaison affiche déjà le compteur : choisissez-en une autre.";
+            if (config.RaccourciEnregistrementModificateurs == modificateurs && config.RaccourciEnregistrementTouche == touche) return null;
+            config.RaccourciEnregistrementModificateurs = modificateurs; config.RaccourciEnregistrementTouche = touche;
+            Raise("RaccourciEnregistrement"); Raise("TexteRaccourciEnregistrement");
+            Modifie(false);
+            var h = RaccourciChange; if (h != null) h();
+            return null;
+        }
+
+        private EnregistreurSession enregistreur;
+        /// <summary>Dossier des parties enregistrées (Documents\GamingTweaker\Sessions de jeu ; remplacé par les tests).</summary>
+        public string DossierSessions { get; set; } = SessionsJeu.DossierParDefaut;
+        public bool EnregistrementEnCours { get { return enregistreur != null; } }
+        private string texteEnregistrement = "";
+        public string TexteEnregistrement { get { return texteEnregistrement; } private set { Set(ref texteEnregistrement, value ?? ""); } }
+        private string etatEnregistrement = "";
+        /// <summary>Dernier événement de l'enregistrement (début, fin, rapport écrit, partie trop courte), affiché dans Paramètres.</summary>
+        public string EtatEnregistrement { get { return etatEnregistrement; } private set { Set(ref etatEnregistrement, value ?? ""); } }
+        /// <summary>Début ou fin d'enregistrement : (titre, texte) pour une notification de Windows.</summary>
+        public event Action<string, string> NotificationEnregistrement;
+        /// <summary>Rapport (.txt) de la dernière partie enregistrée.</summary>
+        public string DernierRapport { get; private set; }
+
+        /// <summary>Démarre ou arrête l'enregistrement de la partie (raccourci, bouton).</summary>
+        public void BasculerEnregistrement() { if (enregistreur == null) DemarrerEnregistrement(); else ArreterEnregistrement(); }
+
+        public void DemarrerEnregistrement()
+        {
+            if (enregistreur != null) return;
+            enregistreur = new EnregistreurSession(DateTime.Now);
+            DemarrerSource();
+            TexteEnregistrement = "● REC 0:00";
+            EtatEnregistrement = "Enregistrement en cours depuis " + enregistreur.Debut.ToString("HH:mm", Fr) + " (" + RaccourciEnregistrement + " pour l'arrêter).";
+            Raise("EnregistrementEnCours"); Raise("Visible");
+            var h = AffichageChange; if (h != null) h();
+            var n = NotificationEnregistrement; if (n != null) n("Enregistrement de la partie démarré", "Jouez normalement ; " + RaccourciEnregistrement + " pour l'arrêter et obtenir le bilan.");
+        }
+
+        /// <summary>Arrête l'enregistrement et écrit le bilan ; renvoie le chemin du rapport (null : partie trop courte ou erreur).</summary>
+        public string ArreterEnregistrement()
+        {
+            var e = enregistreur;
+            if (e == null) return null;
+            enregistreur = null;
+            TexteEnregistrement = "";
+            if (!config.Actif && !modePlacement) ArreterSource();
+            Raise("EnregistrementEnCours"); Raise("Visible");
+            var h = AffichageChange; if (h != null) h();
+            string titre, texte, chemin = null;
+            var r = e.Terminer(DateTime.Now);
+            if (r == null)
+            {
+                titre = "Partie trop courte";
+                texte = "Moins de " + SessionsJeu.MinimumImages + " images du jeu au premier plan : rien n'a été enregistré.";
+            }
+            else
+            {
+                try
+                {
+                    var precedente = SessionsJeu.Precedente(SessionsJeu.Lister(DossierSessions), r);
+                    chemin = SessionsJeu.Enregistrer(r, e.TempsImagesMs, precedente, DossierSessions);
+                    DernierRapport = chemin;
+                    titre = "Partie enregistrée : " + r.Jeu;
+                    texte = SessionsJeu.Synthese(r, precedente);
+                }
+                catch (Exception ex)
+                {
+                    TraceAppli.Erreur("enregistrement de la partie", ex);
+                    titre = "Partie non enregistrée"; texte = ex.Message;
+                }
+            }
+            EtatEnregistrement = titre + " : " + texte;
+            Raise("DernierRapport");
+            var n = NotificationEnregistrement; if (n != null) n(titre, texte);
+            return chemin;
+        }
 
         /// <summary>Change le raccourci ; renvoie la raison d'un refus, ou null.</summary>
         public string DefinirRaccourci(uint modificateurs, uint touche)
@@ -117,7 +214,7 @@ namespace GamingTweaker.Ui
             {
                 if (config.Actif == value) return;
                 config.Actif = value;
-                if (value) DemarrerSource(); else if (!modePlacement) ArreterSource();
+                if (value) DemarrerSource(); else if (!modePlacement && enregistreur == null) ArreterSource();
                 Raise(); Raise("EtatBouton"); Modifie(true);
             }
         }
@@ -151,7 +248,7 @@ namespace GamingTweaker.Ui
             set
             {
                 if (!Set(ref modePlacement, value)) return;
-                if (value) DemarrerSource(); else if (!config.Actif) ArreterSource();
+                if (value) DemarrerSource(); else if (!config.Actif && enregistreur == null) ArreterSource();
                 var h = AffichageChange; if (h != null) h();
             }
         }
@@ -332,6 +429,14 @@ namespace GamingTweaker.Ui
             TexteGpu = Pourcent("GPU", c.Gpu) + (config.TempGpu ? Temperature(c.TempGpu) : "");
             TexteRam = Pourcent("RAM", c.Ram) + (c.Ram.HasValue && c.RamTotaleGo > 0 ? "  " + c.RamUtiliseeGo.ToString("0.0", Fr) + "/" + c.RamTotaleGo.ToString("0", Fr) + " Go" : "");
 
+            if (enregistreur != null)
+            {
+                enregistreur.Ajouter(r);
+                var d = DateTime.Now - enregistreur.Debut;
+                TexteEnregistrement = "● REC " + ((int)d.TotalMinutes).ToString(Fr) + ":" + d.Seconds.ToString("00", Fr) + (enregistreur.Jeu.Length > 0 ? "  " + enregistreur.Jeu : "");
+                if (enregistreur.Plein) ArreterEnregistrement();
+            }
+
             historique.Add(m == null ? double.NaN : m.Fps);
             var max = config.DureeCourbe * RelevesParSeconde;
             if (historique.Count > CompteurConfig.DureesCourbe.Max() * RelevesParSeconde) historique.RemoveAt(0);
@@ -408,6 +513,7 @@ namespace GamingTweaker.Ui
 
         public void Dispose()
         {
+            if (enregistreur != null) ArreterEnregistrement();
             Enregistrer();
             ArreterSource();
         }

@@ -125,6 +125,87 @@ namespace GamingTweaker.Tests
             Assert.Equal(4, vm.TuilesMateriel.Count);
         }
 
+        [Theory]
+        [InlineData("theme sombre", "Paramètres")]
+        [InlineData("Compteur", "Paramètres")]
+        [InlineData("raccourci", "Paramètres")]
+        [InlineData("steam", "Mode Jeu")]
+        [InlineData("quarantaine", "Historique")]
+        [InlineData("température", "Informations")]
+        public void La_recherche_trouve_les_reglages_hors_catalogue(string recherche, string menu)
+        {
+            vm.Recherche = recherche;
+            Assert.Contains(vm.ResultatsPages, p => p.Menu == menu);
+            vm.AllerCommand.Execute(vm.ResultatsPages.First(p => p.Menu == menu).Menu);
+            Assert.Equal(menu, vm.MenuCourant);
+            Assert.False(vm.EnRecherche);
+            Assert.Empty(vm.ResultatsPages);
+        }
+
+        [Fact]
+        public void Recherche_sans_reglage_correspondant()
+        {
+            vm.Recherche = "pointeur";
+            Assert.Empty(vm.ResultatsPages);
+            Assert.Contains(vm.Visibles, o => o.Id == "opt.sur");
+        }
+
+        [Fact]
+        public void Le_menu_replie_est_memorise_sur_ce_pc()
+        {
+            Assert.False(vm.MenuReplie);
+            vm.BasculerMenuCommand.Execute(null);
+            Assert.True(vm.MenuReplie);
+            Assert.True(Cree(new CatalogItem[0]).MenuReplie);   // relu au lancement suivant
+            vm.MenuReplie = false;
+            Assert.False(Cree(new CatalogItem[0]).MenuReplie);
+        }
+
+        [Fact]
+        public void Tuile_materiel_ouvre_informations_et_alerte_disque_remontee()
+        {
+            vm.OuvrirInformations("GPU");
+            Assert.Equal("Informations", vm.MenuCourant);
+            Assert.Equal("", vm.AlerteMateriel);
+            vm.TuilesMateriel = new[] { MaterielPc.TuileDisque(@"C:\", "SSD", null, 500.0 * 1073741824, 5.0 * 1073741824) };
+            Assert.Contains("Disque presque plein", vm.AlerteMateriel);
+        }
+
+        [Fact]
+        public async Task Mise_a_jour_en_un_clic_installe_puis_relance()
+        {
+            var v = new VersionDisponible { Version = new Version(9, 0, 0), Url = "https://github.com/alexandre-dfr/GTweak/releases/tag/v9.0.0",
+                                            UrlExe = "https://github.com/alexandre-dfr/GTweak/releases/download/v9.0.0/GamingTweaker.exe", Sha256 = new string('a', 64) };
+            string relance = null;
+            vm.InstallerMiseAJour = x => Task.FromResult(new ResultatMiseAJour { Exe = @"C:\Jeux\GamingTweaker.exe" });
+            vm.RelancerApresMiseAJour = exe => relance = exe;
+            Assert.False(vm.PeutMettreAJour);
+            vm.NouvelleVersion = v;
+            Assert.True(vm.PeutMettreAJour);
+            await vm.MettreAJourAsync();
+            Assert.Equal(@"C:\Jeux\GamingTweaker.exe", relance);
+
+            vm.InstallerMiseAJour = x => { throw new InvalidOperationException("Mise à jour refusée : empreinte."); };
+            relance = null;
+            await vm.MettreAJourAsync();
+            Assert.Null(relance);
+            Assert.Equal("Mise à jour refusée : empreinte.", vm.Message);
+            Assert.True(vm.PeutMettreAJour);
+        }
+
+        [Fact]
+        public async Task Rechercher_une_mise_a_jour_depuis_les_parametres()
+        {
+            vm.RechercherVersion = () => Task.FromResult<VersionDisponible>(null);
+            await vm.RechercherMiseAJourAsync();
+            Assert.StartsWith("Aucune version plus récente", vm.EtatRechercheVersion);
+            vm.RechercherVersion = () => Task.FromResult(new VersionDisponible { Version = new Version(9, 1, 0), Url = "https://github.com/x" });
+            vm.NouvelleVersionMasquee = true;
+            await vm.RechercherMiseAJourAsync();
+            Assert.True(vm.NouvelleVersionVisible);
+            Assert.Equal("GamingTweaker 9.1.0 est disponible.", vm.EtatRechercheVersion);
+        }
+
         private class SourceVide : ISourceCompteur
         {
             public void Demarrer() { }

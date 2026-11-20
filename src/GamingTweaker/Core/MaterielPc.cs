@@ -28,6 +28,11 @@ namespace GamingTweaker.Core
         /// <summary>Part occupée (0 à 1) pour une jauge ; null : pas de jauge.</summary>
         public double? Proportion { get; set; }
         public bool AJauge { get { return Proportion.HasValue; } }
+        /// <summary>Section du menu Informations ouverte par un clic sur la tuile (« CPU », « GPU », « RAM », « Disques »).</summary>
+        public string Section { get; set; }
+        /// <summary>Alerte à afficher sur la tuile (disque presque plein), ou null.</summary>
+        public string Alerte { get; set; }
+        public bool AAlerte { get { return !string.IsNullOrEmpty(Alerte); } }
         public double ValeurJauge { get { return Proportion ?? 0; } }
     }
 
@@ -43,15 +48,27 @@ namespace GamingTweaker.Core
 
         public const string IconeCpu = "\uE950", IconeGpu = "\uE7F4", IconeRam = "\uE81E", IconeDisque = "\uEDA2";
 
+        /// <summary>Section du menu Informations correspondant à une tuile.</summary>
+        public static string SectionDe(string libelle)
+        {
+            switch (libelle) { case "Processeur": return "CPU"; case "Carte graphique": return "GPU"; case "Mémoire": return "RAM"; case "Disque système": return "Disques"; default: return null; }
+        }
+
+        /// <summary>Même seuil que le diagnostic : moins de 20 Go ou moins de 10 % libres.</summary>
+        public static bool DisquePresquePlein(double totalOctets, double libreOctets)
+        {
+            return totalOctets > 0 && (libreOctets < 20 * 1073741824d || libreOctets / totalOctets < 0.10);
+        }
+
         /// <summary>Tuiles d'attente, avant la lecture.</summary>
         public static IReadOnlyList<TuileMateriel> EnLecture()
         {
             return new[]
             {
-                new TuileMateriel { Libelle = "Processeur", Icone = IconeCpu, Valeur = Lecture },
-                new TuileMateriel { Libelle = "Carte graphique", Icone = IconeGpu, Valeur = Lecture },
-                new TuileMateriel { Libelle = "Mémoire", Icone = IconeRam, Valeur = Lecture },
-                new TuileMateriel { Libelle = "Disque système", Icone = IconeDisque, Valeur = Lecture },
+                new TuileMateriel { Libelle = "Processeur", Icone = IconeCpu, Valeur = Lecture, Section = "CPU" },
+                new TuileMateriel { Libelle = "Carte graphique", Icone = IconeGpu, Valeur = Lecture, Section = "GPU" },
+                new TuileMateriel { Libelle = "Mémoire", Icone = IconeRam, Valeur = Lecture, Section = "RAM" },
+                new TuileMateriel { Libelle = "Disque système", Icone = IconeDisque, Valeur = Lecture, Section = "Disques" },
             };
         }
 
@@ -66,7 +83,7 @@ namespace GamingTweaker.Core
             TuileMateriel t;
             try { t = f() ?? new TuileMateriel { Valeur = Inconnu }; }
             catch (Exception ex) { TraceAppli.Erreur("accueil : lecture « " + libelle + " »", ex); t = new TuileMateriel { Valeur = Inconnu }; }
-            t.Libelle = libelle; t.Icone = icone;
+            t.Libelle = libelle; t.Icone = icone; t.Section = SectionDe(libelle);
             if (string.IsNullOrWhiteSpace(t.Valeur)) t.Valeur = Inconnu;
             return t;
         }
@@ -162,7 +179,11 @@ namespace GamingTweaker.Core
             if (totalOctets <= 0) return new TuileMateriel { Valeur = Inconnu };
             var titre = (lecteur ?? "").TrimEnd('\\') + (string.IsNullOrEmpty(type) ? "" : " · " + type);
             var detail = Taille(libreOctets) + " libres sur " + Taille(totalOctets) + (string.IsNullOrWhiteSpace(modele) ? "" : " · " + modele.Trim());
-            return new TuileMateriel { Valeur = titre.Trim(), Detail = detail, Proportion = Math.Max(0, Math.Min(1, 1 - libreOctets / totalOctets)) };
+            return new TuileMateriel
+            {
+                Valeur = titre.Trim(), Detail = detail, Proportion = Math.Max(0, Math.Min(1, 1 - libreOctets / totalOctets)),
+                Alerte = DisquePresquePlein(totalOctets, libreOctets) ? "Disque presque plein : " + Taille(libreOctets) + " libres." : null,
+            };
         }
 
         public static string TypeMemoire(int smbios)

@@ -148,7 +148,19 @@ namespace GamingTweaker.Ui
         public IReadOnlyList<TuileMateriel> TuilesMateriel
         {
             get { return tuilesMateriel; }
-            set { Set(ref tuilesMateriel, value ?? MaterielPc.EnLecture()); }
+            set { if (Set(ref tuilesMateriel, value ?? MaterielPc.EnLecture())) Raise("AlerteMateriel"); }
+        }
+        /// <summary>Alerte matériel de l'accueil (disque système presque plein), ou chaîne vide.</summary>
+        public string AlerteMateriel { get { var t = tuilesMateriel.FirstOrDefault(x => x.AAlerte); return t == null ? "" : t.Alerte; } }
+
+        private ICommand ouvrirInformations;
+        /// <summary>Ouvre le menu Informations sur la section passée en paramètre (« CPU », « GPU », « RAM », « Disques »).</summary>
+        public ICommand OuvrirInformationsCommand { get { return ouvrirInformations ?? (ouvrirInformations = new RelayCommand(p => OuvrirInformations(p as string))); } }
+        public void OuvrirInformations(string section)
+        {
+            Recherche = "";
+            if (info != null) info.SectionDemandee = section;
+            MenuCourant = MenuInformations;
         }
 
         public string ResumePc
@@ -208,6 +220,8 @@ namespace GamingTweaker.Ui
 
         /// <summary>Appelée par la vue pour confirmer l'absence de point de restauration (peut venir d'un autre thread).</summary>
         public Func<string, bool> ConfirmSansPointDeRestauration { get; set; }
+        /// <summary>Appelée par la vue pour proposer d'activer la protection du système (peut venir d'un autre thread).</summary>
+        public Func<string, bool> ConfirmActiverProtection { get; set; }
         /// <summary>Appelée avant d'enregistrer un profil contenant une option Risqué.</summary>
         public Func<IReadOnlyList<OptionViewModel>, bool> ConfirmerProfilRisque { get; set; }
 
@@ -335,6 +349,39 @@ namespace GamingTweaker.Ui
             Message = "Le guide de démarrage s'affiche de nouveau sur l'accueil.";
         }
 
+        public const string FichierMenuReplie = "menu-replie";
+        private bool? menuReplie;
+        /// <summary>Barre latérale repliée (icônes seules) ; mémorisé sur ce PC (fichier témoin dans le dossier de la machine).</summary>
+        public bool MenuReplie
+        {
+            get
+            {
+                if (!menuReplie.HasValue)
+                {
+                    try { menuReplie = paths != null && !string.IsNullOrEmpty(paths.MachineDir) && File.Exists(Path.Combine(paths.MachineDir, FichierMenuReplie)); }
+                    catch (Exception) { menuReplie = false; }
+                }
+                return menuReplie.Value;
+            }
+            set
+            {
+                if (MenuReplie == value) return;
+                menuReplie = value;
+                try
+                {
+                    if (paths != null && !string.IsNullOrEmpty(paths.MachineDir))
+                    {
+                        var f = Path.Combine(paths.MachineDir, FichierMenuReplie);
+                        if (value) { Directory.CreateDirectory(paths.MachineDir); File.WriteAllText(f, ""); } else if (File.Exists(f)) File.Delete(f);
+                    }
+                }
+                catch (Exception ex) { TraceAppli.Erreur("barre latérale : choix non mémorisé", ex); }
+                Raise();
+            }
+        }
+        private ICommand basculerMenu;
+        public ICommand BasculerMenuCommand { get { return basculerMenu ?? (basculerMenu = new RelayCommand(_ => MenuReplie = !MenuReplie)); } }
+
         public string TexteVersion { get { return "GamingTweaker " + VersionAppli.Texte; } }
 
         private CompteurViewModel compteurVm;
@@ -349,7 +396,60 @@ namespace GamingTweaker.Ui
         public VersionDisponible NouvelleVersion
         {
             get { return nouvelleVersion; }
-            set { if (Set(ref nouvelleVersion, value)) { Raise("NouvelleVersionVisible"); Raise("TexteNouvelleVersion"); } }
+            set { if (Set(ref nouvelleVersion, value)) { Raise("NouvelleVersionVisible"); Raise("TexteNouvelleVersion"); Raise("PeutMettreAJour"); } }
+        }
+
+        private bool miseAJourEnCours;
+        public bool MiseAJourEnCours
+        {
+            get { return miseAJourEnCours; }
+            private set { if (Set(ref miseAJourEnCours, value)) { Raise("PeutMettreAJour"); Raise("TexteNouvelleVersion"); } }
+        }
+        /// <summary>Mise à jour en un clic possible : l'empreinte de l'exe est publiée et rien n'est en cours.</summary>
+        public bool PeutMettreAJour { get { return nouvelleVersion != null && nouvelleVersion.InstallableEnUnClic && !miseAJourEnCours; } }
+        /// <summary>Installe la nouvelle version (branché par l'application) ; renvoie l'exe à relancer.</summary>
+        public Func<VersionDisponible, Task<ResultatMiseAJour>> InstallerMiseAJour { get; set; }
+        /// <summary>Relance l'exe mis à jour puis ferme l'application (branché par l'application).</summary>
+        public Action<string> RelancerApresMiseAJour { get; set; }
+
+        /// <summary>Recherche d'une nouvelle version (Paramètres) ; remplaçable par les tests.</summary>
+        public Func<Task<VersionDisponible>> RechercherVersion { get; set; } = () => MiseAJour.VerifierAsync();
+
+        private string etatRecherche = "";
+        public string EtatRechercheVersion { get { return etatRecherche; } private set { Set(ref etatRecherche, value ?? ""); } }
+
+        public async Task RechercherMiseAJourAsync()
+        {
+            EtatRechercheVersion = "Recherche en cours…";
+            VersionDisponible v = null;
+            try { v = await RechercherVersion(); } catch (Exception ex) { TraceAppli.Erreur("recherche de mise à jour", ex); }
+            if (v != null) { NouvelleVersionMasquee = false; NouvelleVersion = v; EtatRechercheVersion = "GamingTweaker " + v.Version + " est disponible."; }
+            else EtatRechercheVersion = "Aucune version plus récente trouvée (ou GitHub injoignable). Vous avez la version " + MiseAJour.VersionCourante + ".";
+        }
+
+        private ICommand rechercherMaj, mettreAJour;
+        public ICommand RechercherMiseAJourCommand { get { return rechercherMaj ?? (rechercherMaj = new RelayCommand(async _ => await RechercherMiseAJourAsync())); } }
+        public ICommand MettreAJourCommand { get { return mettreAJour ?? (mettreAJour = new RelayCommand(async _ => await MettreAJourAsync(), _ => PeutMettreAJour)); } }
+
+        /// <summary>Télécharge, vérifie (SHA-256, signature) et installe la nouvelle version, puis relance l'application.</summary>
+        public async Task MettreAJourAsync()
+        {
+            if (!PeutMettreAJour || InstallerMiseAJour == null) return;
+            MiseAJourEnCours = true;
+            Message = "Téléchargement de GamingTweaker " + nouvelleVersion.Version + "…";
+            try
+            {
+                var r = await InstallerMiseAJour(nouvelleVersion);
+                Message = "GamingTweaker " + nouvelleVersion.Version + " est installé : redémarrage de l'application."
+                        + (r.Remarques.Count > 0 ? " " + string.Join(" ", r.Remarques) : "");
+                if (RelancerApresMiseAJour != null) RelancerApresMiseAJour(r.Exe);
+            }
+            catch (Exception ex)
+            {
+                TraceAppli.Erreur("mise à jour en un clic", ex);
+                Message = ex.Message;
+            }
+            finally { MiseAJourEnCours = false; }
         }
         /// <summary>Bandeau fermé par l'utilisateur (jusqu'au prochain lancement).</summary>
         public bool NouvelleVersionMasquee
@@ -362,7 +462,9 @@ namespace GamingTweaker.Ui
         {
             get
             {
-                return nouvelleVersion == null ? "" : "GamingTweaker " + nouvelleVersion.Version + " est disponible (vous avez la version " + MiseAJour.VersionCourante + ").";
+                if (nouvelleVersion == null) return "";
+                if (miseAJourEnCours) return "Mise à jour vers GamingTweaker " + nouvelleVersion.Version + " en cours…";
+                return "GamingTweaker " + nouvelleVersion.Version + " est disponible (vous avez la version " + MiseAJour.VersionCourante + ").";
             }
         }
         /// <summary>Bandeau d'avertissement (compte d'élévation différent du bureau).</summary>
@@ -383,9 +485,51 @@ namespace GamingTweaker.Ui
             return sb.ToString().ToLowerInvariant().Trim();
         }
 
+        /// <summary>Réglages des menus sans options (Paramètres, Mode Jeu, Historique, Informations, Diagnostic) proposés par la recherche.</summary>
+        public static readonly IReadOnlyList<ResultatPage> PagesRecherche = new[]
+        {
+            Page(MenuParametres, "Thème clair ou sombre", "Comme Windows, clair ou sombre.", "theme sombre clair dark light couleur apparence"),
+            Page(MenuParametres, "Démarrer GamingTweaker avec Windows", "Zone de notification, droits administrateur.", "demarrage windows automatique ouverture session tray"),
+            Page(MenuParametres, "Guide de démarrage", "Réafficher le guide de l'accueil.", "guide aide tutoriel premier lancement"),
+            Page(MenuParametres, "Mise à jour de GamingTweaker", "Rechercher et installer une nouvelle version en un clic.", "mise a jour version nouvelle telecharger update"),
+            Page(MenuParametres, "Compteur FPS en jeu", "Afficher, raccourci, position, taille, couleurs.", "compteur fps overlay surimpression images par seconde osd"),
+            Page(MenuParametres, "Contenu du compteur", "FPS, temps d'image, 1 % bas, courbe, CPU, GPU, RAM, températures.", "temps image frametime 1% bas courbe cpu gpu ram temperature"),
+            Page(MenuParametres, "Raccourcis clavier", "Afficher le compteur, enregistrer une partie.", "raccourci touche clavier hotkey"),
+            Page(MenuParametres, "Enregistrement des parties", "FPS moyen, 1 % bas et comparaison avec la partie précédente.", "enregistrer enregistrement partie session benchmark capture bilan"),
+            Page(MenuModeJeu, "Mode Jeu", "Arrêter des services et des processus le temps d'une partie.", "mode jeu game mode services processus liberer ressources"),
+            Page(MenuModeJeu, "Mode Jeu automatique", "Activer le Mode Jeu au lancement d'un jeu (Steam, Epic, .exe).", "automatique jeux steam epic exe surveillance lancement"),
+            Page(MenuModeJeu, "Profil NVIDIA du Mode Jeu", "Performance ou Qualité pendant la partie.", "nvidia profil pilote performance qualite"),
+            Page(MenuHistorique, "Annuler une session", "Revenir sur les options appliquées.", "annuler restaurer revenir session journal"),
+            Page(MenuHistorique, "Quarantaine", "Fichiers mis de côté par le nettoyage.", "quarantaine fichiers supprimes restaurer"),
+            Page(MenuHistorique, "Mesures avant / après", "Temps DPC, interruptions, mémoire libre.", "mesures dpc latence interruptions avant apres releve"),
+            Page(MenuHistorique, "Parties enregistrées", "Bilans des parties et évolution des FPS.", "parties sessions jeu fps evolution bilan"),
+            Page(MenuHistorique, "Désinstaller GamingTweaker", "Retirer la routine et le dossier de données.", "desinstaller supprimer uninstall"),
+            Page(MenuInformations, "Informations du PC", "Processeur, carte mère, mémoire, carte graphique, disques, réseau, écrans.", "informations materiel cpu gpu ram disque carte mere bios reseau ecran pilotes"),
+            Page(MenuInformations, "Capteurs et températures", "Températures, fréquences, charges (PawnIO).", "capteurs temperature frequence pawnio sensors"),
+            Page(MenuDiagnostic, "Diagnostic jeu", "Écran sous sa fréquence, XMP/EXPO, HAGS, plan d'alimentation, disque plein.", "diagnostic hz frequence ecran xmp expo hags alimentation disque plein pilote"),
+        };
+
+        private static ResultatPage Page(string menu, string titre, string description, string mots)
+        {
+            return new ResultatPage { Menu = menu, Titre = titre, Description = description, Texte = Normaliser(titre + " " + description + " " + mots + " " + menu) };
+        }
+
+        /// <summary>Réglages des menus sans options correspondant à la recherche (chaque mot doit être trouvé).</summary>
+        public ObservableCollection<ResultatPage> ResultatsPages { get; } = new ObservableCollection<ResultatPage>();
+
+        /// <summary>Pages correspondant à une recherche normalisée : tous les mots de la recherche doivent y figurer.</summary>
+        public static List<ResultatPage> ChercherPages(string q)
+        {
+            var mots = (q ?? "").Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            if (mots.Length == 0) return new List<ResultatPage>();
+            return PagesRecherche.Where(p => mots.All(m => p.Texte.Contains(m))).ToList();
+        }
+
         private void Filtrer()
         {
             var q = Normaliser(recherche);
+            ResultatsPages.Clear();
+            foreach (var p in ChercherPages(q)) ResultatsPages.Add(p);
             IEnumerable<OptionViewModel> src;
             if (q.Length > 0) src = Options.Where(o => o.SearchText.Contains(q));
             else if (EstEmplacement) src = Enumerable.Empty<OptionViewModel>();

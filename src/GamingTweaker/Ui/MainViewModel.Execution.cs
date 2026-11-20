@@ -86,6 +86,7 @@ namespace GamingTweaker.Ui
             {
                 Selection = BuildSelection(), CatalogItems = items, Facts = facts, Paths = paths,
                 ConfirmSansPointDeRestauration = ConfirmSansPointDeRestauration,
+                ConfirmActiverProtection = ConfirmActiverProtection,
             };
             if (run == null) throw new InvalidOperationException("Aucun exécuteur configuré.");
             // Le pipeline prend le verrou et crée le point de restauration avant son premier await : hors du thread de l'interface.

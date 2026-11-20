@@ -22,7 +22,7 @@
             <TextBlock Text="{Binding Statut}" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" TextWrapping="Wrap"/>
         </DockPanel>
 
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <ScrollViewer x:Name="Defilement" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel>
                 <!-- Capteurs en direct -->
                 <Border Style="{StaticResource Carte}">
@@ -53,7 +53,7 @@
                 </Border>
 
                 <!-- Fiche matériel -->
-                <ItemsControl ItemsSource="{Binding Sections}">
+                <ItemsControl x:Name="ListeSections" ItemsSource="{Binding Sections}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Border Style="{StaticResource Carte}">

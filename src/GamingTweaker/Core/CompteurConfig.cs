@@ -80,6 +80,10 @@ namespace GamingTweaker.Core
         [JsonProperty("raccourciModificateurs")] public uint RaccourciModificateurs { get; set; } = RaccourciModificateursParDefaut;
         [JsonProperty("raccourciTouche")] public uint RaccourciTouche { get; set; } = RaccourciToucheParDefaut;
         public const uint RaccourciModificateursParDefaut = 2 | 4, RaccourciToucheParDefaut = 0x7A;
+        /// <summary>Raccourci global qui démarre ou arrête l'enregistrement d'une partie. Par défaut Ctrl+Maj+F10.</summary>
+        [JsonProperty("raccourciEnregistrementModificateurs")] public uint RaccourciEnregistrementModificateurs { get; set; } = RaccourciModificateursParDefaut;
+        [JsonProperty("raccourciEnregistrementTouche")] public uint RaccourciEnregistrementTouche { get; set; } = RaccourciEnregistrementToucheParDefaut;
+        public const uint RaccourciEnregistrementToucheParDefaut = 0x79;
 
         /// <summary>
         /// Combinaison acceptée : au moins Ctrl ou Alt (une touche seule ou Maj+touche gênerait le jeu), une touche qui n'est pas un modificateur,
@@ -132,6 +136,13 @@ namespace GamingTweaker.Core
             OpaciteFond = Math.Max(0.2, Math.Min(1.0, OpaciteFond));
             if (Array.IndexOf(DureesCourbe, DureeCourbe) < 0) DureeCourbe = 30;
             if (RefusRaccourci(RaccourciModificateurs, RaccourciTouche) != null) { RaccourciModificateurs = RaccourciModificateursParDefaut; RaccourciTouche = RaccourciToucheParDefaut; }
+            if (RefusRaccourci(RaccourciEnregistrementModificateurs, RaccourciEnregistrementTouche) != null
+                || (RaccourciEnregistrementModificateurs == RaccourciModificateurs && RaccourciEnregistrementTouche == RaccourciTouche))
+            {
+                RaccourciEnregistrementModificateurs = RaccourciModificateursParDefaut; RaccourciEnregistrementTouche = RaccourciEnregistrementToucheParDefaut;
+                // Le raccourci du compteur occupe déjà Ctrl+Maj+F10 : F9 à la place.
+                if (RaccourciModificateurs == RaccourciModificateursParDefaut && RaccourciTouche == RaccourciEnregistrementToucheParDefaut) RaccourciEnregistrementTouche = 0x78;
+            }
             if (double.IsNaN(X) || double.IsInfinity(X) || Math.Abs(X) > 100000) X = 0;
             if (double.IsNaN(Y) || double.IsInfinity(Y) || Math.Abs(Y) > 100000) Y = 0;
             return this;

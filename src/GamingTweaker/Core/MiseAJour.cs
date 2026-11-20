@@ -15,11 +15,16 @@ namespace GamingTweaker.Core
         public Version Version { get; set; }
         /// <summary>Page de la release (https://github.com/&lt;dépôt&gt;/releases/…), ouverte dans le navigateur ; rien n'est téléchargé par l'appli.</summary>
         public string Url { get; set; }
+        /// <summary>Lien de téléchargement de GamingTweaker.exe dans cette release (null : pas de mise à jour en un clic).</summary>
+        public string UrlExe { get; set; }
+        /// <summary>Empreinte SHA-256 de l'exe publiée par GitHub (64 caractères hexadécimaux en minuscules), ou null.</summary>
+        public string Sha256 { get; set; }
+        public bool InstallableEnUnClic { get { return UrlExe != null && Sha256 != null; } }
     }
 
     /// <summary>
     /// Vérifie au démarrage de l'interface si une release plus récente existe (API GitHub « releases/latest », qui ignore les pré-versions).
-    /// Rien n'est téléchargé ni installé : l'appli affiche un bandeau avec un lien vers la page de la release.
+    /// L'appli affiche un bandeau : lien vers la page de la release et, si GitHub publie l'empreinte de l'exe, mise à jour en un clic (MiseAJourInstallation).
     /// Toute erreur (hors ligne, réponse inattendue, limite de l'API) est silencieuse : aucun bandeau.
     /// </summary>
     public static class MiseAJour
@@ -27,6 +32,9 @@ namespace GamingTweaker.Core
         public const string Depot = "alexandre-dfr/GTweak";
         public const string UrlApi = "https://api.github.com/repos/" + Depot + "/releases/latest";
         private const string PrefixePage = "https://github.com/" + Depot + "/releases/";
+        public const string PrefixeTelechargement = "https://github.com/" + Depot + "/releases/download/";
+        public const string NomExe = "GamingTweaker.exe";
+        private static readonly Regex Empreinte = new Regex(@"^sha256:([0-9a-fA-F]{64})\z", RegexOptions.CultureInvariant);
         private static readonly Regex Tag = new Regex(@"^v?(\d{1,5})\.(\d{1,5})\.(\d{1,5})\z", RegexOptions.CultureInvariant);
 
         /// <summary>Version de l'exe en cours (Major.Minor.Build, la révision n'est pas publiée).</summary>
@@ -66,7 +74,21 @@ namespace GamingTweaker.Core
                 var url = ((string)o["html_url"] ?? "").Trim();
                 if (!url.StartsWith(PrefixePage, StringComparison.OrdinalIgnoreCase) || !SystemExe.UrlAcceptee(url)) return null;
                 var c = new Version(courante.Major, courante.Minor, Math.Max(0, courante.Build));
-                return v > c ? new VersionDisponible { Version = v, Url = url } : null;
+                if (v <= c) return null;
+                var d = new VersionDisponible { Version = v, Url = url };
+                // Exe de la release : nom exact, lien de téléchargement de ce dépôt en https, empreinte SHA-256 fournie par GitHub.
+                var assets = o["assets"] as JArray;
+                if (assets != null)
+                    foreach (var a in assets)
+                    {
+                        if (!string.Equals((string)a["name"], NomExe, StringComparison.Ordinal)) continue;
+                        var lien = ((string)a["browser_download_url"] ?? "").Trim();
+                        var m = Empreinte.Match(((string)a["digest"] ?? "").Trim());
+                        if (lien.StartsWith(PrefixeTelechargement, StringComparison.OrdinalIgnoreCase) && SystemExe.UrlAcceptee(lien) && m.Success)
+                        { d.UrlExe = lien; d.Sha256 = m.Groups[1].Value.ToLowerInvariant(); }
+                        break;
+                    }
+                return d;
             }
             catch (Exception) { return null; }
         }
@@ -86,7 +108,7 @@ namespace GamingTweaker.Core
             }
         }
 
-        private static async Task<string> HttpGetAsync(string url)
+        internal static async Task<string> HttpGetAsync(string url)
         {
             ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
             using (var c = new HttpClient { Timeout = TimeSpan.FromSeconds(10) })

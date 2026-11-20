@@ -14,7 +14,7 @@ Rien n'est installé. Les capteurs matériels (menu Informations) ne sont charg�
 
 - Seules les options cochées s'exécutent ; chaque option est classée Sûr, Avancé ou Risque. « Recommandé » ne coche que des options Sûr, et jamais celles que le catalogue en exclut (plan d'alimentation sur portable).
 - Le catalogue ne touche à aucune protection de sécurité (Defender, Spectre/Meltdown, VBS, BitLocker, Windows Update) et ne contient que des réglages à effet réel en jeu ou sur l'allègement de Windows ; les réglages placebo ou de pure apparence ont été retirés (voir `docs/revue-code-2026-11-11.md`).
-- Un point de restauration Windows est créé avant les options réversibles (si Windows l'autorise ; sinon vous êtes prévenu).
+- Un point de restauration Windows est créé avant les options réversibles. Si la protection du système est désactivée, l'application propose de l'activer sur le disque système puis réessaie ; sinon vous êtes prévenu avant de continuer.
 - Aucun redémarrage automatique : si un redémarrage est nécessaire, le rapport l'indique.
 - Les profils (`.json`) ne contiennent que des identifiants d'options, jamais de commande.
 - L'exe n'est pas signé : SmartScreen ou un antivirus peut le signaler. Il modifie le système, c'est normal.
@@ -31,8 +31,26 @@ Aucun ne contient d'option Risqué, d'option à liste (services, démarrage : le
 
 ## Accueil et Paramètres
 
-- **Accueil** : le matériel de ce PC (processeur, carte graphique et sa mémoire vidéo, mémoire vive, disque système avec son type et son espace libre), les profils intégrés en un clic, l'état des réglages par menu, le diagnostic et le Mode Jeu.
-- **Paramètres** (dernier menu) : thème (comme Windows, clair ou sombre), démarrage avec Windows, guide de l'accueil, version, et tous les réglages du compteur en jeu. Les deux boutons en haut à droite ne font que basculer : le compteur (affiché / masqué) et le thème (clair / sombre).
+- **Accueil** : le matériel de ce PC (processeur, carte graphique et sa mémoire vidéo, mémoire vive, disque système avec son type et son espace libre ; un clic ouvre le détail dans Informations, une alerte signale un disque presque plein), les profils intégrés en un clic, l'état des réglages par menu, le diagnostic et le Mode Jeu.
+- **Paramètres** (dernier menu) : thème (comme Windows, clair ou sombre), démarrage avec Windows, guide de l'accueil, version et mise à jour, réglages du compteur en jeu et de l'enregistrement des parties.
+- **Recherche** (Ctrl+F) : trouve les options de tous les menus, et aussi les réglages de Paramètres, Mode Jeu, Historique, Informations et Diagnostic (un clic ouvre le menu).
+- **Barre latérale** : icônes, repliable avec le bouton ☰ (choix mémorisé). Les deux boutons en haut à droite ne font que basculer : le compteur (affiché / masqué) et le thème (clair / sombre).
+
+## Enregistrer une partie
+
+**Ctrl+Maj+F10** (modifiable dans Paramètres) démarre l'enregistrement en jeu ; le même raccourci l'arrête. Le compteur n'a pas besoin d'être affiché. Tous les temps d'image du jeu au premier plan sont enregistrés (pas seulement deux relevés par seconde), les pauses (chargement, Alt+Tab) sont ignorées. À l'arrêt, une notification donne le bilan et l'écart avec la partie précédente du même jeu.
+
+Fichiers dans `Documents\GamingTweaker\Sessions de jeu` :
+
+- `<date> - <jeu>.txt` : bilan lisible (FPS moyen, 1 % et 0,1 % bas, temps d'image médian, 99 % et maximum, saccades, charge moyenne CPU/GPU/RAM, températures maximales) et comparaison avec la partie précédente : `FPS moyen 142,0 → 153,0 +7,7 %` ;
+- `<date> - <jeu>.csv` : le temps de chaque image, pour un graphique ;
+- `historique.csv` : une ligne par partie, à ouvrir dans Excel pour suivre l'évolution.
+
+Les parties sont aussi listées dans **Historique > Parties**. Pour comparer, rejouez la même scène avec les mêmes réglages graphiques, avant puis après une optimisation.
+
+## Mise à jour
+
+Quand une nouvelle version est publiée, un bandeau propose **Mettre à jour** (ou Paramètres > Rechercher une mise à jour). L'exe est téléchargé depuis la release GitHub et vérifié avant d'être installé : son empreinte SHA-256 doit être celle que GitHub publie, et si l'exe actuel est signé, le nouveau doit être signé par le même éditeur. L'exe en cours est remplacé (l'ancien est gardé à côté en `.ancien` jusqu'au lancement suivant), ainsi que les copies utilisées par la routine et le démarrage avec Windows, puis l'application redémarre.
 
 ## Compteur en jeu (FPS, CPU, GPU, RAM)
 

@@ -47,7 +47,26 @@ namespace GamingTweaker.Ui
             catch (Exception) { return System.Drawing.SystemIcons.Application; }
         }
 
-        public bool Visible { get { return icone.Visible; } set { icone.Visible = value; } }
+        private bool demande, temporaire;
+        private System.Windows.Threading.DispatcherTimer finTemporaire;
+        /// <summary>Icône demandée (mode automatique, démarrage avec Windows) ; une notification ponctuelle peut l'afficher quelques secondes en plus.</summary>
+        public bool Visible { get { return demande; } set { demande = value; icone.Visible = demande || temporaire; } }
+
+        /// <summary>Notification même quand l'icône est masquée : elle s'affiche le temps de la bulle (enregistrement d'une partie).</summary>
+        public void NotifierToujours(string titre, string texte)
+        {
+            if (!icone.Visible)
+            {
+                temporaire = true; icone.Visible = true;
+                if (finTemporaire == null)
+                {
+                    finTemporaire = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(8) };
+                    finTemporaire.Tick += (s, e) => { finTemporaire.Stop(); temporaire = false; icone.Visible = demande; };
+                }
+                finTemporaire.Stop(); finTemporaire.Start();
+            }
+            icone.ShowBalloonTip(5000, titre, texte, System.Windows.Forms.ToolTipIcon.Info);
+        }
 
         /// <summary>Infobulle de l'icône (63 caractères au plus) : état du Mode Jeu.</summary>
         public void Etat(bool modeJeuActif, bool autoActif)
@@ -64,6 +83,7 @@ namespace GamingTweaker.Ui
 
         public void Dispose()
         {
+            if (finTemporaire != null) finTemporaire.Stop();
             icone.Visible = false;
             icone.Dispose();
         }

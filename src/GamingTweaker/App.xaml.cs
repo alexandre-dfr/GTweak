@@ -16,6 +16,8 @@ namespace GamingTweaker
         public static bool DemarrageEnZone { get; set; }
 
         private IDisposable verrouInterface;
+        /// <summary>Ferme l'application après une mise à jour (même chemin que « Quitter » de la zone de notification).</summary>
+        private Action fermerApresMiseAJour;
 
         /// <summary>Vrai une fois la fenêtre principale construite : une erreur avant ce point ferme l'application (après le rapport).</summary>
         private bool demarrageTermine;
@@ -58,6 +60,7 @@ namespace GamingTweaker
                 Shutdown(2); return;
             }
             Exit += (s, ev) => verrouInterface.Dispose();
+            MiseAJourInstallation.NettoyerAnciens();
             // La fenêtre peut être cachée (zone de notification) : l'application s'arrête explicitement (Quitter, ou fermeture hors mode automatique).
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
             // Thème Windows 11 clair ou sombre (suit Windows par défaut), appliqué avant toute fenêtre.
@@ -182,6 +185,14 @@ namespace GamingTweaker
                     "Routine avec options risquées", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes,
             };
 
+            vm.InstallerMiseAJour = v => MiseAJourInstallation.InstallerAsync(v);
+            vm.RelancerApresMiseAJour = exe =>
+            {
+                try { MiseAJourInstallation.Relancer(exe); }
+                catch (Exception ex) { vm.Message = "Mise à jour installée, mais la relance a échoué (" + ex.Message + ") : relancez GamingTweaker."; return; }
+                if (fermerApresMiseAJour != null) fermerApresMiseAJour(); else Shutdown(0);
+            };
+
             fenetre = new Ui.MainWindow(vm);
             TraceAppli.Ecrire("interface : fenêtre principale créée");
             RapportErreur.Jalon("fenêtre principale créée");
@@ -199,14 +210,22 @@ namespace GamingTweaker
             vm.Compteur = compteur;
             var surimpression = new CompteurWindow(compteur);
             compteur.AffichageChange += () => surimpression.Appliquer();
-            RaccourciClavier raccourci = null;
-            // Raccourci global choisi dans les réglages du compteur ; réenregistré à chaque changement.
+            RaccourciClavier raccourci = null, raccourciEnregistrement = null;
+            // Raccourcis globaux choisis dans Paramètres (compteur, enregistrement d'une partie) ; réenregistrés à chaque changement.
             Action enregistrerRaccourci = () =>
             {
                 if (raccourci != null) { raccourci.Dispose(); raccourci = null; }
+                if (raccourciEnregistrement != null) { raccourciEnregistrement.Dispose(); raccourciEnregistrement = null; }
                 try { raccourci = new RaccourciClavier(compteur.RaccourciModificateurs, compteur.RaccourciTouche, () => Dispatcher.BeginInvoke(new Action(compteur.Basculer))); }
                 catch (Exception ex) { TraceAppli.Erreur("raccourci du compteur en jeu", ex); }
                 compteur.RaccourciDisponible = raccourci != null && raccourci.Enregistre;
+                try
+                {
+                    raccourciEnregistrement = new RaccourciClavier(compteur.RaccourciEnregistrementModificateurs, compteur.RaccourciEnregistrementTouche,
+                        () => Dispatcher.BeginInvoke(new Action(compteur.BasculerEnregistrement)), 0x4755);
+                }
+                catch (Exception ex) { TraceAppli.Erreur("raccourci d'enregistrement de partie", ex); }
+                compteur.RaccourciEnregistrementDisponible = raccourciEnregistrement != null && raccourciEnregistrement.Enregistre;
             };
             enregistrerRaccourci();
             compteur.RaccourciChange += enregistrerRaccourci;
@@ -214,6 +233,7 @@ namespace GamingTweaker
             Exit += (s, ev) =>
             {
                 if (raccourci != null) raccourci.Dispose();
+                if (raccourciEnregistrement != null) raccourciEnregistrement.Dispose();
                 compteur.Dispose();
                 surimpression.Close();
             };
@@ -247,6 +267,7 @@ namespace GamingTweaker
                 premiersControles();
             };
             Action quitterApp = () => { quitter = true; fenetre.Close(); Shutdown(0); };
+            fermerApresMiseAJour = quitterApp;
             zone = new ZoneNotification(() => Dispatcher.Invoke(ouvrir), () => Dispatcher.Invoke(quitterApp), () => auto.Actif, v => Dispatcher.Invoke(() => auto.Actif = v),
                 () => modeJeu.IsActive, () => Dispatcher.Invoke(() => { vm.ModeJeu.Synchroniser(); if (vm.ModeJeu.RetablirCommand.CanExecute(null)) vm.ModeJeu.RetablirCommand.Execute(null); }));
             surveillance.Notification += (titre, texte) => Dispatcher.BeginInvoke(new Action(() =>
@@ -255,6 +276,7 @@ namespace GamingTweaker
                 zone.Etat(modeJeu.IsActive, auto.Actif);
                 zone.Notifier(titre, texte);
             }));
+            compteur.NotificationEnregistrement += (titre, texte) => zone.NotifierToujours(titre, texte);
             vm.ModeJeu.PropertyChanged += (s, ev) => { if (ev.PropertyName == "EstActif") zone.Etat(modeJeu.IsActive, auto.Actif); };
             Action majAuto = () =>
             {

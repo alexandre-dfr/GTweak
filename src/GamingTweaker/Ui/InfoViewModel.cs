@@ -69,6 +69,10 @@ namespace GamingTweaker.Ui
         public bool CapteursActifs { get { return capteurs != null; } }
         public bool Visible { get { return visible; } }
 
+        private string sectionDemandee;
+        /// <summary>Section à faire défiler en tête de la vue (« CPU », « GPU »…), demandée depuis l'accueil ; la vue la remet à null une fois affichée.</summary>
+        public string SectionDemandee { get { return sectionDemandee; } set { sectionDemandee = value; Raise(); } }
+
         /// <summary>Appelé par le view-model principal selon le menu affiché.</summary>
         public void SetVisible(bool v)
         {

@@ -472,6 +472,7 @@ Chantiers (1-3 semaines) :
 
 1. **Distribution réelle** : README/spec disent « usage personnel, exe non signé » ; la demande de revue parle d'utilisateurs joueurs non techniques. Si l'exe sort du cercle privé, AGPL-3.0 (privacy.sexy) impose la publication des sources, et la signature devient nécessaire.
 2. **LibreHardwareMonitorLib 0.9.6** : je n'ai pas pu inspecter le paquet hors ligne. À confirmer qu'il n'embarque plus `WinRing0x64.sys` (pilote vulnérable, bloqué par HVCI et par plusieurs anti-triche) et que seul PawnIO est utilisé.
+   **Réponse (20/11/2026)** : paquets NuGet inspectés. `LibreHardwareMonitorLib` 0.9.6 n'embarque aucun `.sys` ni aucune référence à WinRing0 : ses ressources sont uniquement des modules PawnIO (`PawnIo.*.bin`). Sa dépendance `RAMSPDToolkit-NDD` 1.4.2 (« No Driver Distribution ») contient une interface `IWinRing0Driver` mais aucun pilote ; LibreHardwareMonitor l'utilise avec PawnIO. `DiskInfoToolkit` 1.1.2 : aucune référence. Seul PawnIO est donc chargé.
 3. **PawnIO et anti-triche** : comportement de Vanguard/FACEIT face au pilote PawnIO chargé pendant une partie, non vérifié.
 4. **BCD et BitLocker** : `disabledynamictick`/`useplatformclock` ne figurent pas dans le profil de validation BCD par défaut, mais ce n'est pas testé ici.
 5. **Build/publication** : aucun script de publication (`dotnet publish`, ILMerge non utilisé, DLL embarquées par cible MSBuild custom). Où est produit l'exe distribué, par qui, avec quel hash ?

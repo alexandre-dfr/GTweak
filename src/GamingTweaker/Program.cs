@@ -21,6 +21,12 @@ namespace GamingTweaker
         [STAThread]
         public static int Main(string[] args)
         {
+            // Relance après une mise à jour (« --relance <pid> ») : attendre la fermeture de l'ancienne instance, puis interface normale.
+            if (args.Length == 2 && string.Equals(args[0], MiseAJourInstallation.ArgumentRelance, StringComparison.OrdinalIgnoreCase))
+            {
+                MiseAJourInstallation.AttendreFin(args[1]);
+                args = new string[0];
+            }
             bool interfaceGraphique = args.Length == 0 || (args.Length == 1 && string.Equals(args[0], DemarrageWindows.Argument, StringComparison.OrdinalIgnoreCase));
             if (interfaceGraphique) RapportErreur.DebutDemarrage();
             // Toute exception non rattrapée laisse un rapport lisible (%LOCALAPPDATA%\GamingTweaker\erreurs.log) au lieu d'une fermeture muette.

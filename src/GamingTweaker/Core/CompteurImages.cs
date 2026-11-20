@@ -14,6 +14,8 @@ namespace GamingTweaker.Core
         public double? UnPourcentBas { get; set; }
         /// <summary>D'où viennent les images : « DirectX » ou « Vulkan/OpenGL » (noyau graphique).</summary>
         public string Source { get; set; }
+        /// <summary>Instants d'affichage de la fenêtre conservée (secondes, ordre chronologique) : l'enregistrement d'une partie en tire tous les temps d'image.</summary>
+        public double[] Instants { get; set; }
     }
 
     /// <summary>
@@ -89,7 +91,7 @@ namespace GamingTweaker.Core
                 var p99 = ecarts[Math.Max(0, (int)Math.Ceiling(0.99 * ecarts.Length) - 1)];
                 if (p99 > 0) bas = 1.0 / p99;
             }
-            return new MesureImages { Fps = fps, TempsImageMs = 1000.0 / fps, UnPourcentBas = bas };
+            return new MesureImages { Fps = fps, TempsImageMs = 1000.0 / fps, UnPourcentBas = bas, Instants = instants.ToArray() };
         }
     }
 }

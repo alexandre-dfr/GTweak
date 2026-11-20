@@ -17,6 +17,8 @@ namespace GamingTweaker.Core
         public bool Silent { get; set; }
         /// <summary>Appelée (mode interactif) quand le point de restauration est impossible ; renvoie vrai pour continuer.</summary>
         public Func<string, bool> ConfirmSansPointDeRestauration { get; set; }
+        /// <summary>Appelée (mode interactif) quand la protection du système est désactivée ; renvoie vrai pour l'activer et réessayer.</summary>
+        public Func<string, bool> ConfirmActiverProtection { get; set; }
         public IReadOnlyList<CatalogItem> CatalogItems { get; set; } = new List<CatalogItem>();
         public MachineFacts Facts { get; set; } = new MachineFacts();
         public DataPaths Paths { get; set; }
@@ -88,7 +90,17 @@ namespace GamingTweaker.Core
             // 1. Point de restauration (seulement si une option réversible est choisie).
             if (selected.Any(i => i.Reversible))
             {
-                var rp = restorePoint.TryCreate("GamingTweaker " + DateTime.Now.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture));
+                var description = "GamingTweaker " + DateTime.Now.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+                var rp = restorePoint.TryCreate(description);
+                // Protection du système désactivée : proposée à l'activation (jamais en mode silencieux), puis nouvel essai.
+                var protection = restorePoint as IProtectionSysteme;
+                if (rp != null && !rp.Created && rp.ProtectionDesactivee && !req.Silent && protection != null
+                    && req.ConfirmActiverProtection != null && req.ConfirmActiverProtection(rp.Message))
+                {
+                    if (log != null) log.Report("Activation de la protection du système, puis point de restauration…");
+                    rp = protection.ActiverEtCreer(description);
+                    if (rp != null && rp.Created) report.Avertissements.Add("La protection du système a été activée sur le disque système pour créer le point de restauration.");
+                }
                 if (rp == null || !rp.Created)
                 {
                     var msg = rp == null || string.IsNullOrEmpty(rp.Message) ? "Point de restauration impossible." : rp.Message;

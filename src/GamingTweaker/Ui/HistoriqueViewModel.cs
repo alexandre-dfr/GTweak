@@ -54,6 +54,25 @@ namespace GamingTweaker.Ui
         public bool OrigineConnue { get { return !string.IsNullOrEmpty(Entree.Origine); } }
     }
 
+    /// <summary>Partie enregistrée avec le compteur (Historique > Parties).</summary>
+    public class PartieLigne
+    {
+        private static readonly CultureInfo Fr = CultureInfo.GetCultureInfo("fr-FR");
+        public ResumeSession Resume { get; set; }
+        public ResumeSession Precedente { get; set; }
+        public string Titre { get { return Resume.Debut.ToString("dd/MM/yyyy HH:mm", Fr) + "  ·  " + Resume.Jeu; } }
+        public string Detail
+        {
+            get
+            {
+                var s = TimeSpan.FromSeconds(Math.Round(Resume.DureeSec)).ToString(@"h\:mm\:ss") + "  ·  " + Resume.FpsMoyen.ToString("0", Fr) + " FPS moyen  ·  1 % bas "
+                      + Resume.UnPourcentBas.ToString("0", Fr);
+                if (Precedente != null) s += "  ·  " + SessionsJeu.Ecart(Precedente.UnPourcentBas, Resume.UnPourcentBas) + " de 1 % bas";
+                return s;
+            }
+        }
+    }
+
     public class ReleveLigne : ObservableObject
     {
         private bool coche;
@@ -159,7 +178,46 @@ namespace GamingTweaker.Ui
         /// <summary>Valeurs modifiées depuis l'application (journal, options) ; appelée sous le verrou d'instance.</summary>
         public Func<string, List<string>, List<Conflict>> TrouverConflits { get; set; } = (j, ids) => UndoService.FindConflicts(j, ids);
 
-        public string Section { get { return section; } set { if (Set(ref section, value)) { Raise("EstSessions"); Raise("EstQuarantaine"); Raise("EstMesures"); } } }
+        public string Section { get { return section; } set { if (Set(ref section, value)) { Raise("EstSessions"); Raise("EstQuarantaine"); Raise("EstMesures"); Raise("EstParties"); } } }
+        public bool EstParties { get { return section == "Parties"; } }
+
+        // ---------- Parties enregistrées avec le compteur ----------
+
+        /// <summary>Dossier des parties (Documents\GamingTweaker\Sessions de jeu ; remplacé par les tests).</summary>
+        public string DossierParties { get; set; } = SessionsJeu.DossierParDefaut;
+        public ObservableCollection<PartieLigne> Parties { get; } = new ObservableCollection<PartieLigne>();
+        private PartieLigne partieSelectionnee;
+        private string rapportPartie = "";
+        public PartieLigne PartieSelectionnee
+        {
+            get { return partieSelectionnee; }
+            set { if (Set(ref partieSelectionnee, value)) RapportPartie = value == null ? "" : LireRapportPartie(value); }
+        }
+        public string RapportPartie { get { return rapportPartie; } private set { Set(ref rapportPartie, value ?? ""); } }
+
+        private static string LireRapportPartie(PartieLigne p)
+        {
+            try
+            {
+                var txt = Path.ChangeExtension(p.Resume.Fichier, ".txt");
+                if (File.Exists(txt)) return File.ReadAllText(txt, System.Text.Encoding.UTF8);
+            }
+            catch (Exception ex) { TraceAppli.Erreur("rapport de partie illisible", ex); }
+            return SessionsJeu.Rapport(p.Resume, p.Precedente);
+        }
+
+        public void ChargerParties()
+        {
+            var fichier = partieSelectionnee == null ? null : partieSelectionnee.Resume.Fichier;
+            Parties.Clear();
+            try
+            {
+                var liste = SessionsJeu.Lister(DossierParties);
+                foreach (var r in liste) Parties.Add(new PartieLigne { Resume = r, Precedente = SessionsJeu.Precedente(liste, r) });
+            }
+            catch (Exception ex) { Message = "Parties illisibles : " + ex.Message; }
+            PartieSelectionnee = Parties.FirstOrDefault(p => p.Resume.Fichier == fichier) ?? Parties.FirstOrDefault();
+        }
         public bool EstSessions { get { return section == "Sessions"; } }
         public bool EstQuarantaine { get { return section == "Quarantaine"; } }
         public bool EstMesures { get { return section == "Mesures"; } }
@@ -210,6 +268,8 @@ namespace GamingTweaker.Ui
             Quarantaine.Clear();
             try { foreach (var e in quarantaine.List()) Quarantaine.Add(new QuarantaineLigne { Entree = e }); }
             catch (Exception ex) { Message = "Quarantaine illisible : " + ex.Message; }
+
+            ChargerParties();
 
             Releves.Clear();
             try

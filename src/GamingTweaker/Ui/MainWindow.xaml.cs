@@ -142,6 +142,15 @@ namespace GamingTweaker.Ui
             catch (Exception ex) { vm.Message = "Impossible d'ouvrir le navigateur (" + ex.Message + "). Adresse : " + url; }
         }
 
+        private async void MettreAJour_Click(object sender, RoutedEventArgs e)
+        {
+            if (vm.NouvelleVersion == null) return;
+            var ok = MessageBox.Show(this, "Télécharger GamingTweaker " + vm.NouvelleVersion.Version + " depuis GitHub, vérifier son empreinte SHA-256, remplacer cet exe puis relancer l'application ?"
+                + "\r\n\r\nL'ancien exe est gardé à côté (« .ancien ») jusqu'au prochain lancement.", "Mettre à jour", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.Yes);
+            if (ok != MessageBoxResult.Yes) return;
+            await vm.MettreAJourAsync();
+        }
+
         private void MasquerNouvelleVersion_Click(object sender, RoutedEventArgs e) { vm.NouvelleVersionMasquee = true; }
 
         private void Planifier_Click(object sender, RoutedEventArgs e)
@@ -186,6 +195,10 @@ namespace GamingTweaker.Ui
         {
             vm.ConfirmSansPointDeRestauration = msg => (bool)Dispatcher.Invoke(new Func<bool>(() =>
                 MessageBox.Show(this, msg + "\r\n\r\nContinuer sans point de restauration ?", "Point de restauration", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes));
+            vm.ConfirmActiverProtection = msg => (bool)Dispatcher.Invoke(new Func<bool>(() =>
+                MessageBox.Show(this, msg + "\r\n\r\nActiver la protection du système sur le disque système (comme dans Propriétés système > Protection du système), "
+                    + "puis créer le point de restauration ? Windows réserve pour cela une petite partie du disque.",
+                    "Protection du système", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.Yes) == MessageBoxResult.Yes));
             new RunWindow(vm) { Owner = this }.ShowDialog();
             var _ = vm.DetectAsync();
         }

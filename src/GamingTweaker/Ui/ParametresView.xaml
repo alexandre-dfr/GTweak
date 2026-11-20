@@ -78,12 +78,21 @@
             </Border>
 
             <Border Style="{StaticResource CarteW11}" Margin="0,12,0,0">
-                <StackPanel>
-                    <TextBlock Text="Version" Style="{StaticResource TitreCarte}"/>
-                    <TextBlock Text="{Binding TexteVersion}"/>
-                    <TextBlock Text="{Binding TexteNouvelleVersion}" Style="{StaticResource Aide}" Margin="0,4,0,0"
-                               Visibility="{Binding NouvelleVersionVisible, Converter={StaticResource BoolVis}, FallbackValue=Collapsed}"/>
-                </StackPanel>
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+                        <Button Content="Rechercher une mise à jour" Command="{Binding RechercherMiseAJourCommand}"/>
+                        <Button Content="Mettre à jour" Style="{StaticResource PrimaryButton}" Command="{Binding MettreAJourCommand}" Margin="8,0,0,0"
+                                Visibility="{Binding PeutMettreAJour, Converter={StaticResource BoolVis}}"
+                                ToolTip="Télécharge l'exe, vérifie son empreinte SHA-256 (et sa signature si l'exe actuel est signé), le remplace et relance l'application"/>
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Text="Version" Style="{StaticResource TitreCarte}"/>
+                        <TextBlock Text="{Binding TexteVersion}"/>
+                        <TextBlock Text="{Binding TexteNouvelleVersion}" Style="{StaticResource Aide}" Margin="0,4,0,0"
+                                   Visibility="{Binding NouvelleVersionVisible, Converter={StaticResource BoolVis}, FallbackValue=Collapsed}"/>
+                        <TextBlock Text="{Binding EtatRechercheVersion}" Style="{StaticResource Aide}" Margin="0,4,0,0"/>
+                    </StackPanel>
+                </DockPanel>
             </Border>
 
             <!-- ===== Compteur en jeu ===== -->
@@ -106,6 +115,36 @@
                         <CheckBox IsChecked="{Binding ModePlacement, Mode=TwoWay}" Margin="0,14,0,0" Content="Placer le compteur à l'écran"/>
                         <TextBlock Style="{StaticResource Aide}" Margin="26,4,0,0"
                                    Text="Le compteur s'affiche avec un cadre pointillé : faites-le glisser à la souris où vous voulez, sur n'importe quel écran, et tirez le coin ◢ (ou Ctrl+molette) pour changer sa taille. Il garde cette place et cette taille. Le placement se termine en quittant les Paramètres."/>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource CarteW11}" Margin="0,12,0,0">
+                    <StackPanel>
+                        <TextBlock Text="Enregistrement des parties" Style="{StaticResource TitreCarte}"/>
+                        <TextBlock Style="{StaticResource Aide}" FontSize="13" Margin="0,0,0,8"
+                                   Text="Enregistre toutes les images du jeu au premier plan, puis écrit un bilan : FPS moyen, 1 % et 0,1 % bas, temps d'image, saccades, charge du PC, et la comparaison avec la partie précédente du même jeu. Rejouez la même scène avant et après une optimisation pour mesurer le gain."/>
+                        <DockPanel>
+                            <Button x:Name="BoutonRaccourciEnregistrement" DockPanel.Dock="Right" Content="Changer…" Click="ChangerRaccourciEnregistrement_Click" VerticalAlignment="Center" Margin="12,0,0,0"
+                                    ToolTip="Puis appuyez sur la combinaison voulue (Échap pour annuler)"/>
+                            <TextBlock TextWrapping="Wrap" VerticalAlignment="Center">
+                                <Run Text="Raccourci pour démarrer ou arrêter l'enregistrement : "/><Run x:Name="TexteRaccourciEnregistrement" Text="{Binding TexteRaccourciEnregistrement, Mode=OneWay}" FontWeight="SemiBold"/>
+                            </TextBlock>
+                        </DockPanel>
+                        <TextBlock x:Name="ErreurRaccourciEnregistrement" Margin="0,4,0,0" TextWrapping="Wrap" Foreground="{DynamicResource AvanceFg}" Visibility="Collapsed"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                            <Button Click="BasculerEnregistrement_Click" Padding="12,5">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+                                        <Setter Property="Content" Value="Démarrer l'enregistrement"/>
+                                        <Style.Triggers><DataTrigger Binding="{Binding EnregistrementEnCours}" Value="True"><Setter Property="Content" Value="Arrêter et écrire le bilan"/></DataTrigger></Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                            <Button Content="Ouvrir le dossier des parties" Click="OuvrirDossierSessions_Click" Margin="8,0,0,0"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding EtatEnregistrement}" Style="{StaticResource Aide}" FontSize="13" Margin="0,8,0,0"/>
+                        <TextBlock Style="{StaticResource Aide}" Margin="0,6,0,0"
+                                   Text="Fichiers dans Documents\GamingTweaker\Sessions de jeu : un bilan .txt par partie, le détail image par image en .csv, et historique.csv (une ligne par partie, à ouvrir dans Excel pour suivre l'évolution). Les parties sont aussi listées dans Historique > Parties."/>
                     </StackPanel>
                 </Border>
 

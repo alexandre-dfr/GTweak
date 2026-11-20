@@ -82,6 +82,23 @@ namespace GamingTweaker.Tests
         }
 
         [Fact]
+        public void Disque_presque_plein_signale_comme_le_diagnostic()
+        {
+            var plein = MaterielPc.TuileDisque(@"C:\", "SSD", null, 500 * Go, 15 * Go);
+            Assert.True(plein.AAlerte);
+            Assert.Contains("15 Go libres", plein.Alerte);
+            Assert.True(MaterielPc.DisquePresquePlein(2000 * Go, 150 * Go));    // plus de 20 Go mais moins de 10 %
+            Assert.False(MaterielPc.TuileDisque(@"C:\", "SSD", null, 500 * Go, 200 * Go).AAlerte);
+        }
+
+        [Fact]
+        public void Chaque_tuile_ouvre_sa_section_d_informations()
+        {
+            Assert.Equal(new[] { "CPU", "GPU", "RAM", "Disques" }, MaterielPc.EnLecture().Select(t => t.Section).ToArray());
+            Assert.Equal("Disques", MaterielPc.SectionDe("Disque système"));
+        }
+
+        [Fact]
         public void Tuiles_d_attente_dans_l_ordre()
         {
             Assert.Equal(new[] { "Processeur", "Carte graphique", "Mémoire", "Disque système" }, MaterielPc.EnLecture().Select(t => t.Libelle).ToArray());

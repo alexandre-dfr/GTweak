@@ -23,6 +23,8 @@
                         <TextBlock Text="{Binding TexteDetails}" VerticalAlignment="Bottom" Margin="8,0,0,3" Foreground="{Binding BrosseDetails}" Visibility="{Binding Details, Converter={StaticResource BoolVis}}"/>
                     </StackPanel>
                     <TextBlock Text="{Binding TexteProcessus}" FontSize="10" Opacity="0.6" Margin="0,0,0,2" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding TexteEnregistrement}" FontSize="10" FontWeight="Bold" Foreground="#FF4D6D" Margin="0,0,0,2" TextTrimming="CharacterEllipsis"
+                               Visibility="{Binding EnregistrementEnCours, Converter={StaticResource BoolVis}}"/>
                 </StackPanel>
                 <Grid Width="200" Height="36" Margin="0,2,0,4" HorizontalAlignment="Left" Visibility="{Binding AfficherCourbe, Converter={StaticResource BoolVis}}">
                     <Border BorderBrush="{Binding BrosseCourbe}" BorderThickness="0,0,0,1" Opacity="0.35"/>

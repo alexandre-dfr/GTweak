@@ -20,9 +20,59 @@ namespace GamingTweaker.Ui
         /// <summary>Options cochées dans ce menu (affiché à côté du nom, 0 : rien).</summary>
         public int Coches { get { return coches; } set { if (Set(ref coches, value)) Raise("Libelle"); } }
         public string Libelle { get { return coches > 0 ? Nom + "  ·  " + coches : Nom; } }
+        /// <summary>Icône Windows (Segoe Fluent Icons) de la barre latérale.</summary>
+        public string Icone
+        {
+            get
+            {
+                switch (Nom)
+                {
+                    case "Accueil": return "\uE80F";
+                    case "Diagnostic": return "\uE9D9";
+                    case "Mises à jour": return "\uE895";
+                    case "Télémétrie": return "\uE72E";
+                    case "Nettoyage": return "\uE74D";
+                    case "Optimisation": return "\uE945";
+                    case "Bloatware": return "\uE71D";
+                    case "Mode Jeu": return "\uE7FC";
+                    case "Historique": return "\uE81C";
+                    case "Informations": return "\uE946";
+                    case "Paramètres": return "\uE713";
+                    default: return "\uE8B7";
+                }
+            }
+        }
         public bool EstSeparateur { get; set; }
         /// <summary>Vue réservée aux tâches suivantes : panneau neutre avec le seul titre du menu.</summary>
         public bool EstEmplacement { get; set; }
+    }
+
+    /// <summary>Vrai → masqué, faux → visible.</summary>
+    public class BoolVersVisibiliteInverse : System.Windows.Data.IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            return value is bool && (bool)value ? System.Windows.Visibility.Collapsed : System.Windows.Visibility.Visible;
+        }
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) { throw new NotSupportedException(); }
+    }
+
+    /// <summary>Vrai si un nombre est supérieur à zéro (déclencheurs XAML).</summary>
+    public class EstNonNul : System.Windows.Data.IValueConverter
+    {
+        public static readonly EstNonNul Instance = new EstNonNul();
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) { return value is int && (int)value > 0; }
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) { throw new NotSupportedException(); }
+    }
+
+    /// <summary>Réglage hors catalogue trouvé par la recherche (Paramètres, Mode Jeu, Historique…) : un clic ouvre son menu.</summary>
+    public class ResultatPage
+    {
+        public string Titre { get; set; }
+        public string Description { get; set; }
+        public string Menu { get; set; }
+        /// <summary>Mots recherchés (titre, description et synonymes), normalisés.</summary>
+        public string Texte { get; set; }
     }
 
     /// <summary>Ligne « état de ce PC » de l'écran d'accueil : options déjà appliquées sur le total du menu.</summary>

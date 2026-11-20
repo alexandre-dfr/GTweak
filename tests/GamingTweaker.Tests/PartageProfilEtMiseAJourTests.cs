@@ -135,6 +135,90 @@ namespace GamingTweaker.Tests
                  + ", \"html_url\": \"" + (url ?? Page + tag) + "\" }";
         }
 
+        private const string Sha = "7119d07cc57891f550a7f5774cb4e4898107b9e2b0f5cee8af51a2633062246d";
+        private static string AvecExe(string tag, string lien = null, string digest = "sha256:" + Sha, string nom = "GamingTweaker.exe")
+        {
+            var j = Json(tag);
+            return j.Substring(0, j.Length - 1) + ", \"assets\": [ { \"name\": \"" + nom + "\", \"browser_download_url\": \""
+                 + (lien ?? "https://github.com/alexandre-dfr/GTweak/releases/download/" + tag + "/GamingTweaker.exe") + "\""
+                 + (digest == null ? "" : ", \"digest\": \"" + digest + "\"") + " } ] }";
+        }
+
+        [Fact]
+        public void Exe_de_la_release_et_son_empreinte_permettent_la_mise_a_jour_en_un_clic()
+        {
+            var v = MiseAJour.Analyser(AvecExe("v0.10.0"), Courante);
+            Assert.True(v.InstallableEnUnClic);
+            Assert.Equal("https://github.com/alexandre-dfr/GTweak/releases/download/v0.10.0/GamingTweaker.exe", v.UrlExe);
+            Assert.Equal(Sha, v.Sha256);
+            Assert.False(MiseAJour.Analyser(Json("v0.10.0"), Courante).InstallableEnUnClic);   // pas d'exe joint : page seulement
+        }
+
+        [Theory]
+        [InlineData("https://example.com/GamingTweaker.exe", "sha256:" + Sha, "GamingTweaker.exe")]
+        [InlineData("http://github.com/alexandre-dfr/GTweak/releases/download/v0.10.0/GamingTweaker.exe", "sha256:" + Sha, "GamingTweaker.exe")]
+        [InlineData(null, null, "GamingTweaker.exe")]
+        [InlineData(null, "md5:abc", "GamingTweaker.exe")]
+        [InlineData(null, "sha256:" + Sha, "Autre.exe")]
+        public void Exe_douteux_jamais_installe_en_un_clic(string lien, string digest, string nom)
+        {
+            var v = MiseAJour.Analyser(AvecExe("v0.10.0", lien, digest, nom), Courante);
+            Assert.NotNull(v);
+            Assert.False(v.InstallableEnUnClic);
+        }
+
+        [Fact]
+        public void Contenu_telecharge_verifie_par_empreinte()
+        {
+            var exe = new byte[4096]; exe[0] = (byte)'M'; exe[1] = (byte)'Z'; exe[100] = 42;
+            var sha = MiseAJourInstallation.Sha256(exe);
+            Assert.Null(MiseAJourInstallation.VerifierContenu(exe, sha));
+            Assert.Null(MiseAJourInstallation.VerifierContenu(exe, sha.ToUpperInvariant()));
+            Assert.Contains("SHA-256", MiseAJourInstallation.VerifierContenu(exe, Sha));
+            var pasExe = (byte[])exe.Clone(); pasExe[0] = 0;
+            Assert.Contains("programme Windows", MiseAJourInstallation.VerifierContenu(pasExe, MiseAJourInstallation.Sha256(pasExe)));
+            Assert.NotNull(MiseAJourInstallation.VerifierContenu(new byte[10], null));
+        }
+
+        [Theory]
+        [InlineData(null, null, true)]
+        [InlineData(null, "CN=Moi", true)]
+        [InlineData("CN=Moi", "CN=Moi", true)]
+        [InlineData("CN=Moi", "cn=moi", true)]
+        [InlineData("CN=Moi", null, false)]
+        [InlineData("CN=Moi", "CN=Autre", false)]
+        public void Exe_signe_remplace_seulement_par_le_meme_editeur(string actuel, string nouveau, bool accepte)
+        {
+            Assert.Equal(accepte, MiseAJourInstallation.DecisionSignature(actuel, nouveau) == null);
+        }
+
+        [Fact]
+        public void Remplacement_garde_l_ancien_exe_a_cote()
+        {
+            var dir = Path.Combine(Path.GetTempPath(), "gt-maj-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            try
+            {
+                var exe = Path.Combine(dir, "GamingTweaker.exe");
+                File.WriteAllText(exe, "ancien");
+                File.WriteAllText(exe + MiseAJourInstallation.SuffixeAncien, "plus ancien");
+                MiseAJourInstallation.Remplacer(exe, System.Text.Encoding.ASCII.GetBytes("nouveau"));
+                Assert.Equal("nouveau", File.ReadAllText(exe));
+                Assert.Equal("ancien", File.ReadAllText(exe + MiseAJourInstallation.SuffixeAncien));
+            }
+            finally { try { Directory.Delete(dir, true); } catch { } }
+        }
+
+        [Fact]
+        public async Task Mise_a_jour_refusee_si_l_empreinte_ne_correspond_pas()
+        {
+            var v = new VersionDisponible { Version = new Version(9, 0, 0), Url = Page + "v9.0.0", UrlExe = "https://github.com/alexandre-dfr/GTweak/releases/download/v9.0.0/GamingTweaker.exe", Sha256 = Sha };
+            var exe = new byte[4096]; exe[0] = (byte)'M'; exe[1] = (byte)'Z';
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => MiseAJourInstallation.InstallerAsync(v, u => Task.FromResult(exe)));
+            Assert.Contains("SHA-256", ex.Message);
+            await Assert.ThrowsAsync<InvalidOperationException>(() => MiseAJourInstallation.InstallerAsync(new VersionDisponible { Version = v.Version, Url = v.Url }));
+        }
+
         [Fact]
         public void Version_plus_recente_est_proposee()
         {

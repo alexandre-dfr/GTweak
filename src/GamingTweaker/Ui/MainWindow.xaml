@@ -7,6 +7,7 @@
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolVis"/>
+        <local:BoolVersVisibiliteInverse x:Key="InvBoolVis"/>
 
         <DataTemplate x:Key="ListeElementTemplate">
             <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}" Margin="0,3" HorizontalAlignment="Stretch">
@@ -49,8 +50,11 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
                         <Grid>
-                            <Border x:Name="b" Margin="6,1" Padding="16,7" CornerRadius="4" Background="Transparent" Cursor="Hand">
-                                <TextBlock x:Name="t" Text="{Binding Libelle}" FontSize="14" TextWrapping="Wrap"/>
+                            <Border x:Name="b" Margin="6,1" Padding="14,7" CornerRadius="4" Background="Transparent" Cursor="Hand" ToolTip="{Binding Libelle}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock x:Name="i" Text="{Binding Icone}" FontFamily="{StaticResource PoliceIcones}" FontSize="16" VerticalAlignment="Center" Width="18"/>
+                                    <TextBlock x:Name="t" Text="{Binding Libelle}" FontSize="14" TextWrapping="Wrap" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                                </StackPanel>
                             </Border>
                             <Border x:Name="pastille" Width="3" Height="16" CornerRadius="1.5" Margin="6,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center"
                                     Background="{DynamicResource AccentBrush}" Visibility="Collapsed"/>
@@ -67,7 +71,12 @@
                                 <Setter TargetName="b" Property="Background" Value="{DynamicResource NavSelectedBrush}"/>
                                 <Setter TargetName="pastille" Property="Visibility" Value="Visible"/>
                                 <Setter TargetName="t" Property="FontWeight" Value="SemiBold"/>
+                                <Setter TargetName="i" Property="Foreground" Value="{DynamicResource AccentBrush}"/>
                             </Trigger>
+                            <DataTrigger Binding="{Binding DataContext.MenuReplie, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                <Setter TargetName="t" Property="Visibility" Value="Collapsed"/>
+                                <Setter TargetName="sep" Property="Margin" Value="10,8"/>
+                            </DataTrigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -240,12 +249,15 @@
                 </Border.Style>
                 <TextBlock Text="{Binding Bandeau}" TextWrapping="Wrap" Foreground="{DynamicResource AvanceFg}"/>
             </Border>
-            <!-- Nouvelle version publiée sur GitHub (rien n'est téléchargé : le bouton ouvre la page de la release) -->
+            <!-- Nouvelle version publiée sur GitHub : mise à jour en un clic (exe vérifié) ou page de la release -->
             <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,8"
                     Visibility="{Binding NouvelleVersionVisible, Converter={StaticResource BoolVis}, FallbackValue=Collapsed}">
                 <DockPanel>
                     <Button DockPanel.Dock="Right" Content="✕" Click="MasquerNouvelleVersion_Click" Padding="8,2" Margin="8,0,0,0" ToolTip="Masquer jusqu'au prochain lancement"/>
-                    <Button DockPanel.Dock="Right" Content="Voir la nouvelle version" Click="VoirNouvelleVersion_Click"/>
+                    <Button DockPanel.Dock="Right" Content="Voir la page" Click="VoirNouvelleVersion_Click" Margin="8,0,0,0"/>
+                    <Button DockPanel.Dock="Right" Content="Mettre à jour" Style="{StaticResource PrimaryButton}" Click="MettreAJour_Click"
+                            IsEnabled="{Binding PeutMettreAJour}" Visibility="{Binding NouvelleVersion.InstallableEnUnClic, Converter={StaticResource BoolVis}, FallbackValue=Collapsed}"
+                            ToolTip="Télécharge l'exe, vérifie son empreinte SHA-256 (et sa signature si l'exe actuel est signé), le remplace et relance l'application"/>
                     <TextBlock Text="{Binding TexteNouvelleVersion}" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap"/>
                 </DockPanel>
             </Border>
@@ -272,12 +284,38 @@
 
         <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="220"/>
+                <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <DockPanel Background="{DynamicResource BgBrush}">
-                <TextBlock DockPanel.Dock="Top" Text="GamingTweaker" FontFamily="{StaticResource PoliceTitre}" FontSize="15" FontWeight="SemiBold" Margin="22,14,16,6"/>
+            <!-- Barre latérale : icônes et libellés, repliable (icônes seules ; le libellé est en infobulle) -->
+            <DockPanel>
+                <DockPanel.Style>
+                    <Style TargetType="DockPanel">
+                        <Setter Property="Width" Value="220"/>
+                        <Setter Property="Background" Value="{DynamicResource BgBrush}"/>
+                        <Style.Triggers><DataTrigger Binding="{Binding MenuReplie}" Value="True"><Setter Property="Width" Value="60"/></DataTrigger></Style.Triggers>
+                    </Style>
+                </DockPanel.Style>
+                <DockPanel DockPanel.Dock="Top" Margin="8,10,8,4">
+                    <Button DockPanel.Dock="Left" Style="{StaticResource BoutonIcone}" Command="{Binding BasculerMenuCommand}" VerticalAlignment="Center">
+                        <Button.ToolTip>
+                            <ToolTip>
+                                <TextBlock>
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="Replier le menu"/>
+                                            <Style.Triggers><DataTrigger Binding="{Binding MenuReplie}" Value="True"><Setter Property="Text" Value="Déplier le menu"/></DataTrigger></Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </ToolTip>
+                        </Button.ToolTip>
+                        <TextBlock Text="&#xE700;" FontFamily="{StaticResource PoliceIcones}" FontSize="16"/>
+                    </Button>
+                    <TextBlock Text="GamingTweaker" FontFamily="{StaticResource PoliceTitre}" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0"
+                               Visibility="{Binding MenuReplie, Converter={StaticResource InvBoolVis}}"/>
+                </DockPanel>
                 <ListBox ItemsSource="{Binding Menus}" SelectedValuePath="Nom" SelectedValue="{Binding MenuCourant, Mode=TwoWay}"
                          ItemContainerStyle="{StaticResource MenuItemStyle}" Background="Transparent" BorderThickness="0" Padding="0,0,0,0"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
@@ -358,6 +396,36 @@
                     </DockPanel>
                 </Border>
 
+                <!-- Recherche : réglages des menus sans options (Paramètres, Mode Jeu, Historique…) au-dessus des options trouvées -->
+                <ItemsControl Grid.Row="1" ItemsSource="{Binding ResultatsPages}" Margin="0,0,16,8">
+                    <ItemsControl.Style>
+                        <Style TargetType="ItemsControl">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding EnRecherche}" Value="True"/>
+                                        <Condition Binding="{Binding ResultatsPages.Count, Converter={x:Static local:EstNonNul.Instance}}" Value="True"/>
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ItemsControl.Style>
+                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Command="{Binding DataContext.AllerCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Menu}"
+                                    Margin="0,0,8,8" Padding="12,6" Cursor="Hand" ToolTip="{Binding Description}" HorizontalContentAlignment="Left">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Titre}" FontWeight="SemiBold"/>
+                                    <TextBlock FontSize="12" Foreground="{DynamicResource MutedBrush}"><Run Text="Ouvrir "/><Run Text="{Binding Menu, Mode=OneWay}"/></TextBlock>
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
                 <ListBox Grid.Row="2" ItemsSource="{Binding Source={StaticResource OptionsView}}" ItemContainerStyle="{StaticResource OptionItemStyle}"
                          ItemTemplate="{StaticResource OptionTemplate}" Background="Transparent" BorderThickness="0"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.CanContentScroll="True"
@@ -406,6 +474,7 @@
                                     <MultiDataTrigger.Conditions>
                                         <Condition Binding="{Binding Visibles.Count}" Value="0"/>
                                         <Condition Binding="{Binding EstEmplacement}" Value="False"/>
+                                        <Condition Binding="{Binding ResultatsPages.Count}" Value="0"/>
                                     </MultiDataTrigger.Conditions>
                                     <Setter Property="Visibility" Value="Visible"/>
                                 </MultiDataTrigger>

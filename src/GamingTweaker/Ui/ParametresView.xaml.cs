@@ -45,14 +45,20 @@ namespace GamingTweaker.Ui
             if (tag != null && Enum.TryParse(tag, out c) && c != ThemeApplication.Choix) ThemeApplication.Definir(c);
         }
 
-        // ---------- Raccourci du compteur ----------
+        // ---------- Raccourcis du compteur et de l'enregistrement ----------
 
-        private void ChangerRaccourci_Click(object sender, RoutedEventArgs e)
+        private bool captureEnregistrement;
+
+        private void ChangerRaccourci_Click(object sender, RoutedEventArgs e) { DebutCapture(false); }
+        private void ChangerRaccourciEnregistrement_Click(object sender, RoutedEventArgs e) { DebutCapture(true); }
+
+        private void DebutCapture(bool enregistrement)
         {
-            captureRaccourci = true;
-            TexteRaccourci.Text = "Appuyez sur la combinaison voulue… (Échap pour annuler)";
-            ErreurRaccourci.Visibility = Visibility.Collapsed;
-            BoutonRaccourci.IsEnabled = false;
+            if (captureRaccourci) FinCapture();
+            captureRaccourci = true; captureEnregistrement = enregistrement;
+            const string invite = "Appuyez sur la combinaison voulue… (Échap pour annuler)";
+            if (enregistrement) { TexteRaccourciEnregistrement.Text = invite; ErreurRaccourciEnregistrement.Visibility = Visibility.Collapsed; BoutonRaccourciEnregistrement.IsEnabled = false; }
+            else { TexteRaccourci.Text = invite; ErreurRaccourci.Visibility = Visibility.Collapsed; BoutonRaccourci.IsEnabled = false; }
             Focus();
             Keyboard.Focus(this);
         }
@@ -60,8 +66,9 @@ namespace GamingTweaker.Ui
         private void FinCapture()
         {
             captureRaccourci = false;
-            BoutonRaccourci.IsEnabled = true;
+            BoutonRaccourci.IsEnabled = true; BoutonRaccourciEnregistrement.IsEnabled = true;
             TexteRaccourci.SetBinding(TextBlock.TextProperty, "TexteRaccourci");
+            TexteRaccourciEnregistrement.SetBinding(System.Windows.Documents.Run.TextProperty, new System.Windows.Data.Binding("TexteRaccourciEnregistrement") { Mode = System.Windows.Data.BindingMode.OneWay });
         }
 
         /// <summary>Capture de la nouvelle combinaison : modificateurs (Ctrl, Alt, Maj) + une touche ; Échap annule.</summary>
@@ -78,9 +85,29 @@ namespace GamingTweaker.Ui
             if ((Keyboard.Modifiers & ModifierKeys.Control) != 0) mods |= 2;
             if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0) mods |= 4;
             var c = Compteur;
-            var refus = c == null ? null : c.DefinirRaccourci(mods, (uint)KeyInterop.VirtualKeyFromKey(touche));
+            var vk = (uint)KeyInterop.VirtualKeyFromKey(touche);
+            var enregistrement = captureEnregistrement;
+            var refus = c == null ? null : enregistrement ? c.DefinirRaccourciEnregistrement(mods, vk) : c.DefinirRaccourci(mods, vk);
             FinCapture();
-            if (refus != null) { ErreurRaccourci.Text = refus; ErreurRaccourci.Visibility = Visibility.Visible; }
+            if (refus == null) return;
+            var cible = enregistrement ? ErreurRaccourciEnregistrement : ErreurRaccourci;
+            cible.Text = refus; cible.Visibility = Visibility.Visible;
+        }
+
+        // ---------- Enregistrement des parties ----------
+
+        private void BasculerEnregistrement_Click(object sender, RoutedEventArgs e)
+        {
+            var c = Compteur;
+            if (c != null) c.BasculerEnregistrement();
+        }
+
+        private void OuvrirDossierSessions_Click(object sender, RoutedEventArgs e)
+        {
+            var c = Compteur;
+            var dossier = c == null ? Core.SessionsJeu.DossierParDefaut : c.DossierSessions;
+            try { System.IO.Directory.CreateDirectory(dossier); Core.SystemExe.OuvrirAvecExplorateur(dossier); }
+            catch (Exception ex) { MessageBox.Show(Window.GetWindow(this), "Impossible d'ouvrir le dossier : " + ex.Message, "Parties enregistrées", MessageBoxButton.OK, MessageBoxImage.Warning); }
         }
 
         // ---------- Couleur du compteur ----------
