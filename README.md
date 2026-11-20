@@ -170,8 +170,10 @@ Le workflow refuse un tag qui ne correspond pas à `<Version>`.
 
 **Avec un certificat acheté** (Certum « open source », certificat OV, etc.), le workflow signe déjà l'exe (Authenticode SHA-256, horodaté) si deux secrets existent dans le dépôt (Settings > Secrets and variables > Actions) :
 
-- `SIGN_PFX_BASE64` : le certificat `.pfx`, encodé en base64 (`[Convert]::ToBase64String([IO.File]::ReadAllBytes('cert.pfx'))` dans PowerShell) ;
-- `SIGN_PFX_PASSWORD` : son mot de passe.
+- `CODE_SIGN_PFX_BASE64` (ou `SIGN_PFX_BASE64`) : le certificat `.pfx`, encodé en base64 (`[Convert]::ToBase64String([IO.File]::ReadAllBytes('cert.pfx'))` dans PowerShell) ;
+- `CODE_SIGN_PASSWORD` (ou `SIGN_PFX_PASSWORD`) : son mot de passe.
+
+Ce sont les mêmes noms que pour Assist IT : le même certificat peut signer les deux projets, il suffit de recréer les deux secrets ici (GitHub ne permet pas de copier un secret d'un dépôt à l'autre ni de relire sa valeur).
 
 Les certificats récents sont souvent livrés sur clé matérielle ou dans un service cloud, sans `.pfx` exportable : l'étape « Signer l'exe » est alors à adapter à l'outil du fournisseur (par exemple Azure Trusted Signing). Sans signature, l'exe est publié non signé et le résumé du build le signale.
 

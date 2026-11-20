@@ -126,13 +126,14 @@ jobs:
       - name: Signer l'exe (si un certificat est configuré)
         id: signature
         shell: pwsh
+        # Mêmes noms de secrets acceptés que pour Assist IT (CODE_SIGN_PFX_BASE64 / CODE_SIGN_PASSWORD) : un seul certificat pour les deux projets.
         env:
-          SIGN_PFX_BASE64: ${{ secrets.SIGN_PFX_BASE64 }}
-          SIGN_PFX_PASSWORD: ${{ secrets.SIGN_PFX_PASSWORD }}
+          SIGN_PFX_BASE64: ${{ secrets.SIGN_PFX_BASE64 || secrets.CODE_SIGN_PFX_BASE64 }}
+          SIGN_PFX_PASSWORD: ${{ secrets.SIGN_PFX_PASSWORD || secrets.CODE_SIGN_PASSWORD }}
         run: |
           if ([string]::IsNullOrEmpty($env:SIGN_PFX_BASE64)) {
             "signe=non" >> $env:GITHUB_OUTPUT
-            "> Exe **non signé** : ajoutez les secrets SIGN_PFX_BASE64 et SIGN_PFX_PASSWORD pour le signer (voir README)." >> $env:GITHUB_STEP_SUMMARY
+            "> Exe **non signé** : ajoutez les secrets CODE_SIGN_PFX_BASE64 et CODE_SIGN_PASSWORD (ou SIGN_PFX_BASE64 et SIGN_PFX_PASSWORD) pour le signer (voir README)." >> $env:GITHUB_STEP_SUMMARY
             exit 0
           }
           $exe = (Resolve-Path 'src/GamingTweaker/bin/Release/net48/GamingTweaker.exe').Path
