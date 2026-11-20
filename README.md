@@ -6,7 +6,7 @@ Application Windows portable (un seul `GamingTweaker.exe`) qui règle un PC de j
 
 1. Copiez `GamingTweaker.exe` où vous voulez, par exemple sur une clé USB. C'est le seul fichier : aucune dépendance, aucun fichier de configuration (.NET Framework 4.8 est déjà dans Windows 10 1903+ et Windows 11).
 2. Double-cliquez : Windows demande les droits administrateur (obligatoire pour modifier le système).
-3. Cochez les options, cliquez sur **Aperçu** pour voir exactement ce qui sera fait, puis sur **LANCER**.
+3. Cochez les options, cliquez sur **Aperçu** pour voir exactement ce qui sera fait, puis sur **LANCER**. Au premier lancement, un encadré de l'accueil résume ces étapes (bouton « Compris » pour le masquer).
 
 Rien n'est installé. Les capteurs matériels (menu Informations) ne sont chargés qu'à la demande.
 
@@ -27,17 +27,18 @@ Trois profils sont fournis en tête de la liste des profils, en lecture seule :
 - **Gaming max (intégré)** : options Sûr et Avancé d'Optimisation, plus les options Sûr de Télémétrie et de Nettoyage.
 - **Confidentialité (intégré)** : toute la Télémétrie, Sûr et Avancé.
 
-Aucun ne contient d'option Risqué, d'option à liste (services, démarrage : leur contenu se choisit sur votre PC) ni d'option que « Recommandé » ne coche pas. Pour en modifier un ou le planifier, enregistrez-le sous votre propre nom avec « Sauver ».
+Aucun ne contient d'option Risqué, d'option à liste (services, démarrage : leur contenu se choisit sur votre PC) ni d'option que « Recommandé » ne coche pas. Pour en modifier un ou le planifier, enregistrez-le sous votre propre nom avec **Profil ▾ > Enregistrer la sélection sous…**.
 
 ## Compteur en jeu (FPS, CPU, GPU, RAM)
 
-Le bouton en forme de compteur, en haut à droite (à côté du thème), ouvre les réglages du compteur affiché par-dessus le jeu. Il est désactivé par défaut. **Ctrl+Maj+F11** l'affiche ou le masque pendant une partie.
+Le bouton en forme de compteur, en haut à droite (à côté du thème), ouvre les réglages du compteur affiché par-dessus le jeu. Il est désactivé par défaut. **Ctrl+Maj+F11** l'affiche ou le masque pendant une partie ; la combinaison se change dans les réglages (« Changer… », puis appuyez sur la nouvelle combinaison : elle doit contenir Ctrl ou Alt).
 
 - **Contenu**, chaque élément activable séparément :
   - images par seconde de la fenêtre au premier plan ;
   - temps d'image et « 1 % bas » (99e centile du temps d'image sur 10 s) ;
   - courbe des FPS sur 10, 30 ou 60 s ;
-  - charge du processeur, de la carte graphique et de la mémoire en pourcentage.
+  - charge du processeur, de la carte graphique et de la mémoire en pourcentage ;
+  - températures de la carte graphique (lue par le pilote NVIDIA ou AMD, rien à installer) et du processeur (demande le pilote PawnIO, proposé dans le menu Informations ; son comportement face aux anti-triche n'a pas été vérifié). Désactivées par défaut.
 - **Position** : un coin de l'écran principal, ou **n'importe où** : tant que la fenêtre des réglages est ouverte, le compteur est affiché avec un cadre pointillé et se déplace à la souris, sur n'importe quel écran ; tirez le coin ◢ du cadre (ou Ctrl+molette) pour l'agrandir ou le réduire (60 à 300 %). Il garde cette place et cette taille.
 - **Apparence** : taille, opacité du fond et **couleurs** : choisissez l'élément (FPS, temps d'image et 1 % bas, courbe, CPU, GPU, RAM) puis sa couleur, parmi 7 proposées ou une couleur libre `#RRVVBB` ; « Tout le compteur » remet la même couleur partout. Largeur fixe et police à chasse fixe : le compteur ne bouge pas quand les chiffres changent ; il est rafraîchi deux fois par seconde.
 - **Fonctionnement** : les FPS viennent des événements publiés par Windows (ETW, comme PresentMon) : « Present » de DirectX 9 à 12 en priorité, sinon le noyau graphique (DxgKrnl), qui voit aussi les images des jeux Vulkan et OpenGL. La source est indiquée sous les FPS ; rien n'est injecté dans le jeu, le compteur est donc compatible avec les anti-triche. Processeur, mémoire et carte graphique sont mesurés comme dans le Gestionnaire des tâches. La surimpression laisse passer les clics et ne prend jamais le clavier. Rien ne tourne quand le compteur est masqué.
@@ -47,7 +48,7 @@ Les réglages sont dans `compteur.json`, dans le dossier de la machine.
 
 ## Partager un profil
 
-Le bouton **Partager** (à côté de « Recharger ») propose :
+Le menu **Profil ▾** de la barre du bas (qui regroupe aussi Enregistrer, Recharger et Planifier) propose :
 
 - **Exporter la sélection…** : enregistre ce qui est coché dans un fichier `.json` de votre choix (par défaut sur le Bureau).
 - **Importer un profil…** : sur l'autre PC, choisissez ce fichier. Il est vérifié comme un profil enregistré (version, identifiants d'options, noms d'éléments), puis réécrit dans le dossier des profils et chargé. Les options Risqué demandent la même confirmation qu'au chargement. Si un profil du même nom existe, l'appli demande avant de le remplacer. Un nom de profil intégré reçoit le suffixe « (importé) ».
@@ -78,7 +79,7 @@ Le menu Mode Jeu se lit de haut en bas :
 - **1. Ce que fait le Mode Jeu** : plan d'alimentation Performances élevées, libération de la mémoire, profil du pilote NVIDIA, services Windows à arrêter, programmes à fermer (listes repliées, avec le nombre de cases cochées). Ces choix sont **enregistrés** : ils sont recochés au prochain lancement, et ce sont les mêmes pour le Mode Jeu manuel et automatique. Un service ou programme choisi qui ne tourne pas en ce moment reste affiché, coché.
 - **2. Mode automatique (facultatif)** :
   - **Vos jeux** : ajoutez des jeux depuis Steam, Epic Games ou un `.exe`. Pour un jeu Steam ou Epic, tout programme lancé depuis son dossier compte (les lanceurs, outils de plantage et anti-triche sont ignorés).
-  - **Fonctionnement** : quand un jeu de la liste démarre, le Mode Jeu s'active ; quand vous quittez le dernier, tout est rétabli. Une notification le signale à chaque fois. Un Mode Jeu activé à la main n'est jamais rétabli automatiquement, et un Mode Jeu rétabli à la main pendant une partie n'est pas réactivé avant la partie suivante.
+  - **Fonctionnement** : quand un jeu de la liste démarre, le Mode Jeu s'active (environ une seconde et demie après le lancement : GamingTweaker est prévenu par Windows de chaque programme qui démarre, et vérifie aussi toutes les 5 s) ; quand vous quittez le dernier, tout est rétabli. Une notification le signale à chaque fois. Un Mode Jeu activé à la main n'est jamais rétabli automatiquement, et un Mode Jeu rétabli à la main pendant une partie n'est pas réactivé avant la partie suivante.
   - **Démarrer GamingTweaker avec Windows** : crée la tâche `\GamingTweaker\Demarrage`, lancée à l'ouverture de session avec les droits administrateur (sans invite). Elle démarre `GamingTweaker.exe --tray` depuis une copie placée dans `%ProgramFiles%\GamingTweaker\Demarrage`, jamais depuis l'emplacement de l'exe portable. `--uninstall` la retire aussi. Sans cette case, le mode automatique ne fonctionne que tant que GamingTweaker est ouvert : un rappel s'affiche.
   - **Zone de notification** : tant que le mode automatique ou le démarrage avec Windows est actif, fermer la fenêtre la réduit en icône près de l'horloge. Clic droit sur l'icône pour rouvrir ou quitter. En quittant, un Mode Jeu activé automatiquement est rétabli.
 
@@ -86,13 +87,17 @@ Le menu Mode Jeu se lit de haut en bas :
 
 Une erreur inattendue n'est jamais silencieuse : un message l'indique et un rapport est enregistré dans `%LOCALAPPDATA%\GamingTweaker\erreurs.log` (lisible sans droits administrateur), avec le détail technique et les dernières étapes du journal. Envoyez ce fichier pour faire corriger le problème. Une erreur au démarrage ferme l'application après le message ; une erreur plus tard la laisse ouverte.
 
+Chaque étape du démarrage est aussi notée dans `%LOCALAPPDATA%\GamingTweaker\demarrage.log`. Si l'application se ferme **sans aucun message** (un antivirus peut arrêter un exe non signé : voir Sécurité Windows > Historique de protection), le lancement suivant l'indique en haut de la fenêtre, avec la dernière étape atteinte.
+
+La version exacte (par exemple `0.9.1 (build 58)`, le numéro de build de la CI) est affichée en bas de l'accueil et en tête de chaque rapport.
+
 ## Annuler
 
 Chaque modification réversible est notée dans un journal. Un journal applicatif (`app.log`, dans le dossier de la machine sous le dossier de données protégé) garde la trace des sessions, de la routine et des erreurs internes pour le support ; il ne contient aucune donnée personnelle. L'historique permet d'annuler une session ou une option, et **Tout restaurer** revient à l'état d'avant. Si une valeur a changé entre-temps, l'application le signale avant de l'écraser. Les options non réversibles ou à annulation partielle sont indiquées dans l'aperçu.
 
 ## Routine planifiée
 
-**Planifier** crée la tâche hebdomadaire `\GamingTweaker\Routine` qui applique le profil choisi sans interface (`GamingTweaker.exe --profile <fichier> --silent`). Codes de sortie : 0 = tout est appliqué ou ignoré, 1 = au moins un échec, 2 = exécution impossible. **Supprimer la routine** retire la tâche. Les données de la routine sont dans le dossier de données protégé de GamingTweaker, dossier protégé (propriétaire Administrateurs).
+**Profil ▾ > Planifier une routine hebdomadaire…** crée la tâche hebdomadaire `\GamingTweaker\Routine` qui applique le profil choisi sans interface (`GamingTweaker.exe --profile <fichier> --silent`). Codes de sortie : 0 = tout est appliqué ou ignoré, 1 = au moins un échec, 2 = exécution impossible. **Supprimer la routine** retire la tâche. Les données de la routine sont dans le dossier de données protégé de GamingTweaker, dossier protégé (propriétaire Administrateurs).
 
 ## Désinstaller
 

@@ -216,6 +216,8 @@ namespace GamingTweaker.Tests
             public void Demarrer() { Demarrages++; }
             public void Arreter() { Arrets++; }
             public void Choisir(bool cpu, bool gpu, bool ram) { Cpu = cpu; Gpu = gpu; Ram = ram; }
+            public bool TCpu, TGpu;
+            public void ChoisirTemperatures(bool cpu, bool gpu) { TCpu = cpu; TGpu = gpu; }
             public ReleveCompteur Lire() { return Releve; }
             public string Erreur { get { return null; } }
         }

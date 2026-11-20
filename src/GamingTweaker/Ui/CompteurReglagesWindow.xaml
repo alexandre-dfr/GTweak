@@ -17,10 +17,13 @@
         <Border Style="{StaticResource CarteW11}">
             <StackPanel>
                 <CheckBox IsChecked="{Binding Actif, Mode=TwoWay}" FontWeight="SemiBold" Content="Afficher le compteur en jeu"/>
-                <TextBlock Foreground="{DynamicResource MutedBrush}" Margin="26,4,0,0" TextWrapping="Wrap">
-                    <Run Text="Raccourci pour l'afficher ou le masquer pendant une partie :"/>
-                    <Run x:Name="TexteRaccourci" FontWeight="SemiBold"/>
-                </TextBlock>
+                <TextBlock Foreground="{DynamicResource MutedBrush}" Margin="26,6,0,4" TextWrapping="Wrap" Text="Raccourci pour l'afficher ou le masquer pendant une partie :"/>
+                <DockPanel Margin="26,0,0,0">
+                    <Button x:Name="BoutonRaccourci" DockPanel.Dock="Right" Content="Changer…" Click="ChangerRaccourci_Click" VerticalAlignment="Center" Margin="12,0,0,0"
+                            ToolTip="Puis appuyez sur la combinaison voulue (Échap pour annuler)"/>
+                    <TextBlock x:Name="TexteRaccourci" Text="{Binding TexteRaccourci}" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                </DockPanel>
+                <TextBlock x:Name="ErreurRaccourci" Margin="26,4,0,0" TextWrapping="Wrap" Foreground="{DynamicResource AvanceFg}" Visibility="Collapsed"/>
             </StackPanel>
         </Border>
 
@@ -40,6 +43,13 @@
                     <CheckBox IsChecked="{Binding Gpu, Mode=TwoWay}" Content="Carte graphique (%)" Margin="0,0,20,0"/>
                     <CheckBox IsChecked="{Binding Ram, Mode=TwoWay}" Content="Mémoire (%)"/>
                 </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <CheckBox IsChecked="{Binding TempGpu, Mode=TwoWay}" IsEnabled="{Binding Gpu}" Content="Température carte graphique" Margin="0,0,20,0"
+                              ToolTip="Lue par le pilote NVIDIA ou AMD, sans rien installer"/>
+                    <CheckBox IsChecked="{Binding TempCpu, Mode=TwoWay}" IsEnabled="{Binding Cpu}" Content="Température processeur"/>
+                </StackPanel>
+                <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0"
+                           Text="La température du processeur demande le pilote PawnIO (à installer depuis le menu Informations, bouton des capteurs) ; sans lui, elle affiche « — ». Le comportement de PawnIO face aux anti-triche (Vanguard, FACEIT) n'a pas été vérifié : en cas de doute, gardez seulement celle de la carte graphique."/>
             </StackPanel>
         </Border>
 

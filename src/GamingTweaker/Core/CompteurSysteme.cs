@@ -11,6 +11,9 @@ namespace GamingTweaker.Core
         public double? Cpu { get; set; }
         public double? Gpu { get; set; }
         public double? Ram { get; set; }
+        /// <summary>Températures (°C) ; null si non demandées ou illisibles (processeur sans le pilote PawnIO).</summary>
+        public double? TempCpu { get; set; }
+        public double? TempGpu { get; set; }
         /// <summary>Mémoire utilisée et totale, en Go.</summary>
         public double RamUtiliseeGo { get; set; }
         public double RamTotaleGo { get; set; }

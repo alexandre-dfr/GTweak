@@ -36,7 +36,7 @@ namespace GamingTweaker.Core
             {
                 chemin = Path.Combine(machineDir, NomFichier);
                 var version = "?";
-                try { version = typeof(TraceAppli).Assembly.GetName().Version.ToString(3); } catch (Exception) { }
+                try { version = VersionAppli.Texte; } catch (Exception) { }
                 tampon.Insert(0, Ligne("démarrage GamingTweaker " + version + ", Windows " + Environment.OSVersion.Version + ", " + (Environment.Is64BitProcess ? "x64" : "x86")));
                 Vider();
             }

@@ -76,6 +76,26 @@ namespace GamingTweaker.Core
         }
         /// <summary>Opacité du fond (0,2 à 1).</summary>
         [JsonProperty("opaciteFond")] public double OpaciteFond { get; set; } = 0.55;
+        /// <summary>Raccourci global : modificateurs (Alt = 1, Ctrl = 2, Maj = 4) et touche (code virtuel Windows). Par défaut Ctrl+Maj+F11.</summary>
+        [JsonProperty("raccourciModificateurs")] public uint RaccourciModificateurs { get; set; } = RaccourciModificateursParDefaut;
+        [JsonProperty("raccourciTouche")] public uint RaccourciTouche { get; set; } = RaccourciToucheParDefaut;
+        public const uint RaccourciModificateursParDefaut = 2 | 4, RaccourciToucheParDefaut = 0x7A;
+
+        /// <summary>
+        /// Combinaison acceptée : au moins Ctrl ou Alt (une touche seule ou Maj+touche gênerait le jeu), une touche qui n'est pas un modificateur,
+        /// ni la touche Windows, ni F12 (réservée au débogueur par Windows). Renvoie la raison du refus, ou null.
+        /// </summary>
+        public static string RefusRaccourci(uint modificateurs, uint touche)
+        {
+            if ((modificateurs & ~7u) != 0) return "Modificateurs inconnus.";
+            if ((modificateurs & 3u) == 0) return "La combinaison doit contenir Ctrl ou Alt, pour ne pas gêner le jeu.";
+            if (touche < 0x08 || touche > 0xFE) return "Touche non prise en charge.";
+            if (touche == 0x10 || touche == 0x11 || touche == 0x12 || (touche >= 0xA0 && touche <= 0xA5)) return "Ajoutez une touche en plus de Ctrl, Alt ou Maj.";
+            if (touche == 0x5B || touche == 0x5C) return "La touche Windows n'est pas utilisable.";
+            if (touche == 0x7B) return "F12 est réservée par Windows : choisissez une autre touche.";
+            return null;
+        }
+
         [JsonProperty("fps")] public bool Fps { get; set; } = true;
         /// <summary>Temps d'image (ms) et 1 % low à côté des FPS.</summary>
         [JsonProperty("details")] public bool Details { get; set; } = true;
@@ -85,6 +105,9 @@ namespace GamingTweaker.Core
         [JsonProperty("cpu")] public bool Cpu { get; set; } = true;
         [JsonProperty("gpu")] public bool Gpu { get; set; } = true;
         [JsonProperty("ram")] public bool Ram { get; set; } = true;
+        /// <summary>Températures affichées sur les lignes CPU et GPU (désactivées par défaut).</summary>
+        [JsonProperty("tempCpu")] public bool TempCpu { get; set; }
+        [JsonProperty("tempGpu")] public bool TempGpu { get; set; }
 
         public static bool CouleurValide(string c) { return c != null && Hex.IsMatch(c.Trim()); }
 
@@ -108,6 +131,7 @@ namespace GamingTweaker.Core
             if (double.IsNaN(OpaciteFond) || double.IsInfinity(OpaciteFond)) OpaciteFond = 0.55;
             OpaciteFond = Math.Max(0.2, Math.Min(1.0, OpaciteFond));
             if (Array.IndexOf(DureesCourbe, DureeCourbe) < 0) DureeCourbe = 30;
+            if (RefusRaccourci(RaccourciModificateurs, RaccourciTouche) != null) { RaccourciModificateurs = RaccourciModificateursParDefaut; RaccourciTouche = RaccourciToucheParDefaut; }
             if (double.IsNaN(X) || double.IsInfinity(X) || Math.Abs(X) > 100000) X = 0;
             if (double.IsNaN(Y) || double.IsInfinity(Y) || Math.Abs(Y) > 100000) Y = 0;
             return this;

@@ -25,6 +25,8 @@ namespace GamingTweaker.Core
         void Demarrer();
         void Arreter();
         void Choisir(bool cpu, bool gpu, bool ram);
+        /// <summary>Températures à relever (LibreHardwareMonitor n'est chargé que si l'une d'elles est demandée).</summary>
+        void ChoisirTemperatures(bool cpu, bool gpu);
         ReleveCompteur Lire();
         string Erreur { get; }
     }
@@ -47,6 +49,39 @@ namespace GamingTweaker.Core
 
         /// <summary>Mesures de charge à relever (les autres ne sont pas calculées).</summary>
         public void Choisir(bool cpu, bool gpu, bool ram) { this.cpu = cpu; this.gpu = gpu; this.ram = ram; }
+
+        private volatile bool tempCpu, tempGpu;
+        private Info.TemperaturesCompteur temperatures;
+        private bool temperaturesEnErreur;
+        public void ChoisirTemperatures(bool cpu, bool gpu) { tempCpu = cpu; tempGpu = gpu; temperaturesEnErreur = false; }
+
+        /// <summary>Températures demandées (appelé sous le verrou du relevé de charge) ; la bibliothèque est rouverte si le choix change.</summary>
+        private void ReleverTemperatures(ChargeSysteme c)
+        {
+            bool vc = tempCpu, vg = tempGpu;
+            if ((!vc && !vg) || temperaturesEnErreur)
+            {
+                if (temperatures != null) { temperatures.Dispose(); temperatures = null; }
+                return;
+            }
+            try
+            {
+                if (temperatures == null || temperatures.Cpu != vc || temperatures.Gpu != vg)
+                {
+                    if (temperatures != null) temperatures.Dispose();
+                    temperatures = new Info.TemperaturesCompteur(vc, vg);
+                }
+                var t = temperatures.Lire();
+                c.TempCpu = t.Item1; c.TempGpu = t.Item2;
+            }
+            catch (Exception ex)
+            {
+                // Un échec (bibliothèque, pilote) ne doit pas se répéter chaque seconde : températures coupées jusqu'au prochain choix.
+                TraceAppli.Erreur("compteur en jeu : températures", ex);
+                temperaturesEnErreur = true;
+                if (temperatures != null) { try { temperatures.Dispose(); } catch (Exception) { } temperatures = null; }
+            }
+        }
 
         public void Demarrer()
         {
@@ -72,7 +107,7 @@ namespace GamingTweaker.Core
                 derniereCharge = new ChargeSysteme();
             }
             using (var fin = new ManualResetEvent(false)) { if (m.Dispose(fin)) fin.WaitOne(2000); }
-            lock (s) s.Dispose();
+            lock (s) { s.Dispose(); if (temperatures != null) { try { temperatures.Dispose(); } catch (Exception) { } temperatures = null; } }
             e.Dispose();
             TraceAppli.Ecrire("compteur en jeu : arrêté");
         }
@@ -83,7 +118,7 @@ namespace GamingTweaker.Core
             lock (verrou) s = systeme;
             if (s == null) return;
             ChargeSysteme c;
-            try { lock (s) c = s.Relever(cpu, gpu, ram); }
+            try { lock (s) { c = s.Relever(cpu, gpu, ram); ReleverTemperatures(c); } }
             catch (Exception ex) { TraceAppli.Erreur("compteur en jeu : relevé de charge", ex); return; }
             lock (verrou) if (systeme == s) derniereCharge = c;
         }

@@ -24,7 +24,64 @@ namespace GamingTweaker.Ui
     {
         public const double LargeurCourbe = 200, HauteurCourbe = 36;
         public const int RelevesParSeconde = 2;
-        public const string Raccourci = "Ctrl+Maj+F11";
+        /// <summary>Texte d'une combinaison (« Ctrl+Maj+F11 »).</summary>
+        public static string TexteCombinaison(uint modificateurs, uint touche)
+        {
+            var p = new List<string>();
+            if ((modificateurs & 2) != 0) p.Add("Ctrl");
+            if ((modificateurs & 1) != 0) p.Add("Alt");
+            if ((modificateurs & 4) != 0) p.Add("Maj");
+            p.Add(NomTouche(touche));
+            return string.Join("+", p);
+        }
+
+        public static string NomTouche(uint vk)
+        {
+            if (vk >= 0x70 && vk <= 0x87) return "F" + (vk - 0x6F);
+            if (vk >= 0x30 && vk <= 0x39) return ((char)vk).ToString();
+            if (vk >= 0x41 && vk <= 0x5A) return ((char)vk).ToString();
+            if (vk >= 0x60 && vk <= 0x69) return "Pavé " + (vk - 0x60);
+            switch (vk)
+            {
+                case 0x20: return "Espace";
+                case 0x2D: return "Inser";
+                case 0x2E: return "Suppr";
+                case 0x24: return "Origine";
+                case 0x23: return "Fin";
+                case 0x21: return "Page préc.";
+                case 0x22: return "Page suiv.";
+                case 0x13: return "Pause";
+                case 0x91: return "Arrêt défil.";
+            }
+            try { return System.Windows.Input.KeyInterop.KeyFromVirtualKey((int)vk).ToString(); }
+            catch (Exception) { return "Touche " + vk; }
+        }
+
+        /// <summary>Raccourci actuel (« Ctrl+Maj+F11 »).</summary>
+        public string Raccourci { get { return TexteCombinaison(config.RaccourciModificateurs, config.RaccourciTouche); } }
+        public uint RaccourciModificateurs { get { return config.RaccourciModificateurs; } }
+        public uint RaccourciTouche { get { return config.RaccourciTouche; } }
+
+        private bool raccourciDisponible = true;
+        /// <summary>Faux si Windows a refusé la combinaison (déjà prise par une autre application) ; renseigné par l'application.</summary>
+        public bool RaccourciDisponible { get { return raccourciDisponible; } set { if (Set(ref raccourciDisponible, value)) { Raise("TexteRaccourci"); Raise("EtatBouton"); } } }
+        public string TexteRaccourci { get { return Raccourci + (raccourciDisponible ? "" : " (indisponible : déjà utilisé par une autre application, choisissez-en un autre)"); } }
+
+        /// <summary>La combinaison a changé : l'application la réenregistre auprès de Windows.</summary>
+        public event Action RaccourciChange;
+
+        /// <summary>Change le raccourci ; renvoie la raison d'un refus, ou null.</summary>
+        public string DefinirRaccourci(uint modificateurs, uint touche)
+        {
+            var refus = CompteurConfig.RefusRaccourci(modificateurs, touche);
+            if (refus != null) return refus;
+            if (config.RaccourciModificateurs == modificateurs && config.RaccourciTouche == touche) return null;
+            config.RaccourciModificateurs = modificateurs; config.RaccourciTouche = touche;
+            Raise("Raccourci"); Raise("TexteRaccourci"); Raise("EtatBouton");
+            Modifie(false);
+            var h = RaccourciChange; if (h != null) h();
+            return null;
+        }
         private static readonly CultureInfo Fr = CultureInfo.GetCultureInfo("fr-FR");
 
         private readonly string machineDir;
@@ -180,6 +237,8 @@ namespace GamingTweaker.Ui
         }
         public bool Cpu { get { return config.Cpu; } set { if (config.Cpu != value) { config.Cpu = value; Raise(); Raise("AfficherCharge"); MajChoixSource(); Modifie(true); } } }
         public bool Gpu { get { return config.Gpu; } set { if (config.Gpu != value) { config.Gpu = value; Raise(); Raise("AfficherCharge"); MajChoixSource(); Modifie(true); } } }
+        public bool TempCpu { get { return config.TempCpu; } set { if (config.TempCpu != value) { config.TempCpu = value; Raise(); MajChoixSource(); Modifie(false); } } }
+        public bool TempGpu { get { return config.TempGpu; } set { if (config.TempGpu != value) { config.TempGpu = value; Raise(); MajChoixSource(); Modifie(false); } } }
         public bool Ram { get { return config.Ram; } set { if (config.Ram != value) { config.Ram = value; Raise(); Raise("AfficherCharge"); MajChoixSource(); Modifie(true); } } }
 
         public IReadOnlyList<ChoixListe<CoinEcran>> Positions { get; } = new[]
@@ -269,8 +328,8 @@ namespace GamingTweaker.Ui
             TexteProcessus = m == null ? (string.IsNullOrEmpty(r.Processus) ? "" : r.Processus + " : aucune image")
                            : r.Processus + (string.IsNullOrEmpty(m.Source) ? "" : " · " + m.Source);
             var c = r.Charge ?? new ChargeSysteme();
-            TexteCpu = Pourcent("CPU", c.Cpu);
-            TexteGpu = Pourcent("GPU", c.Gpu);
+            TexteCpu = Pourcent("CPU", c.Cpu) + (config.TempCpu ? Temperature(c.TempCpu) : "");
+            TexteGpu = Pourcent("GPU", c.Gpu) + (config.TempGpu ? Temperature(c.TempGpu) : "");
             TexteRam = Pourcent("RAM", c.Ram) + (c.Ram.HasValue && c.RamTotaleGo > 0 ? "  " + c.RamUtiliseeGo.ToString("0.0", Fr) + "/" + c.RamTotaleGo.ToString("0", Fr) + " Go" : "");
 
             historique.Add(m == null ? double.NaN : m.Fps);
@@ -279,6 +338,8 @@ namespace GamingTweaker.Ui
             PointsCourbe = CalculerCourbe(historique.Skip(Math.Max(0, historique.Count - max)).ToList(), max);
             Raise("Erreur");
         }
+
+        private static string Temperature(double? t) { return "  " + (t.HasValue ? Math.Round(t.Value).ToString("0", Fr).PadLeft(3) + " °C" : "  — °C"); }
 
         private static string Pourcent(string nom, double? v) { return nom + " " + (v.HasValue ? Math.Round(v.Value).ToString("0", Fr).PadLeft(3) + " %" : "  —  "); }
 
@@ -325,7 +386,11 @@ namespace GamingTweaker.Ui
             Raise("Erreur");
         }
 
-        private void MajChoixSource() { source.Choisir(config.Cpu, config.Gpu, config.Ram); }
+        private void MajChoixSource()
+        {
+            source.Choisir(config.Cpu, config.Gpu, config.Ram);
+            source.ChoisirTemperatures(config.Cpu && config.TempCpu, config.Gpu && config.TempGpu);
+        }
 
         private void Modifie(bool disposition)
         {

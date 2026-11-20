@@ -285,6 +285,32 @@ namespace GamingTweaker.Ui
 
         public string Message { get { return message; } set { Set(ref message, value ?? ""); } }
 
+        // ---------- Guide du premier lancement, version ----------
+
+        public const string FichierGuideVu = "guide-vu";
+        private bool guideMasque;
+        /// <summary>Le guide de l'accueil s'affiche tant qu'il n'a pas été masqué sur ce PC (fichier témoin dans le dossier de la machine).</summary>
+        public bool AfficherGuide
+        {
+            get
+            {
+                if (guideMasque) return false;
+                try { return paths == null || string.IsNullOrEmpty(paths.MachineDir) || !File.Exists(Path.Combine(paths.MachineDir, FichierGuideVu)); }
+                catch (Exception) { return true; }
+            }
+        }
+        private ICommand masquerGuide;
+        public ICommand MasquerGuideCommand { get { return masquerGuide ?? (masquerGuide = new RelayCommand(_ => MasquerGuide())); } }
+        public void MasquerGuide()
+        {
+            guideMasque = true;
+            try { if (paths != null && !string.IsNullOrEmpty(paths.MachineDir)) { Directory.CreateDirectory(paths.MachineDir); File.WriteAllText(Path.Combine(paths.MachineDir, FichierGuideVu), DateTime.Now.ToString("o")); } }
+            catch (Exception ex) { TraceAppli.Erreur("guide de l'accueil : témoin non écrit", ex); }
+            Raise("AfficherGuide");
+        }
+
+        public string TexteVersion { get { return "GamingTweaker " + VersionAppli.Texte; } }
+
         private CompteurViewModel compteurVm;
         /// <summary>Compteur en jeu (null tant que l'application ne l'a pas branché).</summary>
         public CompteurViewModel Compteur { get { return compteurVm; } set { Set(ref compteurVm, value); } }

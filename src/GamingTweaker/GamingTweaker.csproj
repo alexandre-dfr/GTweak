@@ -29,6 +29,13 @@
     <GenerateBindingRedirectsOutputType>false</GenerateBindingRedirectsOutputType>
   </PropertyGroup>
 
+  <!-- Numéro de build de la CI (variable d'environnement GT_BUILD = numéro du run GitHub Actions) : chaque exe publié a sa propre version
+       (0.9.1.58), affichée dans l'application et dans les rapports. En local, la révision reste 0. -->
+  <PropertyGroup Condition="'$(GT_BUILD)' != ''">
+    <AssemblyVersion>$(Version).$(GT_BUILD)</AssemblyVersion>
+    <FileVersion>$(Version).$(GT_BUILD)</FileVersion>
+  </PropertyGroup>
+
   <!-- requireAdministrator en Release, asInvoker en Debug (voir global-constraints). Release : aucun symbole livré. -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <ApplicationManifest>app.manifest</ApplicationManifest>

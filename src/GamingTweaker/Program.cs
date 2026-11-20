@@ -21,6 +21,8 @@ namespace GamingTweaker
         [STAThread]
         public static int Main(string[] args)
         {
+            bool interfaceGraphique = args.Length == 0 || (args.Length == 1 && string.Equals(args[0], DemarrageWindows.Argument, StringComparison.OrdinalIgnoreCase));
+            if (interfaceGraphique) RapportErreur.DebutDemarrage();
             // Toute exception non rattrapée laisse un rapport lisible (%LOCALAPPDATA%\GamingTweaker\erreurs.log) au lieu d'une fermeture muette.
             AppDomain.CurrentDomain.UnhandledException += (s, e) =>
             {
@@ -39,7 +41,8 @@ namespace GamingTweaker
             };
             // Tout en haut, avant tout type Newtonsoft/LHM : une DLL du même nom qu'une DLL embarquée à côté de l'exe serait chargée à sa place.
             var refus = VerifierDllsAuDemarrage(args);
-            if (refus != 0) return refus;
+            if (refus != 0) { if (interfaceGraphique) RapportErreur.Jalon("arrêt : DLL en conflit à côté de l'exe"); return refus; }
+            if (interfaceGraphique) RapportErreur.Jalon("DLL vérifiées");
             DemarrageSur.RestreindreRechercheDll();
             AssemblyLoader.Register();
             if (args.Length == 0) return LaunchUi();
@@ -73,7 +76,10 @@ namespace GamingTweaker
             {
                 var app = new App();
                 app.InitializeComponent();
-                return app.Run();
+                RapportErreur.Jalon("interface : thème chargé");
+                var code = app.Run();
+                RapportErreur.Jalon(RapportErreur.JalonFin);
+                return code;
             }
             catch (Exception ex)
             {

@@ -41,9 +41,6 @@ namespace GamingTweaker.Ui
             MenuTheme.IsOpen = true;
         }
 
-        /// <summary>Le raccourci global du compteur a pu être enregistré (sinon les réglages le signalent).</summary>
-        public bool RaccourciCompteurDisponible { get; set; }
-
         private CompteurReglagesWindow reglagesCompteur;
 
         /// <summary>Réglages du compteur, non modaux : une fenêtre modale bloquerait le glisser-déposer du compteur.</summary>
@@ -51,7 +48,7 @@ namespace GamingTweaker.Ui
         {
             if (vm.Compteur == null) return;
             if (reglagesCompteur != null) { reglagesCompteur.Activate(); return; }
-            reglagesCompteur = new CompteurReglagesWindow(vm.Compteur, RaccourciCompteurDisponible) { Owner = this };
+            reglagesCompteur = new CompteurReglagesWindow(vm.Compteur) { Owner = this };
             reglagesCompteur.Closed += (s, ev) => reglagesCompteur = null;
             reglagesCompteur.Show();
         }
@@ -118,10 +115,12 @@ namespace GamingTweaker.Ui
 
         private const string FiltreProfil = "Profil GamingTweaker (*.json)|*.json";
 
-        private void BoutonPartage_Click(object sender, RoutedEventArgs e)
+        private void BoutonProfil_Click(object sender, RoutedEventArgs e)
         {
-            MenuPartage.PlacementTarget = BoutonPartage;
-            MenuPartage.IsOpen = true;
+            MenuProfil.PlacementTarget = BoutonProfil;
+            // Le menu contextuel n'hérite pas du DataContext de la fenêtre quand il est ouvert par un clic gauche.
+            MenuProfil.DataContext = vm;
+            MenuProfil.IsOpen = true;
         }
 
         private void ExporterProfil_Click(object sender, RoutedEventArgs e)

@@ -25,7 +25,7 @@ namespace GamingTweaker.Core
         {
             var sb = new StringBuilder();
             string version = "?";
-            try { version = typeof(RapportErreur).Assembly.GetName().Version.ToString(3); } catch (Exception) { }
+            try { version = VersionAppli.Texte; } catch (Exception) { }
             sb.AppendLine("==== " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " · GamingTweaker " + version + " · Windows " + Environment.OSVersion.Version + " ====");
             sb.AppendLine("Contexte : " + (contexte ?? "inconnu"));
             sb.AppendLine(ex == null ? "(aucune exception)" : ex.ToString());
@@ -56,6 +56,60 @@ namespace GamingTweaker.Core
                 }
             }
             catch (Exception) { return null; }
+        }
+
+        // ---------- Journal de démarrage ----------
+
+        public const string NomJournalDemarrage = "demarrage.log";
+        public const string JalonFin = "fermeture normale";
+        private static string precedent;
+
+        /// <summary>
+        /// Début d'un lancement de l'interface : garde la dernière étape du lancement précédent (s'il ne s'est pas terminé normalement),
+        /// puis recommence le journal. Écrit sur le disque à chaque étape : si le processus est tué (antivirus, plantage natif),
+        /// la dernière ligne indique où il s'est arrêté, ce que le rapport d'erreur ne peut pas voir.
+        /// </summary>
+        public static void DebutDemarrage()
+        {
+            try
+            {
+                var f = Path.Combine(Dossier, NomJournalDemarrage);
+                precedent = null;
+                if (File.Exists(f))
+                {
+                    var lignes = File.ReadAllLines(f);
+                    precedent = DerniereEtapeInachevee(lignes);
+                }
+                Directory.CreateDirectory(Dossier);
+                File.WriteAllText(f, "", new UTF8Encoding(false));
+            }
+            catch (Exception) { }
+            Jalon("lancement");
+        }
+
+        /// <summary>Dernière étape d'un journal de démarrage qui ne se termine pas par la fermeture normale (null sinon ; public pour les tests).</summary>
+        public static string DerniereEtapeInachevee(string[] lignes)
+        {
+            if (lignes == null || lignes.Length == 0) return null;
+            var derniere = lignes[lignes.Length - 1];
+            if (derniere.EndsWith(JalonFin, StringComparison.Ordinal)) return null;
+            var i = derniere.IndexOf(' ', 20);
+            return i > 0 && i < derniere.Length - 1 ? derniere.Substring(i + 1) : derniere;
+        }
+
+        /// <summary>Étape où s'est arrêté le lancement précédent, s'il ne s'est pas fermé normalement (null sinon).</summary>
+        public static string LancementPrecedentInterrompu { get { return precedent; } }
+
+        /// <summary>Note une étape du démarrage (et la fermeture normale, avec <see cref="JalonFin"/>). Ne lève jamais.</summary>
+        public static void Jalon(string etape)
+        {
+            try
+            {
+                lock (sync)
+                    File.AppendAllText(Path.Combine(Dossier, NomJournalDemarrage),
+                        DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") + " " + etape + "\r\n", new UTF8Encoding(false));
+            }
+            catch (Exception) { }
         }
 
         /// <summary>Message affiché à l'utilisateur.</summary>

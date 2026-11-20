@@ -273,7 +273,7 @@ namespace GamingTweaker.Core
 
         private static string VersionOutil()
         {
-            try { return typeof(RunPipeline).Assembly.GetName().Version.ToString(3); } catch (Exception) { return "?"; }
+            try { return VersionAppli.Texte; } catch (Exception) { return "?"; }
         }
 
         private static string BuildWindows()
