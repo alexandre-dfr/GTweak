@@ -96,7 +96,9 @@ namespace GamingTweaker.Ui
         {
             this.machineDir = machineDir;
             this.source = source;
-            this.config = (config ?? CompteurConfig.Charger(machineDir)).Normaliser();
+            // Réglages lus du fichier : le compteur démarre toujours masqué (bouton ou raccourci pour l'afficher pendant la session).
+            if (config == null) { config = CompteurConfig.Charger(machineDir); config.Actif = false; }
+            this.config = config.Normaliser();
             minuteur = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1000 / RelevesParSeconde) };
             minuteur.Tick += (s, e) => Rafraichir(source.Lire());
             // Enregistrement différé : un curseur déplacé n'écrit pas le fichier à chaque pas.

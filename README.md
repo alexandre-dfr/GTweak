@@ -43,7 +43,7 @@ Aucun ne contient d'option Risqué, d'option à liste (services, démarrage : le
 
 ## Compteur en jeu (FPS, CPU, GPU, RAM)
 
-Le bouton en forme de compteur, en haut à droite (à côté du thème), affiche ou masque le compteur par-dessus le jeu ; ses réglages sont dans le menu **Paramètres**. Il est désactivé par défaut. **Ctrl+Maj+F11** l'affiche ou le masque pendant une partie ; la combinaison se change dans Paramètres (« Changer… », puis appuyez sur la nouvelle combinaison : elle doit contenir Ctrl ou Alt).
+Le bouton en forme de compteur, en haut à droite (à côté du thème), affiche ou masque le compteur par-dessus le jeu ; ses réglages sont dans le menu **Paramètres**. Il est toujours masqué au lancement de l'appli (il ne s'affiche que si vous le demandez, pour la session en cours). **Ctrl+Maj+F11** l'affiche ou le masque pendant une partie ; la combinaison se change dans Paramètres (« Changer… », puis appuyez sur la nouvelle combinaison : elle doit contenir Ctrl ou Alt).
 
 - **Contenu**, chaque élément activable séparément :
   - images par seconde de la fenêtre au premier plan ;
