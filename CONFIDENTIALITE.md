@@ -8,7 +8,9 @@ L'appli ne se connecte à Internet que dans ces cas, tous visibles :
 
 | Quand | Vers | Ce qui est envoyé |
 |---|---|---|
-| Au démarrage de l'interface (pas en mode `--silent` ni par la routine planifiée) | `api.github.com` | Une requête anonyme pour connaître la dernière release. Aucun identifiant de la machine ni de l'utilisateur. Rien n'est téléchargé. |
+| Au démarrage de l'interface (pas en mode `--silent` ni par la routine planifiée) | `api.github.com` | Une requête anonyme pour connaître la dernière release. Aucun identifiant de la machine ni de l'utilisateur. |
+| Clic sur « Mettre à jour » | `github.com` (fichiers des releases) | Le téléchargement de `GamingTweaker.exe`, rien d'autre. |
+| Commande d'installation (`installer.ps1`), si vous la lancez | `raw.githubusercontent.com`, `api.github.com`, `github.com` | Le téléchargement du script puis de `GamingTweaker.exe`. |
 | Options du menu Mises à jour que vous cochez, et ouverture de leur liste | Windows Update, `winget` (sources de vos applis), site de NVIDIA (recherche du dernier pilote pour votre carte) | Ce que ces outils envoient eux-mêmes ; pour NVIDIA, le modèle de la carte graphique, nécessaire à la recherche du pilote. |
 | Bloatware : réinstallation d'une appli lors d'une annulation | Microsoft Store | Ce que le Store envoie pour installer l'appli. |
 | « Activer les capteurs » (menu Informations), si vous acceptez l'installation de PawnIO | `winget` (ou la page officielle de PawnIO dans le navigateur) | Ce que `winget` envoie pour télécharger le pilote. |

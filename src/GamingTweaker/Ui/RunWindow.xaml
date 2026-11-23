@@ -4,6 +4,9 @@
         Style="{StaticResource AppWindow}"
         Title="Exécution" Width="900" Height="640" MinWidth="700" MinHeight="460"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolVis"/>
+    </Window.Resources>
     <Grid Margin="24,20,24,20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -14,10 +17,38 @@
         <TextBlock x:Name="Etat" FontSize="22" FontWeight="SemiBold" Text="Exécution en cours…"/>
         <ProgressBar x:Name="Barre" Grid.Row="1" Height="4" Margin="0,12,0,14" IsIndeterminate="True" BorderThickness="0"
                      Background="{DynamicResource PanelHoverBrush}" Foreground="{DynamicResource AccentBrush}"/>
-        <TextBox x:Name="Journal" Grid.Row="2" IsReadOnly="True" FontFamily="Consolas" FontSize="13" AcceptsReturn="True" TextWrapping="Wrap"
-                 VerticalScrollBarVisibility="Auto"/>
+        <Grid Grid.Row="2">
+            <!-- Pendant l'exécution : journal en direct. À la fin : résumé en quelques lignes, journal derrière « Journal détaillé ». -->
+            <TextBox x:Name="Journal" IsReadOnly="True" FontFamily="Consolas" FontSize="13" AcceptsReturn="True" TextWrapping="Wrap"
+                     VerticalScrollBarVisibility="Auto"/>
+            <ScrollViewer x:Name="Resume" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                <ItemsControl x:Name="LignesResume">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="16,12" Margin="0,0,0,10">
+                                <DockPanel>
+                                    <TextBlock x:Name="icone" DockPanel.Dock="Left" Text="{Binding Icone}" FontFamily="{StaticResource PoliceIcones}" FontSize="20"
+                                               Margin="0,0,14,0" VerticalAlignment="Top" Foreground="{DynamicResource MutedBrush}"/>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Texte}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                        <TextBlock Text="{Binding Detail}" FontSize="13" Margin="0,6,0,0" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}"
+                                                   Visibility="{Binding ADetail, Converter={StaticResource BoolVis}}"/>
+                                    </StackPanel>
+                                </DockPanel>
+                            </Border>
+                            <DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding Genre}" Value="ok"><Setter TargetName="icone" Property="Foreground" Value="{DynamicResource SurFg}"/></DataTrigger>
+                                <DataTrigger Binding="{Binding Genre}" Value="attention"><Setter TargetName="icone" Property="Foreground" Value="{DynamicResource AvanceFg}"/></DataTrigger>
+                                <DataTrigger Binding="{Binding Genre}" Value="erreur"><Setter TargetName="icone" Property="Foreground" Value="{DynamicResource RisqueFg}"/></DataTrigger>
+                            </DataTemplate.Triggers>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
         <DockPanel Grid.Row="3" Margin="0,18,0,0" LastChildFill="False">
             <Button x:Name="Dossier" DockPanel.Dock="Left" Content="Ouvrir le dossier de la session" Visibility="Collapsed" Click="Dossier_Click"/>
+            <Button x:Name="BasculerJournal" DockPanel.Dock="Left" Content="Journal détaillé" Margin="8,0,0,0" Visibility="Collapsed" Click="BasculerJournal_Click"/>
             <Button x:Name="Fermer" DockPanel.Dock="Right" Content="Fermer" Style="{StaticResource PrimaryButton}" Visibility="Collapsed" IsDefault="True" Click="Fermer_Click"/>
             <Button x:Name="Annuler" DockPanel.Dock="Right" Content="Annuler l'exécution" Click="Annuler_Click"/>
         </DockPanel>

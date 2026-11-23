@@ -4,6 +4,16 @@ Application Windows portable (un seul `GamingTweaker.exe`) qui règle un PC de j
 
 ## Lancer
 
+**Installation en une commande** (recommandé) : ouvrez PowerShell (pas besoin d'être administrateur) et collez :
+
+```powershell
+irm https://raw.githubusercontent.com/alexandre-dfr/GTweak/main/installer.ps1 | iex
+```
+
+Le script ([installer.ps1](installer.ps1), lisible avant de le lancer) télécharge la dernière version, vérifie son empreinte SHA-256, la place dans `%LOCALAPPDATA%\Programs\GamingTweaker`, ajoute un raccourci au menu Démarrer et la lance. Pas d'avertissement SmartScreen : un fichier téléchargé ainsi ne porte pas la marque « téléchargé depuis Internet ». Relancer la commande installe la dernière version.
+
+**Ou à la main**, depuis l'onglet Releases :
+
 1. Copiez `GamingTweaker.exe` où vous voulez, par exemple sur une clé USB. C'est le seul fichier : aucune dépendance, aucun fichier de configuration (.NET Framework 4.8 est déjà dans Windows 10 1903+ et Windows 11).
 2. Double-cliquez : Windows demande les droits administrateur (obligatoire pour modifier le système).
 3. Cochez les options, cliquez sur **Aperçu** pour voir exactement ce qui sera fait, puis sur **LANCER**. Au premier lancement, un encadré de l'accueil résume ces étapes (bouton « Compris » pour le masquer, « Réafficher le guide » dans Paramètres).
@@ -12,7 +22,7 @@ Rien n'est installé. Les capteurs matériels (menu Informations) ne sont charg�
 
 ### Avertissement SmartScreen
 
-L'exe n'est pas signé (une signature de code est payante, ou gratuite via SignPath seulement pour un dépôt public) : au premier lancement d'un exe téléchargé par le navigateur, Windows affiche « Windows a protégé votre ordinateur ». Deux façons de l'éviter :
+L'exe n'est pas signé : au premier lancement d'un exe téléchargé par le navigateur, Windows affiche « Windows a protégé votre ordinateur ». L'installation en une commande (ci-dessus) et la mise à jour intégrée l'évitent. Pour un exe téléchargé à la main :
 
 - **Avant le premier lancement** : ouvrez PowerShell et collez cette commande (elle retire la marque « téléchargé depuis Internet », comme le bouton « Débloquer » des propriétés du fichier) :
 
@@ -83,7 +93,14 @@ Comme tout profil, le fichier ne contient que des identifiants d'options et des 
 
 ## Nouvelle version
 
-Au démarrage de l'interface, l'appli demande à GitHub la dernière release publiée (`api.github.com`, sans identifiant de la machine ni de l'utilisateur ; les pré-versions de test sont ignorées). Si elle est plus récente, un bandeau propose « Voir la nouvelle version », qui ouvre la page de la release dans le navigateur. **Rien n'est téléchargé ni installé automatiquement.** Hors ligne, ou si GitHub ne répond pas en 10 s, rien ne s'affiche. La routine planifiée et le mode `--silent` ne font pas cette vérification. Toutes les connexions de l'appli sont listées dans [CONFIDENTIALITE.md](CONFIDENTIALITE.md) : aucune télémétrie.
+Au démarrage de l'interface, l'appli demande à GitHub la dernière release publiée (`api.github.com`, sans identifiant de la machine ni de l'utilisateur ; les pré-versions de test sont ignorées). Si elle est plus récente, un bandeau propose :
+
+- **Mettre à jour** : l'appli télécharge `GamingTweaker.exe` depuis la release, vérifie son empreinte SHA-256 (calculée par GitHub, sinon publiée par la CI dans les notes de la release), le met à la place de l'exe en cours puis redémarre. Vos réglages, profils et l'historique sont conservés ; la copie lancée avec Windows est mise à jour aussi. Si l'empreinte ne correspond pas, rien n'est remplacé. Un fichier téléchargé par l'appli ne déclenche pas SmartScreen.
+- **Nouveautés** : ouvre la page de la release dans le navigateur.
+
+Rien n'est téléchargé sans ce clic. Hors ligne, ou si GitHub ne répond pas en 10 s, aucun bandeau ne s'affiche. La routine planifiée et le mode `--silent` ne font pas cette vérification. Toutes les connexions de l'appli sont listées dans [CONFIDENTIALITE.md](CONFIDENTIALITE.md) : aucune télémétrie.
+
+La mise à jour intégrée et la commande d'installation ne voient que les releases publiées par un tag `vX.Y.Z` (voir « Publication (CI) ») : les pré-versions `test-*` sont ignorées.
 
 ## Réglages du pilote NVIDIA
 

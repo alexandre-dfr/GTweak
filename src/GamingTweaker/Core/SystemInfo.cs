@@ -27,17 +27,22 @@ namespace GamingTweaker.Core
                 }
             }
 
-            foreach (var name in Query("SELECT Name FROM Win32_Processor", "Name"))
+            // Les quatre lectures WMI sont indépendantes : lancées en parallèle, elles coûtent le temps de la plus lente au lieu de leur somme.
+            var processeurs = System.Threading.Tasks.Task.Run(() => Query("SELECT Name FROM Win32_Processor", "Name"));
+            var cartes = System.Threading.Tasks.Task.Run(() => Query("SELECT Name FROM Win32_VideoController", "Name"));
+            var chassis = System.Threading.Tasks.Task.Run(() => QueryChassis());
+            var batteries = System.Threading.Tasks.Task.Run(() => Query("SELECT Name FROM Win32_Battery", "Name"));
+            foreach (var name in processeurs.Result)
             {
                 var v = NormalizeVendor(name);
                 if (v != "") { facts.CpuVendor = v; break; }
             }
-            foreach (var name in Query("SELECT Name FROM Win32_VideoController", "Name"))
+            foreach (var name in cartes.Result)
             {
                 var v = NormalizeVendor(name);
                 if (v != "" && !facts.GpuVendors.Contains(v)) facts.GpuVendors.Add(v);
             }
-            facts.EstPortable = EstPortable(QueryChassis(), Query("SELECT Name FROM Win32_Battery", "Name").Count > 0);
+            facts.EstPortable = EstPortable(chassis.Result, batteries.Result.Count > 0);
             facts.RamGo = RamGo();
             facts.ServiceExiste = ServiceExiste;
             facts.CleExiste = CleExiste;

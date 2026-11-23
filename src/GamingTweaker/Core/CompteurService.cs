@@ -53,7 +53,15 @@ namespace GamingTweaker.Core
         private volatile bool tempCpu, tempGpu;
         private Info.TemperaturesCompteur temperatures;
         private bool temperaturesEnErreur;
-        public void ChoisirTemperatures(bool cpu, bool gpu) { tempCpu = cpu; tempGpu = gpu; temperaturesEnErreur = false; }
+        public void ChoisirTemperatures(bool cpu, bool gpu) { tempCpu = cpu; tempGpu = gpu; temperaturesEnErreur = false; tickTemperatures = 0; }
+
+        /// <summary>Intervalle de lecture des températures, en relevés de charge (un par seconde).</summary>
+        public const int TemperaturesToutesLesNSecondes = 4;
+        private int tickTemperatures;
+        private double? tempCpuMem, tempGpuMem;
+
+        /// <summary>Vrai au premier relevé puis tous les <see cref="TemperaturesToutesLesNSecondes"/> relevés.</summary>
+        public static bool DoitLireTemperatures(int tick) => tick % TemperaturesToutesLesNSecondes == 0;
 
         /// <summary>Températures demandées (appelé sous le verrou du relevé de charge) ; la bibliothèque est rouverte si le choix change.</summary>
         private void ReleverTemperatures(ChargeSysteme c)
@@ -132,7 +140,17 @@ namespace GamingTweaker.Core
             lock (verrou) s = systeme;
             if (s == null) return;
             ChargeSysteme c;
-            try { lock (s) { c = s.Relever(cpu, gpu, ram); ReleverTemperatures(c); } }
+            try
+            {
+                lock (s)
+                {
+                    c = s.Relever(cpu, gpu, ram);
+                    // Températures (bibliothèque capteurs, lente sur certains portables) : relues toutes les quelques secondes seulement,
+                    // la dernière valeur reste affichée entre deux lectures. Une température varie lentement : rien d'utile n'est perdu.
+                    if (DoitLireTemperatures(tickTemperatures++)) { ReleverTemperatures(c); tempCpuMem = c.TempCpu; tempGpuMem = c.TempGpu; }
+                    else { c.TempCpu = tempCpuMem; c.TempGpu = tempGpuMem; }
+                }
+            }
             catch (Exception ex) { TraceAppli.Erreur("compteur en jeu : relevé de charge", ex); return; }
             lock (verrou) if (systeme == s) derniereCharge = c;
         }

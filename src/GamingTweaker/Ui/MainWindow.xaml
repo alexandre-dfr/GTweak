@@ -144,8 +144,14 @@
                         <Border x:Name="badge" Style="{StaticResource Badge}" Background="{DynamicResource SurBg}">
                             <TextBlock x:Name="badgeText" Text="{Binding Risque}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SurFg}"/>
                         </Border>
-                        <TextBlock Text="·" Margin="8,0" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
-                        <TextBlock x:Name="etat" Text="{Binding Etat}" FontSize="13" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                        <!-- État sur ce PC : pastille verte « Déjà appliqué », grise sinon -->
+                        <Border x:Name="pastille" Margin="8,0,0,0" Padding="7,1,9,1" CornerRadius="9" BorderThickness="1" VerticalAlignment="Center"
+                                BorderBrush="{DynamicResource BorderBrush}" Background="Transparent">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse x:Name="point" Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center" Fill="{DynamicResource MutedBrush}"/>
+                                <TextBlock x:Name="etat" Text="{Binding Etat}" FontSize="12" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                     <TextBlock Text="{Binding Description}" Margin="0,4,0,0" FontSize="13" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
                 </StackPanel>
@@ -217,6 +223,12 @@
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Etat}" Value="Déjà appliqué">
                     <Setter TargetName="etat" Property="Foreground" Value="{DynamicResource SurFg}"/>
+                    <Setter TargetName="etat" Property="FontWeight" Value="SemiBold"/>
+                    <Setter TargetName="point" Property="Fill" Value="{DynamicResource SurFg}"/>
+                    <Setter TargetName="pastille" Property="BorderBrush" Value="{DynamicResource SurFg}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Etat}" Value="Inconnu">
+                    <Setter TargetName="point" Property="Fill" Value="{DynamicResource AvanceFg}"/>
                 </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
@@ -245,7 +257,9 @@
                     Visibility="{Binding NouvelleVersionVisible, Converter={StaticResource BoolVis}, FallbackValue=Collapsed}">
                 <DockPanel>
                     <Button DockPanel.Dock="Right" Content="✕" Click="MasquerNouvelleVersion_Click" Padding="8,2" Margin="8,0,0,0" ToolTip="Masquer jusqu'au prochain lancement"/>
-                    <Button DockPanel.Dock="Right" Content="Voir la nouvelle version" Click="VoirNouvelleVersion_Click"/>
+                    <Button DockPanel.Dock="Right" Content="Nouveautés" Click="VoirNouvelleVersion_Click" Margin="8,0,0,0" ToolTip="Ouvre la page de la version dans le navigateur"/>
+                    <Button DockPanel.Dock="Right" Content="{Binding TexteBoutonMiseAJour}" Style="{StaticResource PrimaryButton}" Click="MettreAJour_Click"
+                            IsEnabled="{Binding PeutMettreAJour}" ToolTip="Télécharge la nouvelle version, vérifie son empreinte SHA-256, la met à la place de celle-ci et redémarre"/>
                     <TextBlock Text="{Binding TexteNouvelleVersion}" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap"/>
                 </DockPanel>
             </Border>
@@ -337,6 +351,13 @@
                         </Style>
                     </Border.Style>
                     <DockPanel LastChildFill="True">
+                        <!-- Avancement du menu : « 12 / 32 appliquées » et barre verte -->
+                        <StackPanel DockPanel.Dock="Left" Margin="0,0,16,0" VerticalAlignment="Center" MinWidth="130"
+                                    ToolTip="Options de ce menu déjà appliquées sur ce PC (les options sans objet sur ce PC ne sont pas comptées)">
+                            <TextBlock Text="{Binding AvancementMenu}" FontWeight="SemiBold" Foreground="{DynamicResource SurFg}"/>
+                            <ProgressBar Value="{Binding ProportionMenu, Mode=OneWay}" Maximum="1" Height="4" Margin="0,3,0,0"
+                                         Foreground="{DynamicResource SurFg}" Background="{DynamicResource BorderBrush}" BorderThickness="0"/>
+                        </StackPanel>
                         <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
                             <Button Content="Recommandé" Command="{Binding RecommanderCommand}" ToolTip="Coche les options sûres de ce menu"/>
                             <Button Content="Décocher" Command="{Binding DecocherCommand}" Margin="8,0,16,0" ToolTip="Décoche les options affichées"/>

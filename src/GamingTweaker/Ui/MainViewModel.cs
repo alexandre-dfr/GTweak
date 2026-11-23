@@ -177,7 +177,24 @@ namespace GamingTweaker.Ui
             }
             totalAppliquees = EtatMenus.Sum(l => l.Appliquees); totalOptions = EtatMenus.Sum(l => l.Total);
             Raise("TotalAppliquees"); Raise("TotalOptions"); Raise("SyntheseAccueil"); Raise("ProportionAppliquees");
+            Raise("AvancementMenu"); Raise("ProportionMenu");
         }
+
+        private LigneAccueil LigneMenuCourant { get { return EtatMenus.FirstOrDefault(l => l.Menu == menuCourant); } }
+
+        /// <summary>« 12 / 32 appliquées » pour le menu d'options affiché ; vide ailleurs ou pendant la détection.</summary>
+        public string AvancementMenu
+        {
+            get
+            {
+                var l = LigneMenuCourant;
+                if (l == null) return "";
+                if (Options.Any(o => o.Menu == menuCourant && o.Etat == "Détection…")) return "Analyse…";
+                return l.Appliquees + " / " + l.Total + " appliquée" + (l.Appliquees > 1 ? "s" : "");
+            }
+        }
+
+        public double ProportionMenu { get { var l = LigneMenuCourant; return l == null ? 0 : l.Proportion; } }
 
         public void ChargerProfilRapide(string nom)
         {
@@ -255,7 +272,7 @@ namespace GamingTweaker.Ui
         /// <summary>Le menu courant ou la recherche a changé : signale toutes les propriétés « quelle vue est affichée », puis refiltre.</summary>
         private void MajVueAffichee()
         {
-            foreach (var p in new[] { "EstAccueil", "EstDiagnostic", "EstEmplacement", "EstMenuOptions", "EstModeJeu", "EstHistorique", "EstMenuInformations", "EstParametres", "TitreAffiche" })
+            foreach (var p in new[] { "AvancementMenu", "ProportionMenu", "EstAccueil", "EstDiagnostic", "EstEmplacement", "EstMenuOptions", "EstModeJeu", "EstHistorique", "EstMenuInformations", "EstParametres", "TitreAffiche" })
                 Raise(p);
             MajInfo();
             Filtrer();
@@ -346,7 +363,7 @@ namespace GamingTweaker.Ui
         public VersionDisponible NouvelleVersion
         {
             get { return nouvelleVersion; }
-            set { if (Set(ref nouvelleVersion, value)) { Raise("NouvelleVersionVisible"); Raise("TexteNouvelleVersion"); } }
+            set { if (Set(ref nouvelleVersion, value)) { Raise("NouvelleVersionVisible"); Raise("TexteNouvelleVersion"); Raise("PeutMettreAJour"); Raise("TexteBoutonMiseAJour"); } }
         }
         /// <summary>Bandeau fermé par l'utilisateur (jusqu'au prochain lancement).</summary>
         public bool NouvelleVersionMasquee
@@ -355,11 +372,26 @@ namespace GamingTweaker.Ui
             set { if (Set(ref nouvelleVersionMasquee, value)) Raise("NouvelleVersionVisible"); }
         }
         public bool NouvelleVersionVisible { get { return nouvelleVersion != null && !nouvelleVersionMasquee; } }
+
+        private bool miseAJourEnCours;
+        /// <summary>Téléchargement et vérification de la nouvelle version en cours (bouton « Mettre à jour » désactivé).</summary>
+        public bool MiseAJourEnCours
+        {
+            get { return miseAJourEnCours; }
+            set { if (Set(ref miseAJourEnCours, value)) { Raise("TexteNouvelleVersion"); Raise("PeutMettreAJour"); } }
+        }
+        public bool PeutMettreAJour { get { return nouvelleVersion != null && !miseAJourEnCours; } }
+        public string TexteBoutonMiseAJour { get { return nouvelleVersion != null && nouvelleVersion.PeutInstaller ? "Mettre à jour" : "Télécharger"; } }
+
+        /// <summary>Ferme vraiment l'application (fenêtre, icône de la zone de notification) ; branché par l'application.</summary>
+        public Action Quitter { get; set; }
         public string TexteNouvelleVersion
         {
             get
             {
-                return nouvelleVersion == null ? "" : "GamingTweaker " + nouvelleVersion.Version + " est disponible (vous avez la version " + MiseAJour.VersionCourante + ").";
+                if (nouvelleVersion == null) return "";
+                if (miseAJourEnCours) return "Téléchargement de GamingTweaker " + nouvelleVersion.Version + " et vérification de son empreinte…";
+                return "GamingTweaker " + nouvelleVersion.Version + " est disponible (vous avez la version " + MiseAJour.VersionCourante + ").";
             }
         }
         /// <summary>Bandeau d'avertissement (compte d'élévation différent du bureau).</summary>
@@ -428,12 +460,13 @@ namespace GamingTweaker.Ui
         public void AppliquerEtat(string id, DetectState s)
         {
             var o = Options.FirstOrDefault(x => x.Id == id);
-            if (o != null) o.SetEtat(s);
+            if (o != null) { o.SetEtat(s); MajAccueil(); }
         }
 
         public async Task DetectAsync()
         {
             foreach (var o in Options) o.SetEtat(DetectState.Detecting);
+            Raise("AvancementMenu");
             Dictionary<string, DetectState> res = null;
             try { res = await detect(Options.Select(o => o.Item).ToList()); }
             catch (Exception ex) { TraceAppli.Erreur("détection impossible, tout reste Inconnu", ex); }

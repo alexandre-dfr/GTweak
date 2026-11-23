@@ -145,6 +145,7 @@ namespace GamingTweaker.Core
         public static readonly TimeSpan DelaiApresDemarrage = TimeSpan.FromSeconds(1.5);
         private DateTime prochainReleve = DateTime.MaxValue;
         private System.Management.ManagementEventWatcher ecoute;
+        private bool fermee;
 
         /// <summary>(titre, texte) : appelé hors du thread de l'interface.</summary>
         public event Action<string, string> Notification;
@@ -192,13 +193,16 @@ namespace GamingTweaker.Core
         /// <summary>Écoute les démarrages de programmes (WMI). Sans effet si WMI refuse : le relevé toutes les 5 s continue.</summary>
         public void EcouterDemarrages()
         {
-            lock (verrou) { if (ecoute != null) return; }
+            lock (verrou) { if (ecoute != null || fermee) return; }
             try
             {
                 var w = new System.Management.ManagementEventWatcher(new System.Management.WqlEventQuery("SELECT ProcessID FROM Win32_ProcessStartTrace"));
                 w.EventArrived += (s, e) => { try { SignalerDemarrage(); } catch (Exception) { } };
                 w.Start();
-                lock (verrou) ecoute = w;
+                bool garder;
+                lock (verrou) { garder = !fermee && ecoute == null; if (garder) ecoute = w; }
+                // Fermée pendant l'abonnement (appelé en arrière-plan au lancement) : l'écoute ne doit pas survivre à l'appli.
+                if (!garder) { try { w.Stop(); w.Dispose(); } catch (Exception) { } }
             }
             catch (Exception ex) { TraceAppli.Erreur("Mode Jeu automatique : écoute des démarrages indisponible, relevé toutes les 5 s", ex); }
         }
@@ -271,7 +275,7 @@ namespace GamingTweaker.Core
         {
             Arreter();
             System.Management.ManagementEventWatcher w;
-            lock (verrou) { w = ecoute; ecoute = null; }
+            lock (verrou) { fermee = true; w = ecoute; ecoute = null; }
             if (w != null) { try { w.Stop(); w.Dispose(); } catch (Exception) { } }
         }
     }
