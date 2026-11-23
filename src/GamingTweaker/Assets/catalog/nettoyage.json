@@ -148,7 +148,7 @@
     "menu": "Nettoyage",
     "groupe": "Caches",
     "titre": "Caches de Steam et d'Epic Games Launcher vidés",
-    "description": "Vide le cache web de Steam (appcache\\httpcache), ses dossiers de vidage de plantage et le cache web d'Epic Games Launcher. Vos jeux, sauvegardes et comptes ne sont pas touchés ; les lanceurs reconstruisent ces caches. Définitif : les fichiers supprimés ne sont pas restaurables.",
+    "description": "Vide le cache web de Steam (appcache\\httpcache), ses dossiers de vidage de plantage et le cache web d'Epic Games Launcher. Vos jeux, sauvegardes et comptes ne sont pas touchés ; les lanceurs reconstruisent ces caches. Définitif : les fichiers supprimés ne sont pas restaurables. Affiché seulement si le logiciel concerné est installé.",
     "risque": "Sur",
     "reversible": false,
     "redemarrage": false,
@@ -160,7 +160,13 @@
       ],
       "editions": [],
       "cpu": [],
-      "gpu": []
+      "gpu": [],
+      "cles": [
+        "HKCU\\Software\\Valve\\Steam",
+        "HKLM\\SOFTWARE\\WOW6432Node\\Valve\\Steam",
+        "HKLM\\SOFTWARE\\WOW6432Node\\Epic Games\\EpicGamesLauncher",
+        "HKCU\\Software\\Epic Games"
+      ]
     }
   },
   {

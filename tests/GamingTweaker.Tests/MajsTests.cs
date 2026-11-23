@@ -232,7 +232,7 @@ foreach ($rule in $acl.GetAccessRules($true, $false, [System.Security.Principal.
         {
             var cat = Catalogue();
             var recap = Couverture.Recapitulatif("Mises à jour");
-            Assert.Single(recap);
+            Assert.Equal(new[] { "upd.wu-drivers-off", "upd.pause-max" }, recap.Select(r => r.Id));
             var attendu = new HashSet<string>(Minimum.Keys.Concat(recap.Select(r => r.Id)));
             Assert.Empty(cat.Keys.Where(k => !attendu.Contains(k)));
             Assert.Empty(attendu.Where(k => !cat.ContainsKey(k)));

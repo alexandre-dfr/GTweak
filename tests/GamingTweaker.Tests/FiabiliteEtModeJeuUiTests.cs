@@ -50,7 +50,7 @@ namespace GamingTweaker.Tests
 
         private ModeJeuViewModel Vm()
         {
-            return new ModeJeuViewModel(new ModeJeu(dir, new ActionsInertes()), 
+            return new ModeJeuViewModel(new ModeJeu(dir, new ActionsInertes()),
                 () => new List<ServiceChoix> { new ServiceChoix { Nom = "Spooler", Affichage = "Spouleur" }, new ServiceChoix { Nom = "WSearch", Affichage = "Recherche" } },
                 () => new List<ProcessusChoix> { new ProcessusChoix { Nom = "OneDrive", Chemin = @"C:\OD\OneDrive.exe" } });
         }

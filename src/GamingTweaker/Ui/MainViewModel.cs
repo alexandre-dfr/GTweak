@@ -255,7 +255,7 @@ namespace GamingTweaker.Ui
         /// <summary>Le menu courant ou la recherche a changé : signale toutes les propriétés « quelle vue est affichée », puis refiltre.</summary>
         private void MajVueAffichee()
         {
-            foreach (var p in new[] { "EstAccueil", "EstDiagnostic", "EstEmplacement", "EstMenuTelemetrie", "EstMenuOptions", "EstModeJeu", "EstHistorique", "EstMenuInformations", "EstParametres", "TitreAffiche" })
+            foreach (var p in new[] { "EstAccueil", "EstDiagnostic", "EstEmplacement", "EstMenuOptions", "EstModeJeu", "EstHistorique", "EstMenuInformations", "EstParametres", "TitreAffiche" })
                 Raise(p);
             MajInfo();
             Filtrer();
@@ -270,9 +270,6 @@ namespace GamingTweaker.Ui
         public bool EstMenuInformations { get { return !EnRecherche && menuCourant == MenuInformations; } }
         private void MajInfo() { if (Info != null) Info.SetVisible(EstMenuInformations); }
         public const string MenuTelemetrie = "Télémétrie";
-        public const string UrlShutUp10 = "https://www.oo-software.com/fr/shutup10";
-        /// <summary>Vrai sur le menu Télémétrie (lien O&amp;O ShutUp10++).</summary>
-        public bool EstMenuTelemetrie { get { return !EnRecherche && menuCourant == MenuTelemetrie; } }
         /// <summary>Vrai sur un menu d'options (bandeau « Tout restaurer », qui porte sur tous les menus).</summary>
         public bool EstMenuOptions { get { return !EnRecherche && Array.IndexOf(MenusOptions, menuCourant) >= 0; } }
         public const string MenuModeJeu = "Mode Jeu";

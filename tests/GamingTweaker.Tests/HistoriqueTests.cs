@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -378,7 +378,7 @@ namespace GamingTweaker.Tests
             new QuarantineService(paths.QuarantineDir, paths.SessionsDir).Purge(id);
             Assert.Empty(Journal.Active(Journal.Read(jf)));
         }
-    
+
 
         // ---------- Désinstallation ----------
 

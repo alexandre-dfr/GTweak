@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Faille de sécurité
+    url: https://github.com/alexandre-dfr/GTweak/security/advisories/new
+    about: Signalez une faille en privé, jamais dans une issue publique (voir .github/SECURITY.md).

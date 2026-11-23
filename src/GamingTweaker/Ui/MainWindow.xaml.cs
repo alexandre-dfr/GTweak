@@ -161,12 +161,6 @@ namespace GamingTweaker.Ui
             catch (Exception ex) { vm.Message = "Tout restaurer a échoué : " + ex.Message; }
         }
 
-        private void ShutUp_Click(object sender, RoutedEventArgs e)
-        {
-            try { Core.SystemExe.OuvrirUrl(MainViewModel.UrlShutUp10); }
-            catch (Exception ex) { vm.Message = "Impossible d'ouvrir le navigateur (" + ex.Message + "). Adresse : " + MainViewModel.UrlShutUp10; }
-        }
-
         /// <summary>Ouvre la page officielle proposée par un fournisseur de liste (https uniquement).</summary>
         private void OuvrirLien_Click(object sender, RoutedEventArgs e)
         {
