@@ -43,6 +43,7 @@ namespace GamingTweaker
             var refus = VerifierDllsAuDemarrage(args);
             if (refus != 0) { if (interfaceGraphique) RapportErreur.Jalon("arrêt : DLL en conflit à côté de l'exe"); return refus; }
             if (interfaceGraphique) RapportErreur.Jalon("DLL vérifiées");
+            if (interfaceGraphique) { var marque = MarqueInternet.RetirerDeLExe(); if (marque != null) RapportErreur.Jalon(marque); }
             DemarrageSur.RestreindreRechercheDll();
             AssemblyLoader.Register();
             if (args.Length == 0) return LaunchUi();

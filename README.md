@@ -10,6 +10,20 @@ Application Windows portable (un seul `GamingTweaker.exe`) qui règle un PC de j
 
 Rien n'est installé. Les capteurs matériels (menu Informations) ne sont chargés qu'à la demande.
 
+### Avertissement SmartScreen
+
+L'exe n'est pas signé (une signature de code est payante, ou gratuite via SignPath seulement pour un dépôt public) : au premier lancement d'un exe téléchargé par le navigateur, Windows affiche « Windows a protégé votre ordinateur ». Deux façons de l'éviter :
+
+- **Avant le premier lancement** : ouvrez PowerShell et collez cette commande (elle retire la marque « téléchargé depuis Internet », comme le bouton « Débloquer » des propriétés du fichier) :
+
+```powershell
+Unblock-File "$env:USERPROFILE\Downloads\GamingTweaker.exe"
+```
+
+- **Sinon** : « Informations complémentaires » puis « Exécuter quand même », une seule fois. GamingTweaker retire alors lui-même cette marque de son exe : l'avertissement ne revient plus aux lancements suivants (une nouvelle version téléchargée le provoque une fois de plus).
+
+La fenêtre d'autorisation administrateur affiche « Éditeur : inconnu » pour la même raison ; seule une signature de l'exe change ce texte.
+
 Seules les options utiles à ce PC sont affichées : une option réservée à une autre version de Windows (Recall et Click To Do demandent Windows 11 24H2), à une autre carte graphique, ou à un logiciel absent (Office, Brave, Chrome, Firefox, Steam, Epic Games) n'apparaît pas.
 
 ### Quand l'utiliser
