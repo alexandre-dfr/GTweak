@@ -36,6 +36,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Style des fichiers (UTF-8 sans BOM, espaces, dernière ligne, JSON)
+        run: python -I tools/style.py
+
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'

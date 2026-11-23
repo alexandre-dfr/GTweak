@@ -10,9 +10,16 @@ Application Windows portable (un seul `GamingTweaker.exe`) qui règle un PC de j
 
 Rien n'est installé. Les capteurs matériels (menu Informations) ne sont chargés qu'à la demande.
 
+Seules les options utiles à ce PC sont affichées : une option réservée à une autre version de Windows (Recall et Click To Do demandent Windows 11 24H2), à une autre carte graphique, ou à un logiciel absent (Office, Brave, Chrome, Firefox, Steam, Epic Games) n'apparaît pas.
+
+### Quand l'utiliser
+
+Le meilleur moment est juste après l'installation de Windows, dans cet ordre : pilotes (chipset, carte graphique, réseau, son), Windows Update jusqu'à ce qu'il n'y ait plus rien (mises à jour facultatives comprises), mise à jour des applis du Microsoft Store, installation de vos jeux et logiciels, puis GamingTweaker. Dans un autre ordre, une mise à jour de Windows ou d'un pilote peut rétablir certains réglages ; dans ce cas, relancez simplement votre profil.
+
 ## Sécurité
 
 - Seules les options cochées s'exécutent ; chaque option est classée Sûr, Avancé ou Risque. « Recommandé » ne coche que des options Sûr, et jamais celles que le catalogue en exclut (plan d'alimentation sur portable).
+- Une faille de sécurité se signale en privé (voir [.github/SECURITY.md](.github/SECURITY.md)), jamais dans une issue publique.
 - Le catalogue ne touche à aucune protection de sécurité (Defender, Spectre/Meltdown, VBS, BitLocker, Windows Update) et ne contient que des réglages à effet réel en jeu ou sur l'allègement de Windows ; les réglages placebo ou de pure apparence ont été retirés (voir `docs/revue-code-2026-11-11.md`).
 - Un point de restauration Windows est créé avant les options réversibles (si Windows l'autorise ; sinon vous êtes prévenu).
 - Aucun redémarrage automatique : si un redémarrage est nécessaire, le rapport l'indique.
@@ -62,7 +69,7 @@ Comme tout profil, le fichier ne contient que des identifiants d'options et des 
 
 ## Nouvelle version
 
-Au démarrage de l'interface, l'appli demande à GitHub la dernière release publiée (`api.github.com`, sans identifiant de la machine ni de l'utilisateur ; les pré-versions de test sont ignorées). Si elle est plus récente, un bandeau propose « Voir la nouvelle version », qui ouvre la page de la release dans le navigateur. **Rien n'est téléchargé ni installé automatiquement.** Hors ligne, ou si GitHub ne répond pas en 10 s, rien ne s'affiche. La routine planifiée et le mode `--silent` ne font pas cette vérification.
+Au démarrage de l'interface, l'appli demande à GitHub la dernière release publiée (`api.github.com`, sans identifiant de la machine ni de l'utilisateur ; les pré-versions de test sont ignorées). Si elle est plus récente, un bandeau propose « Voir la nouvelle version », qui ouvre la page de la release dans le navigateur. **Rien n'est téléchargé ni installé automatiquement.** Hors ligne, ou si GitHub ne répond pas en 10 s, rien ne s'affiche. La routine planifiée et le mode `--silent` ne font pas cette vérification. Toutes les connexions de l'appli sont listées dans [CONFIDENTIALITE.md](CONFIDENTIALITE.md) : aucune télémétrie.
 
 ## Réglages du pilote NVIDIA
 
@@ -74,7 +81,7 @@ Le menu « Diagnostic » (lecture seule) repère ce qui bride réellement les pe
 
 ## Mesures avant / après
 
-Historique > Mesures : un relevé de 30 s (temps DPC et d'interruptions, processeur au repos, services, processus, mémoire disponible, programmes au démarrage). Faites-en un avant d'optimiser et un après, puis « Avant / après » : chaque mesure est marquée « mieux », « moins bien » ou « stable ».
+Historique > Mesures : un relevé de 30 s (temps DPC et d'interruptions, processeur au repos, services, processus, mémoire disponible, programmes au démarrage). Faites-en un avant d'optimiser et un après, puis « Avant / après » (les deux relevés les plus récents, ou les deux que vous avez cochés) : chaque mesure est marquée « mieux », « moins bien » ou « stable ».
 
 ## Mode Jeu
 
@@ -117,6 +124,7 @@ Sans `--confirm`, la commande affiche seulement ce qui serait supprimé. Les ré
 ## Tests et vérification
 
 - `dotnet test` : tests automatiques (aucune modification du système en dehors de `HKCU\Software\GamingTweakerTest` et du dossier temporaire).
+- `python -I tools/style.py` : règles de base des fichiers (UTF-8 sans BOM, pas d'espace en fin de ligne, saut de ligne final, JSON valide), vérifiées aussi par la CI ; `--fix` corrige.
 - `tools/sandbox/cycle.wsb` : cycle détecter, appliquer, annuler dans Windows Sandbox (voir `tools/sandbox/start-cycle.ps1`) ; le résultat est écrit dans `tools/sandbox/resultats/cycle.json`. L'option `--cycle-test` est refusée hors du compte du bac à sable.
 - `docs/checklist-premier-pc.md` : liste de contrôle à passer sur le premier PC réel.
 

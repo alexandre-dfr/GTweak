@@ -167,8 +167,14 @@ namespace GamingTweaker.Tests
             Mesures.Save(M("2026-11-18T11:00:00", 0.2, 1.5, 100, 9000, 5), dir);
             var vm = new HistoriqueViewModel(paths, null, new List<CatalogItem>(), new QuarantineService(paths.QuarantineDir, paths.SessionsDir));
             vm.Charger();
-            vm.ComparerDerniers();
+            vm.AvantApres();
             Assert.StartsWith("Du relevé du 2026-11-18T10:00:00 à celui du 2026-11-18T11:00:00", vm.Comparaison);
+            // Deux relevés cochés : ce sont eux qui sont comparés (un seul bouton « Avant / après »).
+            vm.Releves.Single(r => r.Mesure.Date == "2026-11-18T09:00:00").IsChecked = true;
+            vm.Releves.Single(r => r.Mesure.Date == "2026-11-18T11:00:00").IsChecked = true;
+            Assert.True(vm.ComparerCommand.CanExecute(null));
+            vm.ComparerCommand.Execute(null);
+            Assert.StartsWith("Du relevé du 2026-11-18T09:00:00 à celui du 2026-11-18T11:00:00", vm.Comparaison);
         }
     }
 }

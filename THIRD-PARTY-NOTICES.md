@@ -6,12 +6,15 @@ GamingTweaker reprend, réécrits avec ses propres fonctions, des réglages issu
 |---|---|---|---|---|
 | WinUtil — https://github.com/ChrisTitusTech/winutil | `config/tweaks.json` | `a94bf5d7008ddf87731a476f148c1334cca10ed2` | 2026-10-28 | MIT |
 | privacy.sexy — https://github.com/undergroundwires/privacy.sexy | `src/application/collections/windows.yaml` | `b0c9b103089fb209139de4dee30c6c9965c19f9f` | 2025-04-17 | AGPL-3.0 |
+| optimizerDuck — https://github.com/itsfatduck/optimizerDuck | aucun (idées de réglages seulement, voir « Reprises d'optimizerDuck » dans `docs/catalogue-couverture.md`) | `efdb6399224632c73ac8aac3b1efbb1163afd4d8` | 2026-11-17 | GPL-3.0 |
+
+Aucun fichier d'optimizerDuck n'est copié : les clés de registre reprises sont des réglages documentés de Windows, réécrits avec les fonctions de `Common.ps1` ; la GPL-3.0 est de toute façon compatible avec l'AGPL-3.0 de GamingTweaker.
 
 SHA-256 des copies : `tweaks.json` `01CBA2F0CDF31E3B8E8EABFF50DDC6BDD0A40EB26A3FFB226DA9864BFCB6BEA0`, `windows.yaml` `62B862FD56EC1BCB74D8E934FED2F7648EE6720AABF28BE61FF06B44808940CD`.
 
 **Conditions de licence (spec, section 4.9) :** tant que l'exe reste privé, l'AGPL n'impose aucune publication. En cas de diffusion à des tiers, le code source de l'application devrait être fourni sous AGPL-3.0, ou les reprises de privacy.sexy retirées.
 
-O&O ShutUp10++ (O&O Software GmbH) est un logiciel gratuit propriétaire : aucun code ni aucune liste n'en est repris ; l'appli renvoie seulement vers sa page officielle.
+O&O ShutUp10++ (O&O Software GmbH) est un logiciel gratuit propriétaire : aucun code ni aucune liste n'en est repris, et l'appli n'y renvoie plus.
 
 ## WinUtil — licence MIT
 

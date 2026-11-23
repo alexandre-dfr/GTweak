@@ -102,7 +102,7 @@ Get-AppxProvisionedPackage -Online | ForEach-Object { $_.DisplayName }
         public static BloatwareProvider Standard(IInstalledAppsSource source = null) => new BloatwareProvider("bloatware", KnownApps.LoadEmbedded(), source);
         public static BloatwareProvider Tierces(IInstalledAppsSource source = null) => new BloatwareProvider("bloatware-tierces", KnownApps.LoadEmbedded(), source);
 
-        /// <summary>Seules les applications connues ET présentes sont listées (ordre de la liste connue).</summary>
+        /// <summary>Seules les applications connues ET présentes sont listées : les plus sûres d'abord (Sûr, Avancé, Risqué), puis dans l'ordre de la liste connue.</summary>
         public static IReadOnlyList<ListEntry> Match(IEnumerable<string> installed, IReadOnlyList<KnownApp> known)
         {
             var presents = new HashSet<string>(installed ?? Enumerable.Empty<string>(), StringComparer.OrdinalIgnoreCase);
@@ -119,7 +119,7 @@ Get-AppxProvisionedPackage -Online | ForEach-Object { $_.DisplayName }
                     Risque = a.Risque,
                 });
             }
-            return res;
+            return res.OrderBy(e => e.Risque).ToList();   // tri stable : l'ordre de la liste connue est gardé à niveau égal
         }
 
         /// <summary>Description d'une application de la liste connue (présente ou non sur ce PC).</summary>
