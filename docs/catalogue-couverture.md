@@ -293,7 +293,6 @@ Nouvelles options à créer, en plus des tableaux minimaux du plan. Le titre est
 | `tel.sync-off` | Synchronisation | Synchronisation des paramètres avec le compte Microsoft désactivée | Sûr | oui | 1 |
 | `tel.clipboard-off` | Synchronisation | Presse-papiers cloud et historique du presse-papiers désactivés | Avancé | oui | 1 |
 | `tel.ui-privacy` | Interface | Suivi des applis récentes et notifications de l'écran de verrouillage désactivés | Sûr | oui | 1 |
-| `tel.start-reco-off` | Interface | Section « Recommandé » du menu Démarrer masquée | Avancé | oui | 0 (optimizerDuck) |
 | `tel.explorer-online-off` | Interface | Contenu en ligne de l'Explorateur désactivé (astuces, publication web, commandes de tirages) | Sûr | oui | 1 |
 | `tel.recent-docs-off` | Interface | Historique des documents récents désactivé | Avancé | oui | 1 |
 | `tel.apps-telemetry-off` | Applications tierces | Télémétrie des outils tiers désactivée (.NET, PowerShell, Visual Studio, Lecteur Windows Media, services Razer et Logitech) | Sûr | oui | 3 |
@@ -304,7 +303,6 @@ Nouvelles options à créer, en plus des tableaux minimaux du plan. Le titre est
 | `tel.browsers-telemetry-off` | Navigateurs | Télémétrie de Chrome et de Firefox désactivée | Sûr | oui | 3 |
 | `tel.brave-debloat` | Navigateurs | Brave allégé (Rewards, Leo, Wallet, VPN) | Avancé | oui | 1 |
 | `tel.ai-off` | IA | Fonctions IA de Windows retirées (paquets IA, IA du Bloc-notes, page IA des Paramètres) | Risqué | partiel : paquets IA retirés : retour par réinstallation seulement | 1 |
-| `tel.clicktodo-off` | IA | Désactiver Click To Do (analyse de l'écran par l'IA) | Sûr | oui | 0 (optimizerDuck) |
 
 ### Optimisation
 
@@ -319,7 +317,6 @@ Nouvelles options à créer, en plus des tableaux minimaux du plan. Le titre est
 | `opt.longpaths` | Confort Windows | Chemins de plus de 260 caractères autorisés | Sûr | oui | 1 |
 | `opt.endtask-taskbar` | Confort Windows | « Fin de tâche » dans le menu de la barre des tâches | Avancé | oui | 1 |
 | `opt.notifications-off` | Confort Windows | Notifications et calendrier de la zone de notification désactivés | Avancé | oui | 1 |
-| `opt.tasks-tierces` | Arrière-plan | Désactiver des tâches planifiées d'applications | Avancé | oui | 0 (optimizerDuck) |
 
 ### Nettoyage
 
@@ -345,18 +342,8 @@ Nouvelles options à créer, en plus des tableaux minimaux du plan. Le titre est
 | id | groupe | titre | risque | réversible | lignes sources |
 |---|---|---|---|---|---|
 | `upd.wu-drivers-off` | Windows Update | Pilotes non installés par Windows Update | Avancé | oui | 1 |
-| `upd.pause-max` | Windows Update | Pause de Windows Update possible jusqu'à un an | Avancé | oui | 0 (optimizerDuck) |
 
 `blt.apps` est l'option à liste du fournisseur `bloatware` (Task 11) : chaque appli de `bloatware-list.json` porte son propre niveau, indiqué dans la colonne raison ci-dessus et jamais plus sûr que la recommandation de son script, sauf Astuces, Solitaire, OneDrive et l'appli Xbox, dont la section 4.5 fixe le niveau. `blt.apps-tierces` est une liste distincte, entièrement Risqué. Colonne « réversible » : oui = annulation par le journal ; partiel ou non = mécanisme non journalisable, précisé dans la note.
-
-### Reprises d'optimizerDuck
-
-Options ajoutées le 20 novembre 2026 d'après [optimizerDuck](https://github.com/itsfatduck/optimizerDuck) (GPL-3.0, compatible AGPL-3.0), réécrites avec les fonctions de `Common.ps1` ; la colonne « lignes sources » vaut 0 car elles ne viennent ni de WinUtil ni de privacy.sexy :
-
-- `tel.clicktodo-off`, `tel.start-reco-off` (stratégie Explorer seule, sans `IsEducationEnvironment`), `upd.pause-max` (allonge la pause, n'en active aucune) ;
-- `tel.suggestions-off` enrichie : `OemPreInstalledAppsEnabled`, `PreInstalledAppsEnabled`, `PreInstalledAppsEverEnabled`, `DisableConsumerAccountStateContent` ;
-- `opt.tasks-tierces` : tâches planifiées des applications tierces (liste détectée sur le PC) ;
-- écartés : `SvcHostSplitThresholdInKB`, `Win32PrioritySeparation`, `NetworkThrottlingIndex`/`SystemResponsiveness`, file du clavier, réglages GPU par le registre, effets visuels, plan d'alimentation `.pow` (placebo ou déjà retirés par la revue du 11 novembre 2026) et `PowerThrottlingOff` (ne concerne en pratique que les portables).
 
 ### Options existantes enrichies
 
@@ -384,7 +371,7 @@ Options des tableaux minimaux que des lignes sources complètent (voir la colonn
 
 ## O&O ShutUp10++ : domaines couverts
 
-O&O ShutUp10++ est un logiciel gratuit propriétaire : aucun code ni aucune liste n'en est repris. Les domaines ci-dessous viennent des réglages documentés par Microsoft (stratégies de groupe, CSP Policy et page « Gérer les connexions des composants du système d'exploitation Windows aux services Microsoft »). **Aucune correspondance point par point avec ShutUp10++ n'est garantie**, car sa liste complète n'est pas publiée sur ses pages de présentation. Son principe recommandé / limité / déconseillé correspond à Sûr / Avancé / Risqué. L'appli ne propose plus de lien vers ce logiciel (retiré le 20 novembre 2026 pour alléger l'interface).
+O&O ShutUp10++ est un logiciel gratuit propriétaire : aucun code ni aucune liste n'en est repris. Les domaines ci-dessous viennent des réglages documentés par Microsoft (stratégies de groupe, CSP Policy et page « Gérer les connexions des composants du système d'exploitation Windows aux services Microsoft »). **Aucune correspondance point par point avec ShutUp10++ n'est garantie**, car sa liste complète n'est pas publiée sur ses pages de présentation. Son principe recommandé / limité / déconseillé correspond à Sûr / Avancé / Risqué. Lien vers le logiciel officiel : <https://www.oo-software.com/fr/shutup10> (Task 8).
 
 | Domaine (documentation Microsoft) | Options GamingTweaker |
 |---|---|
@@ -413,4 +400,4 @@ O&O ShutUp10++ est un logiciel gratuit propriétaire : aucun code ni aucune list
 | WinUtil | 68 | 32 | 36 |
 | privacy.sexy | 180 | 70 | 110 |
 
-Identifiants : 87 au total après le recentrage du 11 novembre 2026 (36 options retirées, voir docs/revue-code-2026-11-11.md), 91 après les reprises d'optimizerDuck du 20 novembre 2026.
+Identifiants : 87 au total après le recentrage du 11 novembre 2026 (36 options retirées, voir docs/revue-code-2026-11-11.md).

@@ -17,8 +17,6 @@ namespace GamingTweaker.Core
                 using (var cv = hklm.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion"))
                 {
                     facts.WindowsMajor = WindowsMajorFromBuild(cv?.GetValue("CurrentBuild") as string);
-                    int build;
-                    facts.WindowsBuild = int.TryParse(cv?.GetValue("CurrentBuild") as string, out build) ? build : 0;
                     facts.Edition = NormalizeEdition(cv?.GetValue("EditionID") as string);
                 }
                 using (var key = hklm.OpenSubKey(@"SOFTWARE\Microsoft\Cryptography"))
@@ -38,72 +36,7 @@ namespace GamingTweaker.Core
                 if (v != "" && !facts.GpuVendors.Contains(v)) facts.GpuVendors.Add(v);
             }
             facts.EstPortable = EstPortable(QueryChassis(), Query("SELECT Name FROM Win32_Battery", "Name").Count > 0);
-            facts.RamGo = RamGo();
-            facts.ServiceExiste = ServiceExiste;
-            facts.CleExiste = CleExiste;
             return facts;
-        }
-
-        /// <summary>Mémoire vive installée, en Go arrondis (0 si la lecture échoue).</summary>
-        private static int RamGo()
-        {
-            try
-            {
-                var m = new MemoryStatusEx { dwLength = (uint)System.Runtime.InteropServices.Marshal.SizeOf(typeof(MemoryStatusEx)) };
-                return GlobalMemoryStatusEx(ref m) ? ArrondirGo((long)m.ullTotalPhys) : 0;
-            }
-            catch (Exception) { return 0; }
-        }
-
-        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
-        private struct MemoryStatusEx
-        {
-            public uint dwLength, dwMemoryLoad;
-            public ulong ullTotalPhys, ullAvailPhys, ullTotalPageFile, ullAvailPageFile, ullTotalVirtual, ullAvailVirtual, ullAvailExtendedVirtual;
-        }
-
-        [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
-        [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
-        private static extern bool GlobalMemoryStatusEx(ref MemoryStatusEx buffer);
-
-        /// <summary>Octets vers Go arrondis au plus proche (16 Go affichés 15,9 par Windows donnent 16).</summary>
-        public static int ArrondirGo(long octets) => octets <= 0 ? 0 : (int)Math.Round(octets / (1024.0 * 1024 * 1024));
-
-        /// <summary>Un service existe si sa clé existe sous HKLM\SYSTEM\CurrentControlSet\Services.</summary>
-        public static bool ServiceExiste(string nom)
-        {
-            if (string.IsNullOrWhiteSpace(nom) || nom.IndexOf('\\') >= 0) return false;
-            return CleExiste(@"HKLM\SYSTEM\CurrentControlSet\Services\" + nom);
-        }
-
-        /// <summary>« HKLM\… » (vue 64 bits) ou « HKCU\… » ; toute autre racine est refusée.</summary>
-        public static bool CleExiste(string chemin)
-        {
-            string sous;
-            var ruche = Ruche(chemin, out sous);
-            if (ruche == null) return false;
-            try
-            {
-                using (var racine = RegistryKey.OpenBaseKey(ruche.Value, RegistryView.Registry64))
-                using (var k = racine.OpenSubKey(sous))
-                    return k != null;
-            }
-            catch (Exception) { return true; }   // illisible (droits) : la clé existe
-        }
-
-        /// <summary>Sépare la ruche du chemin (« HKLM\X » → LocalMachine, « X ») ; null si la ruche n'est pas HKLM ou HKCU.</summary>
-        public static RegistryHive? Ruche(string chemin, out string sous)
-        {
-            sous = null;
-            if (string.IsNullOrWhiteSpace(chemin)) return null;
-            var i = chemin.IndexOf('\\');
-            if (i <= 0 || i == chemin.Length - 1) return null;
-            var tete = chemin.Substring(0, i).ToUpperInvariant();
-            sous = chemin.Substring(i + 1);
-            if (tete == "HKLM" || tete == "HKEY_LOCAL_MACHINE") return RegistryHive.LocalMachine;
-            if (tete == "HKCU" || tete == "HKEY_CURRENT_USER") return RegistryHive.CurrentUser;
-            sous = null;
-            return null;
         }
 
         /// <summary>Types de châssis SMBIOS portables : Portable, Laptop, Notebook, Sub Notebook, Tablet, Convertible, Detachable.</summary>

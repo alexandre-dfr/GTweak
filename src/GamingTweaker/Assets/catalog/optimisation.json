@@ -319,7 +319,7 @@
     "menu": "Optimisation",
     "groupe": "Arrière-plan",
     "titre": "SysMain (Superfetch) en manuel et arrêté",
-    "description": "Passe le service SysMain en démarrage manuel et l'arrête : moins d'activité disque en arrière-plan. Les démarrages d'applications peuvent être un peu plus lents sur un disque dur. Un service déjà désactivé n'est pas réactivé. L'annulation rétablit le démarrage automatique et relance le service. Proposé à partir de 8 Go de mémoire : en dessous, le préchargement de SysMain aide plus qu'il ne gêne.",
+    "description": "Passe le service SysMain en démarrage manuel et l'arrête : moins d'activité disque en arrière-plan. Les démarrages d'applications peuvent être un peu plus lents sur un disque dur. Un service déjà désactivé n'est pas réactivé. L'annulation rétablit le démarrage automatique et relance le service.",
     "risque": "Avance",
     "reversible": true,
     "redemarrage": false,
@@ -330,11 +330,7 @@
       ],
       "editions": [],
       "cpu": [],
-      "gpu": [],
-      "services": [
-        "SysMain"
-      ],
-      "ramMinGo": 8
+      "gpu": []
     }
   },
   {
@@ -353,10 +349,7 @@
       ],
       "editions": [],
       "cpu": [],
-      "gpu": [],
-      "services": [
-        "WSearch"
-      ]
+      "gpu": []
     }
   },
   {
@@ -410,26 +403,6 @@
     "redemarrage": false,
     "hkcu": true,
     "liste": "startup",
-    "compatibilite": {
-      "windows": [
-        "10",
-        "11"
-      ],
-      "editions": [],
-      "cpu": [],
-      "gpu": []
-    }
-  },
-  {
-    "id": "opt.tasks-tierces",
-    "menu": "Optimisation",
-    "groupe": "Arrière-plan",
-    "titre": "Désactiver des tâches planifiées d'applications",
-    "description": "Désactive les tâches planifiées cochées des applications installées (programmes de mise à jour, rapports, assistants des constructeurs…). Les tâches de Windows (dossier Microsoft) et des antivirus ne sont jamais proposées. Les tâches ne sont pas supprimées, seulement désactivées : l'application concernée ne lance plus ces actions en arrière-plan. Les programmes de mise à jour des navigateurs sont classés Risqué : sans eux, le navigateur ne reçoit plus ses correctifs de sécurité. L'annulation réactive chaque tâche.",
-    "risque": "Avance",
-    "reversible": true,
-    "redemarrage": false,
-    "liste": "taches",
     "compatibilite": {
       "windows": [
         "10",

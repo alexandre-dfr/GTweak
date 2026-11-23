@@ -343,7 +343,6 @@ namespace GamingTweaker.Tests
         [InlineData("bloatware")]
         [InlineData("bloatware-tierces")]
         [InlineData("pilote")]
-        [InlineData("taches")]
         public void Tout_n_est_jamais_accepte_pour_les_listes_dont_le_script_le_refuse(string cle) => Assert.False(Profils.CleSupporteTous(cle));
 
         [Fact]

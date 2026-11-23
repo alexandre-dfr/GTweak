@@ -105,7 +105,7 @@ namespace GamingTweaker.Tests
         {
             var cat = Catalogue();
             var recap = Couverture.Recapitulatif(Menu);
-            Assert.Equal(10, recap.Count);
+            Assert.Equal(9, recap.Count);
             // Le tableau minimal et le récapitulatif ne se recouvrent pas.
             Assert.Empty(recap.Select(r => r.Id).Intersect(Minimum.Keys));
             var attendu = new HashSet<string>(Minimum.Keys.Concat(recap.Select(r => r.Id)).Concat(PiloteNvidia));
@@ -222,7 +222,6 @@ namespace GamingTweaker.Tests
         [InlineData("opt.services", "services")]
         [InlineData("opt.xbox-services", "xbox-services")]
         [InlineData("opt.startup", "startup")]
-        [InlineData("opt.tasks-tierces", "taches")]
         public void Les_options_a_liste_declarent_leur_fournisseur_et_limitent_les_noms_acceptes(string id, string liste)
         {
             var it = Catalogue()[id];

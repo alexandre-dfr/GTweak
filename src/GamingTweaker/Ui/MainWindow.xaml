@@ -328,7 +328,7 @@
                     </Button>
                 </Grid>
 
-                <!-- Bandeau des menus d'options : « Recommandé », « Décocher », « Tout restaurer » (tous les menus) -->
+                <!-- Bandeau des menus d'options : « Tout restaurer » (tous les menus) ; lien O&O ShutUp10++ sur Télémétrie seulement -->
                 <Border Grid.Row="1" Margin="0,0,16,12" Padding="12,8" CornerRadius="8" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                     <Border.Style>
                         <Style TargetType="Border">
@@ -344,6 +344,14 @@
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                             <Button Content="Tout restaurer" Click="ToutRestaurer_Click" IsEnabled="{Binding PeutToutRestaurer}"
                                     ToolTip="Annule toutes les options appliquées par GamingTweaker, dans tous les menus : par le journal, sinon par un retour aux valeurs par défaut de Windows"/>
+                            <Button Content="O&amp;O ShutUp10++ (site officiel)" Margin="8,0,0,0" Click="ShutUp_Click" ToolTip="Ouvre la page officielle d'O&amp;O ShutUp10++ dans le navigateur">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers><DataTrigger Binding="{Binding EstMenuTelemetrie}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
                         </StackPanel>
                         <CheckBox Content="Masquer les options déjà appliquées" IsChecked="{Binding MasquerAppliquees, Mode=TwoWay}" VerticalAlignment="Center"
                                   ToolTip="N'affiche que ce qui reste à faire (une option cochée reste visible)"/>
