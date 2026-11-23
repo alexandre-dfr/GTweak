@@ -338,6 +338,14 @@ namespace GamingTweaker.Tests
             Assert.Equal(meme, MiseAJour.MemeChemin(reel, attendu));
         }
 
+        [Theory]
+        [InlineData(@"D:\Jeux\GamingTweaker.exe", @"\??\D:\Jeux\GamingTweaker.exe")]
+        [InlineData(@"\\serveur\partage\GamingTweaker.exe", @"\??\UNC\serveur\partage\GamingTweaker.exe")]
+        public void Chemin_nt_pour_le_renommage(string chemin, string attendu)
+        {
+            Assert.Equal(attendu, MiseAJour.CheminNt(chemin));
+        }
+
         // ---------- Copies de la routine et du démarrage avec Windows ----------
 
         [Theory]

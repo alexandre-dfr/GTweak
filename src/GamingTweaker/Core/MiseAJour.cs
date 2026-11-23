@@ -190,7 +190,7 @@ namespace GamingTweaker.Core
                 var ancien = exe + ".ancien";
                 Supprimer(ancien);
                 File.Move(exe, ancien);   // l'exe en cours peut être renommé, pas modifié
-                try { RenommerParPoignee(fichier.SafeFileHandle, Path.GetFileName(exe)); }
+                try { RenommerParPoignee(fichier.SafeFileHandle, CheminNt(exe)); }
                 catch (Exception) { try { File.Move(ancien, exe); } catch (Exception) { } throw; }
                 TraceAppli.Ecrire("mise à jour vers " + v.Version + " installée (SHA-256 " + h + ", signature vérifiée)");
                 var prete = new MiseAJourPrete(fichier);
@@ -285,10 +285,22 @@ namespace GamingTweaker.Core
             return sb.ToString();
         }
 
-        /// <summary>Renomme le fichier ouvert dans son propre dossier (FILE_RENAME_INFO avec un nom simple), en remplaçant un fichier du même nom.</summary>
-        private static void RenommerParPoignee(SafeFileHandle h, string nomSimple)
+        /// <summary>
+        /// Chemin complet au format NT (« \??\C:\… », « \??\UNC\serveur\… ») : un nom simple serait résolu par Windows depuis le dossier
+        /// courant du processus (erreur 17 si celui-ci est sur un autre lecteur).
+        /// </summary>
+        public static string CheminNt(string chemin)
         {
-            var nom = Encoding.Unicode.GetBytes(nomSimple);
+            var c = Path.GetFullPath(chemin);
+            if (c.StartsWith(@"\\?\", StringComparison.Ordinal) || c.StartsWith(@"\??\", StringComparison.Ordinal)) return @"\??\" + c.Substring(4);
+            if (c.StartsWith(@"\\", StringComparison.Ordinal)) return @"\??\UNC\" + c.Substring(2);
+            return @"\??\" + c;
+        }
+
+        /// <summary>Renomme le fichier ouvert vers <paramref name="cheminNt"/> (FILE_RENAME_INFO), en remplaçant un fichier du même nom.</summary>
+        private static void RenommerParPoignee(SafeFileHandle h, string cheminNt)
+        {
+            var nom = Encoding.Unicode.GetBytes(cheminNt);
             int offRacine = IntPtr.Size, offLongueur = offRacine + IntPtr.Size, offNom = offLongueur + 4;
             int taille = offNom + nom.Length + 2;
             var p = Marshal.AllocHGlobal(taille);
@@ -296,7 +308,7 @@ namespace GamingTweaker.Core
             {
                 for (int i = 0; i < taille; i++) Marshal.WriteByte(p, i, 0);
                 Marshal.WriteInt32(p, 0, 1);                 // ReplaceIfExists
-                Marshal.WriteIntPtr(p, offRacine, IntPtr.Zero); // RootDirectory : même dossier
+                Marshal.WriteIntPtr(p, offRacine, IntPtr.Zero); // RootDirectory : aucun, chemin complet
                 Marshal.WriteInt32(p, offLongueur, nom.Length);
                 Marshal.Copy(nom, 0, p + offNom, nom.Length);
                 if (!SetFileInformationByHandle(h, ClasseRenommage, p, (uint)taille))
