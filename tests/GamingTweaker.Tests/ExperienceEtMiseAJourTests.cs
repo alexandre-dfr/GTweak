@@ -10,7 +10,7 @@ using Xunit;
 
 namespace GamingTweaker.Tests
 {
-    /// <summary>Résumé de fin d'exécution, avancement par menu, lecture espacée des températures, mise à jour intégrée et script d'installation.</summary>
+    /// <summary>Résumé de fin d'exécution, avancement par menu, lecture espacée des températures, mise à jour intégrée signée et version portable.</summary>
     public class ExperienceEtMiseAJourTests : IDisposable
     {
         private readonly string tmp = Path.Combine(Path.GetTempPath(), "gt-exp-" + Guid.NewGuid().ToString("N"));
@@ -107,6 +107,18 @@ namespace GamingTweaker.Tests
 
         private const string Page = "https://github.com/alexandre-dfr/GTweak/releases/tag/v9.0.0";
         private const string UrlExe = "https://github.com/alexandre-dfr/GTweak/releases/download/v9.0.0/GamingTweaker.exe";
+        private const string UrlSig = "https://github.com/alexandre-dfr/GTweak/releases/download/v9.0.0/GamingTweaker.exe.sig";
+        private static readonly System.Version V9 = new System.Version(9, 0, 0);
+        private static readonly string[] SansCle = new string[0];
+
+        // Clé de test générée une fois (3072 bits, comme celle du mainteneur) ; la partie privée ne sert qu'à signer ici.
+        private static readonly Lazy<System.Security.Cryptography.RSACryptoServiceProvider> CleTest = new Lazy<System.Security.Cryptography.RSACryptoServiceProvider>(() =>
+            new System.Security.Cryptography.RSACryptoServiceProvider(3072) { PersistKeyInCsp = false });
+        private static string[] Cles => new[] { CleTest.Value.ToXmlString(false) };
+
+        private static string Signer(System.Version v, string sha, System.Security.Cryptography.RSA cle = null) =>
+            Convert.ToBase64String((cle ?? CleTest.Value).SignData(Encoding.UTF8.GetBytes(SignatureRelease.Message(v, sha)),
+                System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1));
 
         private static string Sha(string contenu)
         {
@@ -114,18 +126,20 @@ namespace GamingTweaker.Tests
                 return string.Concat(h.ComputeHash(Encoding.UTF8.GetBytes(contenu)).Select(b => b.ToString("x2")));
         }
 
-        private static string Json(string urlExe = UrlExe, string digest = null, string body = "", string nom = "GamingTweaker.exe") =>
+        private static string Json(string urlExe = UrlExe, string digest = null, string body = "", string nom = "GamingTweaker.exe", bool sig = true) =>
             "{\"tag_name\":\"v9.0.0\",\"draft\":false,\"prerelease\":false,\"html_url\":\"" + Page + "\",\"body\":" + Newtonsoft.Json.JsonConvert.ToString(body)
-            + ",\"assets\":[{\"name\":\"" + nom + "\",\"browser_download_url\":\"" + urlExe + "\"" + (digest == null ? "" : ",\"digest\":\"" + digest + "\"") + "}]}";
+            + ",\"assets\":[{\"name\":\"" + nom + "\",\"browser_download_url\":\"" + urlExe + "\"" + (digest == null ? "" : ",\"digest\":\"" + digest + "\"") + "}"
+            + (sig ? ",{\"name\":\"GamingTweaker.exe.sig\",\"browser_download_url\":\"" + UrlSig + "\"}" : "") + "]}";
 
         private static readonly System.Version Courante = new System.Version(0, 9, 1);
 
         [Fact]
-        public void L_exe_et_l_empreinte_de_github_sont_lus()
+        public void L_exe_la_signature_et_l_empreinte_de_github_sont_lus()
         {
             var h = Sha("x");
-            var v = MiseAJour.Analyser(Json(digest: "sha256:" + h.ToUpperInvariant()), Courante);
+            var v = MiseAJour.Analyser(Json(digest: "sha256:" + h.ToUpperInvariant()), Courante, Cles);
             Assert.Equal(UrlExe, v.UrlExe);
+            Assert.Equal(UrlSig, v.UrlSignature);
             Assert.Equal(h, v.Sha256);
             Assert.True(v.PeutInstaller);
         }
@@ -134,9 +148,22 @@ namespace GamingTweaker.Tests
         public void Sans_empreinte_github_celle_des_notes_de_la_ci_est_utilisee()
         {
             var h = Sha("y");
-            var v = MiseAJour.Analyser(Json(body: "Exe non signé.\n\nSHA-256 de GamingTweaker.exe : " + h.ToUpperInvariant()), Courante);
+            var v = MiseAJour.Analyser(Json(body: "Exe non signé.\n\nSHA-256 de GamingTweaker.exe : " + h.ToUpperInvariant()), Courante, Cles);
             Assert.Equal(h, v.Sha256);
-            Assert.True(v.PeutInstaller);
+        }
+
+        [Fact]
+        public void Avec_une_cle_une_version_pas_encore_signee_n_est_pas_annoncee()
+        {
+            Assert.Null(MiseAJour.Analyser(Json(sig: false), Courante, Cles));
+        }
+
+        [Fact]
+        public void Sans_cle_configuree_seule_la_page_est_proposee()
+        {
+            var v = MiseAJour.Analyser(Json(), Courante, SansCle);
+            Assert.NotNull(v);
+            Assert.False(v.PeutInstaller);
         }
 
         [Theory]
@@ -146,31 +173,79 @@ namespace GamingTweaker.Tests
         [InlineData("https://github.com/alexandre-dfr/GTweak/releases/download/v9.0.0/autre.exe")]
         public void Un_exe_hors_des_releases_du_depot_n_est_jamais_installe(string url)
         {
-            var v = MiseAJour.Analyser(Json(urlExe: url, digest: "sha256:" + Sha("x")), Courante);
-            Assert.NotNull(v);                 // la version reste annoncée (page de la release)
+            var v = MiseAJour.Analyser(Json(urlExe: url, digest: "sha256:" + Sha("x")), Courante, SansCle);
+            Assert.NotNull(v);                 // sans clé, la version reste annoncée (page de la release)
             Assert.Null(v.UrlExe);
             Assert.False(v.PeutInstaller);
+            Assert.Null(MiseAJour.Analyser(Json(urlExe: url), Courante, Cles));   // avec clé : rien d'installable, rien d'annoncé
         }
 
+        // ---------- Signature ----------
+
         [Fact]
-        public void Sans_empreinte_l_installation_n_est_pas_proposee()
+        public void La_signature_lie_la_version_et_l_empreinte()
         {
-            var v = MiseAJour.Analyser(Json(digest: "sha1:abc"), Courante);
-            Assert.False(v.PeutInstaller);
-            Assert.Null(MiseAJour.Analyser(Json(), Courante).Sha256);
+            var h = Sha("contenu");
+            var s = Signer(V9, h);
+            Assert.True(SignatureRelease.Verifier(s, V9, h.ToUpperInvariant(), Cles));
+            Assert.False(SignatureRelease.Verifier(s, new System.Version(9, 0, 1), h, Cles));   // ancien exe republié sous un autre tag
+            Assert.False(SignatureRelease.Verifier(s, V9, Sha("autre"), Cles));
+            Assert.False(SignatureRelease.Verifier("pas du base64 !", V9, h, Cles));
+            Assert.False(SignatureRelease.Verifier(s, V9, h, SansCle));
+            using (var autre = new System.Security.Cryptography.RSACryptoServiceProvider(3072) { PersistKeyInCsp = false })
+                Assert.False(SignatureRelease.Verifier(s, V9, h, new[] { autre.ToXmlString(false) }));
         }
 
-        private VersionDisponible Dispo(string contenu) =>
-            new VersionDisponible { Version = new System.Version(9, 0, 0), Url = Page, UrlExe = UrlExe, Sha256 = Sha(contenu) };
+        [Fact]
+        public void Message_signe()
+        {
+            Assert.Equal("GamingTweaker.exe|9.0.0|" + Sha("a"), SignatureRelease.Message(V9, Sha("a").ToUpperInvariant()));
+        }
 
         [Fact]
-        public async Task La_nouvelle_version_remplace_l_exe_quand_l_empreinte_correspond()
+        public void Cle_trop_courte_ou_privee_refusee()
+        {
+            using (var courte = new System.Security.Cryptography.RSACryptoServiceProvider(2048) { PersistKeyInCsp = false })
+            {
+                var h = Sha("x");
+                var s = Convert.ToBase64String(courte.SignData(Encoding.UTF8.GetBytes(SignatureRelease.Message(V9, h)),
+                    System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1));
+                Assert.False(SignatureRelease.Verifier(s, V9, h, new[] { courte.ToXmlString(false) }));
+            }
+            var texte = "# commentaire\n\n" + CleTest.Value.ToXmlString(true) + "\n" + CleTest.Value.ToXmlString(false) + "\n";
+            Assert.Equal(new[] { CleTest.Value.ToXmlString(false) }, SignatureRelease.LireCles(texte).ToArray());
+        }
+
+        [Fact]
+        public void Les_cles_du_depot_sont_toutes_valides()
+        {
+            var texte = File.ReadAllText(Path.Combine(Racine(), "src", "GamingTweaker", "Assets", "cles-release.txt"), Encoding.UTF8);
+            var lignes = texte.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0 && !l.StartsWith("#")).ToList();
+            Assert.Equal(lignes.Count, SignatureRelease.LireCles(texte).Count());   // aucune ligne ignorée en silence
+            Assert.Equal(lignes.Count, SignatureRelease.Cles.Length);               // et toutes intégrées à l'exe
+        }
+
+        // ---------- Installation ----------
+
+        private VersionDisponible Dispo(string sha, bool shaGithub = true) =>
+            new VersionDisponible { Version = V9, Url = Page, UrlExe = UrlExe, UrlSignature = UrlSig, Sha256 = shaGithub ? sha : null, Cles = Cles };
+
+        private static Func<string, Task<string>> Sig(string s) => url => { Assert.Equal(UrlSig, url); return Task.FromResult(s); };
+        private static Func<string, string, Task> Ecrire(string contenu) => (url, dest) => { Assert.Equal(UrlExe, url); File.WriteAllText(dest, contenu); return Task.FromResult(0); };
+
+        [Fact]
+        public async Task La_nouvelle_version_signee_remplace_l_exe_et_reste_verrouillee_jusqu_au_lancement()
         {
             var exe = Path.Combine(tmp, "GamingTweaker.exe");
             File.WriteAllText(exe, "ancienne");
-            string demande = null;
-            await MiseAJour.InstallerAsync(Dispo("nouvelle"), exe, (url, dest) => { demande = url; File.WriteAllText(dest, "nouvelle"); return Task.FromResult(0); });
-            Assert.Equal(UrlExe, demande);
+            var h = Sha("nouvelle");
+            using (await MiseAJour.InstallerAsync(Dispo(h, shaGithub: false), exe, Ecrire("nouvelle"), Sig(Signer(V9, h))))
+            {
+                // Tant que la mise à jour n'est pas libérée : ni écriture, ni renommage, ni suppression du nouvel exe.
+                Assert.ThrowsAny<IOException>(() => File.OpenWrite(exe).Dispose());
+                Assert.ThrowsAny<IOException>(() => File.Move(exe, exe + ".vole"));
+                Assert.ThrowsAny<IOException>(() => File.Delete(exe));
+            }
             Assert.Equal("nouvelle", File.ReadAllText(exe));
             Assert.Equal("ancienne", File.ReadAllText(exe + ".ancien"));
             Assert.False(File.Exists(exe + ".nouveau"));
@@ -179,12 +254,50 @@ namespace GamingTweaker.Tests
         }
 
         [Fact]
+        public async Task Le_nouvel_exe_verrouille_peut_etre_lance()
+        {
+            var systeme = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "whoami.exe");
+            Assert.True(File.Exists(systeme));
+            var exe = Path.Combine(tmp, "GamingTweaker.exe");
+            File.WriteAllText(exe, "ancienne");
+            var h = MiseAJour.Sha256Fichier(systeme);
+            Func<string, string, Task> copier = (url, dest) => { File.Copy(systeme, dest); return Task.FromResult(0); };
+            using (await MiseAJour.InstallerAsync(Dispo(h), exe, copier, Sig(Signer(V9, h))))
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo(exe) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true };
+                // Windows crée le processus malgré la poignée tenue (partage en lecture) : c'est ce que fait MiseAJour.Relancer.
+                using (var p = System.Diagnostics.Process.Start(psi))
+                {
+                    p.StandardOutput.ReadToEnd();
+                    Assert.True(p.WaitForExit(30000));
+                }
+            }
+        }
+
+        [Fact]
+        public async Task Une_signature_invalide_laisse_l_exe_intact()
+        {
+            var exe = Path.Combine(tmp, "GamingTweaker.exe");
+            File.WriteAllText(exe, "ancienne");
+            var h = Sha("piégée");
+            using (var autre = new System.Security.Cryptography.RSACryptoServiceProvider(3072) { PersistKeyInCsp = false })
+            {
+                // Release publiée par quelqu'un d'autre : empreinte GitHub cohérente, mais signée avec une autre clé.
+                var ex = await Assert.ThrowsAsync<InvalidDataException>(() => MiseAJour.InstallerAsync(Dispo(h), exe, Ecrire("piégée"), Sig(Signer(V9, h, autre))));
+                Assert.Equal(MiseAJour.MessageSignature, ex.Message);
+            }
+            Assert.Equal("ancienne", File.ReadAllText(exe));
+            Assert.False(File.Exists(exe + ".nouveau"));
+            Assert.False(File.Exists(exe + ".ancien"));
+        }
+
+        [Fact]
         public async Task Un_telechargement_modifie_laisse_l_exe_intact()
         {
             var exe = Path.Combine(tmp, "GamingTweaker.exe");
             File.WriteAllText(exe, "ancienne");
-            var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
-                MiseAJour.InstallerAsync(Dispo("attendue"), exe, (url, dest) => { File.WriteAllText(dest, "piégée"); return Task.FromResult(0); }));
+            var h = Sha("attendue");
+            var ex = await Assert.ThrowsAsync<InvalidDataException>(() => MiseAJour.InstallerAsync(Dispo(h), exe, Ecrire("piégée"), Sig(Signer(V9, h))));
             Assert.Contains("empreinte", ex.Message);
             Assert.Equal("ancienne", File.ReadAllText(exe));
             Assert.False(File.Exists(exe + ".nouveau"));
@@ -192,40 +305,73 @@ namespace GamingTweaker.Tests
         }
 
         [Fact]
-        public async Task Une_version_sans_exe_verifiable_n_est_pas_installee()
+        public async Task Une_version_sans_exe_signe_n_est_pas_installee()
         {
             var exe = Path.Combine(tmp, "GamingTweaker.exe");
             File.WriteAllText(exe, "ancienne");
-            await Assert.ThrowsAsync<InvalidOperationException>(() => MiseAJour.InstallerAsync(new VersionDisponible { Version = new System.Version(9, 0, 0), Url = Page }, exe));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => MiseAJour.InstallerAsync(new VersionDisponible { Version = V9, Url = Page, UrlExe = UrlExe, Cles = Cles }, exe));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => MiseAJour.InstallerAsync(new VersionDisponible { Version = V9, Url = Page, UrlExe = UrlExe, UrlSignature = UrlSig, Cles = SansCle }, exe));
             Assert.Equal("ancienne", File.ReadAllText(exe));
         }
 
         [Fact]
-        public void Le_remplacement_qui_echoue_remet_l_exe_en_place()
+        public async Task Le_remplacement_qui_echoue_remet_l_exe_en_place()
         {
             var exe = Path.Combine(tmp, "GamingTweaker.exe");
             File.WriteAllText(exe, "ancienne");
-            Assert.ThrowsAny<Exception>(() => MiseAJour.Remplacer(exe, Path.Combine(tmp, "absent.nouveau")));
+            var h = Sha("nouvelle");
+            // L'exe en cours ne peut pas être renommé (ouvert sans partage en suppression) : rien n'est remplacé.
+            using (new FileStream(exe, FileMode.Open, FileAccess.Read, FileShare.Read))
+                await Assert.ThrowsAnyAsync<IOException>(() => MiseAJour.InstallerAsync(Dispo(h), exe, Ecrire("nouvelle"), Sig(Signer(V9, h))));
             Assert.Equal("ancienne", File.ReadAllText(exe));
-            Assert.False(File.Exists(exe + ".ancien"));
+            Assert.False(File.Exists(exe + ".nouveau"));
         }
 
-        // ---------- Script d'installation et CI ----------
+        [Theory]
+        [InlineData(@"\\?\C:\Jeux\GamingTweaker.exe.nouveau", @"C:\Jeux\GamingTweaker.exe.nouveau", true)]
+        [InlineData(@"\\?\c:\jeux\gamingtweaker.exe.nouveau", @"C:\Jeux\GamingTweaker.exe.nouveau", true)]
+        [InlineData(@"\\?\UNC\serveur\partage\GamingTweaker.exe.nouveau", @"\\serveur\partage\GamingTweaker.exe.nouveau", true)]
+        [InlineData(@"\\?\C:\Windows\System32\GamingTweaker.exe.nouveau", @"C:\Jeux\GamingTweaker.exe.nouveau", false)]
+        [InlineData(null, @"C:\Jeux\GamingTweaker.exe.nouveau", false)]
+        public void Chemin_reel_compare_au_chemin_attendu(string reel, string attendu, bool meme)
+        {
+            Assert.Equal(meme, MiseAJour.MemeChemin(reel, attendu));
+        }
+
+        // ---------- Copies de la routine et du démarrage avec Windows ----------
+
+        [Theory]
+        [InlineData("0.9.2.10", "0.9.2.58", true)]
+        [InlineData("0.9.2.58", "0.9.3.1", true)]
+        [InlineData("0.9.2.58", "0.9.2.58", false)]
+        [InlineData("0.9.3.1", "0.9.2.58", false)]    // jamais remplacée par une version plus ancienne
+        [InlineData(null, "0.9.2.58", false)]
+        public void Copie_protegee_remplacee_seulement_si_plus_ancienne(string copie, string courante, bool attendu)
+        {
+            Assert.Equal(attendu, CopiesProtegees.AMettreAJour(copie == null ? null : new System.Version(copie), new System.Version(courante)));
+        }
+
+        // ---------- Version portable et CI ----------
 
         private static string Racine() => Path.GetDirectoryName(Path.GetDirectoryName(Helpers.Couverture.Chemin()));
 
         [Fact]
-        public void Le_script_d_installation_verifie_l_empreinte_publiee_par_la_ci()
+        public void Version_portable_uniquement_sans_script_d_installation()
         {
-            var script = File.ReadAllText(Path.Combine(Racine(), "installer.ps1"), Encoding.UTF8);
-            var ci = File.ReadAllText(Path.Combine(Racine(), ".github", "workflows", "build.yml"), Encoding.UTF8);
-            Assert.Contains("SHA-256 de GamingTweaker.exe : $env:HASH", ci);                 // texte écrit par la CI dans les notes
-            Assert.Contains(@"SHA-256 de GamingTweaker\.exe", script);                       // texte lu par le script
-            Assert.Contains("Get-FileHash", script);
-            Assert.Contains("https://github.com/$depot/releases/download/", script);
-            Assert.DoesNotContain("Invoke-Expression", script);
+            Assert.False(File.Exists(Path.Combine(Racine(), "installer.ps1")));
             var readme = File.ReadAllText(Path.Combine(Racine(), "README.md"), Encoding.UTF8);
-            Assert.Contains("irm https://raw.githubusercontent.com/alexandre-dfr/GTweak/main/installer.ps1 | iex", readme);
+            Assert.DoesNotContain("installer.ps1", readme);
+            Assert.DoesNotContain("| iex", readme);
+        }
+
+        [Fact]
+        public void La_ci_publie_l_empreinte_et_epingle_ses_actions()
+        {
+            var ci = File.ReadAllText(Path.Combine(Racine(), ".github", "workflows", "build.yml"), Encoding.UTF8);
+            Assert.Contains("SHA-256 de GamingTweaker.exe : $env:HASH", ci);   // texte relu par MiseAJour (ShaNotes)
+            var uses = System.Text.RegularExpressions.Regex.Matches(ci, @"uses:\s*(\S+)").Cast<System.Text.RegularExpressions.Match>().Select(m => m.Groups[1].Value).ToList();
+            Assert.NotEmpty(uses);
+            Assert.All(uses, u => Assert.Matches(@"^[\w.-]+/[\w.-]+@[0-9a-f]{40}$", u));
         }
     }
 }

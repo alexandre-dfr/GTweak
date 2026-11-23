@@ -30,7 +30,7 @@
   </PropertyGroup>
 
   <!-- Numéro de build de la CI (variable d'environnement GT_BUILD = numéro du run GitHub Actions) : chaque exe publié a sa propre version
-       (0.9.1.58), affichée dans l'application et dans les rapports. En local, la révision reste 0. -->
+       (0.9.2.58), affichée dans l'application et dans les rapports. En local, la révision reste 0. -->
   <PropertyGroup Condition="'$(GT_BUILD)' != ''">
     <AssemblyVersion>$(Version).$(GT_BUILD)</AssemblyVersion>
     <FileVersion>$(Version).$(GT_BUILD)</FileVersion>
@@ -55,6 +55,7 @@
   <ItemGroup>
     <EmbeddedResource Include="Assets\catalog\*.json" LogicalName="catalog/%(Filename)%(Extension)" WithCulture="false" />
     <EmbeddedResource Include="Assets\bloatware-list.json" LogicalName="bloatware-list.json" WithCulture="false" />
+    <EmbeddedResource Include="Assets\cles-release.txt" LogicalName="cles-release.txt" WithCulture="false" />
     <EmbeddedResource Include="Assets\scripts\*.ps1" LogicalName="scripts/%(Filename)%(Extension)" WithCulture="false" />
     <EmbeddedResource Include="Assets\runtime\*.ps1" LogicalName="runtime/%(Filename)%(Extension)" WithCulture="false" />
   </ItemGroup>

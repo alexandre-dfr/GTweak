@@ -187,7 +187,24 @@ namespace GamingTweaker.Core
             EnregistrerTache(NomTache, xml);
         }
 
-        public const string MessageOccupe = "Une autre exécution de GamingTweaker est en cours : la routine n'a pas été modifiée. Réessayez à la fin de l'exécution.";
+        /// <summary>
+        /// Remplace l'exe de la routine par l'exe en cours (vérifié, voir ExeEnCours), sans toucher à la tâche ni à la copie du profil.
+        /// Sous le verrou d'instance ; occupé : InvalidOperationException, rien n'est modifié.
+        /// </summary>
+        public static void ActualiserExe(string lockName = null)
+        {
+            using (var verrou = SingleInstance.TryAcquire(lockName))
+            {
+                if (verrou == null) throw new InvalidOperationException(MessageOccupe);
+                var source = Process.GetCurrentProcess().MainModule.FileName;
+                if (DepuisLaCopie(source, ExeCopie) || !File.Exists(ExeCopie)) return;
+                // Racine protégée vérifiée (refus si elle n'est pas sûre) avant d'y réécrire l'exe lancé élevé.
+                DossierProtege.Securiser(DossierCopie);
+                ExeEnCours.CopierVers(ExeCopie);
+            }
+        }
+
+        public const string MessageOccupe ="Une autre exécution de GamingTweaker est en cours : la routine n'a pas été modifiée. Réessayez à la fin de l'exécution.";
 
         /// <summary>Installe la routine sous le verrou d'instance ; occupé : refus (InvalidOperationException) avant tout effet.</summary>
         public static void Install(RoutineConfig c) { Install(c, null); }

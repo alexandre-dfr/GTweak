@@ -4,15 +4,7 @@ Application Windows portable (un seul `GamingTweaker.exe`) qui règle un PC de j
 
 ## Lancer
 
-**Installation en une commande** (recommandé) : ouvrez PowerShell (pas besoin d'être administrateur) et collez :
-
-```powershell
-irm https://raw.githubusercontent.com/alexandre-dfr/GTweak/main/installer.ps1 | iex
-```
-
-Le script ([installer.ps1](installer.ps1), lisible avant de le lancer) télécharge la dernière version, vérifie son empreinte SHA-256, la place dans `%LOCALAPPDATA%\Programs\GamingTweaker`, ajoute un raccourci au menu Démarrer et la lance. Pas d'avertissement SmartScreen : un fichier téléchargé ainsi ne porte pas la marque « téléchargé depuis Internet ». Relancer la commande installe la dernière version.
-
-**Ou à la main**, depuis l'onglet Releases :
+GamingTweaker est uniquement portable : il n'a pas d'installateur et n'ajoute aucun programme au PC. Depuis l'onglet Releases :
 
 1. Copiez `GamingTweaker.exe` où vous voulez, par exemple sur une clé USB. C'est le seul fichier : aucune dépendance, aucun fichier de configuration (.NET Framework 4.8 est déjà dans Windows 10 1903+ et Windows 11).
 2. Double-cliquez : Windows demande les droits administrateur (obligatoire pour modifier le système).
@@ -22,7 +14,7 @@ Rien n'est installé. Les capteurs matériels (menu Informations) ne sont charg�
 
 ### Avertissement SmartScreen
 
-L'exe n'est pas signé : au premier lancement d'un exe téléchargé par le navigateur, Windows affiche « Windows a protégé votre ordinateur ». L'installation en une commande (ci-dessus) et la mise à jour intégrée l'évitent. Pour un exe téléchargé à la main :
+L'exe n'est pas signé : au premier lancement d'un exe téléchargé par le navigateur, Windows affiche « Windows a protégé votre ordinateur ». La mise à jour intégrée l'évite. Pour un exe téléchargé à la main :
 
 - **Avant le premier lancement** : ouvrez PowerShell et collez cette commande (elle retire la marque « téléchargé depuis Internet », comme le bouton « Débloquer » des propriétés du fichier) :
 
@@ -95,12 +87,14 @@ Comme tout profil, le fichier ne contient que des identifiants d'options et des 
 
 Au démarrage de l'interface, l'appli demande à GitHub la dernière release publiée (`api.github.com`, sans identifiant de la machine ni de l'utilisateur ; les pré-versions de test sont ignorées). Si elle est plus récente, un bandeau propose :
 
-- **Mettre à jour** : l'appli télécharge `GamingTweaker.exe` depuis la release, vérifie son empreinte SHA-256 (calculée par GitHub, sinon publiée par la CI dans les notes de la release), le met à la place de l'exe en cours puis redémarre. Vos réglages, profils et l'historique sont conservés ; la copie lancée avec Windows est mise à jour aussi. Si l'empreinte ne correspond pas, rien n'est remplacé. Un fichier téléchargé par l'appli ne déclenche pas SmartScreen.
+- **Mettre à jour** : l'appli télécharge `GamingTweaker.exe` et sa signature `GamingTweaker.exe.sig` depuis la release, vérifie la signature avec la clé publique intégrée à l'exe (et l'empreinte SHA-256 calculée par GitHub), met le nouvel exe à la place de l'exe en cours, au même endroit, puis redémarre. Vos réglages, profils et l'historique sont conservés. Si la signature ne correspond pas, rien n'est remplacé. Un fichier téléchargé par l'appli ne déclenche pas SmartScreen.
 - **Nouveautés** : ouvre la page de la release dans le navigateur.
 
 Rien n'est téléchargé sans ce clic. Hors ligne, ou si GitHub ne répond pas en 10 s, aucun bandeau ne s'affiche. La routine planifiée et le mode `--silent` ne font pas cette vérification. Toutes les connexions de l'appli sont listées dans [CONFIDENTIALITE.md](CONFIDENTIALITE.md) : aucune télémétrie.
 
-La mise à jour intégrée et la commande d'installation ne voient que les releases publiées par un tag `vX.Y.Z` (voir « Publication (CI) ») : les pré-versions `test-*` sont ignorées.
+La mise à jour intégrée ne voit que les releases publiées par un tag `vX.Y.Z` (voir « Publication (CI) ») : les pré-versions `test-*` sont ignorées. Une release n'est annoncée qu'une fois signée par le mainteneur (voir « Signer une version »). Sans clé intégrée à l'exe, le bandeau propose seulement la page de téléchargement.
+
+La routine planifiée et le démarrage avec Windows lancent une copie de l'exe placée dans le dossier protégé. Au démarrage de l'interface, une copie plus ancienne que l'exe ouvert est remplacée par celui-ci (jamais par une version plus ancienne) : après une mise à jour, la routine applique donc le nouveau catalogue.
 
 ## Réglages du pilote NVIDIA
 
@@ -182,6 +176,28 @@ git push origin v0.9.2
 ```
 
 Le workflow refuse un tag qui ne correspond pas à `<Version>`.
+
+### Signer une version
+
+La mise à jour intégrée remplace l'exe et le relance en administrateur : elle n'installe qu'un exe signé par **votre** clé, pas seulement un exe publié sur GitHub. L'empreinte SHA-256 de la release prouve que le téléchargement est intact, mais pas qui l'a publié : un compte GitHub, un jeton ou une CI compromis publierait l'exe et l'empreinte qui va avec. La clé privée reste sur votre PC, chiffrée pour votre compte Windows ; l'exe ne contient que la clé publique (`src/GamingTweaker/Assets/cles-release.txt`).
+
+Une seule fois, dans PowerShell, depuis le clone du dépôt :
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\signer-release.ps1 -Generer
+```
+
+La clé publique est ajoutée à `cles-release.txt` : commitez ce fichier, il entre dans la prochaine version. Sauvegardez la clé privée hors ligne (le script indique comment, avec `-Exporter`) : si elle est perdue, les versions suivantes ne pourront plus être installées par la mise à jour intégrée et chaque utilisateur devra télécharger une fois la nouvelle version à la main.
+
+À chaque release, une fois le build du tag vert :
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\signer-release.ps1 -Tag v0.9.3
+```
+
+Le script télécharge l'exe publié, contrôle son empreinte et sa version, affiche le commit d'origine, demande confirmation, signe « GamingTweaker.exe|version|SHA-256 » puis joint `GamingTweaker.exe.sig` à la release (avec `gh` s'il est installé, sinon il indique le fichier à déposer sur la page de la release). Tant que la signature n'est pas jointe, les utilisateurs ne voient pas la nouvelle version.
+
+Changer de clé : ajoutez la nouvelle clé publique à `cles-release.txt`, publiez une version signée avec l'ancienne clé, puis retirez l'ancienne ligne dans la version suivante.
 
 ### SmartScreen et signature de l'exe
 

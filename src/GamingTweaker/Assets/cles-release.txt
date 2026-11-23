@@ -1,0 +1,5 @@
+# Clés publiques qui signent les versions de GamingTweaker (vérifiées avant toute mise à jour intégrée).
+# Une clé RSA de 3072 bits ou plus par ligne, au format XML (<RSAKeyValue>...</RSAKeyValue>), sans partie privée.
+# Ajoutée par « tools/signer-release.ps1 -Generer » ; ne jamais la coller à la main depuis une source non vérifiée.
+# Aucune clé : la mise à jour intégrée est désactivée, l'appli propose seulement la page de la nouvelle version.
+# Changer de clé : ajouter la nouvelle ligne, publier une version signée avec l'ancienne, puis retirer l'ancienne ligne.

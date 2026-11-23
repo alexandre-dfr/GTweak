@@ -43,3 +43,24 @@ Le contrôle final comparait la valeur actuelle à la valeur « avant » de **ch
 - `Grant-GTOwnership` (Windows.old uniquement) contrôle le lien puis appelle `takeown`/`icacls` par chemin. Une course reste théoriquement possible, mais elle ne donne aux Administrateurs que des droits qu'ils peuvent déjà obtenir.
 - `Profils.Save` écrit à côté de l'exe s'il est inscriptible. Un dossier `Profils` remplacé par une jonction redirigerait l'écriture d'un fichier `.json` choisi par l'utilisateur ailleurs. Le contenu reste un profil (aucune commande) et le nom vient de l'administrateur.
 - `--cycle-test` n'est autorisé que sous le compte `WDAGUtilityAccount`. Ce compte existe, désactivé, sur un vrai Windows : seul un administrateur pourrait l'activer.
+
+## Suite du 23 novembre 2026 : mise à jour intégrée, copies protégées, CI
+
+### 5. Mise à jour intégrée : fichier échangeable entre la vérification et le lancement (corrigé)
+
+- **Où :** `MiseAJour.InstallerAsync` (`Core/MiseAJour.cs`).
+- **Problème :** l'exe téléchargé (`GamingTweaker.exe.nouveau`, dans le dossier souvent modifiable de l'exe portable) était haché, refermé, déplacé par son chemin puis relancé par un processus administrateur, donc sans invite UAC. Entre le contrôle et le lancement, un processus sans droits pouvait le remplacer : son exe démarrait en administrateur. Même famille que le point 2.
+- **Correctif :** le fichier est ouvert une seule fois, en lecture et suppression, partagé en lecture seulement (aucune écriture, aucun renommage ni suppression par un autre processus). Lien, dossier, lien physique ou chemin réel différent du chemin attendu : refus. L'empreinte et la signature sont vérifiées sur cette poignée, le fichier est renommé par elle (`FileRenameInfo`) et elle reste ouverte jusqu'au lancement de la nouvelle version (`MiseAJourPrete`).
+
+### 6. Empreinte SHA-256 publiée avec l'exe : intégrité sans authenticité (corrigé)
+
+- **Problème :** l'empreinte venait de la même release que l'exe. Un compte GitHub, un jeton ou une CI compromis pouvait publier un exe et son empreinte, installés ensuite en administrateur par tous les utilisateurs.
+- **Correctif :** signature RSA 3072 bits faite hors de GitHub par le mainteneur (`tools/signer-release.ps1`, clé privée chiffrée DPAPI sur son PC). L'exe ne contient que la clé publique (`Assets/cles-release.txt`) et vérifie « GamingTweaker.exe|version|SHA-256 » : un ancien exe signé ne peut pas être republié sous un tag plus récent. Sans signature valide, rien n'est remplacé ; avec une clé configurée, une release non signée n'est pas annoncée. Le script d'installation `installer.ps1` est retiré : GamingTweaker est uniquement portable.
+
+### 7. Copie de la routine jamais mise à jour (corrigé)
+
+`Planification.InstallVerrouille` copiait l'exe dans `%ProgramFiles%\GamingTweaker\App` une seule fois : après une mise à jour, la routine hebdomadaire gardait l'ancien catalogue. Au démarrage de l'interface, `CopiesProtegees.ActualiserSiAnciennes` remplace désormais les copies de la routine et du démarrage avec Windows quand elles sont d'une version plus ancienne (jamais par une plus ancienne), par `ExeEnCours.CopierVers`, après le contrôle du dossier protégé.
+
+### 8. CI
+
+Actions épinglées par SHA de commit, permissions en lecture seule par défaut (écriture limitée aux jobs qui publient), jeton retiré de `.git/config` pendant la compilation et les tests (`persist-credentials: false`). Le job de build garde l'écriture : le quota d'artefacts du compte est épuisé, l'exe ne peut pas passer à un job de publication séparé.
