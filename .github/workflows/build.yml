@@ -34,7 +34,7 @@ jobs:
       # Numéro de build lu par le .csproj (révision de la version : 0.9.1.<numéro>), identique pour la compilation et les tests.
       GT_BUILD: ${{ github.run_number }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Style des fichiers (UTF-8 sans BOM, espaces, dernière ligne, JSON)
         run: python -I tools/style.py
