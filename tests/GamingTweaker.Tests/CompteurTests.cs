@@ -223,6 +223,39 @@ namespace GamingTweaker.Tests
         }
 
         [Fact]
+        public void Le_compteur_demarre_toujours_masque_meme_s_il_etait_affiche_a_la_fermeture()
+        {
+            new CompteurConfig { Actif = true, Position = CoinEcran.BasGauche }.Enregistrer(tmp);
+            var src = new FausseSource();
+            var vm = new CompteurViewModel(tmp, src);
+            Assert.False(vm.Actif);
+            Assert.Equal(0, src.Demarrages);
+            Assert.Equal(CoinEcran.BasGauche, CompteurConfig.Charger(tmp).Position);   // les autres réglages sont gardés
+        }
+
+        [Fact]
+        public void Arreter_pendant_un_releve_lent_ne_fait_pas_planter_l_appli()
+        {
+            // Relevé plus long que l'attente : avant correction, l'événement était détruit puis signalé par le minuteur
+            // (ObjectDisposedException sur un thread du pool, appli fermée).
+            Exception nonRattrapee = null;
+            UnhandledExceptionEventHandler h = (s, e) => nonRattrapee = e.ExceptionObject as Exception;
+            AppDomain.CurrentDomain.UnhandledException += h;
+            try
+            {
+                using (var dansLeReleve = new System.Threading.ManualResetEventSlim(false))
+                {
+                    var m = new System.Threading.Timer(_ => { dansLeReleve.Set(); System.Threading.Thread.Sleep(400); }, null, 0, System.Threading.Timeout.Infinite);
+                    Assert.True(dansLeReleve.Wait(5000));
+                    Assert.False(CompteurService.ArreterMinuteur(m, 50));
+                    System.Threading.Thread.Sleep(800);   // le relevé se termine et signale l'événement
+                }
+                Assert.Null(nonRattrapee);
+            }
+            finally { AppDomain.CurrentDomain.UnhandledException -= h; }
+        }
+
+        [Fact]
         public void Activer_demarre_la_source_desactiver_l_arrete()
         {
             var src = new FausseSource();
