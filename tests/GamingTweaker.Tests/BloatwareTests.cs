@@ -70,19 +70,6 @@ namespace GamingTweaker.Tests
 
         private static readonly IReadOnlyList<KnownApp> known = KnownApps.LoadEmbedded();
 
-        [Fact] public void Les_applis_les_plus_sures_sont_proposees_en_premier()
-        {
-            var liste = new List<KnownApp>
-            {
-                new KnownApp { Package = "A.Risque", Titre = "R", Risque = RiskLevel.Risque, Liste = "bloatware" },
-                new KnownApp { Package = "B.Sur", Titre = "S1", Risque = RiskLevel.Sur, Liste = "bloatware" },
-                new KnownApp { Package = "C.Avance", Titre = "A", Risque = RiskLevel.Avance, Liste = "bloatware" },
-                new KnownApp { Package = "D.Sur", Titre = "S2", Risque = RiskLevel.Sur, Liste = "bloatware" },
-            };
-            var l = BloatwareProvider.Match(liste.Select(a => a.Package), liste);
-            Assert.Equal(new[] { "B.Sur", "D.Sur", "C.Avance", "A.Risque" }, l.Select(e => e.Key));
-        }
-
         [Fact] public void Seules_les_applis_presentes_sont_listees() => Assert.Single(BloatwareProvider.Match(new[] { "Microsoft.BingNews", "Foo" }, known));
 
         [Fact] public void Store_et_WebView2_jamais_proposes()

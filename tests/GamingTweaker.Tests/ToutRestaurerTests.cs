@@ -236,17 +236,15 @@ namespace GamingTweaker.Tests
         }
 
         [Fact]
-        public void Le_menu_telemetrie_expose_les_boutons_du_bandeau_sans_lien_externe()
+        public void Le_menu_telemetrie_expose_les_boutons_du_bandeau()
         {
             var vm = Cree(new Faux());
-            Assert.False(vm.EstMenuOptions);
+            Assert.False(vm.EstMenuTelemetrie);
             vm.MenuCourant = "Télémétrie";
-            Assert.True(vm.EstMenuOptions);
+            Assert.True(vm.EstMenuTelemetrie);
             vm.Recherche = "x";
-            Assert.False(vm.EstMenuOptions);
-            // Le lien vers O&O ShutUp10++ (autre logiciel) a été retiré pour alléger l'interface.
-            Assert.Null(typeof(MainViewModel).GetField("UrlShutUp10"));
-            Assert.Null(typeof(MainViewModel).GetProperty("EstMenuTelemetrie"));
+            Assert.False(vm.EstMenuTelemetrie);
+            Assert.Equal("https://www.oo-software.com/fr/shutup10", MainViewModel.UrlShutUp10);
         }
     }
 }

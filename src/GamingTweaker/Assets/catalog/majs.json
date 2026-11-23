@@ -80,24 +80,5 @@
       "cpu": [],
       "gpu": []
     }
-  },
-  {
-    "id": "upd.pause-max",
-    "menu": "Mises à jour",
-    "groupe": "Windows Update",
-    "titre": "Pause de Windows Update possible jusqu'à un an",
-    "description": "Allonge la durée maximale de pause proposée dans Paramètres > Windows Update (valeur FlightSettingsMaxPauseDays = 365 jours). Rien n'est mis en pause : c'est vous qui choisissez la durée dans les Paramètres, et vous pouvez reprendre à tout moment. Alternative officielle au blocage des mises à jour, qui n'est pas proposé. Avancé : pensez à reprendre les mises à jour de sécurité. L'annulation rétablit la limite de Windows.",
-    "risque": "Avance",
-    "reversible": true,
-    "redemarrage": false,
-    "compatibilite": {
-      "windows": [
-        "10",
-        "11"
-      ],
-      "editions": [],
-      "cpu": [],
-      "gpu": []
-    }
   }
 ]

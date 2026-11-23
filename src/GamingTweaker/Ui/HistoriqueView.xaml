@@ -186,7 +186,8 @@
                     <ProgressBar Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Progression, Mode=OneWay}" Height="8" Margin="12,0" VerticalAlignment="Center"
                                  Visibility="{Binding EnReleve, Converter={StaticResource BoolVis}}"/>
                     <StackPanel Grid.Column="2" Orientation="Horizontal">
-                        <Button Content="Avant / après" Command="{Binding ComparerCommand}" ToolTip="Compare les deux relevés les plus récents (faites-en un avant d'optimiser, un autre après), ou les deux que vous avez cochés"/>
+                        <Button Content="Avant / après" Command="{Binding ComparerDerniersCommand}" Margin="0,0,8,0" ToolTip="Compare les deux relevés les plus récents : faites-en un avant d'optimiser, un autre après"/>
+                        <Button Content="Comparer les deux cochés" Command="{Binding ComparerCommand}"/>
                     </StackPanel>
                 </Grid>
                 <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">

@@ -1106,45 +1106,6 @@ function Get-GTStartupState {
     return 'Applied'
 }
 
-# ---- Taches planifiees des applications (opt.tasks-tierces) -------------------
-# Taches hors de \Microsoft\ et de \GamingTweaker\, sans les antivirus (meme regle que Test-GTStartupSecurity).
-# Cle de profil : chemin sans « \ » initial, « \ » -> « : » (interdit dans les noms de taches), accolades et crochets -> parentheses,
-# tout autre caractere refuse par les profils -> « _ ». Meme regle que TachesTierces.Cle (C#).
-function Get-GTTaskKey([string]$Path) {
-    if (-not $Path) { return $null }
-    $s = $Path.TrimStart('\') -replace '\\', ':'
-    $s = $s -replace '[\{\[]', '(' -replace '[\}\]]', ')'
-    $s = [regex]::Replace($s, "[^\p{L}\p{M}\p{N} _.\-+():',&\u00AE\u2122]", '_')
-    if ($s -notmatch '^[\p{L}\p{N}]') { return $null }
-    return $s
-}
-
-function Test-GTTaskTierce([string]$Path) {
-    if (-not $Path -or $Path -like '\Microsoft\*' -or $Path -like '\GamingTweaker\*') { return $false }
-    $nom = $Path.Substring($Path.LastIndexOf('\') + 1)
-    $dossier = @($Path.TrimStart('\') -split '\\')[0]
-    return -not ((Test-GTStartupSecurity $nom) -or (Test-GTStartupSecurity $dossier))
-}
-
-function Get-GTThirdPartyTasks {
-    $res = @()
-    foreach ($t in @(Get-ScheduledTask -ErrorAction Stop)) {
-        $p = [string]$t.TaskPath + [string]$t.TaskName
-        if (-not (Test-GTTaskTierce $p)) { continue }
-        $k = Get-GTTaskKey $p
-        if ($k) { $res += [pscustomobject]@{ Key = $k; Path = $p } }
-    }
-    return $res
-}
-
-# 'Applied' si au moins une tache d'application existe et que toutes sont desactivees.
-function Get-GTThirdPartyTasksState {
-    $t = @(Get-GTThirdPartyTasks)
-    if ($t.Count -eq 0) { return 'NotApplied' }
-    foreach ($x in $t) { if (Get-GTTaskEnabled $x.Path) { return 'NotApplied' } }
-    return 'Applied'
-}
-
 # ---------------------------------------------------------------------------
 # Aides du menu Nettoyage.
 # Remove-TweakPath ne supprime que dans $AllowedRoots (chemins resolus, sans tenir compte de la casse, avec separateur : « C:\a » n'autorise pas « C:\ab »).

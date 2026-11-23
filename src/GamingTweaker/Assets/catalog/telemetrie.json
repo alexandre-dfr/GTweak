@@ -15,11 +15,7 @@
       ],
       "editions": [],
       "cpu": [],
-      "gpu": [],
-      "services": [
-        "DiagTrack",
-        "dmwappushservice"
-      ]
+      "gpu": []
     }
   },
   {
@@ -201,7 +197,7 @@
     "menu": "Télémétrie",
     "groupe": "Publicité et suggestions",
     "titre": "Désactiver les suggestions, astuces et applications promues",
-    "description": "Désactive l'installation silencieuse d'applications suggérées, les suggestions du menu Démarrer et des Paramètres, les astuces Windows, les expériences grand public de Microsoft et les notifications des fournisseurs de synchronisation. Windows à la une (Spotlight) n'est pas modifié. Bloque aussi la réinstallation silencieuse des applis du constructeur et des applis promues (OemPreInstalledAppsEnabled, PreInstalledAppsEnabled) et les publicités Microsoft 365 de la page Comptes des Paramètres (stratégie DisableConsumerAccountStateContent).",
+    "description": "Désactive l'installation silencieuse d'applications suggérées, les suggestions du menu Démarrer et des Paramètres, les astuces Windows, les expériences grand public de Microsoft et les notifications des fournisseurs de synchronisation. Windows à la une (Spotlight) n'est pas modifié.",
     "risque": "Sur",
     "reversible": true,
     "redemarrage": false,
@@ -356,25 +352,6 @@
     }
   },
   {
-    "id": "tel.start-reco-off",
-    "menu": "Télémétrie",
-    "groupe": "Interface",
-    "titre": "Section « Recommandé » du menu Démarrer masquée",
-    "description": "Masque la section « Recommandé » du menu Démarrer (fichiers récents, applis promues) par la stratégie HideRecommendedSection, et coupe les recommandations d'astuces et de nouvelles applis (Start_IrisRecommendations). Sur Windows 11 Famille et Pro, certaines versions ignorent la stratégie : seules les astuces et nouvelles applis disparaissent alors. Windows 11 uniquement.",
-    "risque": "Avance",
-    "reversible": true,
-    "redemarrage": false,
-    "hkcu": true,
-    "compatibilite": {
-      "windows": [
-        "11"
-      ],
-      "editions": [],
-      "cpu": [],
-      "gpu": []
-    }
-  },
-  {
     "id": "tel.explorer-online-off",
     "menu": "Télémétrie",
     "groupe": "Interface",
@@ -459,7 +436,7 @@
     "menu": "Télémétrie",
     "groupe": "Applications tierces",
     "titre": "Télémétrie de Microsoft Office désactivée",
-    "description": "Désactive la télémétrie cliente d'Office, la journalisation et l'envoi du service de suivi (OSM), le programme d'amélioration de l'expérience, les commentaires et les tâches de l'agent de télémétrie Office (versions 2013 à 2021 et Microsoft 365). Affiché seulement si le logiciel concerné est installé.",
+    "description": "Désactive la télémétrie cliente d'Office, la journalisation et l'envoi du service de suivi (OSM), le programme d'amélioration de l'expérience, les commentaires et les tâches de l'agent de télémétrie Office (versions 2013 à 2021 et Microsoft 365). Sans effet si Office est absent.",
     "risque": "Sur",
     "reversible": true,
     "redemarrage": false,
@@ -471,16 +448,7 @@
       ],
       "editions": [],
       "cpu": [],
-      "gpu": [],
-      "cles": [
-        "HKLM\\SOFTWARE\\Microsoft\\Office\\ClickToRun",
-        "HKLM\\SOFTWARE\\Microsoft\\Office\\16.0\\Common\\InstallRoot",
-        "HKLM\\SOFTWARE\\Microsoft\\Office\\15.0\\Common\\InstallRoot",
-        "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\Winword.exe",
-        "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\Winword.exe",
-        "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\excel.exe",
-        "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\excel.exe"
-      ]
+      "gpu": []
     }
   },
   {
@@ -526,7 +494,7 @@
     "menu": "Télémétrie",
     "groupe": "Navigateurs",
     "titre": "Télémétrie de Chrome et de Firefox désactivée",
-    "description": "Désactive par stratégie les métriques de Chrome, l'envoi des analyses de son outil de nettoyage, la télémétrie de Firefox et son agent de navigateur par défaut (valeur et tâches). Affiché seulement si le logiciel concerné est installé.",
+    "description": "Désactive par stratégie les métriques de Chrome, l'envoi des analyses de son outil de nettoyage, la télémétrie de Firefox et son agent de navigateur par défaut (valeur et tâches). Sans effet si ces navigateurs sont absents.",
     "risque": "Sur",
     "reversible": true,
     "redemarrage": false,
@@ -537,15 +505,7 @@
       ],
       "editions": [],
       "cpu": [],
-      "gpu": [],
-      "cles": [
-        "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\chrome.exe",
-        "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\chrome.exe",
-        "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\firefox.exe",
-        "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\firefox.exe",
-        "HKLM\\SOFTWARE\\Mozilla\\Mozilla Firefox",
-        "HKLM\\SOFTWARE\\WOW6432Node\\Mozilla\\Mozilla Firefox"
-      ]
+      "gpu": []
     }
   },
   {
@@ -553,7 +513,7 @@
     "menu": "Télémétrie",
     "groupe": "Navigateurs",
     "titre": "Brave allégé (Rewards, Leo, Wallet, VPN)",
-    "description": "Désactive par stratégie Brave Rewards, l'assistant Leo, le portefeuille, le VPN, Brave News et Talk, ainsi que les statistiques et mesures anonymisées. Affiché seulement si le logiciel concerné est installé.",
+    "description": "Désactive par stratégie Brave Rewards, l'assistant Leo, le portefeuille, le VPN, Brave News et Talk, ainsi que les statistiques et mesures anonymisées. Sans effet si Brave est absent.",
     "risque": "Avance",
     "reversible": true,
     "redemarrage": false,
@@ -564,14 +524,7 @@
       ],
       "editions": [],
       "cpu": [],
-      "gpu": [],
-      "cles": [
-        "HKLM\\SOFTWARE\\BraveSoftware",
-        "HKLM\\SOFTWARE\\WOW6432Node\\BraveSoftware",
-        "HKCU\\Software\\BraveSoftware",
-        "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\brave.exe",
-        "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\brave.exe"
-      ]
+      "gpu": []
     }
   },
   {
@@ -598,7 +551,7 @@
     "menu": "Télémétrie",
     "groupe": "IA",
     "titre": "Désactiver Recall (instantanés d'activité)",
-    "description": "Empêche Windows d'enregistrer des instantanés de l'activité pour Recall (stratégie DisableAIDataAnalysis). Windows 11 24H2 ou plus récent uniquement (Recall n'existe pas avant).",
+    "description": "Empêche Windows d'enregistrer des instantanés de l'activité pour Recall (stratégie DisableAIDataAnalysis). Windows 11 uniquement.",
     "risque": "Sur",
     "reversible": true,
     "redemarrage": false,
@@ -608,28 +561,7 @@
       ],
       "editions": [],
       "cpu": [],
-      "gpu": [],
-      "buildMin": 26100
-    }
-  },
-  {
-    "id": "tel.clicktodo-off",
-    "menu": "Télémétrie",
-    "groupe": "IA",
-    "titre": "Désactiver Click To Do (analyse de l'écran par l'IA)",
-    "description": "Désactive Click To Do, qui analyse le contenu de l'écran pour proposer des actions IA (stratégie DisableClickToDo, pour la machine et pour l'utilisateur). Windows 11 24H2 ou plus récent uniquement.",
-    "risque": "Sur",
-    "reversible": true,
-    "redemarrage": false,
-    "hkcu": true,
-    "compatibilite": {
-      "windows": [
-        "11"
-      ],
-      "editions": [],
-      "cpu": [],
-      "gpu": [],
-      "buildMin": 26100
+      "gpu": []
     }
   },
   {
