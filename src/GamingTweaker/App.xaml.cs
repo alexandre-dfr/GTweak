@@ -14,6 +14,8 @@ namespace GamingTweaker
 
         /// <summary>Lancé avec --tray (démarrage avec Windows) : la fenêtre reste cachée, seule l'icône près de l'horloge est affichée.</summary>
         public static bool DemarrageEnZone { get; set; }
+        /// <summary>Lancé par la mise à jour intégrée (ancienne version fermée, ancien exe supprimé).</summary>
+        public static bool ApresMiseAJour { get; set; }
 
         private IDisposable verrouInterface;
 
@@ -92,7 +94,9 @@ namespace GamingTweaker
                 MessageBox.Show("Le catalogue des options est illisible : " + ex.Message, "GamingTweaker", MessageBoxButton.OK, MessageBoxImage.Error);
                 Shutdown(2); return;
             }
+            RapportErreur.Jalon("catalogue chargé");
             var facts = SystemInfo.Detect();
+            RapportErreur.Jalon("matériel détecté");
             var paths = DataPaths.Resolve(AppDomain.CurrentDomain.BaseDirectory, facts, DataPaths.RacineProtegeeParDefaut);
             TraceAppli.Configurer(paths.MachineDir);
             TraceAppli.Ecrire("interface : Windows " + facts.WindowsMajor + " " + facts.Edition + ", CPU " + facts.CpuVendor + ", GPU " + string.Join("/", facts.GpuVendors) + (facts.EstPortable ? ", portable" : ""));
@@ -102,6 +106,7 @@ namespace GamingTweaker
             registre.Register(ServicesProvider.Standard());
             registre.Register(ServicesProvider.Xbox());
             registre.Register(new StartupProvider());
+            registre.Register(new TachesProvider());
             registre.Register(BloatwareProvider.Standard());
             registre.Register(BloatwareProvider.Tierces());
             registre.Register(new WingetProvider());
@@ -220,7 +225,8 @@ namespace GamingTweaker
 
             // ---- Mode Jeu automatique et zone de notification ----
             var surveillance = new SurveillanceJeux(modeJeu, () => auto.Config);
-            surveillance.EcouterDemarrages();
+            // Abonnement WMI aux démarrages de programmes : peut prendre plusieurs centaines de ms (ou échouer) ; fait après l'affichage.
+            System.Threading.Tasks.Task.Run(() => surveillance.EcouterDemarrages());
             bool quitter = false, bulleMontree = false, premiereOuverture = true;
             ZoneNotification zone = null;
             Action premiersControles = () =>
@@ -241,12 +247,29 @@ namespace GamingTweaker
             Action ouvrir = () =>
             {
                 fenetre.Show();
+                if (premiereOuverture) RapportErreur.Jalon("fenêtre affichée");
                 if (fenetre.WindowState == WindowState.Minimized) fenetre.WindowState = WindowState.Normal;
                 fenetre.Activate();
                 vm.ModeJeu.Synchroniser();
                 premiersControles();
             };
             Action quitterApp = () => { quitter = true; fenetre.Close(); Shutdown(0); };
+            vm.Quitter = quitterApp;
+            if (ApresMiseAJour)
+            {
+                vm.Message = "GamingTweaker est à jour : version " + MiseAJour.VersionCourante + ".";
+                // La copie lancée avec Windows (dossier protégé) est remplacée par la nouvelle version, sauf si c'est elle qui vient d'être mise à jour.
+                System.Threading.Tasks.Task.Run(() =>
+                {
+                    try
+                    {
+                        string source;
+                        using (var p = System.Diagnostics.Process.GetCurrentProcess()) source = p.MainModule.FileName;
+                        if (DemarrageWindows.EstInstalle() && !Planification.DepuisLaCopie(source, DemarrageWindows.ExeCopie)) DemarrageWindows.Installer();
+                    }
+                    catch (Exception ex) { TraceAppli.Erreur("mise à jour de la copie lancée avec Windows", ex); }
+                });
+            }
             zone = new ZoneNotification(() => Dispatcher.Invoke(ouvrir), () => Dispatcher.Invoke(quitterApp), () => auto.Actif, v => Dispatcher.Invoke(() => auto.Actif = v),
                 () => modeJeu.IsActive, () => Dispatcher.Invoke(() => { vm.ModeJeu.Synchroniser(); if (vm.ModeJeu.RetablirCommand.CanExecute(null)) vm.ModeJeu.RetablirCommand.Execute(null); }));
             surveillance.Notification += (titre, texte) => Dispatcher.BeginInvoke(new Action(() =>

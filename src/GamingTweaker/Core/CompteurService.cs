@@ -53,7 +53,15 @@ namespace GamingTweaker.Core
         private volatile bool tempCpu, tempGpu;
         private Info.TemperaturesCompteur temperatures;
         private bool temperaturesEnErreur;
-        public void ChoisirTemperatures(bool cpu, bool gpu) { tempCpu = cpu; tempGpu = gpu; temperaturesEnErreur = false; }
+        public void ChoisirTemperatures(bool cpu, bool gpu) { tempCpu = cpu; tempGpu = gpu; temperaturesEnErreur = false; tickTemperatures = 0; }
+
+        /// <summary>Intervalle de lecture des températures, en relevés de charge (un par seconde).</summary>
+        public const int TemperaturesToutesLesNSecondes = 4;
+        private int tickTemperatures;
+        private double? tempCpuMem, tempGpuMem;
+
+        /// <summary>Vrai au premier relevé puis tous les <see cref="TemperaturesToutesLesNSecondes"/> relevés.</summary>
+        public static bool DoitLireTemperatures(int tick) => tick % TemperaturesToutesLesNSecondes == 0;
 
         /// <summary>Températures demandées (appelé sous le verrou du relevé de charge) ; la bibliothèque est rouverte si le choix change.</summary>
         private void ReleverTemperatures(ChargeSysteme c)
@@ -106,10 +114,24 @@ namespace GamingTweaker.Core
                 etw = null; systeme = null; minuteur = null;
                 derniereCharge = new ChargeSysteme();
             }
-            using (var fin = new ManualResetEvent(false)) { if (m.Dispose(fin)) fin.WaitOne(2000); }
+            if (!ArreterMinuteur(m, 5000)) TraceAppli.Ecrire("compteur en jeu : relevé encore en cours à l'arrêt, terminé en arrière-plan");
             lock (s) { s.Dispose(); if (temperatures != null) { try { temperatures.Dispose(); } catch (Exception) { } temperatures = null; } }
             e.Dispose();
             TraceAppli.Ecrire("compteur en jeu : arrêté");
+        }
+
+        /// <summary>
+        /// Arrête le minuteur en attendant au plus <paramref name="attenteMs"/> la fin d'un relevé en cours (températures ou GPU lents
+        /// sur certains portables). Si l'attente expire, l'événement n'est PAS détruit : le minuteur le signale à la fin du relevé
+        /// (détruit trop tôt, ce signal levait ObjectDisposedException hors de tout try et fermait l'appli). Faux si le relevé continue.
+        /// </summary>
+        public static bool ArreterMinuteur(Timer m, int attenteMs)
+        {
+            var fin = new ManualResetEvent(false);
+            if (!m.Dispose(fin)) { fin.Dispose(); return true; }
+            if (!fin.WaitOne(attenteMs)) return false;
+            fin.Dispose();
+            return true;
         }
 
         private void ReleverCharge()
@@ -118,7 +140,17 @@ namespace GamingTweaker.Core
             lock (verrou) s = systeme;
             if (s == null) return;
             ChargeSysteme c;
-            try { lock (s) { c = s.Relever(cpu, gpu, ram); ReleverTemperatures(c); } }
+            try
+            {
+                lock (s)
+                {
+                    c = s.Relever(cpu, gpu, ram);
+                    // Températures (bibliothèque capteurs, lente sur certains portables) : relues toutes les quelques secondes seulement,
+                    // la dernière valeur reste affichée entre deux lectures. Une température varie lentement : rien d'utile n'est perdu.
+                    if (DoitLireTemperatures(tickTemperatures++)) { ReleverTemperatures(c); tempCpuMem = c.TempCpu; tempGpuMem = c.TempGpu; }
+                    else { c.TempCpu = tempCpuMem; c.TempGpu = tempGpuMem; }
+                }
+            }
             catch (Exception ex) { TraceAppli.Erreur("compteur en jeu : relevé de charge", ex); return; }
             lock (verrou) if (systeme == s) derniereCharge = c;
         }

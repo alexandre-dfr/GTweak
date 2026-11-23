@@ -144,6 +144,31 @@ namespace GamingTweaker.Ui
 
         private void MasquerNouvelleVersion_Click(object sender, RoutedEventArgs e) { vm.NouvelleVersionMasquee = true; }
 
+        /// <summary>Mise à jour intégrée : téléchargement, vérification SHA-256, remplacement de l'exe, redémarrage. Sans exe vérifiable : page de la version.</summary>
+        private async void MettreAJour_Click(object sender, RoutedEventArgs e)
+        {
+            var v = vm.NouvelleVersion;
+            if (v == null || vm.MiseAJourEnCours) return;
+            if (!v.PeutInstaller) { VoirNouvelleVersion_Click(sender, e); return; }
+            if (MessageBox.Show(this, "GamingTweaker va télécharger la version " + v.Version + ", vérifier son empreinte, la mettre à la place de celle-ci puis redémarrer."
+                    + "\r\n\r\nVos réglages, profils et l'historique sont conservés.", "Mettre à jour", MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.OK) != MessageBoxResult.OK) return;
+            string exe;
+            using (var p = Process.GetCurrentProcess()) exe = p.MainModule.FileName;
+            vm.MiseAJourEnCours = true;
+            try
+            {
+                await MiseAJour.InstallerAsync(v, exe);
+                MiseAJour.Relancer(exe);
+                if (vm.Quitter != null) vm.Quitter(); else Application.Current.Shutdown(0);
+            }
+            catch (Exception ex)
+            {
+                vm.MiseAJourEnCours = false;
+                TraceAppli.Erreur("mise à jour intégrée", ex);
+                vm.Message = "Mise à jour impossible : " + ex.Message + " La version actuelle reste en place ; « Nouveautés » ouvre la page de téléchargement.";
+            }
+        }
+
         private void Planifier_Click(object sender, RoutedEventArgs e)
         {
             if (vm.Routine == null) return;
@@ -159,12 +184,6 @@ namespace GamingTweaker.Ui
             if (ok != MessageBoxResult.Yes) return;
             try { await vm.ToutRestaurerAsync(); }
             catch (Exception ex) { vm.Message = "Tout restaurer a échoué : " + ex.Message; }
-        }
-
-        private void ShutUp_Click(object sender, RoutedEventArgs e)
-        {
-            try { Core.SystemExe.OuvrirUrl(MainViewModel.UrlShutUp10); }
-            catch (Exception ex) { vm.Message = "Impossible d'ouvrir le navigateur (" + ex.Message + "). Adresse : " + MainViewModel.UrlShutUp10; }
         }
 
         /// <summary>Ouvre la page officielle proposée par un fournisseur de liste (https uniquement).</summary>

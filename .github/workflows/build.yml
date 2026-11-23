@@ -36,6 +36,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Style des fichiers (UTF-8 sans BOM, espaces, dernière ligne, JSON)
+        run: python -I tools/style.py
+
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
@@ -185,6 +188,8 @@ jobs:
           # Publication = l'exe seul (rien d'autre à télécharger ni à vérifier). Les diagnostics ne sont joints qu'en cas d'échec.
           $fichiers = @('publication/GamingTweaker.exe')
           $signature = if ($env:SIGNE -eq 'oui') { 'Exe signé.' } else { 'Exe non signé : Windows SmartScreen peut afficher un avertissement (« Informations complémentaires » puis « Exécuter quand même »).' }
+          # Empreinte lue par la mise à jour intégrée de l'appli (repli si GitHub ne fournit pas la sienne) : ne pas changer ce texte.
+          $signature += "`n`nSHA-256 de GamingTweaker.exe : $env:HASH"
           if ($env:TYPE -eq 'release') {
             $notes = "Téléchargez GamingTweaker.exe et lancez-le : rien à installer, aucun autre fichier.`n`n$signature"
             gh release view $env:TAG 2>$null | Out-Null

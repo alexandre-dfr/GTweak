@@ -104,8 +104,7 @@ namespace GamingTweaker.Ui
             RestaurerQuarantaineCommand = new RelayCommand(p => RestaurerQuarantaine((QuarantaineLigne)p), p => p is QuarantaineLigne && ((QuarantaineLigne)p).OrigineConnue);
             PurgerQuarantaineCommand = new RelayCommand(p => PurgerQuarantaine((QuarantaineLigne)p), p => p is QuarantaineLigne);
             ReleverCommand = new RelayCommand(_ => { var t = ReleverAsync(); }, _ => !enReleve);
-            ComparerCommand = new RelayCommand(_ => Comparer(), _ => Releves.Count(r => r.IsChecked) == 2);
-            ComparerDerniersCommand = new RelayCommand(_ => ComparerDerniers(), _ => Releves.Count >= 2);
+            ComparerCommand = new RelayCommand(_ => AvantApres(), _ => Releves.Count >= 2);
             DesinstallerCommand = new RelayCommand(_ => { var t = DesinstallerAsync(); }, _ => !enCours && !enReleve);
             Charger();
         }
@@ -120,8 +119,8 @@ namespace GamingTweaker.Ui
         public ICommand RestaurerQuarantaineCommand { get; private set; }
         public ICommand PurgerQuarantaineCommand { get; private set; }
         public ICommand ReleverCommand { get; private set; }
+        /// <summary>Bouton unique « Avant / après » : les deux relevés cochés s'il y en a exactement deux, sinon les deux plus récents.</summary>
         public ICommand ComparerCommand { get; private set; }
-        public ICommand ComparerDerniersCommand { get; private set; }
         public ICommand DesinstallerCommand { get; private set; }
 
         /// <summary>Désinstallation (aperçu si faux, exécution si vrai) ; remplaçable dans les tests. Par défaut : Desinstallation.Executer.</summary>
@@ -490,6 +489,13 @@ namespace GamingTweaker.Ui
             sb.AppendLine("Mémoire disponible : " + a.RamDisponibleMo + " Mo → " + b.RamDisponibleMo + " Mo (" + Signe(d.RamDisponibleMo) + " Mo) : " + verdict(d.RamDisponibleMo, 200, false));
             sb.Append("Bilan : " + mieux + " mesure(s) en progrès, " + moins + " en recul. Relevés à faire dans les mêmes conditions (même programmes ouverts, PC au repos).");
             return sb.ToString();
+        }
+
+        /// <summary>« Avant / après » : les deux relevés cochés s'il y en a exactement deux, sinon les deux plus récents.</summary>
+        public void AvantApres()
+        {
+            if (Releves.Count(r => r.IsChecked) == 2) Comparer();
+            else ComparerDerniers();
         }
 
         /// <summary>Compare les deux relevés les plus récents (avant / après une optimisation), sans avoir à les cocher.</summary>

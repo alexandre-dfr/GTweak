@@ -4,15 +4,46 @@ Application Windows portable (un seul `GamingTweaker.exe`) qui règle un PC de j
 
 ## Lancer
 
+**Installation en une commande** (recommandé) : ouvrez PowerShell (pas besoin d'être administrateur) et collez :
+
+```powershell
+irm https://raw.githubusercontent.com/alexandre-dfr/GTweak/main/installer.ps1 | iex
+```
+
+Le script ([installer.ps1](installer.ps1), lisible avant de le lancer) télécharge la dernière version, vérifie son empreinte SHA-256, la place dans `%LOCALAPPDATA%\Programs\GamingTweaker`, ajoute un raccourci au menu Démarrer et la lance. Pas d'avertissement SmartScreen : un fichier téléchargé ainsi ne porte pas la marque « téléchargé depuis Internet ». Relancer la commande installe la dernière version.
+
+**Ou à la main**, depuis l'onglet Releases :
+
 1. Copiez `GamingTweaker.exe` où vous voulez, par exemple sur une clé USB. C'est le seul fichier : aucune dépendance, aucun fichier de configuration (.NET Framework 4.8 est déjà dans Windows 10 1903+ et Windows 11).
 2. Double-cliquez : Windows demande les droits administrateur (obligatoire pour modifier le système).
 3. Cochez les options, cliquez sur **Aperçu** pour voir exactement ce qui sera fait, puis sur **LANCER**. Au premier lancement, un encadré de l'accueil résume ces étapes (bouton « Compris » pour le masquer, « Réafficher le guide » dans Paramètres).
 
 Rien n'est installé. Les capteurs matériels (menu Informations) ne sont chargés qu'à la demande.
 
+### Avertissement SmartScreen
+
+L'exe n'est pas signé : au premier lancement d'un exe téléchargé par le navigateur, Windows affiche « Windows a protégé votre ordinateur ». L'installation en une commande (ci-dessus) et la mise à jour intégrée l'évitent. Pour un exe téléchargé à la main :
+
+- **Avant le premier lancement** : ouvrez PowerShell et collez cette commande (elle retire la marque « téléchargé depuis Internet », comme le bouton « Débloquer » des propriétés du fichier) :
+
+```powershell
+Unblock-File "$env:USERPROFILE\Downloads\GamingTweaker.exe"
+```
+
+- **Sinon** : « Informations complémentaires » puis « Exécuter quand même », une seule fois. GamingTweaker retire alors lui-même cette marque de son exe : l'avertissement ne revient plus aux lancements suivants (une nouvelle version téléchargée le provoque une fois de plus).
+
+La fenêtre d'autorisation administrateur affiche « Éditeur : inconnu » pour la même raison ; seule une signature de l'exe change ce texte.
+
+Seules les options utiles à ce PC sont affichées : une option réservée à une autre version de Windows (Recall et Click To Do demandent Windows 11 24H2), à une autre carte graphique, ou à un logiciel absent (Office, Brave, Chrome, Firefox, Steam, Epic Games) n'apparaît pas.
+
+### Quand l'utiliser
+
+Le meilleur moment est juste après l'installation de Windows, dans cet ordre : pilotes (chipset, carte graphique, réseau, son), Windows Update jusqu'à ce qu'il n'y ait plus rien (mises à jour facultatives comprises), mise à jour des applis du Microsoft Store, installation de vos jeux et logiciels, puis GamingTweaker. Dans un autre ordre, une mise à jour de Windows ou d'un pilote peut rétablir certains réglages ; dans ce cas, relancez simplement votre profil.
+
 ## Sécurité
 
 - Seules les options cochées s'exécutent ; chaque option est classée Sûr, Avancé ou Risque. « Recommandé » ne coche que des options Sûr, et jamais celles que le catalogue en exclut (plan d'alimentation sur portable).
+- Une faille de sécurité se signale en privé (voir [.github/SECURITY.md](.github/SECURITY.md)), jamais dans une issue publique.
 - Le catalogue ne touche à aucune protection de sécurité (Defender, Spectre/Meltdown, VBS, BitLocker, Windows Update) et ne contient que des réglages à effet réel en jeu ou sur l'allègement de Windows ; les réglages placebo ou de pure apparence ont été retirés (voir `docs/revue-code-2026-11-11.md`).
 - Un point de restauration Windows est créé avant les options réversibles (si Windows l'autorise ; sinon vous êtes prévenu).
 - Aucun redémarrage automatique : si un redémarrage est nécessaire, le rapport l'indique.
@@ -36,7 +67,7 @@ Aucun ne contient d'option Risqué, d'option à liste (services, démarrage : le
 
 ## Compteur en jeu (FPS, CPU, GPU, RAM)
 
-Le bouton en forme de compteur, en haut à droite (à côté du thème), affiche ou masque le compteur par-dessus le jeu ; ses réglages sont dans le menu **Paramètres**. Il est désactivé par défaut. **Ctrl+Maj+F11** l'affiche ou le masque pendant une partie ; la combinaison se change dans Paramètres (« Changer… », puis appuyez sur la nouvelle combinaison : elle doit contenir Ctrl ou Alt).
+Le bouton en forme de compteur, en haut à droite (à côté du thème), affiche ou masque le compteur par-dessus le jeu ; ses réglages sont dans le menu **Paramètres**. Il est toujours masqué au lancement de l'appli (il ne s'affiche que si vous le demandez, pour la session en cours). **Ctrl+Maj+F11** l'affiche ou le masque pendant une partie ; la combinaison se change dans Paramètres (« Changer… », puis appuyez sur la nouvelle combinaison : elle doit contenir Ctrl ou Alt).
 
 - **Contenu**, chaque élément activable séparément :
   - images par seconde de la fenêtre au premier plan ;
@@ -62,7 +93,14 @@ Comme tout profil, le fichier ne contient que des identifiants d'options et des 
 
 ## Nouvelle version
 
-Au démarrage de l'interface, l'appli demande à GitHub la dernière release publiée (`api.github.com`, sans identifiant de la machine ni de l'utilisateur ; les pré-versions de test sont ignorées). Si elle est plus récente, un bandeau propose « Voir la nouvelle version », qui ouvre la page de la release dans le navigateur. **Rien n'est téléchargé ni installé automatiquement.** Hors ligne, ou si GitHub ne répond pas en 10 s, rien ne s'affiche. La routine planifiée et le mode `--silent` ne font pas cette vérification.
+Au démarrage de l'interface, l'appli demande à GitHub la dernière release publiée (`api.github.com`, sans identifiant de la machine ni de l'utilisateur ; les pré-versions de test sont ignorées). Si elle est plus récente, un bandeau propose :
+
+- **Mettre à jour** : l'appli télécharge `GamingTweaker.exe` depuis la release, vérifie son empreinte SHA-256 (calculée par GitHub, sinon publiée par la CI dans les notes de la release), le met à la place de l'exe en cours puis redémarre. Vos réglages, profils et l'historique sont conservés ; la copie lancée avec Windows est mise à jour aussi. Si l'empreinte ne correspond pas, rien n'est remplacé. Un fichier téléchargé par l'appli ne déclenche pas SmartScreen.
+- **Nouveautés** : ouvre la page de la release dans le navigateur.
+
+Rien n'est téléchargé sans ce clic. Hors ligne, ou si GitHub ne répond pas en 10 s, aucun bandeau ne s'affiche. La routine planifiée et le mode `--silent` ne font pas cette vérification. Toutes les connexions de l'appli sont listées dans [CONFIDENTIALITE.md](CONFIDENTIALITE.md) : aucune télémétrie.
+
+La mise à jour intégrée et la commande d'installation ne voient que les releases publiées par un tag `vX.Y.Z` (voir « Publication (CI) ») : les pré-versions `test-*` sont ignorées.
 
 ## Réglages du pilote NVIDIA
 
@@ -74,7 +112,7 @@ Le menu « Diagnostic » (lecture seule) repère ce qui bride réellement les pe
 
 ## Mesures avant / après
 
-Historique > Mesures : un relevé de 30 s (temps DPC et d'interruptions, processeur au repos, services, processus, mémoire disponible, programmes au démarrage). Faites-en un avant d'optimiser et un après, puis « Avant / après » : chaque mesure est marquée « mieux », « moins bien » ou « stable ».
+Historique > Mesures : un relevé de 30 s (temps DPC et d'interruptions, processeur au repos, services, processus, mémoire disponible, programmes au démarrage). Faites-en un avant d'optimiser et un après, puis « Avant / après » (les deux relevés les plus récents, ou les deux que vous avez cochés) : chaque mesure est marquée « mieux », « moins bien » ou « stable ».
 
 ## Mode Jeu
 
@@ -117,6 +155,7 @@ Sans `--confirm`, la commande affiche seulement ce qui serait supprimé. Les ré
 ## Tests et vérification
 
 - `dotnet test` : tests automatiques (aucune modification du système en dehors de `HKCU\Software\GamingTweakerTest` et du dossier temporaire).
+- `python -I tools/style.py` : règles de base des fichiers (UTF-8 sans BOM, pas d'espace en fin de ligne, saut de ligne final, JSON valide), vérifiées aussi par la CI ; `--fix` corrige.
 - `tools/sandbox/cycle.wsb` : cycle détecter, appliquer, annuler dans Windows Sandbox (voir `tools/sandbox/start-cycle.ps1`) ; le résultat est écrit dans `tools/sandbox/resultats/cycle.json`. L'option `--cycle-test` est refusée hors du compte du bac à sable.
 - `docs/checklist-premier-pc.md` : liste de contrôle à passer sur le premier PC réel.
 

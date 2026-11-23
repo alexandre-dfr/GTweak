@@ -44,11 +44,14 @@ namespace GamingTweaker.Ui
             }
             termine = true;
             Barre.IsIndeterminate = false; Barre.Value = Barre.Maximum;
-            Etat.Text = rapport.SessionDir == null ? "Rien n'a été exécuté"
-                      : rapport.ExitCode == 0 ? "Terminé" : "Terminé avec des erreurs";
+            Etat.Text = ResumeExecution.Titre(rapport);
             // Les lignes du journal déjà postées sur ce thread passent avant ce code : le rapport vient après le journal.
             Journal.AppendText((Journal.Text.Length > 0 ? "\r\n---\r\n" : "") + MainViewModel.RapportTexte(rapport, vm.Catalogue));
             Journal.ScrollToEnd();
+            // Résumé lisible à la place du journal brut (toujours accessible par « Journal détaillé »).
+            LignesResume.ItemsSource = ResumeExecution.Construire(rapport, vm.Catalogue);
+            AfficherResume(true);
+            BasculerJournal.Visibility = Visibility.Visible;
             Annuler.Visibility = Visibility.Collapsed;
             Fermer.Visibility = Visibility.Visible;
             if (rapport.SessionDir != null) { sessionDir = rapport.SessionDir; Dossier.Visibility = Visibility.Visible; }
@@ -62,6 +65,15 @@ namespace GamingTweaker.Ui
         }
 
         private void Fermer_Click(object sender, RoutedEventArgs e) { Close(); }
+
+        private void AfficherResume(bool resume)
+        {
+            Resume.Visibility = resume ? Visibility.Visible : Visibility.Collapsed;
+            Journal.Visibility = resume ? Visibility.Collapsed : Visibility.Visible;
+            BasculerJournal.Content = resume ? "Journal détaillé" : "Résumé";
+        }
+
+        private void BasculerJournal_Click(object sender, RoutedEventArgs e) { AfficherResume(Resume.Visibility != Visibility.Visible); }
 
         private void Dossier_Click(object sender, RoutedEventArgs e)
         {

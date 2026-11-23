@@ -21,14 +21,16 @@ namespace GamingTweaker
         [STAThread]
         public static int Main(string[] args)
         {
-            bool interfaceGraphique = args.Length == 0 || (args.Length == 1 && string.Equals(args[0], DemarrageWindows.Argument, StringComparison.OrdinalIgnoreCase));
+            // Relancé par une mise à jour intégrée : « --apres-mise-a-jour <pid de l'ancienne instance> », interface normale ensuite.
+            bool apresMiseAJour = args.Length == 2 && string.Equals(args[0], MiseAJour.ArgumentApres, StringComparison.OrdinalIgnoreCase);
+            bool interfaceGraphique = args.Length == 0 || apresMiseAJour || (args.Length == 1 && string.Equals(args[0], DemarrageWindows.Argument, StringComparison.OrdinalIgnoreCase));
             if (interfaceGraphique) RapportErreur.DebutDemarrage();
             // Toute exception non rattrapée laisse un rapport lisible (%LOCALAPPDATA%\GamingTweaker\erreurs.log) au lieu d'une fermeture muette.
             AppDomain.CurrentDomain.UnhandledException += (s, e) =>
             {
                 var ex = e.ExceptionObject as Exception;
                 var chemin = RapportErreur.Ecrire("exception non rattrapée", ex);
-                if (args.Length == 0 || App.DemarrageEnZone)
+                if (interfaceGraphique)
                 {
                     try { System.Windows.MessageBox.Show(RapportErreur.Message(ex, chemin, false), "GamingTweaker", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error); }
                     catch (Exception) { }
@@ -43,8 +45,17 @@ namespace GamingTweaker
             var refus = VerifierDllsAuDemarrage(args);
             if (refus != 0) { if (interfaceGraphique) RapportErreur.Jalon("arrêt : DLL en conflit à côté de l'exe"); return refus; }
             if (interfaceGraphique) RapportErreur.Jalon("DLL vérifiées");
+            if (interfaceGraphique) { var marque = MarqueInternet.RetirerDeLExe(); if (marque != null) RapportErreur.Jalon(marque); }
             DemarrageSur.RestreindreRechercheDll();
             AssemblyLoader.Register();
+            if (apresMiseAJour)
+            {
+                MiseAJour.ApresMiseAJour(args[1], ExeCourant());
+                RapportErreur.Jalon("mise à jour terminée, ancienne version fermée");
+                App.ApresMiseAJour = true;
+                return LaunchUi();
+            }
+            if (interfaceGraphique) MiseAJour.NettoyerAncien(ExeCourant());
             if (args.Length == 0) return LaunchUi();
             // Démarrage avec Windows (tâche \GamingTweaker\Demarrage) : interface cachée, icône dans la zone de notification.
             if (args.Length == 1 && string.Equals(args[0], DemarrageWindows.Argument, StringComparison.OrdinalIgnoreCase))
@@ -53,6 +64,11 @@ namespace GamingTweaker
                 return LaunchUi();
             }
             return RunCommandLine(args);
+        }
+
+        private static string ExeCourant()
+        {
+            try { return Assembly.GetExecutingAssembly().Location; } catch (Exception) { return null; }
         }
 
         private static int VerifierDllsAuDemarrage(string[] args)
