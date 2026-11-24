@@ -143,7 +143,7 @@ Chaque modification réversible est notée dans un journal. Un journal applicati
 
 ## Désinstaller
 
-Le plus simple : **Paramètres > Désinstaller…**. L'appli propose d'abord **Tout restaurer** (les réglages appliqués sont annulés tant que les journaux existent), puis retire la routine planifiée, le démarrage avec Windows et le dossier de données protégé, et se ferme ; il reste à supprimer `GamingTweaker.exe`.
+Le plus simple : **Historique > Désinstaller GamingTweaker…**. Si des réglages ont été appliqués, l'appli propose d'abord **Tout restaurer** (ils ne peuvent plus être annulés une fois les journaux supprimés), puis retire la routine planifiée, le démarrage avec Windows et le dossier de données protégé, et se ferme ; il reste à supprimer `GamingTweaker.exe`.
 
 L'application est portable : supprimer `GamingTweaker.exe` suffit pour le programme. Pour retirer aussi la routine planifiée et le dossier de données protégé (`%ProgramFiles%\GamingTweaker` : sessions, journaux d'annulation, quarantaine), lancer en administrateur :
 

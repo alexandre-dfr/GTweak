@@ -70,6 +70,15 @@ namespace GamingTweaker.Ui
         public Func<bool, BilanDesinstallation> Desinstaller { get; set; } = confirme => Desinstallation.Executer(confirme);
         /// <summary>Appelée quand la désinstallation a été exécutée (l'application se ferme).</summary>
         public Action ApresDesinstallation { get; set; }
+        /// <summary>« Tout restaurer » (tous les menus) proposé avant la désinstallation ; null : non proposé.</summary>
+        public Func<Task<ResultatRestauration>> ToutRestaurer { get; set; }
+        /// <summary>Question « tout restaurer d'abord ? » (texte, vrai pour restaurer) ; null : non proposée.</summary>
+        public Func<string, bool> ProposerToutRestaurer { get; set; }
+
+        public const string QuestionRestaurerAvant =
+            "Des réglages appliqués par GamingTweaker sont encore en place. La désinstallation supprime leurs journaux d'annulation : "
+            + "ils ne pourront plus être annulés par GamingTweaker.\r\n\r\nTout restaurer d'abord (recommandé) ?\r\n\r\n"
+            + "Oui : tout restaurer, puis désinstaller.\r\nNon : désinstaller en gardant les réglages.";
 
         /// <summary>
         /// Aperçu (routine, sessions, quarantaine) puis confirmation explicite ; les réglages appliqués ne sont pas annulés par la désinstallation,
@@ -82,9 +91,23 @@ namespace GamingTweaker.Ui
             try
             {
                 var apercu = await Task.Run(() => Desinstaller(false));
+                if (apercu.Avertissements.Any(a => a.Contains("autre exécution"))) { Message = apercu.Avertissements[0]; return; }
+                // Réglages encore appliqués (sessions avec journaux) : « Tout restaurer » proposé avant que les journaux disparaissent.
+                if (apercu.Avertissements.Any(a => a.StartsWith("Les réglages appliqués", StringComparison.Ordinal))
+                    && ToutRestaurer != null && ProposerToutRestaurer != null && ProposerToutRestaurer(QuestionRestaurerAvant))
+                {
+                    var r = await ToutRestaurer();
+                    if (r != null && (r.Echecs.Count > 0 || r.IgnoreesAutreCompte.Count > 0))
+                    {
+                        var restes = r.Echecs.Concat(r.IgnoreesAutreCompte).ToList();
+                        if (Confirmer == null || !Confirmer("Certains réglages n'ont pas été restaurés :\r\n- " + string.Join("\r\n- ", restes)
+                            + "\r\n\r\nDésinstaller quand même ?"))
+                        { Message = "Désinstallation annulée : " + restes.Count + " réglage(s) n'ont pas été restaurés."; return; }
+                    }
+                    apercu.Avertissements.RemoveAll(a => a.StartsWith("Les réglages appliqués", StringComparison.Ordinal));
+                }
                 var texte = string.Join("\r\n", apercu.Actions.Concat(apercu.Avertissements.Select(a => "Attention : " + a)))
                     + "\r\n\r\nL'application se fermera ; GamingTweaker.exe lui-même reste à supprimer à la main.\r\n\r\nDésinstaller maintenant ?";
-                if (apercu.Avertissements.Any(a => a.Contains("autre exécution"))) { Message = apercu.Avertissements[0]; return; }
                 if (Confirmer == null || !Confirmer(texte)) { Message = "Désinstallation annulée."; return; }
                 var bilan = await Task.Run(() => Desinstaller(true));
                 Message = string.Join(" ", bilan.Actions.Concat(bilan.Avertissements.Select(a => "Attention : " + a)));
