@@ -15,18 +15,8 @@ namespace GamingTweaker.Lists
             {
                 var texte = "[Console]::OutputEncoding = [Text.Encoding]::UTF8\r\n$ProgressPreference = 'SilentlyContinue'\r\n" + script;
                 var psi = Core.PowerShellLanceur.Creer(Core.PowerShellLanceur.ArgumentsEncodes(texte));
-                using (var p = Process.Start(psi))
-                {
-                    p.StandardInput.Close();
-                    var err = p.StandardError.ReadToEndAsync();
-                    var sortie = p.StandardOutput.ReadToEndAsync();
-                    using (ct.Register(() => { try { p.Kill(); } catch (Exception) { } }))
-                    {
-                        if (!p.WaitForExit(timeoutMs)) { try { p.Kill(); } catch (Exception) { } throw new TimeoutException("PowerShell n'a pas répondu à temps."); }
-                    }
-                    ct.ThrowIfCancellationRequested();
-                    return sortie.Result;
-                }
+                // Délai dépassé ou annulation : PowerShell et les processus qu'il a lancés sont arrêtés (ProcessusBorne).
+                return Core.ProcessusBorne.Executer(psi, timeoutMs, ct, "PowerShell").Sortie;
             }, ct);
         }
     }

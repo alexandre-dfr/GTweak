@@ -34,11 +34,15 @@ namespace GamingTweaker.Info
                 if (winget == null) throw new System.ComponentModel.Win32Exception(2, "winget introuvable");
                 var psi = new ProcessStartInfo(winget, "install --id " + WingetId + " --exact --source winget --accept-package-agreements --accept-source-agreements --disable-interactivity")
                 { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
-                using (var p = Process.Start(psi))
-                {
-                    p.StandardOutput.ReadToEnd();
-                    if (p.WaitForExit(300000) && p.ExitCode == 0 && IsInstalled()) return "PawnIO est installé.";
-                }
+                // Avant : ReadToEnd() bloquait jusqu'à la fin de winget, la limite de 5 min n'agissait jamais. Désormais bornée :
+                // au-delà, winget et ses enfants (l'installateur) sont arrêtés et l'utilisateur est prévenu.
+                var r = Core.ProcessusBorne.Executer(psi, 300000, System.Threading.CancellationToken.None, "winget (PawnIO)");
+                if (r.CodeSortie == 0 && IsInstalled()) return "PawnIO est installé.";
+            }
+            catch (TimeoutException)
+            {
+                try { Core.SystemExe.OuvrirUrl(PageOfficielle); } catch { }
+                return "L'installation par winget n'a pas abouti en 5 minutes et a été arrêtée : la page officielle de PawnIO a été ouverte dans le navigateur.";
             }
             catch (System.ComponentModel.Win32Exception) { }
             catch (Exception) { }

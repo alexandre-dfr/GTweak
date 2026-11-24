@@ -115,6 +115,14 @@ namespace GamingTweaker.Tests
 
         // ---- upd.windows et upd.nvidia (contrôles statiques) ------------------------------------------------------
 
+        [Fact] public void Pilote_et_Windows_Update_demandent_un_point_de_restauration()
+        {
+            var cat = Catalogue();
+            Assert.True(cat["upd.nvidia"].PointRestauration);
+            Assert.True(cat["upd.windows"].PointRestauration);
+            Assert.False(cat["upd.apps"].PointRestauration);
+        }
+
         [Fact] public void Windows_Update_utilise_l_API_COM_sans_pilotes_et_limite_la_selection_aux_mises_a_jour_trouvees()
         {
             var a = Catalogue()["upd.windows"].Apply;

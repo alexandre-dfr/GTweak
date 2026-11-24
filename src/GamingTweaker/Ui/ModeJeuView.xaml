@@ -129,7 +129,7 @@
 
                 <!-- Services -->
                 <DockPanel>
-                    <Button DockPanel.Dock="Right" Command="{Binding BasculerServicesCommand}" VerticalAlignment="Top">
+                    <Button DockPanel.Dock="Right" Command="{Binding BasculerServicesCommand}" AutomationProperties.Name="{Binding TexteServices}" VerticalAlignment="Top">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="{Binding TexteServices}"/>
                             <TextBlock Text="&#xE70D;" FontFamily="{StaticResource PoliceIcones}" FontSize="11" Margin="8,2,0,0"/>
@@ -148,7 +148,7 @@
 
                 <!-- Programmes -->
                 <DockPanel Margin="0,16,0,0">
-                    <Button DockPanel.Dock="Right" Command="{Binding BasculerProcessusCommand}" VerticalAlignment="Top">
+                    <Button DockPanel.Dock="Right" Command="{Binding BasculerProcessusCommand}" AutomationProperties.Name="{Binding TexteProcessus}" VerticalAlignment="Top">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="{Binding TexteProcessus}"/>
                             <TextBlock Text="&#xE70D;" FontFamily="{StaticResource PoliceIcones}" FontSize="11" Margin="8,2,0,0"/>

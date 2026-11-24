@@ -19,6 +19,11 @@ namespace GamingTweaker.Core
         [JsonProperty("description")] public string Description { get; set; }
         [JsonProperty("risque")] public RiskLevel? Risque { get; set; }
         [JsonProperty("reversible")] public bool Reversible { get; set; }
+        /// <summary>
+        /// Vrai : point de restauration créé avant l'option même si elle n'est pas réversible (pilote, mises à jour de Windows) ;
+        /// Windows peut alors revenir à l'état précédent. Les options réversibles en déclenchent déjà un.
+        /// </summary>
+        [JsonProperty("pointRestauration")] public bool PointRestauration { get; set; }
         /// <summary>Si renseigné, l'annulation est partielle : texte (moyen d'annulation et limite) repris dans l'aperçu.</summary>
         [JsonProperty("annulationPartielle")] public string AnnulationPartielle { get; set; }
         [JsonProperty("redemarrage")] public bool Redemarrage { get; set; }

@@ -37,7 +37,7 @@ Le meilleur moment est juste après l'installation de Windows, dans cet ordre : 
 - Seules les options cochées s'exécutent ; chaque option est classée Sûr, Avancé ou Risque. « Recommandé » ne coche que des options Sûr, et jamais celles que le catalogue en exclut (plan d'alimentation sur portable).
 - Une faille de sécurité se signale en privé (voir [.github/SECURITY.md](.github/SECURITY.md)), jamais dans une issue publique.
 - Le catalogue ne touche à aucune protection de sécurité (Defender, Spectre/Meltdown, VBS, BitLocker, Windows Update) et ne contient que des réglages à effet réel en jeu ou sur l'allègement de Windows ; les réglages placebo ou de pure apparence ont été retirés (voir `docs/revue-code-2026-11-11.md`).
-- Un point de restauration Windows est créé avant les options réversibles (si Windows l'autorise ; sinon vous êtes prévenu).
+- Un point de restauration Windows est créé avant les options réversibles, la mise à jour du pilote NVIDIA et les mises à jour de Windows (si Windows l'autorise ; sinon vous êtes prévenu).
 - Aucun redémarrage automatique : si un redémarrage est nécessaire, le rapport l'indique.
 - Les profils (`.json`) ne contiennent que des identifiants d'options, jamais de commande.
 - L'exe n'est pas signé : SmartScreen ou un antivirus peut le signaler. Il modifie le système, c'est normal.

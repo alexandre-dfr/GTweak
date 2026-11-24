@@ -132,7 +132,7 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Button Style="{StaticResource CarteBouton}" Margin="0,0,12,0" ToolTip="{Binding Description}"
+                        <Button Style="{StaticResource CarteBouton}" Margin="0,0,12,0" ToolTip="{Binding Description}" AutomationProperties.Name="{Binding Nom, StringFormat='Appliquer le profil {0}'}"
                                 Command="{Binding DataContext.ProfilRapideCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding Nom}">
                             <DockPanel Margin="18,16">
                                 <DockPanel DockPanel.Dock="Bottom" Margin="0,16,0,0">
@@ -172,7 +172,7 @@
                         <ItemsControl ItemsSource="{Binding EtatMenus}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Button Command="{Binding DataContext.AllerCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding Menu}"
+                                    <Button Command="{Binding DataContext.AllerCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding Menu}" AutomationProperties.Name="{Binding Menu, StringFormat='Ouvrir le menu {0}'}"
                                             Cursor="Hand" HorizontalContentAlignment="Stretch">
                                         <Button.Template>
                                             <ControlTemplate TargetType="Button">
@@ -206,7 +206,7 @@
 
                 <StackPanel Grid.Column="2">
                     <TextBlock Text="Diagnostic jeu" Style="{StaticResource TitreSection}"/>
-                    <Button Style="{StaticResource CarteBouton}" Margin="0,0,0,16" Command="{Binding AllerCommand}" CommandParameter="Diagnostic">
+                    <Button Style="{StaticResource CarteBouton}" Margin="0,0,0,16" Command="{Binding AllerCommand}" CommandParameter="Diagnostic" AutomationProperties.Name="Diagnostic : ce qui bride ce PC">
                         <Grid Margin="20,16">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>

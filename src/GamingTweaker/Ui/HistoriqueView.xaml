@@ -56,7 +56,7 @@
                         <Run Text="{Binding Statut, Mode=OneWay}"/><Run Text=" "/><Run Text="{Binding Message, Mode=OneWay}"/>
                     </TextBlock>
                 </StackPanel>
-                <Button Grid.Column="1" Content="Annuler" Command="{Binding AnnulerCommand}" Padding="10,4" VerticalAlignment="Center" Margin="10,0,0,0">
+                <Button Grid.Column="1" Content="Annuler" Command="{Binding AnnulerCommand}" AutomationProperties.Name="{Binding Titre, StringFormat='Annuler : {0}'}" Padding="10,4" VerticalAlignment="Center" Margin="10,0,0,0">
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
                             <Setter Property="Visibility" Value="Collapsed"/>

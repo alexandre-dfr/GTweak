@@ -119,6 +119,16 @@ namespace GamingTweaker.Tests
         }
 
         [Fact]
+        public async Task Point_de_restauration_pour_option_non_reversible_qui_le_demande()
+        {
+            var fp = new FauxPoint();
+            var c = Item("c", "1", reversible: false);
+            c.PointRestauration = true;
+            await Pipe(fp).ExecuteAsync(Req(new[] { c }, true, null, "c"), null, CancellationToken.None);
+            Assert.Equal(1, fp.Appels);
+        }
+
+        [Fact]
         public async Task Point_de_restauration_impossible_en_silencieux_continue()
         {
             var a = Item("a", "1");

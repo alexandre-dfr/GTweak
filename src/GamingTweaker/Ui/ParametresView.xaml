@@ -27,6 +27,10 @@
             <Setter Property="TextWrapping" Value="Wrap"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
+            <!-- Cartes sur toute la largeur, mais lignes de texte limitées (environ 110 caractères) pour rester lisibles sur grand écran.
+                 Alignement à gauche obligatoire : sans lui, WPF centre un élément étiré dont la MaxWidth est atteinte. -->
+            <Setter Property="MaxWidth" Value="760"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
         </Style>
     </UserControl.Resources>
 
@@ -99,7 +103,7 @@
                         <CheckBox IsChecked="{Binding Actif, Mode=TwoWay}" FontWeight="SemiBold" Content="Afficher le compteur en jeu"/>
                         <TextBlock Style="{StaticResource Aide}" FontSize="13" Margin="26,8,0,4" Text="Raccourci pour l'afficher ou le masquer pendant une partie :"/>
                         <DockPanel Margin="26,0,0,0">
-                            <Button x:Name="BoutonRaccourci" DockPanel.Dock="Right" Content="Changer…" Click="ChangerRaccourci_Click" VerticalAlignment="Center" Margin="12,0,0,0"
+                            <Button x:Name="BoutonRaccourci" DockPanel.Dock="Right" AutomationProperties.Name="Changer le raccourci du compteur" Content="Changer…" Click="ChangerRaccourci_Click" VerticalAlignment="Center" Margin="12,0,0,0"
                                     ToolTip="Puis appuyez sur la combinaison voulue (Échap pour annuler)"/>
                             <TextBlock x:Name="TexteRaccourci" Text="{Binding TexteRaccourci}" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center"/>
                         </DockPanel>
@@ -118,7 +122,7 @@
                             <CheckBox IsChecked="{Binding Details, Mode=TwoWay}" Content="Temps d'image (ms) et 1 % bas"/>
                             <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
                                 <CheckBox IsChecked="{Binding Courbe, Mode=TwoWay}" Content="Courbe des FPS sur" VerticalAlignment="Center"/>
-                                <ComboBox Width="80" Margin="8,0,0,0" ItemsSource="{Binding Durees}" SelectedValuePath="Valeur" SelectedValue="{Binding DureeCourbe, Mode=TwoWay}" DisplayMemberPath="Nom" IsEnabled="{Binding Courbe}"/>
+                                <ComboBox Width="80" Margin="8,0,0,0" AutomationProperties.Name="Durée de la courbe des FPS" ItemsSource="{Binding Durees}" SelectedValuePath="Valeur" SelectedValue="{Binding DureeCourbe, Mode=TwoWay}" DisplayMemberPath="Nom" IsEnabled="{Binding Courbe}"/>
                             </StackPanel>
                         </StackPanel>
                         <WrapPanel Margin="0,10,0,0">
@@ -152,18 +156,18 @@
                         <TextBlock Text="Apparence" Style="{StaticResource TitreCarte}" Grid.ColumnSpan="2"/>
 
                         <TextBlock Grid.Row="1" Text="Position" VerticalAlignment="Center" Margin="0,0,16,8"/>
-                        <ComboBox Grid.Row="1" Grid.Column="1" Width="200" HorizontalAlignment="Left" Margin="0,0,0,8"
+                        <ComboBox Grid.Row="1" Grid.Column="1" AutomationProperties.Name="Position du compteur" Width="200" HorizontalAlignment="Left" Margin="0,0,0,8"
                                   ItemsSource="{Binding Positions}" SelectedValuePath="Valeur" SelectedValue="{Binding Position, Mode=TwoWay}" DisplayMemberPath="Nom"/>
 
                         <TextBlock Grid.Row="2" Text="Taille" VerticalAlignment="Center" Margin="0,0,16,8"/>
                         <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,8">
-                            <ComboBox Width="200" ItemsSource="{Binding Tailles}" SelectedValuePath="Valeur" SelectedValue="{Binding Taille, Mode=TwoWay}" DisplayMemberPath="Nom"/>
+                            <ComboBox Width="200" AutomationProperties.Name="Taille du compteur" ItemsSource="{Binding Tailles}" SelectedValuePath="Valeur" SelectedValue="{Binding Taille, Mode=TwoWay}" DisplayMemberPath="Nom"/>
                             <TextBlock Text="{Binding TexteEchelle}" Margin="10,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
                         </StackPanel>
 
                         <TextBlock Grid.Row="3" Text="Couleur" VerticalAlignment="Top" Margin="0,6,16,8"/>
                         <StackPanel Grid.Row="3" Grid.Column="1" Margin="0,0,0,8">
-                            <ComboBox Width="240" HorizontalAlignment="Left" Margin="0,0,0,6" ItemsSource="{Binding ElementsCouleur}" SelectedValuePath="Valeur"
+                            <ComboBox Width="240" HorizontalAlignment="Left" Margin="0,0,0,6" AutomationProperties.Name="Élément du compteur à colorer" ItemsSource="{Binding ElementsCouleur}" SelectedValuePath="Valeur"
                                       SelectedValue="{Binding ElementCouleur, Mode=TwoWay}" DisplayMemberPath="Nom"
                                       ToolTip="Choisissez l'élément à colorer ; « Tout le compteur » remet la même couleur partout"/>
                             <StackPanel Orientation="Horizontal">
@@ -171,7 +175,7 @@
                                     <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Button Width="24" Height="24" Margin="0,0,6,0" Padding="0" Tag="{Binding Valeur}" ToolTip="{Binding Nom}" Click="Couleur_Click" Cursor="Hand">
+                                            <Button Width="24" Height="24" Margin="0,0,6,0" Padding="0" Tag="{Binding Valeur}" ToolTip="{Binding Nom}" AutomationProperties.Name="{Binding Nom}" Click="Couleur_Click" Cursor="Hand">
                                                 <Button.Template>
                                                     <ControlTemplate TargetType="Button">
                                                         <Border Background="{Binding Valeur}" CornerRadius="12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"/>
@@ -181,7 +185,7 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                                <TextBox Width="84" Margin="6,0,0,0" Text="{Binding Couleur, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" MaxLength="7"
+                                <TextBox Width="84" Margin="6,0,0,0" AutomationProperties.Name="Couleur libre au format #RRVVBB" Text="{Binding Couleur, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" MaxLength="7"
                                          ToolTip="Couleur libre au format #RRVVBB (validée en quittant le champ ou avec Entrée)" KeyDown="CouleurLibre_KeyDown"/>
                                 <Border Width="24" Height="24" Margin="8,0,0,0" CornerRadius="4" Background="{Binding Couleur}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" ToolTip="Couleur actuelle de l'élément choisi"/>
                             </StackPanel>
@@ -189,7 +193,7 @@
 
                         <TextBlock Grid.Row="4" Text="Fond" VerticalAlignment="Center" Margin="0,0,16,0"/>
                         <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal">
-                            <Slider Width="200" Minimum="0.2" Maximum="1" SmallChange="0.05" LargeChange="0.1" Value="{Binding OpaciteFond, Mode=TwoWay}" VerticalAlignment="Center" ToolTip="Opacité du fond"/>
+                            <Slider Width="200" AutomationProperties.Name="Opacité du fond du compteur" Minimum="0.2" Maximum="1" SmallChange="0.05" LargeChange="0.1" Value="{Binding OpaciteFond, Mode=TwoWay}" VerticalAlignment="Center" ToolTip="Opacité du fond"/>
                             <TextBlock Text="{Binding OpaciteFond, StringFormat={}{0:P0}}" Margin="10,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
                         </StackPanel>
                     </Grid>

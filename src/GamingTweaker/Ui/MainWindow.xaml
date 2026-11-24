@@ -314,7 +314,7 @@
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="{Binding TitreAffiche}" FontSize="28" FontWeight="SemiBold" FontFamily="{StaticResource PoliceTitre}" VerticalAlignment="Center" TextWrapping="Wrap"/>
                     <Grid Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
-                        <TextBox x:Name="Recherche" Text="{Binding Recherche, UpdateSourceTrigger=PropertyChanged}" Padding="34,6,10,6" ToolTip="Rechercher une option dans tous les menus (Ctrl+F ; Échap pour effacer)"/>
+                        <TextBox x:Name="Recherche" AutomationProperties.Name="Rechercher une option" Text="{Binding Recherche, UpdateSourceTrigger=PropertyChanged}" Padding="34,6,10,6" ToolTip="Rechercher une option dans tous les menus (Ctrl+F ; Échap pour effacer)"/>
                         <TextBlock Text="&#xE721;" FontFamily="{StaticResource PoliceIcones}" FontSize="14" IsHitTestVisible="False" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
                         <TextBlock Text="Rechercher une option" IsHitTestVisible="False" Margin="35,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}">
                             <TextBlock.Style>
@@ -326,7 +326,7 @@
                         </TextBlock>
                     </Grid>
                     <!-- Compteur en jeu (FPS, CPU, GPU, RAM) : un clic l'affiche ou le masque (réglages dans Paramètres) ; icône en couleur d'accent quand il est affiché -->
-                    <Button x:Name="BoutonCompteur" Grid.Column="2" Click="BoutonCompteur_Click" ToolTip="{Binding Compteur.EtatBouton}" VerticalAlignment="Center" Margin="0,0,4,0">
+                    <Button x:Name="BoutonCompteur" Grid.Column="2" AutomationProperties.Name="Afficher ou masquer le compteur en jeu" AutomationProperties.HelpText="{Binding Compteur.EtatBouton}" Click="BoutonCompteur_Click" ToolTip="{Binding Compteur.EtatBouton}" VerticalAlignment="Center" Margin="0,0,4,0">
                         <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource BoutonIcone}">
                                 <Style.Triggers>
@@ -337,7 +337,7 @@
                         <TextBlock Text="&#xEC4A;" FontFamily="{StaticResource PoliceIcones}" FontSize="16"/>
                     </Button>
                     <!-- Thème : un clic passe du clair au sombre et inversement (« Comme Windows » dans Paramètres) -->
-                    <Button x:Name="BoutonTheme" Grid.Column="3" Style="{StaticResource BoutonIcone}" Click="BoutonTheme_Click" ToolTip="Thème de l'application" VerticalAlignment="Center">
+                    <Button x:Name="BoutonTheme" Grid.Column="3" AutomationProperties.Name="Basculer entre le thème clair et le thème sombre" Style="{StaticResource BoutonIcone}" Click="BoutonTheme_Click" ToolTip="Thème de l'application" VerticalAlignment="Center">
                         <TextBlock x:Name="IconeTheme" Text="&#xE706;" FontFamily="{StaticResource PoliceIcones}" FontSize="16"/>
                     </Button>
                 </Grid>
@@ -469,7 +469,7 @@
                 <ComboBox Grid.Column="1" Width="200" Height="34" ItemsSource="{Binding ProfilsDisponibles}" SelectedItem="{Binding ProfilSelectionne, Mode=TwoWay}"/>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="10,0,0,0">
                     <!-- Toutes les actions de profil dans un seul menu : la barre garde Aperçu et LANCER bien visibles. -->
-                    <Button x:Name="BoutonProfil" Click="BoutonProfil_Click" ToolTip="Enregistrer, recharger, partager ou planifier le profil">
+                    <Button x:Name="BoutonProfil" AutomationProperties.Name="Menu Profil" Click="BoutonProfil_Click" ToolTip="Enregistrer, recharger, partager ou planifier le profil">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="Profil"/>
                             <TextBlock Text="&#xE70D;" FontFamily="{StaticResource PoliceIcones}" FontSize="11" VerticalAlignment="Center" Margin="8,1,0,0"/>
