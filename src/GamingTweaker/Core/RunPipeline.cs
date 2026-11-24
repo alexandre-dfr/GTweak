@@ -64,6 +64,21 @@ namespace GamingTweaker.Core
 
         private const string Format = "yyyy-MM-ddTHH:mm:ss";
 
+        /// <summary>Ligne de progression pendant la création du point de restauration (testée).</summary>
+        public static string TexteAttentePoint(TimeSpan ecoule)
+        {
+            return "Point de restauration toujours en cours (" + DureeTexte(ecoule) + " écoulées, 10 min au plus)…";
+        }
+
+        /// <summary>« 45 s », « 2 min », « 2 min 30 s ».</summary>
+        public static string DureeTexte(TimeSpan d)
+        {
+            var total = (int)Math.Max(0, Math.Round(d.TotalSeconds));
+            int min = total / 60, sec = total % 60;
+            if (min == 0) return sec + " s";
+            return sec == 0 ? min + " min" : min + " min " + sec + " s";
+        }
+
         public async Task<SessionReport> ExecuteAsync(RunRequest req, IProgress<string> log, CancellationToken ct)
         {
             var report = new SessionReport();
@@ -85,10 +100,18 @@ namespace GamingTweaker.Core
         {
             var selected = req.CatalogItems.Where(i => req.Selection.OptionIds.Contains(i.Id)).ToList();
 
-            // 1. Point de restauration (seulement si une option réversible est choisie).
-            if (selected.Any(i => i.Reversible))
+            // 1. Point de restauration : option réversible, ou option non réversible qui le demande (pilote, mises à jour de Windows).
+            if (selected.Any(i => i.Reversible || i.PointRestauration))
             {
-                var rp = restorePoint.TryCreate("GamingTweaker " + DateTime.Now.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture));
+                // Le cliché peut durer plusieurs minutes : la fenêtre d'exécution l'indique au lieu de paraître figée.
+                if (log != null) log.Report("Création du point de restauration (peut prendre plusieurs minutes)…");
+                RestorePointResult rp;
+                // Toutes les 30 s, le temps écoulé : l'utilisateur voit que la création avance (jusqu'à 10 min).
+                var debutPoint = DateTime.UtcNow;
+                using (log == null ? null : new Timer(_ => log.Report(TexteAttentePoint(DateTime.UtcNow - debutPoint)), null, 30000, 30000))
+                    rp = restorePoint.TryCreate("GamingTweaker " + DateTime.Now.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture));
+                if (log != null && rp != null && rp.Created)
+                    log.Report("Point de restauration créé (" + DureeTexte(DateTime.UtcNow - debutPoint) + ").");
                 if (rp == null || !rp.Created)
                 {
                     var msg = rp == null || string.IsNullOrEmpty(rp.Message) ? "Point de restauration impossible." : rp.Message;

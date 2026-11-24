@@ -4,7 +4,11 @@ Application Windows portable (un seul `GamingTweaker.exe`) qui règle un PC de j
 
 ## Lancer
 
-GamingTweaker est uniquement portable : il n'a pas d'installateur et n'ajoute aucun programme au PC. Depuis l'onglet Releases :
+GamingTweaker est uniquement portable : il n'a pas d'installateur et n'ajoute aucun programme au PC. Téléchargez la **dernière version stable** : [Releases > Latest](https://github.com/alexandre-dfr/GTweak/releases/latest).
+
+Les pré-versions `test-build` et `test-<branche>` sont des builds de développement, recompilés à chaque modification : chacun est un nouveau fichier inconnu de Windows, que SmartScreen signale à coup sûr. Une version stable reste le même fichier pour tout le monde : sa réputation SmartScreen se construit au fil des téléchargements et l'avertissement finit par disparaître.
+
+Ensuite :
 
 1. Copiez `GamingTweaker.exe` où vous voulez, par exemple sur une clé USB. C'est le seul fichier : aucune dépendance, aucun fichier de configuration (.NET Framework 4.8 est déjà dans Windows 10 1903+ et Windows 11).
 2. Double-cliquez : Windows demande les droits administrateur (obligatoire pour modifier le système).
@@ -37,7 +41,7 @@ Le meilleur moment est juste après l'installation de Windows, dans cet ordre : 
 - Seules les options cochées s'exécutent ; chaque option est classée Sûr, Avancé ou Risque. « Recommandé » ne coche que des options Sûr, et jamais celles que le catalogue en exclut (plan d'alimentation sur portable).
 - Une faille de sécurité se signale en privé (voir [.github/SECURITY.md](.github/SECURITY.md)), jamais dans une issue publique.
 - Le catalogue ne touche à aucune protection de sécurité (Defender, Spectre/Meltdown, VBS, BitLocker, Windows Update) et ne contient que des réglages à effet réel en jeu ou sur l'allègement de Windows ; les réglages placebo ou de pure apparence ont été retirés (voir `docs/revue-code-2026-11-11.md`).
-- Un point de restauration Windows est créé avant les options réversibles (si Windows l'autorise ; sinon vous êtes prévenu).
+- Un point de restauration Windows est créé avant les options réversibles, la mise à jour du pilote NVIDIA et les mises à jour de Windows (si Windows l'autorise ; sinon vous êtes prévenu).
 - Aucun redémarrage automatique : si un redémarrage est nécessaire, le rapport l'indique.
 - Les profils (`.json`) ne contiennent que des identifiants d'options, jamais de commande.
 - L'exe n'est pas signé : SmartScreen ou un antivirus peut le signaler. Il modifie le système, c'est normal.
@@ -165,17 +169,23 @@ Le workflow `.github/workflows/build.yml` compile l'exe sur Windows, lance les t
 
 Une publication contient **uniquement `GamingTweaker.exe`**. Un build en échec ne remplace jamais l'exe déjà publié ; le rapport du cycle réel, les captures et le résultat des tests vont dans une pré-version `<canal>-echec`, sans exe. Elle est supprimée au build vert suivant.
 
-Pour publier une version : mettre `<Version>` à jour dans `src/GamingTweaker/GamingTweaker.csproj` (avec `AssemblyVersion` et `FileVersion`), fusionner dans `main`, puis :
+Pour publier une version stable :
+
+1. Mettre `<Version>` à jour dans `src/GamingTweaker/GamingTweaker.csproj` (avec `AssemblyVersion` et `FileVersion`).
+2. Fusionner dans `main` et attendre que le build `test-build` soit vert.
+3. Créer et pousser le tag depuis `main` :
 
 ```bash
-git tag v0.9.2
+git tag v0.9.3
 ```
 
 ```bash
-git push origin v0.9.2
+git push origin v0.9.3
 ```
 
-Le workflow refuse un tag qui ne correspond pas à `<Version>`.
+4. Si une clé de signature existe (voir « Signer une version »), signer la release.
+
+Le workflow refuse un tag qui ne correspond pas à `<Version>`. Espacez les versions stables : chaque nouvel exe repart de zéro côté réputation SmartScreen, et c'est la release « Latest » que les utilisateurs téléchargent.
 
 ### Signer une version
 

@@ -15,11 +15,22 @@ namespace GamingTweaker.Ui
         {
             this.vm = vm;
             InitializeComponent();
+            AdapterALEcran();
             DataContext = vm;
             PreviewKeyDown += Raccourcis;
             MajIconeTheme();
             ThemeApplication.Change += MajIconeTheme;
             Closed += (s, e) => ThemeApplication.Change -= MajIconeTheme;
+        }
+
+        /// <summary>
+        /// Taille de départ et taille minimale ramenées à la zone de travail (écran moins la barre des tâches) : sur un portable
+        /// 1366×768 à 125 %, elle ne fait qu'environ 1093×576 unités WPF, moins que le minimum de 1000×640 du XAML.
+        /// </summary>
+        private void AdapterALEcran()
+        {
+            var t = TailleFenetre.Adapter(Width, Height, MinWidth, MinHeight, SystemParameters.WorkArea.Width, SystemParameters.WorkArea.Height);
+            MinWidth = t.MinLargeur; MinHeight = t.MinHauteur; Width = t.Largeur; Height = t.Hauteur;
         }
 
         /// <summary>Icône du bouton de thème : soleil en clair, lune en sombre (thème réellement affiché, même en « Comme Windows »).</summary>

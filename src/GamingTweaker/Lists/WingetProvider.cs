@@ -124,23 +124,15 @@ namespace GamingTweaker.Lists
                     RedirectStandardOutput = true, RedirectStandardError = true,
                     StandardOutputEncoding = Encoding.UTF8, StandardErrorEncoding = Encoding.UTF8,
                 };
-                using (var p = Process.Start(psi))
+                // Délai dépassé ou annulation : winget et ses enfants sont arrêtés (ProcessusBorne).
+                var r = Core.ProcessusBorne.Executer(psi, 120000, ct, "winget");
+                var texte = r.Sortie;
+                if (!CodeListeAcceptable(r.CodeSortie))
                 {
-                    var err = p.StandardError.ReadToEndAsync();
-                    var sortie = p.StandardOutput.ReadToEndAsync();
-                    using (ct.Register(() => { try { p.Kill(); } catch (Exception) { } }))
-                    {
-                        if (!p.WaitForExit(120000)) { try { p.Kill(); } catch (Exception) { } throw new TimeoutException("winget n'a pas répondu à temps."); }
-                    }
-                    ct.ThrowIfCancellationRequested();
-                    var texte = sortie.Result;
-                    if (!CodeListeAcceptable(p.ExitCode))
-                    {
-                        var fin = string.Join(" ", texte.Replace('\r', '\n').Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0 && !l.All(c => "-/|".IndexOf(c) >= 0 || c == (char)92)).Reverse().Take(2).Reverse());
-                        throw new WingetEchecException(p.ExitCode, fin);
-                    }
-                    return texte;
+                    var fin = string.Join(" ", texte.Replace('\r', '\n').Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0 && !l.All(c => "-/|".IndexOf(c) >= 0 || c == (char)92)).Reverse().Take(2).Reverse());
+                    throw new WingetEchecException(r.CodeSortie, fin);
                 }
+                return texte;
             }, ct);
         }
     }

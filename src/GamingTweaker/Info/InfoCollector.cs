@@ -183,14 +183,10 @@ namespace GamingTweaker.Info
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), @"NVIDIA Corporation\NVSMI\nvidia-smi.exe") }.FirstOrDefault(File.Exists);
                 if (exe == null) return null;
                 var psi = new ProcessStartInfo(exe, "--query-gpu=name,memory.total,driver_version --format=csv,noheader")
-                { UseShellExecute = false, RedirectStandardOutput = true, CreateNoWindow = true };
-                using (var p = Process.Start(psi))
-                {
-                    var o = p.StandardOutput.ReadToEnd();
-                    if (!p.WaitForExit(5000)) { try { p.Kill(); } catch { } return null; }
-                    o = o.Trim();
-                    return o.Length == 0 ? null : o.Replace("\r\n", " | ").Replace("\n", " | ");
-                }
+                { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true };
+                // Borné (ProcessusBorne) : délai dépassé = TimeoutException, interceptée plus bas (null).
+                var o = Core.ProcessusBorne.Executer(psi, 5000, System.Threading.CancellationToken.None, "nvidia-smi").Sortie.Trim();
+                return o.Length == 0 ? null : o.Replace("\r\n", " | ").Replace("\n", " | ");
             }
             catch { return null; }
         }
