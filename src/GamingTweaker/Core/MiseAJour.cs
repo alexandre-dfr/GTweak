@@ -6,8 +6,11 @@ using System.Net;
 using System.Net.Http;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Microsoft.Win32.SafeHandles;
 using Newtonsoft.Json.Linq;
 
 namespace GamingTweaker.Core
@@ -20,17 +23,32 @@ namespace GamingTweaker.Core
         public string Url { get; set; }
         /// <summary>Adresse de GamingTweaker.exe dans la release (https://github.com/&lt;dépôt&gt;/releases/download/…) ; null si absente.</summary>
         public string UrlExe { get; set; }
-        /// <summary>Empreinte SHA-256 attendue de l'exe (64 caractères hexadécimaux, minuscules) ; null si la release n'en publie pas.</summary>
+        /// <summary>Adresse de la signature (GamingTweaker.exe.sig) dans la release ; null si absente.</summary>
+        public string UrlSignature { get; set; }
+        /// <summary>Empreinte SHA-256 publiée par GitHub ou la CI (64 caractères hexadécimaux, minuscules) ; contrôle d'intégrité facultatif.</summary>
         public string Sha256 { get; set; }
-        /// <summary>Vrai si l'appli peut se mettre à jour seule (exe et empreinte connus) ; sinon seule la page est proposée.</summary>
-        public bool PeutInstaller { get { return UrlExe != null && Sha256 != null; } }
+        /// <summary>Clés publiques qui doivent avoir signé cette version (celles intégrées à l'exe).</summary>
+        public string[] Cles { get; set; }
+        /// <summary>Vrai si l'appli peut se mettre à jour seule (exe, signature et clé connus) ; sinon seule la page est proposée.</summary>
+        public bool PeutInstaller { get { return UrlExe != null && UrlSignature != null && Cles != null && Cles.Length > 0; } }
+    }
+
+    /// <summary>
+    /// Nouvelle version vérifiée et déjà à la place de l'exe. Tant que l'objet n'est pas libéré, le fichier reste ouvert sans partage en écriture
+    /// ni en suppression : personne ne peut le modifier, le renommer ou le remplacer avant que <see cref="MiseAJour.Relancer"/> l'ait lancé.
+    /// </summary>
+    public sealed class MiseAJourPrete : IDisposable
+    {
+        private FileStream fichier;
+        internal MiseAJourPrete(FileStream f) { fichier = f; }
+        public void Dispose() { var f = fichier; fichier = null; if (f != null) f.Dispose(); }
     }
 
     /// <summary>
     /// Vérifie au démarrage de l'interface si une release plus récente existe (API GitHub « releases/latest », qui ignore les pré-versions)
-    /// et affiche un bandeau. Rien n'est téléchargé sans clic sur « Mettre à jour » : l'exe de la release est alors téléchargé,
-    /// son empreinte SHA-256 vérifiée, puis il remplace l'exe en cours et l'appli redémarre (<see cref="InstallerAsync"/>).
-    /// Toute erreur de vérification (hors ligne, réponse inattendue, limite de l'API) est silencieuse : aucun bandeau.
+    /// et affiche un bandeau. Rien n'est téléchargé sans clic sur « Mettre à jour » : l'exe de la release est alors téléchargé, sa signature
+    /// vérifiée avec la clé publique intégrée (<see cref="SignatureRelease"/>), puis il remplace l'exe en cours et l'appli redémarre
+    /// (<see cref="InstallerAsync"/>). Toute erreur de vérification (hors ligne, réponse inattendue, limite de l'API) est silencieuse : aucun bandeau.
     /// </summary>
     public static class MiseAJour
     {
@@ -44,6 +62,9 @@ namespace GamingTweaker.Core
         private static readonly Regex Hex64 = new Regex(@"^[0-9a-f]{64}\z", RegexOptions.CultureInvariant);
         private static readonly Regex ShaNotes = new Regex(@"SHA-256 de GamingTweaker\.exe\s*:\s*`?([0-9A-Fa-f]{64})", RegexOptions.CultureInvariant);
         private static readonly Regex Tag = new Regex(@"^v?(\d{1,5})\.(\d{1,5})\.(\d{1,5})\z", RegexOptions.CultureInvariant);
+
+        public const string MessageSignature = "la signature de cette version est absente ou ne correspond pas à la clé de GamingTweaker ; rien n'a été remplacé.";
+        public const string MessageDossier = "le dossier de GamingTweaker est redirigé (lien ou jonction) ou a changé pendant le téléchargement ; rien n'a été remplacé. Téléchargez la version depuis « Nouveautés ».";
 
         /// <summary>Version de l'exe en cours (Major.Minor.Build, la révision n'est pas publiée).</summary>
         public static Version VersionCourante
@@ -62,15 +83,16 @@ namespace GamingTweaker.Core
         /// <summary>
         /// Réponse JSON de « releases/latest » → version plus récente que <paramref name="courante"/>, ou null (même version, plus ancienne,
         /// brouillon, pré-version, réponse inconnue, ou page qui n'est pas une release de ce dépôt en https).
+        /// Avec une clé configurée, une release sans exe ni signature n'est pas annoncée : elle n'est pas encore signée par le mainteneur.
         /// </summary>
-        public static VersionDisponible Analyser(string json, Version courante)
+        public static VersionDisponible Analyser(string json, Version courante, string[] cles = null)
         {
             AssemblyLoader.Register();
-            return AnalyserCore(json, courante);
+            return AnalyserCore(json, courante, cles ?? SignatureRelease.Cles);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private static VersionDisponible AnalyserCore(string json, Version courante)
+        private static VersionDisponible AnalyserCore(string json, Version courante, string[] cles)
         {
             try
             {
@@ -83,21 +105,30 @@ namespace GamingTweaker.Core
                 if (!url.StartsWith(PrefixePage, StringComparison.OrdinalIgnoreCase) || !SystemExe.UrlAcceptee(url)) return null;
                 var c = new Version(courante.Major, courante.Minor, Math.Max(0, courante.Build));
                 if (!(v > c)) return null;
-                var res = new VersionDisponible { Version = v, Url = url };
-                var exe = (o["assets"] as JArray ?? new JArray()).OfType<JObject>().FirstOrDefault(a => (string)a["name"] == NomExe);
+                var res = new VersionDisponible { Version = v, Url = url, Cles = cles };
+                var assets = (o["assets"] as JArray ?? new JArray()).OfType<JObject>().ToList();
+                var exe = assets.FirstOrDefault(a => (string)a["name"] == NomExe);
                 if (exe != null)
                 {
-                    var u = ((string)exe["browser_download_url"] ?? "").Trim();
-                    if (u.StartsWith(PrefixeTelechargement, StringComparison.Ordinal) && u.EndsWith("/" + NomExe, StringComparison.Ordinal) && SystemExe.UrlAcceptee(u)) res.UrlExe = u;
+                    res.UrlExe = UrlAsset(exe, NomExe);
                     // Empreinte calculée par GitHub (champ « digest »), sinon celle que la CI écrit dans les notes de la release.
                     var d = ((string)exe["digest"] ?? "").Trim();
                     string sha = d.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase) ? d.Substring(7).ToLowerInvariant() : null;
                     if (sha == null) { var m = ShaNotes.Match((string)o["body"] ?? ""); if (m.Success) sha = m.Groups[1].Value.ToLowerInvariant(); }
                     if (sha != null && Hex64.IsMatch(sha)) res.Sha256 = sha;
                 }
+                var sig = assets.FirstOrDefault(a => (string)a["name"] == SignatureRelease.NomFichier);
+                if (sig != null) res.UrlSignature = UrlAsset(sig, SignatureRelease.NomFichier);
+                if (cles != null && cles.Length > 0 && !res.PeutInstaller) return null;
                 return res;
             }
             catch (Exception) { return null; }
+        }
+
+        private static string UrlAsset(JObject asset, string nom)
+        {
+            var u = ((string)asset["browser_download_url"] ?? "").Trim();
+            return u.StartsWith(PrefixeTelechargement, StringComparison.Ordinal) && u.EndsWith("/" + nom, StringComparison.Ordinal) && SystemExe.UrlAcceptee(u) ? u : null;
         }
 
         /// <summary>Interroge GitHub (10 s au plus) ; null si aucune version plus récente ou en cas d'erreur.</summary>
@@ -120,40 +151,170 @@ namespace GamingTweaker.Core
         /// <summary>SHA-256 d'un fichier, en hexadécimal minuscule.</summary>
         public static string Sha256Fichier(string fichier)
         {
-            using (var s = File.OpenRead(fichier))
+            using (var s = File.OpenRead(fichier)) return Sha256Flux(s);
+        }
+
+        private static string Sha256Flux(Stream s)
+        {
             using (var h = System.Security.Cryptography.SHA256.Create())
                 return string.Concat(h.ComputeHash(s).Select(b => b.ToString("x2")));
         }
 
         /// <summary>
-        /// Télécharge l'exe de la release à côté de <paramref name="exe"/>, vérifie son empreinte puis le met à la place de l'exe en cours
+        /// Télécharge l'exe de la release à côté de <paramref name="exe"/>, vérifie sa signature puis le met à la place de l'exe en cours
         /// (l'ancien est renommé « .ancien », supprimé au prochain lancement). En cas d'erreur, l'exe en cours est laissé intact.
+        /// Le dossier de l'exe portable est souvent modifiable par l'utilisateur (Téléchargements) alors que l'appli tourne en administrateur
+        /// et relance la nouvelle version sans invite UAC : le fichier téléchargé est donc ouvert une seule fois, sans partage en écriture
+        /// ni en suppression, et c'est par cette même poignée qu'il est vérifié puis renommé. Le résultat garde cette poignée ouverte :
+        /// lancer la nouvelle version (<see cref="Relancer"/>) avant de le libérer.
         /// </summary>
-        public static async Task InstallerAsync(VersionDisponible v, string exe, Func<string, string, Task> telecharger = null)
+        public static async Task<MiseAJourPrete> InstallerAsync(VersionDisponible v, string exe,
+            Func<string, string, Task> telecharger = null, Func<string, Task<string>> lireSignature = null)
         {
-            if (v == null || !v.PeutInstaller) throw new InvalidOperationException("Cette version ne publie pas d'exe vérifiable : utilisez « Nouveautés » pour la télécharger.");
+            if (v == null || !v.PeutInstaller) throw new InvalidOperationException("Cette version ne publie pas d'exe signé : utilisez « Nouveautés » pour la télécharger.");
+            exe = Path.GetFullPath(exe);
             var nouveau = exe + ".nouveau";
             Supprimer(nouveau);
+            FileStream fichier = null;
             try
             {
                 await (telecharger ?? TelechargerAsync)(v.UrlExe, nouveau).ConfigureAwait(false);
-                var h = Sha256Fichier(nouveau);
-                if (!string.Equals(h, v.Sha256, StringComparison.OrdinalIgnoreCase))
+                var signature = await (lireSignature ?? LireSignatureAsync)(v.UrlSignature).ConfigureAwait(false);
+
+                fichier = OuvrirVerrouille(nouveau);
+                var h = Sha256Flux(fichier);
+                if (v.Sha256 != null && !string.Equals(h, v.Sha256, StringComparison.OrdinalIgnoreCase))
                     throw new InvalidDataException("le fichier téléchargé ne correspond pas à l'empreinte publiée (téléchargement corrompu ou modifié) ; rien n'a été remplacé.");
-                Remplacer(exe, nouveau);
+                if (!SignatureRelease.Verifier(signature, v.Version, h, v.Cles)) throw new InvalidDataException(MessageSignature);
+
+                var ancien = exe + ".ancien";
+                Supprimer(ancien);
+                File.Move(exe, ancien);   // l'exe en cours peut être renommé, pas modifié
+                try { RenommerParPoignee(fichier.SafeFileHandle, CheminNt(exe)); }
+                catch (Exception) { try { File.Move(ancien, exe); } catch (Exception) { } throw; }
+                TraceAppli.Ecrire("mise à jour vers " + v.Version + " installée (SHA-256 " + h + ", signature vérifiée)");
+                var prete = new MiseAJourPrete(fichier);
+                fichier = null;
+                return prete;
             }
-            finally { Supprimer(nouveau); }
-            TraceAppli.Ecrire("mise à jour vers " + v.Version + " installée (SHA-256 " + v.Sha256 + ")");
+            finally
+            {
+                if (fichier != null) fichier.Dispose();
+                Supprimer(nouveau);
+            }
         }
 
-        /// <summary>Met <paramref name="nouveau"/> à la place de <paramref name="exe"/> (en cours d'exécution : renommer reste permis).</summary>
-        public static void Remplacer(string exe, string nouveau)
+        // ---------- Poignée verrouillée et renommage ----------
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern SafeFileHandle CreateFileW(string name, uint access, uint share, IntPtr sec, uint disposition, uint flags, IntPtr template);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool GetFileInformationByHandle(SafeFileHandle h, out InfoFichier info);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool SetFileInformationByHandle(SafeFileHandle h, int classe, IntPtr info, uint taille);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern uint GetLongPathNameW(string court, StringBuilder longue, uint taille);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern uint GetFinalPathNameByHandleW(SafeFileHandle h, StringBuilder buf, uint len, uint flags);
+
+        // BY_HANDLE_FILE_INFORMATION : les FILETIME sont alignés sur 4 octets.
+        [StructLayout(LayoutKind.Sequential, Pack = 4)]
+        private struct InfoFichier
         {
-            var ancien = exe + ".ancien";
-            Supprimer(ancien);
-            File.Move(exe, ancien);
-            try { File.Move(nouveau, exe); }
-            catch (Exception) { try { File.Move(ancien, exe); } catch (Exception) { } throw; }
+            public uint Attributs;
+            public long Creation, DernierAcces, DerniereEcriture;
+            public uint NumeroVolume, TailleHaute, TailleBasse, NombreDeLiens, IndexHaut, IndexBas;
+        }
+
+        private const uint GenericRead = 0x80000000, Delete = 0x00010000, PartageLecture = 0x1, OuvrirExistant = 3;
+        private const uint OuvrirPointDAnalyse = 0x00200000, AttributPointDAnalyse = 0x400, AttributDossier = 0x10;
+        private const int ClasseRenommage = 3; // FileRenameInfo
+
+        /// <summary>
+        /// Ouvre le fichier en lecture et suppression, partagé en lecture seulement : plus aucune écriture, aucun renommage ni aucune suppression
+        /// par un autre processus tant que la poignée est ouverte (et l'ouverture échoue si quelqu'un l'a déjà ouvert en écriture).
+        /// Refuse un lien, un dossier, un fichier à plusieurs noms (lien physique) ou un fichier dont le chemin réel n'est pas celui attendu.
+        /// </summary>
+        internal static FileStream OuvrirVerrouille(string chemin)
+        {
+            var h = CreateFileW(chemin, GenericRead | Delete, PartageLecture, IntPtr.Zero, OuvrirExistant, OuvrirPointDAnalyse, IntPtr.Zero);
+            if (h.IsInvalid) { var err = Marshal.GetLastWin32Error(); h.Dispose(); throw new IOException("ouverture du fichier téléchargé impossible (erreur " + err + ") ; rien n'a été remplacé."); }
+            try
+            {
+                InfoFichier info;
+                if (!GetFileInformationByHandle(h, out info)) throw new IOException("lecture du fichier téléchargé impossible ; rien n'a été remplacé.");
+                if ((info.Attributs & (AttributPointDAnalyse | AttributDossier)) != 0 || info.NombreDeLiens != 1) throw new IOException(MessageDossier);
+                if (!MemeChemin(CheminReel(h), CheminLong(chemin))) throw new IOException(MessageDossier);
+                return new FileStream(h, FileAccess.Read);
+            }
+            catch (Exception) { h.Dispose(); throw; }
+        }
+
+        /// <summary>Décision pure : chemin réel d'une poignée (forme « \\?\C:\… » ou « \\?\UNC\… ») et chemin attendu désignent le même fichier.</summary>
+        public static bool MemeChemin(string reel, string attendu)
+        {
+            if (string.IsNullOrEmpty(reel) || string.IsNullOrEmpty(attendu)) return false;
+            if (reel.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase)) reel = @"\\" + reel.Substring(8);
+            else if (reel.StartsWith(@"\\?\", StringComparison.Ordinal)) reel = reel.Substring(4);
+            try { return string.Equals(Path.GetFullPath(reel), Path.GetFullPath(attendu), StringComparison.OrdinalIgnoreCase); }
+            catch (Exception) { return false; }
+        }
+
+        /// <summary>Chemin avec les noms longs (un dossier « RUNNER~1 » ou « PROGRA~1 » est développé), pour le comparer au chemin réel.</summary>
+        private static string CheminLong(string chemin)
+        {
+            try
+            {
+                var dossier = Path.GetDirectoryName(Path.GetFullPath(chemin));
+                var sb = new StringBuilder(1024);
+                uint n = GetLongPathNameW(dossier, sb, (uint)sb.Capacity);
+                return n == 0 || n >= sb.Capacity ? chemin : Path.Combine(sb.ToString(), Path.GetFileName(chemin));
+            }
+            catch (Exception) { return chemin; }
+        }
+
+        private static string CheminReel(SafeFileHandle h)
+        {
+            var sb = new StringBuilder(1024);
+            uint n = GetFinalPathNameByHandleW(h, sb, (uint)sb.Capacity, 0);
+            if (n == 0 || n >= sb.Capacity) return null;
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Chemin complet au format NT (« \??\C:\… », « \??\UNC\serveur\… ») : un nom simple serait résolu par Windows depuis le dossier
+        /// courant du processus (erreur 17 si celui-ci est sur un autre lecteur).
+        /// </summary>
+        public static string CheminNt(string chemin)
+        {
+            var c = Path.GetFullPath(chemin);
+            if (c.StartsWith(@"\\?\", StringComparison.Ordinal) || c.StartsWith(@"\??\", StringComparison.Ordinal)) return @"\??\" + c.Substring(4);
+            if (c.StartsWith(@"\\", StringComparison.Ordinal)) return @"\??\UNC\" + c.Substring(2);
+            return @"\??\" + c;
+        }
+
+        /// <summary>Renomme le fichier ouvert vers <paramref name="cheminNt"/> (FILE_RENAME_INFO), en remplaçant un fichier du même nom.</summary>
+        private static void RenommerParPoignee(SafeFileHandle h, string cheminNt)
+        {
+            var nom = Encoding.Unicode.GetBytes(cheminNt);
+            int offRacine = IntPtr.Size, offLongueur = offRacine + IntPtr.Size, offNom = offLongueur + 4;
+            int taille = offNom + nom.Length + 2;
+            var p = Marshal.AllocHGlobal(taille);
+            try
+            {
+                for (int i = 0; i < taille; i++) Marshal.WriteByte(p, i, 0);
+                Marshal.WriteInt32(p, 0, 1);                 // ReplaceIfExists
+                Marshal.WriteIntPtr(p, offRacine, IntPtr.Zero); // RootDirectory : aucun, chemin complet
+                Marshal.WriteInt32(p, offLongueur, nom.Length);
+                Marshal.Copy(nom, 0, p + offNom, nom.Length);
+                if (!SetFileInformationByHandle(h, ClasseRenommage, p, (uint)taille))
+                    throw new IOException("la nouvelle version n'a pas pu être mise à la place de l'ancienne (erreur " + Marshal.GetLastWin32Error() + ").");
+            }
+            finally { Marshal.FreeHGlobal(p); }
         }
 
         /// <summary>Lance la nouvelle version, qui attend la fin de ce processus avant d'ouvrir son interface.</summary>
@@ -202,6 +363,20 @@ namespace GamingTweaker.Core
                     using (var src = await r.Content.ReadAsStreamAsync().ConfigureAwait(false))
                     using (var dst = new FileStream(destination, FileMode.CreateNew, FileAccess.Write, FileShare.None))
                         await src.CopyToAsync(dst).ConfigureAwait(false);
+                }
+            }
+        }
+
+        private static async Task<string> LireSignatureAsync(string url)
+        {
+            ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
+            using (var c = new HttpClient { Timeout = TimeSpan.FromSeconds(30), MaxResponseContentBufferSize = SignatureRelease.TailleMaxFichier })
+            {
+                c.DefaultRequestHeaders.UserAgent.ParseAdd("GamingTweaker/" + VersionCourante);
+                using (var r = await c.GetAsync(url).ConfigureAwait(false))
+                {
+                    r.EnsureSuccessStatusCode();
+                    return await r.Content.ReadAsStringAsync().ConfigureAwait(false);
                 }
             }
         }

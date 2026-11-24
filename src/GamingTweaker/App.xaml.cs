@@ -255,21 +255,10 @@ namespace GamingTweaker
             };
             Action quitterApp = () => { quitter = true; fenetre.Close(); Shutdown(0); };
             vm.Quitter = quitterApp;
-            if (ApresMiseAJour)
-            {
-                vm.Message = "GamingTweaker est à jour : version " + MiseAJour.VersionCourante + ".";
-                // La copie lancée avec Windows (dossier protégé) est remplacée par la nouvelle version, sauf si c'est elle qui vient d'être mise à jour.
-                System.Threading.Tasks.Task.Run(() =>
-                {
-                    try
-                    {
-                        string source;
-                        using (var p = System.Diagnostics.Process.GetCurrentProcess()) source = p.MainModule.FileName;
-                        if (DemarrageWindows.EstInstalle() && !Planification.DepuisLaCopie(source, DemarrageWindows.ExeCopie)) DemarrageWindows.Installer();
-                    }
-                    catch (Exception ex) { TraceAppli.Erreur("mise à jour de la copie lancée avec Windows", ex); }
-                });
-            }
+            if (ApresMiseAJour) vm.Message = "GamingTweaker est à jour : version " + MiseAJour.VersionCourante + ".";
+            // Copies de la routine et du démarrage avec Windows (dossier protégé) : remplacées si elles sont plus anciennes que cet exe
+            // (après une mise à jour intégrée ou une version plus récente lancée à la main), sinon elles garderaient l'ancien catalogue.
+            System.Threading.Tasks.Task.Run(() => CopiesProtegees.ActualiserSiAnciennes());
             zone = new ZoneNotification(() => Dispatcher.Invoke(ouvrir), () => Dispatcher.Invoke(quitterApp), () => auto.Actif, v => Dispatcher.Invoke(() => auto.Actif = v),
                 () => modeJeu.IsActive, () => Dispatcher.Invoke(() => { vm.ModeJeu.Synchroniser(); if (vm.ModeJeu.RetablirCommand.CanExecute(null)) vm.ModeJeu.RetablirCommand.Execute(null); }));
             surveillance.Notification += (titre, texte) => Dispatcher.BeginInvoke(new Action(() =>

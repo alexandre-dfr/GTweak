@@ -150,23 +150,32 @@ namespace GamingTweaker.Ui
             var v = vm.NouvelleVersion;
             if (v == null || vm.MiseAJourEnCours) return;
             if (!v.PeutInstaller) { VoirNouvelleVersion_Click(sender, e); return; }
-            if (MessageBox.Show(this, "GamingTweaker va télécharger la version " + v.Version + ", vérifier son empreinte, la mettre à la place de celle-ci puis redémarrer."
+            if (MessageBox.Show(this, "GamingTweaker va télécharger la version " + v.Version + ", vérifier sa signature, la mettre à la place de celle-ci puis redémarrer."
                     + "\r\n\r\nVos réglages, profils et l'historique sont conservés.", "Mettre à jour", MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.OK) != MessageBoxResult.OK) return;
             string exe;
             using (var p = Process.GetCurrentProcess()) exe = p.MainModule.FileName;
             vm.MiseAJourEnCours = true;
-            try
-            {
-                await MiseAJour.InstallerAsync(v, exe);
-                MiseAJour.Relancer(exe);
-                if (vm.Quitter != null) vm.Quitter(); else Application.Current.Shutdown(0);
-            }
+            MiseAJourPrete prete;
+            try { prete = await MiseAJour.InstallerAsync(v, exe); }
             catch (Exception ex)
             {
                 vm.MiseAJourEnCours = false;
                 TraceAppli.Erreur("mise à jour intégrée", ex);
                 vm.Message = "Mise à jour impossible : " + ex.Message + " La version actuelle reste en place ; « Nouveautés » ouvre la page de téléchargement.";
+                return;
             }
+            // Le nouvel exe reste verrouillé (ni écriture ni renommage) jusqu'à ce qu'il soit lancé.
+            using (prete)
+            {
+                try { MiseAJour.Relancer(exe); }
+                catch (Exception ex)
+                {
+                    TraceAppli.Erreur("relance après mise à jour", ex);
+                    MessageBox.Show(this, "La version " + v.Version + " est installée, mais n'a pas pu être relancée (" + ex.Message + "). Rouvrez GamingTweaker.",
+                        "Mettre à jour", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            if (vm.Quitter != null) vm.Quitter(); else Application.Current.Shutdown(0);
         }
 
         private void Planifier_Click(object sender, RoutedEventArgs e)

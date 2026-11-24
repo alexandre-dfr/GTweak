@@ -127,6 +127,8 @@ namespace GamingTweaker.Tests
     public class MiseAJourTests
     {
         private static readonly Version Courante = new Version(0, 9, 1);
+        // Sans clé : la version est annoncée même sans exe signé (ces tests portent sur la lecture de la release).
+        private static readonly string[] SansCle = new string[0];
         private const string Page = "https://github.com/alexandre-dfr/GTweak/releases/tag/";
 
         private static string Json(string tag, bool pre = false, bool draft = false, string url = null)
@@ -138,7 +140,7 @@ namespace GamingTweaker.Tests
         [Fact]
         public void Version_plus_recente_est_proposee()
         {
-            var v = MiseAJour.Analyser(Json("v0.10.0"), Courante);
+            var v = MiseAJour.Analyser(Json("v0.10.0"), Courante, SansCle);
             Assert.NotNull(v);
             Assert.Equal(new Version(0, 10, 0), v.Version);
             Assert.Equal(Page + "v0.10.0", v.Url);
@@ -150,23 +152,23 @@ namespace GamingTweaker.Tests
         [InlineData("test-build")]
         [InlineData("v1.0")]
         [InlineData("")]
-        public void Meme_version_plus_ancienne_ou_tag_inconnu_ne_propose_rien(string tag) { Assert.Null(MiseAJour.Analyser(Json(tag), Courante)); }
+        public void Meme_version_plus_ancienne_ou_tag_inconnu_ne_propose_rien(string tag) { Assert.Null(MiseAJour.Analyser(Json(tag), Courante, SansCle)); }
 
-        [Fact] public void Pre_version_ignoree() { Assert.Null(MiseAJour.Analyser(Json("v9.0.0", pre: true), Courante)); }
-        [Fact] public void Brouillon_ignore() { Assert.Null(MiseAJour.Analyser(Json("v9.0.0", draft: true), Courante)); }
+        [Fact] public void Pre_version_ignoree() { Assert.Null(MiseAJour.Analyser(Json("v9.0.0", pre: true), Courante, SansCle)); }
+        [Fact] public void Brouillon_ignore() { Assert.Null(MiseAJour.Analyser(Json("v9.0.0", draft: true), Courante, SansCle)); }
 
         [Theory]
         [InlineData("https://evil.example/releases/v9.0.0")]
         [InlineData("http://github.com/alexandre-dfr/GTweak/releases/tag/v9.0.0")]
         [InlineData("https://github.com/autre/depot/releases/tag/v9.0.0")]
-        public void Page_hors_des_releases_du_depot_refusee(string url) { Assert.Null(MiseAJour.Analyser(Json("v9.0.0", url: url), Courante)); }
+        public void Page_hors_des_releases_du_depot_refusee(string url) { Assert.Null(MiseAJour.Analyser(Json("v9.0.0", url: url), Courante, SansCle)); }
 
         [Theory]
         [InlineData(null)]
         [InlineData("")]
         [InlineData("pas du json")]
         [InlineData("{ \"message\": \"API rate limit exceeded\" }")]
-        public void Reponse_inattendue_ne_propose_rien(string json) { Assert.Null(MiseAJour.Analyser(json, Courante)); }
+        public void Reponse_inattendue_ne_propose_rien(string json) { Assert.Null(MiseAJour.Analyser(json, Courante, SansCle)); }
 
         [Fact]
         public async Task Erreur_reseau_silencieuse()
