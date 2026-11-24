@@ -16,7 +16,7 @@
                 <ItemsControl x:Name="Liste">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}" Margin="0,3">
+                            <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}" Margin="0,3" AutomationProperties.Name="{Binding Affichage}">
                                 <StackPanel>
                                     <TextBlock Text="{Binding Affichage}" FontSize="14" TextTrimming="CharacterEllipsis"/>
                                     <TextBlock Text="{Binding Detail}" FontSize="12" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/>

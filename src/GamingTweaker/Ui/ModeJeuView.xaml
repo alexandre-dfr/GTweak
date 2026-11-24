@@ -12,7 +12,7 @@
         <BooleanToVisibilityConverter x:Key="BoolVis"/>
         <local:NonNulVersVisibilite x:Key="NonNulVis"/>
         <DataTemplate x:Key="ChoixTemplate">
-            <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}" Margin="0,3">
+            <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}" Margin="0,3" AutomationProperties.Name="{Binding Affichage}">
                 <StackPanel>
                     <TextBlock Text="{Binding Affichage}" FontSize="14" TextTrimming="CharacterEllipsis"/>
                     <TextBlock Text="{Binding Detail}" FontSize="12" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
@@ -105,16 +105,16 @@
         </DockPanel>
         <Border Style="{StaticResource CarteW11}" IsEnabled="{Binding PeutModifier}">
             <StackPanel>
-                <CheckBox IsChecked="{Binding UtiliserPlan, Mode=TwoWay}"><TextBlock Text="Plan d'alimentation « Performances élevées »" Style="{StaticResource TitreReglage}"/></CheckBox>
+                <CheckBox IsChecked="{Binding UtiliserPlan, Mode=TwoWay}" AutomationProperties.Name="Plan d'alimentation Performances élevées"><TextBlock Text="Plan d'alimentation « Performances élevées »" Style="{StaticResource TitreReglage}"/></CheckBox>
                 <TextBlock Style="{StaticResource TexteAide}" Text="Le processeur reste à pleine vitesse au lieu d'économiser l'énergie. Le plan d'avant est remis ensuite."/>
 
-                <CheckBox IsChecked="{Binding LibererMemoire, Mode=TwoWay}" Margin="0,14,0,0"><TextBlock Text="Libérer la mémoire" Style="{StaticResource TitreReglage}"/></CheckBox>
+                <CheckBox IsChecked="{Binding LibererMemoire, Mode=TwoWay}" Margin="0,14,0,0" AutomationProperties.Name="Libérer la mémoire"><TextBlock Text="Libérer la mémoire" Style="{StaticResource TitreReglage}"/></CheckBox>
                 <TextBlock Style="{StaticResource TexteAide}" Text="Récupère la mémoire inutilisée des programmes en arrière-plan, sans rien fermer. Utile avec 8 ou 16 Go de RAM. Le jeu n'est jamais touché."/>
 
                 <StackPanel Margin="0,14,0,0" Visibility="{Binding NvidiaDisponible, Converter={StaticResource BoolVis}}">
                     <DockPanel>
                         <TextBlock Text="Pilote NVIDIA" Style="{StaticResource TitreReglage}" VerticalAlignment="Center" Margin="26,0,12,0"/>
-                        <ComboBox Width="240" HorizontalAlignment="Left" ItemsSource="{Binding ProfilsNvidiaDisponibles}" SelectedValuePath="Key" DisplayMemberPath="Value"
+                        <ComboBox Width="240" HorizontalAlignment="Left" AutomationProperties.Name="Profil du pilote NVIDIA" ItemsSource="{Binding ProfilsNvidiaDisponibles}" SelectedValuePath="Key" DisplayMemberPath="Value"
                                   SelectedValue="{Binding ProfilNvidia, Mode=TwoWay}"/>
                     </DockPanel>
                     <TextBlock Style="{StaticResource TexteAide}"
@@ -183,11 +183,11 @@
             </DockPanel>
             <Border Style="{StaticResource CarteW11}">
                 <StackPanel>
-                    <CheckBox IsChecked="{Binding Actif, Mode=TwoWay}"><TextBlock Text="Activer le Mode Jeu automatiquement" Style="{StaticResource TitreReglage}"/></CheckBox>
+                    <CheckBox IsChecked="{Binding Actif, Mode=TwoWay}" AutomationProperties.Name="Activer le Mode Jeu automatiquement"><TextBlock Text="Activer le Mode Jeu automatiquement" Style="{StaticResource TitreReglage}"/></CheckBox>
 
                     <TextBlock Text="Vos jeux" Style="{StaticResource TitreReglage}" Margin="0,16,0,0"/>
                     <TextBlock Style="{StaticResource TexteAide}" Margin="0,2,0,0" Text="{Binding ResumeReglages}"/>
-                    <ListBox ItemsSource="{Binding Jeux}" SelectedItem="{Binding JeuSelectionne, Mode=TwoWay}" Height="130" Margin="0,8,0,0"
+                    <ListBox ItemsSource="{Binding Jeux}" AutomationProperties.Name="Vos jeux" SelectedItem="{Binding JeuSelectionne, Mode=TwoWay}" Height="130" Margin="0,8,0,0"
                              Background="{DynamicResource BgBrush}" BorderBrush="{DynamicResource BorderBrush}">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
@@ -207,10 +207,10 @@
                         <Button Content="Retirer le jeu sélectionné" Command="{Binding RetirerCommand}" Margin="0,0,8,4"/>
                     </WrapPanel>
 
-                    <CheckBox IsChecked="{Binding PrioriteHaute, Mode=TwoWay}" Margin="0,14,0,0"><TextBlock Text="Priorité haute pour le jeu en cours" Style="{StaticResource TitreReglage}"/></CheckBox>
+                    <CheckBox IsChecked="{Binding PrioriteHaute, Mode=TwoWay}" Margin="0,14,0,0" AutomationProperties.Name="Priorité haute pour le jeu en cours"><TextBlock Text="Priorité haute pour le jeu en cours" Style="{StaticResource TitreReglage}"/></CheckBox>
                     <TextBlock Style="{StaticResource TexteAide}" Text="Windows donne la priorité au jeu quand des programmes tournent en arrière-plan (jamais la priorité « temps réel »)."/>
 
-                    <CheckBox IsChecked="{Binding DemarrageAvecWindows, Mode=TwoWay}" Margin="0,14,0,0"><TextBlock Text="Démarrer GamingTweaker avec Windows" Style="{StaticResource TitreReglage}"/></CheckBox>
+                    <CheckBox IsChecked="{Binding DemarrageAvecWindows, Mode=TwoWay}" Margin="0,14,0,0" AutomationProperties.Name="Démarrer GamingTweaker avec Windows"><TextBlock Text="Démarrer GamingTweaker avec Windows" Style="{StaticResource TitreReglage}"/></CheckBox>
                     <TextBlock Style="{StaticResource TexteAide}" Text="GamingTweaker démarre réduit près de l'horloge, sans fenêtre : le mode automatique fonctionne sans que vous ayez à ouvrir l'application."/>
 
                     <Border Padding="12,8" CornerRadius="6" Background="{DynamicResource WarnBg}" Margin="0,12,0,0" Visibility="{Binding RappelDemarrage, Converter={StaticResource BoolVis}}">

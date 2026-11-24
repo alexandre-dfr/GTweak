@@ -194,6 +194,10 @@ git push origin v0.9.3
 
 Le workflow refuse un tag qui ne correspond pas à `<Version>`. Espacez les versions stables : chaque nouvel exe repart de zéro côté réputation SmartScreen, et c'est la release « Latest » que les utilisateurs téléchargent.
 
+### Publier sur winget
+
+Une fois une version stable publiée, `tools/winget/generer-manifeste.ps1 -Version X.Y.Z` télécharge son exe, calcule son SHA-256 et écrit les manifestes winget (installation portable, `alexandre-dfr.GamingTweaker`) dans `tools/winget/manifests/…` à partir des modèles de `tools/winget/modele`. Vérifiez-les avec `winget validate --manifest <dossier>`, puis soumettez-les par une pull request sur `microsoft/winget-pkgs` (ou `wingetcreate submit <dossier>`). Les versions suivantes : `wingetcreate update alexandre-dfr.GamingTweaker -u <adresse de l'exe> -v X.Y.Z --submit`. Le script ne soumet rien lui-même.
+
 ### Signer une version
 
 La mise à jour intégrée remplace l'exe et le relance en administrateur : elle n'installe qu'un exe signé par **votre** clé, pas seulement un exe publié sur GitHub. L'empreinte SHA-256 de la release prouve que le téléchargement est intact, mais pas qui l'a publié : un compte GitHub, un jeton ou une CI compromis publierait l'exe et l'empreinte qui va avec. La clé privée reste sur votre PC, chiffrée pour votre compte Windows ; l'exe ne contient que la clé publique (`src/GamingTweaker/Assets/cles-release.txt`).

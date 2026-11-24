@@ -19,7 +19,7 @@
                      Background="{DynamicResource PanelHoverBrush}" Foreground="{DynamicResource AccentBrush}"/>
         <Grid Grid.Row="2">
             <!-- Pendant l'exécution : journal en direct. À la fin : résumé en quelques lignes, journal derrière « Journal détaillé ». -->
-            <TextBox x:Name="Journal" IsReadOnly="True" FontFamily="Consolas" FontSize="13" AcceptsReturn="True" TextWrapping="Wrap"
+            <TextBox x:Name="Journal" AutomationProperties.Name="Journal de l'exécution" IsReadOnly="True" FontFamily="Consolas" FontSize="13" AcceptsReturn="True" TextWrapping="Wrap"
                      VerticalScrollBarVisibility="Auto"/>
             <ScrollViewer x:Name="Resume" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
                 <ItemsControl x:Name="LignesResume">

@@ -115,7 +115,7 @@
             </Grid.ColumnDefinitions>
             <Border Background="{DynamicResource PanelBrush}" CornerRadius="6" Padding="8">
                 <Grid>
-                    <ListBox ItemsSource="{Binding Sessions}" SelectedItem="{Binding SessionSelectionnee, Mode=TwoWay}" ItemTemplate="{StaticResource SessionTemplate}"
+                    <ListBox ItemsSource="{Binding Sessions}" AutomationProperties.Name="Sessions" SelectedItem="{Binding SessionSelectionnee, Mode=TwoWay}" ItemTemplate="{StaticResource SessionTemplate}"
                              ItemContainerStyle="{StaticResource SessionItemStyle}" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
                     <TextBlock Text="Aucune session pour l'instant." Foreground="{DynamicResource MutedBrush}" Margin="8">
                         <TextBlock.Style>
@@ -141,7 +141,7 @@
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                         <ItemsControl ItemsSource="{Binding SessionSelectionnee.Options}" ItemTemplate="{StaticResource OptionSessionTemplate}"/>
                     </ScrollViewer>
-                    <TextBox Grid.Row="2" Text="{Binding RapportTexte, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Margin="0,8,0,0" FontFamily="Consolas" FontSize="12"/>
+                    <TextBox Grid.Row="2" AutomationProperties.Name="Rapport de la session" Text="{Binding RapportTexte, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Margin="0,8,0,0" FontFamily="Consolas" FontSize="12"/>
                 </Grid>
             </Border>
         </Grid>
@@ -219,14 +219,14 @@
                     <ItemsControl ItemsSource="{Binding Releves}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}" Margin="0,3">
+                                <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}" Margin="0,3" AutomationProperties.Name="{Binding Libelle}">
                                     <TextBlock Text="{Binding Libelle}" TextWrapping="Wrap"/>
                                 </CheckBox>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </ScrollViewer>
-                <TextBox Grid.Row="4" Text="{Binding Comparaison, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" Margin="0,10,0,0" MinHeight="110" FontFamily="Consolas" FontSize="12"/>
+                <TextBox Grid.Row="4" AutomationProperties.Name="Comparaison avant / après" Text="{Binding Comparaison, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" Margin="0,10,0,0" MinHeight="110" FontFamily="Consolas" FontSize="12"/>
             </Grid>
         </Border>
 

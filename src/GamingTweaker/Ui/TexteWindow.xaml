@@ -5,7 +5,7 @@
         Width="420" SizeToContent="Height" ResizeMode="NoResize" WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
     <StackPanel Margin="24">
         <TextBlock x:Name="Libelle" Margin="0,0,0,8" Foreground="{DynamicResource MutedBrush}"/>
-        <TextBox x:Name="Saisie" MaxLength="60"/>
+        <TextBox x:Name="Saisie" MaxLength="60" AutomationProperties.LabeledBy="{Binding ElementName=Libelle}"/>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
             <Button Content="Annuler" IsCancel="True" Margin="0,0,10,0"/>
             <Button Content="Enregistrer" IsDefault="True" Style="{StaticResource PrimaryButton}" Click="Ok_Click"/>
