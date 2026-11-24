@@ -14,6 +14,8 @@ namespace GamingTweaker.Core
         /// <summary>Températures (°C) ; null si non demandées ou illisibles (processeur sans le pilote PawnIO).</summary>
         public double? TempCpu { get; set; }
         public double? TempGpu { get; set; }
+        /// <summary>Anti-triche en cours (nom affiché) : la température du processeur n'est pas lue pendant la partie ; null sinon.</summary>
+        public string AntiTricheCpu { get; set; }
         /// <summary>Mémoire utilisée et totale, en Go.</summary>
         public double RamUtiliseeGo { get; set; }
         public double RamTotaleGo { get; set; }

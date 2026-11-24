@@ -59,6 +59,7 @@ Aucun ne contient d'option Risqué, d'option à liste (services, démarrage : le
 ## Accueil et Paramètres
 
 - **Accueil** : le matériel de ce PC (processeur, carte graphique et sa mémoire vidéo, mémoire vive, disque système avec son type et son espace libre), les profils intégrés en un clic, l'état des réglages par menu, le diagnostic et le Mode Jeu.
+  Si un réglage appliqué par GamingTweaker n'est plus en place (rétabli par une mise à jour de Windows ou d'un pilote, ou à la main), un bandeau le signale avec le bouton **Recocher ces réglages** : ils sont cochés, rien ne change avant « Aperçu » puis « LANCER ». Une option annulée depuis l'historique n'est plus signalée.
 - **Paramètres** (dernier menu) : thème (comme Windows, clair ou sombre), démarrage avec Windows, guide de l'accueil, version, et tous les réglages du compteur en jeu. Les deux boutons en haut à droite ne font que basculer : le compteur (affiché / masqué) et le thème (clair / sombre).
 
 ## Compteur en jeu (FPS, CPU, GPU, RAM)
@@ -70,7 +71,7 @@ Le bouton en forme de compteur, en haut à droite (à côté du thème), affiche
   - temps d'image et « 1 % bas » (99e centile du temps d'image sur 10 s) ;
   - courbe des FPS sur 10, 30 ou 60 s ;
   - charge du processeur, de la carte graphique et de la mémoire en pourcentage ;
-  - températures de la carte graphique (lue par le pilote NVIDIA ou AMD, rien à installer) et du processeur (demande le pilote PawnIO, proposé dans le menu Informations ; son comportement face aux anti-triche n'a pas été vérifié). Désactivées par défaut.
+  - températures de la carte graphique (lue par le pilote NVIDIA ou AMD, rien à installer) et du processeur (demande le pilote PawnIO, proposé dans le menu Informations). Pendant qu'un anti-triche à pilote noyau tourne (Vanguard, FACEIT, Easy Anti-Cheat, BattlEye, EA Javelin), la température du processeur n'est pas lue et affiche « AC » : le compteur ne parle alors à aucun pilote tiers, seulement à Windows (FPS, charges) et au pilote graphique (température GPU), comme l'overlay de NVIDIA. Désactivées par défaut.
 - **Position** : un coin de l'écran principal, ou **n'importe où** : avec « Placer le compteur à l'écran » (Paramètres), le compteur est affiché avec un cadre pointillé jusqu'à ce que vous quittiez les Paramètres et se déplace à la souris, sur n'importe quel écran ; tirez le coin ◢ du cadre (ou Ctrl+molette) pour l'agrandir ou le réduire (60 à 300 %). Il garde cette place et cette taille.
 - **Apparence** : taille, opacité du fond et **couleurs** : choisissez l'élément (FPS, temps d'image et 1 % bas, courbe, CPU, GPU, RAM) puis sa couleur, parmi 7 proposées ou une couleur libre `#RRVVBB` ; « Tout le compteur » remet la même couleur partout. Largeur fixe et police à chasse fixe : le compteur ne bouge pas quand les chiffres changent ; il est rafraîchi deux fois par seconde.
 - **Fonctionnement** : les FPS viennent des événements publiés par Windows (ETW, comme PresentMon) : « Present » de DirectX 9 à 12 en priorité, sinon le noyau graphique (DxgKrnl), qui voit aussi les images des jeux Vulkan et OpenGL. La source est indiquée sous les FPS ; rien n'est injecté dans le jeu, le compteur est donc compatible avec les anti-triche. Processeur, mémoire et carte graphique sont mesurés comme dans le Gestionnaire des tâches. La surimpression laisse passer les clics et ne prend jamais le clavier. Rien ne tourne quand le compteur est masqué.
@@ -141,6 +142,8 @@ Chaque modification réversible est notée dans un journal. Un journal applicati
 **Profil ▾ > Planifier une routine hebdomadaire…** crée la tâche hebdomadaire `\GamingTweaker\Routine` qui applique le profil choisi sans interface (`GamingTweaker.exe --profile <fichier> --silent`). Codes de sortie : 0 = tout est appliqué ou ignoré, 1 = au moins un échec, 2 = exécution impossible. **Supprimer la routine** retire la tâche. Les données de la routine sont dans le dossier de données protégé de GamingTweaker, dossier protégé (propriétaire Administrateurs).
 
 ## Désinstaller
+
+Le plus simple : **Paramètres > Désinstaller…**. L'appli propose d'abord **Tout restaurer** (les réglages appliqués sont annulés tant que les journaux existent), puis retire la routine planifiée, le démarrage avec Windows et le dossier de données protégé, et se ferme ; il reste à supprimer `GamingTweaker.exe`.
 
 L'application est portable : supprimer `GamingTweaker.exe` suffit pour le programme. Pour retirer aussi la routine planifiée et le dossier de données protégé (`%ProgramFiles%\GamingTweaker` : sessions, journaux d'annulation, quarantaine), lancer en administrateur :
 

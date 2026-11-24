@@ -91,6 +91,17 @@
                 </StackPanel>
             </Border>
 
+            <Border Style="{StaticResource CarteW11}" Margin="0,12,0,0">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Content="Désinstaller…" Click="Desinstaller_Click" VerticalAlignment="Center" Margin="16,0,0,0"
+                            AutomationProperties.Name="Désinstaller GamingTweaker"/>
+                    <StackPanel>
+                        <TextBlock Text="Désinstaller" Style="{StaticResource TitreCarte}"/>
+                        <TextBlock Style="{StaticResource Aide}" Text="Propose d'abord d'annuler tous les réglages appliqués (« Tout restaurer »), puis retire la routine planifiée, le démarrage avec Windows et le dossier de données protégé. Supprimez ensuite GamingTweaker.exe vous-même."/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
             <!-- ===== Compteur en jeu ===== -->
             <StackPanel DataContext="{Binding Compteur}" Margin="0,28,0,0"
                         Visibility="{Binding Converter={StaticResource NonNulVis}, FallbackValue=Collapsed}">
@@ -136,7 +147,7 @@
                             <CheckBox IsChecked="{Binding TempCpu, Mode=TwoWay}" IsEnabled="{Binding Cpu}" Content="Température processeur" Margin="0,0,0,6"/>
                         </WrapPanel>
                         <TextBlock Style="{StaticResource Aide}" Margin="0,2,0,0"
-                                   Text="La température du processeur demande le pilote PawnIO (à installer depuis le menu Informations, bouton des capteurs) ; sans lui, elle affiche « — ». Le comportement de PawnIO face aux anti-triche (Vanguard, FACEIT) n'a pas été vérifié : en cas de doute, gardez seulement celle de la carte graphique."/>
+                                   Text="La température du processeur demande le pilote PawnIO (à installer depuis le menu Informations, bouton des capteurs) ; sans lui, elle affiche « — ». Pendant qu'un anti-triche à pilote noyau tourne (Vanguard, FACEIT, Easy Anti-Cheat, BattlEye, EA Javelin), elle n'est pas lue et affiche « AC » : le compteur n'utilise alors aucun pilote tiers. Les FPS et la température de la carte graphique restent affichés."/>
                     </StackPanel>
                 </Border>
 

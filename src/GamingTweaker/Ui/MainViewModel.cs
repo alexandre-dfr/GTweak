@@ -178,6 +178,7 @@ namespace GamingTweaker.Ui
             totalAppliquees = EtatMenus.Sum(l => l.Appliquees); totalOptions = EtatMenus.Sum(l => l.Total);
             Raise("TotalAppliquees"); Raise("TotalOptions"); Raise("SyntheseAccueil"); Raise("ProportionAppliquees");
             Raise("AvancementMenu"); Raise("ProportionMenu");
+            MajDerive();
         }
 
         private LigneAccueil LigneMenuCourant { get { return EtatMenus.FirstOrDefault(l => l.Menu == menuCourant); } }
@@ -401,6 +402,7 @@ namespace GamingTweaker.Ui
         // ---------- Filtre ----------
 
         public const string EtatDejaApplique = "Déjà appliqué";
+        public const string EtatNonApplique = "Non appliqué";
 
         public static string Normaliser(string s)
         {

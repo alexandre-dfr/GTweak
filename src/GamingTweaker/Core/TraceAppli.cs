@@ -42,6 +42,12 @@ namespace GamingTweaker.Core
             }
         }
 
+        /// <summary>
+        /// Désinstallation : plus rien n'est écrit sur le disque (le dossier de données vient d'être supprimé et ne doit pas être recréé).
+        /// Les lignes restent en mémoire pour un éventuel rapport d'erreur.
+        /// </summary>
+        public static void CesserEcriture() { lock (sync) { chemin = null; tampon.Clear(); } }
+
         /// <summary>Tests : oublie le fichier configuré et les lignes en attente.</summary>
         internal static void Reinitialiser() { lock (sync) { chemin = null; tampon.Clear(); } }
 
