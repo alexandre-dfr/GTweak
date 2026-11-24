@@ -347,14 +347,10 @@ namespace GamingTweaker.Core
                 UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true,
                 StandardOutputEncoding = oem, StandardErrorEncoding = oem,
             };
-            using (var p = Process.Start(psi))
-            {
-                var err = p.StandardError.ReadToEndAsync();
-                var o = p.StandardOutput.ReadToEnd();
-                if (!p.WaitForExit(30000)) { try { p.Kill(); } catch (Exception) { } throw new System.TimeoutException("schtasks n'a pas répondu."); }
-                sortie = p.ExitCode == 0 ? o : (err.Result + o);
-                return p.ExitCode;
-            }
+            // Borné (ProcessusBorne) : ReadToEnd() avant WaitForExit rendait la limite de 30 s inopérante.
+            var r = ProcessusBorne.Executer(psi, 30000, System.Threading.CancellationToken.None, "schtasks");
+            sortie = r.CodeSortie == 0 ? r.Sortie : (r.Erreur + r.Sortie);
+            return r.CodeSortie;
         }
     }
 }

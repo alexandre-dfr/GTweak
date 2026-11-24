@@ -38,6 +38,17 @@ namespace GamingTweaker.Tests
             Assert.Contains("code 5", r.Message);
         }
 
+        [Theory]
+        [InlineData(45, "45 s")]
+        [InlineData(120, "2 min")]
+        [InlineData(150, "2 min 30 s")]
+        [InlineData(-3, "0 s")]
+        public void Duree_affichee_pendant_la_creation(int secondes, string attendu)
+        {
+            Assert.Equal(attendu, RunPipeline.DureeTexte(System.TimeSpan.FromSeconds(secondes)));
+            Assert.Contains(attendu, RunPipeline.TexteAttentePoint(System.TimeSpan.FromSeconds(secondes)));
+        }
+
         [Fact]
         public void Delai_par_defaut_depasse_trois_minutes()
         {
