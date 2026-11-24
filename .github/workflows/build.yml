@@ -4,7 +4,8 @@ name: Build
 # L'exe n'est publié QUE si tout est vert : une pré-version déjà publiée n'est jamais remplacée par un exe en échec.
 #
 # Où va l'exe (onglet Releases ; le quota de stockage des artefacts Actions du compte est épuisé, les releases n'y sont pas soumises) :
-#   - branche main          → pré-version « test-build » ;
+#   - branche main          → pré-version « test-build », ou release « GamingTweaker X.Y.Z » si la <Version> du .csproj n'a pas
+#                             encore de tag vX.Y.Z (le tag est alors créé par la publication) ;
 #   - autre branche         → pré-version « test-<branche> » (supprimée quand la branche est supprimée) ;
 #   - tag vX.Y.Z            → release « GamingTweaker X.Y.Z » (pas une pré-version : c'est elle que l'appli propose en mise à jour).
 # En cas d'échec, seuls les diagnostics (rapport du cycle réel, captures) vont dans la pré-version « <canal>-echec », sans exe.
@@ -55,9 +56,25 @@ jobs:
       - name: Canal de publication
         id: canal
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           $ref = $env:GITHUB_REF_NAME
-          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+          [xml]$projet = Get-Content src/GamingTweaker/GamingTweaker.csproj
+          $versionProjet = ($projet.Project.PropertyGroup | ForEach-Object { $_.Version } | Where-Object { $_ } | Select-Object -First 1)
+          # main avec une <Version> pas encore publiée (aucun tag vX.Y.Z) : release stable, le tag est créé par la publication sur ce commit.
+          # Évite d'avoir à pousser un tag à la main : changer <Version> puis fusionner dans main suffit.
+          $nouvelle = $false
+          if ($env:GITHUB_REF_TYPE -ne 'tag' -and $ref -eq 'main' -and $versionProjet -match '^\d+\.\d+\.\d+$') {
+            gh api "repos/$env:GITHUB_REPOSITORY/git/ref/tags/v$versionProjet" --silent 2>$null
+            $nouvelle = ($LASTEXITCODE -ne 0)
+          }
+          if ($nouvelle) {
+            Write-Host "Version $versionProjet pas encore publiée : release stable v$versionProjet."
+            "type=release" >> $env:GITHUB_OUTPUT
+            "tag=v$versionProjet" >> $env:GITHUB_OUTPUT
+            "creer=oui" >> $env:GITHUB_OUTPUT
+          } elseif ($env:GITHUB_REF_TYPE -eq 'tag') {
             if ($ref -notmatch '^v(\d+\.\d+\.\d+)$') { throw "Tag « $ref » : la forme attendue est vX.Y.Z." }
             $attendu = $Matches[1]
             [xml]$proj = Get-Content src/GamingTweaker/GamingTweaker.csproj
@@ -190,6 +207,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TYPE: ${{ steps.canal.outputs.type }}
           TAG: ${{ steps.canal.outputs.tag }}
+          CREER: ${{ steps.canal.outputs.creer }}
           VERSION: ${{ steps.exe.outputs.version }}
           HASH: ${{ steps.exe.outputs.hash }}
           SIGNE: ${{ steps.exe.outputs.signe }}
@@ -205,7 +223,9 @@ jobs:
             if ($LASTEXITCODE -eq 0) {
               gh release upload $env:TAG @fichiers --clobber
             } else {
-              gh release create $env:TAG @fichiers --verify-tag --title "GamingTweaker $($env:TAG.TrimStart('v'))" --notes $notes --generate-notes
+              # Tag poussé à la main : il doit exister (--verify-tag). Nouvelle version sur main : le tag est créé sur ce commit.
+              $cible = if ($env:CREER -eq 'oui') { @('--target', $env:GITHUB_SHA) } else { @('--verify-tag') }
+              gh release create $env:TAG @fichiers @cible --title "GamingTweaker $($env:TAG.TrimStart('v'))" --notes $notes --generate-notes
             }
             if ($LASTEXITCODE -ne 0) { throw 'Publication de la release impossible.' }
           } else {

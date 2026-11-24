@@ -163,7 +163,7 @@ Le workflow `.github/workflows/build.yml` compile l'exe sur Windows, lance les t
 
 | Déclencheur | Publication (onglet Releases) |
 |---|---|
-| push sur `main` | pré-version `test-build` |
+| push sur `main` | pré-version `test-build` ; si la `<Version>` du `.csproj` n'a pas encore de tag `vX.Y.Z` : release `GamingTweaker X.Y.Z` (tag créé automatiquement) |
 | push sur une autre branche | pré-version `test-<branche>`, supprimée automatiquement avec la branche |
 | tag `vX.Y.Z` | release `GamingTweaker X.Y.Z` (c'est elle que l'appli propose en mise à jour) |
 
@@ -173,7 +173,9 @@ Pour publier une version stable :
 
 1. Mettre `<Version>` à jour dans `src/GamingTweaker/GamingTweaker.csproj` (avec `AssemblyVersion` et `FileVersion`).
 2. Fusionner dans `main` et attendre que le build `test-build` soit vert.
-3. Créer et pousser le tag depuis `main` :
+Le premier build vert de `main` avec cette nouvelle version publie la release stable et crée le tag `vX.Y.Z` lui-même. Pousser le tag à la main reste possible :
+
+3. (Facultatif) Créer et pousser le tag depuis `main` :
 
 ```bash
 git tag v0.9.3
