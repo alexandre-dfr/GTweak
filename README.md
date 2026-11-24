@@ -113,6 +113,8 @@ Le menu « Diagnostic » (lecture seule) repère ce qui bride réellement les pe
 
 Historique > Mesures : un relevé de 30 s (temps DPC et d'interruptions, processeur au repos, services, processus, mémoire disponible, programmes au démarrage). Faites-en un avant d'optimiser et un après, puis « Avant / après » (les deux relevés les plus récents, ou les deux que vous avez cochés) : chaque mesure est marquée « mieux », « moins bien » ou « stable ».
 
+**En jeu** (même écran) : lancez votre jeu, cliquez sur **Mesurer une partie (60 s)** et revenez dans le jeu. La mesure commence 10 s plus tard et relève pendant 60 s les FPS moyens, le « 1 % bas » (fluidité), le pire « 1 % bas » (saccades) et la charge du processeur et de la carte graphique de la fenêtre au premier plan, par la même source que le compteur en jeu (événements de Windows, rien d'injecté). Faites-en une avant d'optimiser et une après, sur la même scène et avec les mêmes réglages graphiques, puis **Comparer les parties** : la dernière partie est comparée à la précédente du même jeu ; un écart de moins de 3 % est jugé stable (bruit d'une partie à l'autre). Une mesure où le jeu n'a pas été au premier plan au moins 80 % du temps est signalée incomplète.
+
 ## Mode Jeu
 
 Le menu Mode Jeu se lit de haut en bas :

@@ -204,7 +204,10 @@ namespace GamingTweaker
             }
 
             // ---- Compteur en jeu (FPS, CPU, GPU, RAM) : surimpression et raccourci global ----
-            var compteur = new CompteurViewModel(paths.MachineDir, new CompteurService());
+            // Une seule source (une seule session ETW) partagée par la surimpression et la mesure en jeu de l'historique.
+            var sourceCompteur = new CompteurService();
+            var compteur = new CompteurViewModel(paths.MachineDir, sourceCompteur);
+            vm.Historique.SourceJeu = sourceCompteur;
             vm.Compteur = compteur;
             var surimpression = new CompteurWindow(compteur);
             compteur.AffichageChange += () => surimpression.Appliquer();

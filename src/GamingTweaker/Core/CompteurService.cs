@@ -102,10 +102,14 @@ namespace GamingTweaker.Core
             }
         }
 
+        /// <summary>Utilisateurs de la source (surimpression, mesure en jeu) : elle ne s'arrête qu'au dernier <see cref="Arreter"/>.</summary>
+        private int utilisateurs;
+
         public void Demarrer()
         {
             lock (verrou)
             {
+                utilisateurs++;
                 if (etw != null) return;
                 etw = new CompteurEtw();
                 etw.Demarrer();
@@ -120,7 +124,8 @@ namespace GamingTweaker.Core
             CompteurEtw e; CompteurSysteme s; Timer m;
             lock (verrou)
             {
-                if (etw == null) return;
+                if (utilisateurs > 0) utilisateurs--;
+                if (etw == null || utilisateurs > 0) return;
                 e = etw; s = systeme; m = minuteur;
                 etw = null; systeme = null; minuteur = null;
                 derniereCharge = new ChargeSysteme();
@@ -198,7 +203,8 @@ namespace GamingTweaker.Core
             return (int)pid;
         }
 
-        public void Dispose() { Arreter(); }
+        /// <summary>Arrête la source quel que soit le nombre d'utilisateurs (fermeture de l'application).</summary>
+        public void Dispose() { lock (verrou) utilisateurs = Math.Min(utilisateurs, 1); Arreter(); }
 
         [DllImport("user32.dll")]
         private static extern IntPtr GetForegroundWindow();
