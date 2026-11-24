@@ -31,7 +31,8 @@
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="0,0,16,24" MaxWidth="900" HorizontalAlignment="Left">
+        <!-- Toute la largeur disponible, comme les autres menus : les cartes suivent la taille de la fenêtre. -->
+        <StackPanel Margin="0,0,16,24">
 
             <!-- ===== Application ===== -->
             <TextBlock Text="Application" Style="{StaticResource TitreSection}"/>

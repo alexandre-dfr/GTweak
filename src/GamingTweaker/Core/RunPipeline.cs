@@ -88,6 +88,8 @@ namespace GamingTweaker.Core
             // 1. Point de restauration (seulement si une option réversible est choisie).
             if (selected.Any(i => i.Reversible))
             {
+                // Le cliché peut durer plusieurs minutes : la fenêtre d'exécution l'indique au lieu de paraître figée.
+                if (log != null) log.Report("Création du point de restauration (peut prendre plusieurs minutes)…");
                 var rp = restorePoint.TryCreate("GamingTweaker " + DateTime.Now.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture));
                 if (rp == null || !rp.Created)
                 {
