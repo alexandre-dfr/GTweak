@@ -407,6 +407,69 @@ namespace GamingTweaker.Tests
             Assert.True(ferme); Assert.Contains("Dossier de données supprimé.", vm.Message);
         }
 
+        private static BilanDesinstallation Bilan(bool confirme)
+        {
+            var b = new BilanDesinstallation { Code = confirme ? 0 : 2 };
+            b.Actions.Add(confirme ? "Dossier de données supprimé." : "- 3 session(s) seraient supprimées");
+            if (!confirme) b.Avertissements.Add("Les réglages appliqués ne sont pas annulés par la désinstallation : utilisez d'abord « Tout restaurer ».");
+            return b;
+        }
+
+        [Fact]
+        public async Task La_desinstallation_propose_de_tout_restaurer_avant()
+        {
+            var vm = Vm(); var ordre = new List<string>(); string texteVu = null;
+            vm.Desinstaller = confirme => { ordre.Add(confirme ? "desinstaller" : "apercu"); return Bilan(confirme); };
+            vm.ProposerToutRestaurer = t => { Assert.Contains("Tout restaurer d'abord", t); return true; };
+            vm.ToutRestaurer = () => { ordre.Add("restaurer"); return Task.FromResult(new ResultatRestauration { AnnuleesParJournal = 3 }); };
+            vm.Confirmer = t => { texteVu = t; return true; };
+            await vm.DesinstallerAsync();
+            Assert.Equal(new[] { "apercu", "restaurer", "desinstaller" }, ordre);
+            Assert.DoesNotContain("ne sont pas annulés", texteVu);   // tout est restauré : l'avertissement n'a plus lieu d'être
+        }
+
+        [Fact]
+        public async Task Refuser_la_restauration_desinstalle_sans_restaurer()
+        {
+            var vm = Vm(); var ordre = new List<string>();
+            vm.Desinstaller = confirme => { ordre.Add(confirme ? "desinstaller" : "apercu"); return Bilan(confirme); };
+            vm.ProposerToutRestaurer = t => false;
+            vm.ToutRestaurer = () => { ordre.Add("restaurer"); return Task.FromResult(new ResultatRestauration()); };
+            vm.Confirmer = t => true;
+            await vm.DesinstallerAsync();
+            Assert.Equal(new[] { "apercu", "desinstaller" }, ordre);
+        }
+
+        [Fact]
+        public async Task Restauration_incomplete_demande_avant_de_desinstaller()
+        {
+            var vm = Vm(); var ordre = new List<string>(); var questions = new List<string>();
+            vm.Desinstaller = confirme => { ordre.Add(confirme ? "desinstaller" : "apercu"); return Bilan(confirme); };
+            vm.ProposerToutRestaurer = t => true;
+            vm.ToutRestaurer = () =>
+            {
+                var r = new ResultatRestauration(); r.Echecs.Add("opt.x : accès refusé");
+                return Task.FromResult(r);
+            };
+            vm.Confirmer = t => { questions.Add(t); return false; };
+            await vm.DesinstallerAsync();
+            Assert.Equal(new[] { "apercu" }, ordre);
+            Assert.Single(questions); Assert.Contains("opt.x : accès refusé", questions[0]);
+            Assert.StartsWith("Désinstallation annulée : 1 réglage(s)", vm.Message);
+        }
+
+        [Fact]
+        public async Task Sans_reglage_applique_la_restauration_n_est_pas_proposee()
+        {
+            var vm = Vm(); bool propose = false;
+            vm.Desinstaller = confirme => new BilanDesinstallation { Code = confirme ? 0 : 2 };
+            vm.ProposerToutRestaurer = t => { propose = true; return true; };
+            vm.ToutRestaurer = () => Task.FromResult(new ResultatRestauration());
+            vm.Confirmer = t => false;
+            await vm.DesinstallerAsync();
+            Assert.False(propose);
+        }
+
         [Fact]
         public void L_apercu_de_desinstallation_ne_supprime_rien()
         {

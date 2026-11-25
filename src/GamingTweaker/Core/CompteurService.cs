@@ -59,6 +59,10 @@ namespace GamingTweaker.Core
         public const int TemperaturesToutesLesNSecondes = 4;
         private int tickTemperatures;
         private double? tempCpuMem, tempGpuMem;
+        private string antiTricheMem;
+
+        /// <summary>Anti-triche en cours (nom affiché, null si aucun) ; remplaçable par les tests.</summary>
+        public Func<string> DetecterAntiTriche { get; set; } = () => AntiTriche.Actif();
 
         /// <summary>Vrai au premier relevé puis tous les <see cref="TemperaturesToutesLesNSecondes"/> relevés.</summary>
         public static bool DoitLireTemperatures(int tick) => tick % TemperaturesToutesLesNSecondes == 0;
@@ -67,6 +71,12 @@ namespace GamingTweaker.Core
         private void ReleverTemperatures(ChargeSysteme c)
         {
             bool vc = tempCpu, vg = tempGpu;
+            // Anti-triche à pilote noyau en cours : la partie processeur de la bibliothèque (pilote PawnIO) est fermée pendant la partie.
+            // Les FPS, les charges et la température de la carte graphique (interface du pilote graphique) ne sont pas concernés.
+            string ac = null;
+            if (vc) { try { ac = DetecterAntiTriche == null ? null : DetecterAntiTriche(); } catch (Exception) { ac = null; } }
+            c.AntiTricheCpu = ac;
+            if (ac != null) vc = false;
             if ((!vc && !vg) || temperaturesEnErreur)
             {
                 if (temperatures != null) { temperatures.Dispose(); temperatures = null; }
@@ -77,6 +87,7 @@ namespace GamingTweaker.Core
                 if (temperatures == null || temperatures.Cpu != vc || temperatures.Gpu != vg)
                 {
                     if (temperatures != null) temperatures.Dispose();
+                    if (ac != null) TraceAppli.Ecrire("compteur en jeu : " + ac + " actif, température du processeur suspendue");
                     temperatures = new Info.TemperaturesCompteur(vc, vg);
                 }
                 var t = temperatures.Lire();
@@ -91,10 +102,14 @@ namespace GamingTweaker.Core
             }
         }
 
+        /// <summary>Utilisateurs de la source (surimpression, mesure en jeu) : elle ne s'arrête qu'au dernier <see cref="Arreter"/>.</summary>
+        private int utilisateurs;
+
         public void Demarrer()
         {
             lock (verrou)
             {
+                utilisateurs++;
                 if (etw != null) return;
                 etw = new CompteurEtw();
                 etw.Demarrer();
@@ -109,7 +124,8 @@ namespace GamingTweaker.Core
             CompteurEtw e; CompteurSysteme s; Timer m;
             lock (verrou)
             {
-                if (etw == null) return;
+                if (utilisateurs > 0) utilisateurs--;
+                if (etw == null || utilisateurs > 0) return;
                 e = etw; s = systeme; m = minuteur;
                 etw = null; systeme = null; minuteur = null;
                 derniereCharge = new ChargeSysteme();
@@ -147,8 +163,8 @@ namespace GamingTweaker.Core
                     c = s.Relever(cpu, gpu, ram);
                     // Températures (bibliothèque capteurs, lente sur certains portables) : relues toutes les quelques secondes seulement,
                     // la dernière valeur reste affichée entre deux lectures. Une température varie lentement : rien d'utile n'est perdu.
-                    if (DoitLireTemperatures(tickTemperatures++)) { ReleverTemperatures(c); tempCpuMem = c.TempCpu; tempGpuMem = c.TempGpu; }
-                    else { c.TempCpu = tempCpuMem; c.TempGpu = tempGpuMem; }
+                    if (DoitLireTemperatures(tickTemperatures++)) { ReleverTemperatures(c); tempCpuMem = c.TempCpu; tempGpuMem = c.TempGpu; antiTricheMem = c.AntiTricheCpu; }
+                    else { c.TempCpu = tempCpuMem; c.TempGpu = tempGpuMem; c.AntiTricheCpu = antiTricheMem; }
                 }
             }
             catch (Exception ex) { TraceAppli.Erreur("compteur en jeu : relevé de charge", ex); return; }
@@ -187,7 +203,8 @@ namespace GamingTweaker.Core
             return (int)pid;
         }
 
-        public void Dispose() { Arreter(); }
+        /// <summary>Arrête la source quel que soit le nombre d'utilisateurs (fermeture de l'application).</summary>
+        public void Dispose() { lock (verrou) utilisateurs = Math.Min(utilisateurs, 1); Arreter(); }
 
         [DllImport("user32.dll")]
         private static extern IntPtr GetForegroundWindow();

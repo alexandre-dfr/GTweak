@@ -83,7 +83,7 @@
 
         <TextBlock x:Name="Total" Grid.Row="3" Margin="12,6,12,0" TextAlignment="Right" Foreground="{DynamicResource MutedBrush}"/>
         <TextBlock Grid.Row="4" Text="Script exact qui sera exécuté" Margin="0,10,0,6" Foreground="{DynamicResource MutedBrush}"/>
-        <TextBox x:Name="Script" Grid.Row="5" IsReadOnly="True" FontFamily="Consolas" FontSize="12.5" AcceptsReturn="True" TextWrapping="NoWrap"
+        <TextBox x:Name="Script" Grid.Row="5" AutomationProperties.Name="Script qui sera exécuté" IsReadOnly="True" FontFamily="Consolas" FontSize="12.5" AcceptsReturn="True" TextWrapping="NoWrap"
                  HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"/>
 
         <DockPanel Grid.Row="6" Margin="0,18,0,0" LastChildFill="False">

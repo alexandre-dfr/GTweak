@@ -101,7 +101,7 @@ jobs:
         run: dotnet build src/GamingTweaker/GamingTweaker.csproj -c Release --no-restore
 
       - name: Tests
-        run: dotnet test tests/GamingTweaker.Tests/GamingTweaker.Tests.csproj -c Release --no-restore --logger "trx;LogFileName=tests.trx" --results-directory TestResults
+        run: dotnet test tests/GamingTweaker.Tests/GamingTweaker.Tests.csproj -c Release --no-restore --logger "trx;LogFileName=tests.trx" --results-directory TestResults --collect "XPlat Code Coverage"
 
       # Fiabilité : chaque option testable et réversible est réellement détectée, appliquée, vérifiée, annulée et revérifiée
       # sur cette machine jetable (effacée après l'exécution). Résumé ci-dessous, rapport joint à la publication.
@@ -149,6 +149,20 @@ jobs:
           "## Tests : $($c.passed) réussis, $($c.failed) échoués, $($c.total) au total" >> $env:GITHUB_STEP_SUMMARY
           foreach ($r in $x.TestRun.Results.UnitTestResult | Where-Object { $_.outcome -eq 'Failed' }) {
             "- **$($r.testName)** : " + (($r.Output.ErrorInfo.Message -split "`n")[0]) >> $env:GITHUB_STEP_SUMMARY
+          }
+          # Couverture (coverlet, format Cobertura) : globale puis par espace de noms, pour voir ce que les tests ne touchent pas.
+          $cob = Get-ChildItem TestResults -Recurse -Filter coverage.cobertura.xml -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (-not $cob) { "Couverture : aucun rapport produit." >> $env:GITHUB_STEP_SUMMARY; exit 0 }
+          [xml]$cv = Get-Content $cob.FullName
+          $pct = { param($v) [math]::Round([double]::Parse($v, [Globalization.CultureInfo]::InvariantCulture) * 100, 1) }
+          "## Couverture : $(& $pct $cv.coverage.'line-rate') % des lignes, $(& $pct $cv.coverage.'branch-rate') % des branches" >> $env:GITHUB_STEP_SUMMARY
+          "| Espace de noms | Lignes |" >> $env:GITHUB_STEP_SUMMARY
+          "|---|---|" >> $env:GITHUB_STEP_SUMMARY
+          $classes = @($cv.coverage.packages.package | ForEach-Object { $_.classes.class })
+          $classes | Group-Object { ($_.name -split '\.')[0..1] -join '.' } | Sort-Object Name | ForEach-Object {
+            $lignes = @($_.Group | ForEach-Object { $_.lines.line })
+            $vues = @($lignes | Where-Object { [int]$_.hits -gt 0 }).Count
+            if ($lignes.Count -gt 0) { "| $($_.Name) | $([math]::Round(100.0 * $vues / $lignes.Count, 1)) % ($vues / $($lignes.Count)) |" >> $env:GITHUB_STEP_SUMMARY }
           }
 
       # Après les tests : rien ne recompile l'exe une fois signé.

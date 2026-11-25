@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.6.0.schema.json
+PackageIdentifier: alexandre-dfr.GamingTweaker
+PackageVersion: '{{VERSION}}'
+PackageLocale: fr-FR
+Publisher: alexandre-dfr
+PublisherUrl: https://github.com/alexandre-dfr
+PublisherSupportUrl: https://github.com/alexandre-dfr/GTweak/issues
+PrivacyUrl: https://github.com/alexandre-dfr/GTweak/blob/main/CONFIDENTIALITE.md
+PackageName: GamingTweaker
+PackageUrl: https://github.com/alexandre-dfr/GTweak
+License: AGPL-3.0-only
+LicenseUrl: https://github.com/alexandre-dfr/GTweak/blob/main/LICENSE
+ShortDescription: Réglage d'un PC de jeu sous Windows, chaque modification étant réversible.
+Description: |-
+  Application portable qui optimise un PC de jeu (Optimisation, Télémétrie, Bloatware, Nettoyage, Mises à jour) :
+  seules les options cochées sont exécutées, avec aperçu, point de restauration et journal d'annulation.
+  Compteur en jeu (FPS, 1 % bas, CPU, GPU) sans injection, Mode Jeu automatique et mesures avant / après.
+Moniker: gamingtweaker
+Tags:
+- gaming
+- optimisation
+- tweaks
+- fps
+- windows
+ReleaseNotesUrl: https://github.com/alexandre-dfr/GTweak/releases/tag/v{{VERSION}}
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

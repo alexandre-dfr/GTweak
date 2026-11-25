@@ -9,7 +9,7 @@
         <BooleanToVisibilityConverter x:Key="BoolVis"/>
 
         <DataTemplate x:Key="ListeElementTemplate">
-            <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}" Margin="0,3" HorizontalAlignment="Stretch">
+            <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}" Margin="0,3" HorizontalAlignment="Stretch" AutomationProperties.Name="{Binding Titre}">
                 <StackPanel>
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="{Binding Titre}" FontSize="14" TextWrapping="Wrap" VerticalAlignment="Center"/>
@@ -137,7 +137,7 @@
 
         <DataTemplate x:Key="OptionTemplate">
             <StackPanel>
-            <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}" HorizontalAlignment="Stretch">
+            <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}" HorizontalAlignment="Stretch" AutomationProperties.Name="{Binding Titre}" AutomationProperties.HelpText="{Binding Description}">
                 <StackPanel>
                     <TextBlock Text="{Binding Titre}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap"/>
                     <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
@@ -256,7 +256,7 @@
             <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,8"
                     Visibility="{Binding NouvelleVersionVisible, Converter={StaticResource BoolVis}, FallbackValue=Collapsed}">
                 <DockPanel>
-                    <Button DockPanel.Dock="Right" Content="✕" Click="MasquerNouvelleVersion_Click" Padding="8,2" Margin="8,0,0,0" ToolTip="Masquer jusqu'au prochain lancement"/>
+                    <Button DockPanel.Dock="Right" Content="✕" AutomationProperties.Name="Masquer l'annonce de nouvelle version" Click="MasquerNouvelleVersion_Click" Padding="8,2" Margin="8,0,0,0" ToolTip="Masquer jusqu'au prochain lancement"/>
                     <Button DockPanel.Dock="Right" Content="Nouveautés" Click="VoirNouvelleVersion_Click" Margin="8,0,0,0" ToolTip="Ouvre la page de la version dans le navigateur"/>
                     <Button DockPanel.Dock="Right" Content="{Binding TexteBoutonMiseAJour}" Style="{StaticResource PrimaryButton}" Click="MettreAJour_Click"
                             IsEnabled="{Binding PeutMettreAJour}" ToolTip="Télécharge la nouvelle version, vérifie son empreinte SHA-256, la met à la place de celle-ci et redémarre"/>
@@ -279,7 +279,7 @@
                 </Style>
             </Border.Style>
             <DockPanel>
-                <Button DockPanel.Dock="Right" Content="✕" Click="FermerMessage_Click" Padding="8,2" Margin="12,0,0,0" VerticalAlignment="Top" ToolTip="Masquer ce message"/>
+                <Button DockPanel.Dock="Right" Content="✕" AutomationProperties.Name="Masquer ce message" Click="FermerMessage_Click" Padding="8,2" Margin="12,0,0,0" VerticalAlignment="Top" ToolTip="Masquer ce message"/>
                 <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
             </DockPanel>
         </Border>
@@ -292,7 +292,7 @@
 
             <DockPanel Background="{DynamicResource BgBrush}">
                 <TextBlock DockPanel.Dock="Top" Text="GamingTweaker" FontFamily="{StaticResource PoliceTitre}" FontSize="15" FontWeight="SemiBold" Margin="22,14,16,6"/>
-                <ListBox ItemsSource="{Binding Menus}" SelectedValuePath="Nom" SelectedValue="{Binding MenuCourant, Mode=TwoWay}"
+                <ListBox ItemsSource="{Binding Menus}" AutomationProperties.Name="Menus" SelectedValuePath="Nom" SelectedValue="{Binding MenuCourant, Mode=TwoWay}"
                          ItemContainerStyle="{StaticResource MenuItemStyle}" Background="Transparent" BorderThickness="0" Padding="0,0,0,0"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
             </DockPanel>
@@ -371,7 +371,7 @@
                     </DockPanel>
                 </Border>
 
-                <ListBox Grid.Row="2" ItemsSource="{Binding Source={StaticResource OptionsView}}" ItemContainerStyle="{StaticResource OptionItemStyle}"
+                <ListBox Grid.Row="2" AutomationProperties.Name="Options" ItemsSource="{Binding Source={StaticResource OptionsView}}" ItemContainerStyle="{StaticResource OptionItemStyle}"
                          ItemTemplate="{StaticResource OptionTemplate}" Background="Transparent" BorderThickness="0"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.CanContentScroll="True"
                          VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling"
@@ -466,7 +466,7 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="Profil" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Margin="0,0,10,0"/>
-                <ComboBox Grid.Column="1" Width="200" Height="34" ItemsSource="{Binding ProfilsDisponibles}" SelectedItem="{Binding ProfilSelectionne, Mode=TwoWay}"/>
+                <ComboBox Grid.Column="1" Width="200" Height="34" AutomationProperties.Name="Profil" ItemsSource="{Binding ProfilsDisponibles}" SelectedItem="{Binding ProfilSelectionne, Mode=TwoWay}"/>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="10,0,0,0">
                     <!-- Toutes les actions de profil dans un seul menu : la barre garde Aperçu et LANCER bien visibles. -->
                     <Button x:Name="BoutonProfil" AutomationProperties.Name="Menu Profil" Click="BoutonProfil_Click" ToolTip="Enregistrer, recharger, partager ou planifier le profil">

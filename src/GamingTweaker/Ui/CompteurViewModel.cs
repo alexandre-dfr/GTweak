@@ -330,7 +330,7 @@ namespace GamingTweaker.Ui
             TexteProcessus = m == null ? (string.IsNullOrEmpty(r.Processus) ? "" : r.Processus + " : aucune image")
                            : r.Processus + (string.IsNullOrEmpty(m.Source) ? "" : " · " + m.Source);
             var c = r.Charge ?? new ChargeSysteme();
-            TexteCpu = Pourcent("CPU", c.Cpu) + (config.TempCpu ? Temperature(c.TempCpu) : "");
+            TexteCpu = Pourcent("CPU", c.Cpu) + (config.TempCpu ? (c.AntiTricheCpu != null && !c.TempCpu.HasValue ? "   AC °C" : Temperature(c.TempCpu)) : "");
             TexteGpu = Pourcent("GPU", c.Gpu) + (config.TempGpu ? Temperature(c.TempGpu) : "");
             TexteRam = Pourcent("RAM", c.Ram) + (c.Ram.HasValue && c.RamTotaleGo > 0 ? "  " + c.RamUtiliseeGo.ToString("0.0", Fr) + "/" + c.RamTotaleGo.ToString("0", Fr) + " Go" : "");
 

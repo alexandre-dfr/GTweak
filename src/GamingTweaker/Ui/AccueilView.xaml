@@ -121,6 +121,17 @@
                 </DockPanel>
             </Border>
 
+            <!-- Barre d'information : réglages rétablis depuis leur application (mise à jour de Windows, pilote, à la main) -->
+            <Border Background="{DynamicResource WarnBg}" CornerRadius="8" Padding="16,10" Margin="0,-12,0,24"
+                    Visibility="{Binding ADerive, Converter={StaticResource BoolVis}, FallbackValue=Collapsed}">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Content="Recocher ces réglages" Command="{Binding ReappliquerDeriveCommand}" Margin="12,0,0,0"
+                            ToolTip="Coche les réglages rétablis ; rien ne change avant « Aperçu » puis « LANCER »"/>
+                    <TextBlock Text="&#xE7BA;" FontFamily="{StaticResource PoliceIcones}" Foreground="{DynamicResource AvanceFg}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBlock Text="{Binding TexteDerive}" VerticalAlignment="Center" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+                </DockPanel>
+            </Border>
+
             <!-- ===== 2. Démarrage rapide ===== -->
             <DockPanel Margin="2,0,0,10">
                 <TextBlock Text="Rien ne change avant « Aperçu » puis « LANCER »" Style="{StaticResource Secondaire}" DockPanel.Dock="Right" VerticalAlignment="Bottom"/>

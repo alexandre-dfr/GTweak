@@ -59,6 +59,7 @@ Aucun ne contient d'option Risqué, d'option à liste (services, démarrage : le
 ## Accueil et Paramètres
 
 - **Accueil** : le matériel de ce PC (processeur, carte graphique et sa mémoire vidéo, mémoire vive, disque système avec son type et son espace libre), les profils intégrés en un clic, l'état des réglages par menu, le diagnostic et le Mode Jeu.
+  Si un réglage appliqué par GamingTweaker n'est plus en place (rétabli par une mise à jour de Windows ou d'un pilote, ou à la main), un bandeau le signale avec le bouton **Recocher ces réglages** : ils sont cochés, rien ne change avant « Aperçu » puis « LANCER ». Une option annulée depuis l'historique n'est plus signalée.
 - **Paramètres** (dernier menu) : thème (comme Windows, clair ou sombre), démarrage avec Windows, guide de l'accueil, version, et tous les réglages du compteur en jeu. Les deux boutons en haut à droite ne font que basculer : le compteur (affiché / masqué) et le thème (clair / sombre).
 
 ## Compteur en jeu (FPS, CPU, GPU, RAM)
@@ -70,7 +71,7 @@ Le bouton en forme de compteur, en haut à droite (à côté du thème), affiche
   - temps d'image et « 1 % bas » (99e centile du temps d'image sur 10 s) ;
   - courbe des FPS sur 10, 30 ou 60 s ;
   - charge du processeur, de la carte graphique et de la mémoire en pourcentage ;
-  - températures de la carte graphique (lue par le pilote NVIDIA ou AMD, rien à installer) et du processeur (demande le pilote PawnIO, proposé dans le menu Informations ; son comportement face aux anti-triche n'a pas été vérifié). Désactivées par défaut.
+  - températures de la carte graphique (lue par le pilote NVIDIA ou AMD, rien à installer) et du processeur (demande le pilote PawnIO, proposé dans le menu Informations). Pendant qu'un anti-triche à pilote noyau tourne (Vanguard, FACEIT, Easy Anti-Cheat, BattlEye, EA Javelin), la température du processeur n'est pas lue et affiche « AC » : le compteur ne parle alors à aucun pilote tiers, seulement à Windows (FPS, charges) et au pilote graphique (température GPU), comme l'overlay de NVIDIA. Désactivées par défaut.
 - **Position** : un coin de l'écran principal, ou **n'importe où** : avec « Placer le compteur à l'écran » (Paramètres), le compteur est affiché avec un cadre pointillé jusqu'à ce que vous quittiez les Paramètres et se déplace à la souris, sur n'importe quel écran ; tirez le coin ◢ du cadre (ou Ctrl+molette) pour l'agrandir ou le réduire (60 à 300 %). Il garde cette place et cette taille.
 - **Apparence** : taille, opacité du fond et **couleurs** : choisissez l'élément (FPS, temps d'image et 1 % bas, courbe, CPU, GPU, RAM) puis sa couleur, parmi 7 proposées ou une couleur libre `#RRVVBB` ; « Tout le compteur » remet la même couleur partout. Largeur fixe et police à chasse fixe : le compteur ne bouge pas quand les chiffres changent ; il est rafraîchi deux fois par seconde.
 - **Fonctionnement** : les FPS viennent des événements publiés par Windows (ETW, comme PresentMon) : « Present » de DirectX 9 à 12 en priorité, sinon le noyau graphique (DxgKrnl), qui voit aussi les images des jeux Vulkan et OpenGL. La source est indiquée sous les FPS ; rien n'est injecté dans le jeu, le compteur est donc compatible avec les anti-triche. Processeur, mémoire et carte graphique sont mesurés comme dans le Gestionnaire des tâches. La surimpression laisse passer les clics et ne prend jamais le clavier. Rien ne tourne quand le compteur est masqué.
@@ -112,6 +113,8 @@ Le menu « Diagnostic » (lecture seule) repère ce qui bride réellement les pe
 
 Historique > Mesures : un relevé de 30 s (temps DPC et d'interruptions, processeur au repos, services, processus, mémoire disponible, programmes au démarrage). Faites-en un avant d'optimiser et un après, puis « Avant / après » (les deux relevés les plus récents, ou les deux que vous avez cochés) : chaque mesure est marquée « mieux », « moins bien » ou « stable ».
 
+**En jeu** (même écran) : lancez votre jeu, cliquez sur **Mesurer une partie (60 s)** et revenez dans le jeu. La mesure commence 10 s plus tard et relève pendant 60 s les FPS moyens, le « 1 % bas » (fluidité), le pire « 1 % bas » (saccades) et la charge du processeur et de la carte graphique de la fenêtre au premier plan, par la même source que le compteur en jeu (événements de Windows, rien d'injecté). Faites-en une avant d'optimiser et une après, sur la même scène et avec les mêmes réglages graphiques, puis **Comparer les parties** : la dernière partie est comparée à la précédente du même jeu ; un écart de moins de 3 % est jugé stable (bruit d'une partie à l'autre). Une mesure où le jeu n'a pas été au premier plan au moins 80 % du temps est signalée incomplète.
+
 ## Mode Jeu
 
 Le menu Mode Jeu se lit de haut en bas :
@@ -141,6 +144,8 @@ Chaque modification réversible est notée dans un journal. Un journal applicati
 **Profil ▾ > Planifier une routine hebdomadaire…** crée la tâche hebdomadaire `\GamingTweaker\Routine` qui applique le profil choisi sans interface (`GamingTweaker.exe --profile <fichier> --silent`). Codes de sortie : 0 = tout est appliqué ou ignoré, 1 = au moins un échec, 2 = exécution impossible. **Supprimer la routine** retire la tâche. Les données de la routine sont dans le dossier de données protégé de GamingTweaker, dossier protégé (propriétaire Administrateurs).
 
 ## Désinstaller
+
+Le plus simple : **Historique > Désinstaller GamingTweaker…**. Si des réglages ont été appliqués, l'appli propose d'abord **Tout restaurer** (ils ne peuvent plus être annulés une fois les journaux supprimés), puis retire la routine planifiée, le démarrage avec Windows et le dossier de données protégé, et se ferme ; il reste à supprimer `GamingTweaker.exe`.
 
 L'application est portable : supprimer `GamingTweaker.exe` suffit pour le programme. Pour retirer aussi la routine planifiée et le dossier de données protégé (`%ProgramFiles%\GamingTweaker` : sessions, journaux d'annulation, quarantaine), lancer en administrateur :
 
@@ -188,6 +193,10 @@ git push origin v0.9.3
 4. Si une clé de signature existe (voir « Signer une version »), signer la release.
 
 Le workflow refuse un tag qui ne correspond pas à `<Version>`. Espacez les versions stables : chaque nouvel exe repart de zéro côté réputation SmartScreen, et c'est la release « Latest » que les utilisateurs téléchargent.
+
+### Publier sur winget
+
+Une fois une version stable publiée, `tools/winget/generer-manifeste.ps1 -Version X.Y.Z` télécharge son exe, calcule son SHA-256 et écrit les manifestes winget (installation portable, `alexandre-dfr.GamingTweaker`) dans `tools/winget/manifests/…` à partir des modèles de `tools/winget/modele`. Vérifiez-les avec `winget validate --manifest <dossier>`, puis soumettez-les par une pull request sur `microsoft/winget-pkgs` (ou `wingetcreate submit <dossier>`). Les versions suivantes : `wingetcreate update alexandre-dfr.GamingTweaker -u <adresse de l'exe> -v X.Y.Z --submit`. Le script ne soumet rien lui-même.
 
 ### Signer une version
 

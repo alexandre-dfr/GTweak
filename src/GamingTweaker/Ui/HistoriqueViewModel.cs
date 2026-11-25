@@ -46,9 +46,12 @@ namespace GamingTweaker.Ui
             AnnulerSessionCommand = new RelayCommand(p => { var t = AnnulerSessionAsync((SessionViewModel)p); }, p => !enCours && p is SessionViewModel && ((SessionViewModel)p).Annulable);
             RestaurerQuarantaineCommand = new RelayCommand(p => RestaurerQuarantaine((QuarantaineLigne)p), p => p is QuarantaineLigne && ((QuarantaineLigne)p).OrigineConnue);
             PurgerQuarantaineCommand = new RelayCommand(p => PurgerQuarantaine((QuarantaineLigne)p), p => p is QuarantaineLigne);
-            ReleverCommand = new RelayCommand(_ => { var t = ReleverAsync(); }, _ => !enReleve);
+            ReleverCommand = new RelayCommand(_ => { var t = ReleverAsync(); }, _ => !enReleve && !enPartie);
             ComparerCommand = new RelayCommand(_ => AvantApres(), _ => Releves.Count >= 2);
-            DesinstallerCommand = new RelayCommand(_ => { var t = DesinstallerAsync(); }, _ => !enCours && !enReleve);
+            DesinstallerCommand = new RelayCommand(_ => { var t = DesinstallerAsync(); }, _ => !enCours && !enReleve && !enPartie);
+            MesurerPartieCommand = new RelayCommand(_ => { var t = MesurerPartieAsync(); }, _ => SourceJeu != null && !enPartie && !enReleve);
+            AnnulerPartieCommand = new RelayCommand(_ => { var c = annulationPartie; if (c != null) c.Cancel(); }, _ => enPartie);
+            ComparerPartiesCommand = new RelayCommand(_ => ComparerParties(), _ => Parties.Count >= 2);
             Charger();
         }
 
@@ -70,6 +73,15 @@ namespace GamingTweaker.Ui
         public Func<bool, BilanDesinstallation> Desinstaller { get; set; } = confirme => Desinstallation.Executer(confirme);
         /// <summary>Appelée quand la désinstallation a été exécutée (l'application se ferme).</summary>
         public Action ApresDesinstallation { get; set; }
+        /// <summary>« Tout restaurer » (tous les menus) proposé avant la désinstallation ; null : non proposé.</summary>
+        public Func<Task<ResultatRestauration>> ToutRestaurer { get; set; }
+        /// <summary>Question « tout restaurer d'abord ? » (texte, vrai pour restaurer) ; null : non proposée.</summary>
+        public Func<string, bool> ProposerToutRestaurer { get; set; }
+
+        public const string QuestionRestaurerAvant =
+            "Des réglages appliqués par GamingTweaker sont encore en place. La désinstallation supprime leurs journaux d'annulation : "
+            + "ils ne pourront plus être annulés par GamingTweaker.\r\n\r\nTout restaurer d'abord (recommandé) ?\r\n\r\n"
+            + "Oui : tout restaurer, puis désinstaller.\r\nNon : désinstaller en gardant les réglages.";
 
         /// <summary>
         /// Aperçu (routine, sessions, quarantaine) puis confirmation explicite ; les réglages appliqués ne sont pas annulés par la désinstallation,
@@ -82,9 +94,23 @@ namespace GamingTweaker.Ui
             try
             {
                 var apercu = await Task.Run(() => Desinstaller(false));
+                if (apercu.Avertissements.Any(a => a.Contains("autre exécution"))) { Message = apercu.Avertissements[0]; return; }
+                // Réglages encore appliqués (sessions avec journaux) : « Tout restaurer » proposé avant que les journaux disparaissent.
+                if (apercu.Avertissements.Any(a => a.StartsWith("Les réglages appliqués", StringComparison.Ordinal))
+                    && ToutRestaurer != null && ProposerToutRestaurer != null && ProposerToutRestaurer(QuestionRestaurerAvant))
+                {
+                    var r = await ToutRestaurer();
+                    if (r != null && (r.Echecs.Count > 0 || r.IgnoreesAutreCompte.Count > 0))
+                    {
+                        var restes = r.Echecs.Concat(r.IgnoreesAutreCompte).ToList();
+                        if (Confirmer == null || !Confirmer("Certains réglages n'ont pas été restaurés :\r\n- " + string.Join("\r\n- ", restes)
+                            + "\r\n\r\nDésinstaller quand même ?"))
+                        { Message = "Désinstallation annulée : " + restes.Count + " réglage(s) n'ont pas été restaurés."; return; }
+                    }
+                    apercu.Avertissements.RemoveAll(a => a.StartsWith("Les réglages appliqués", StringComparison.Ordinal));
+                }
                 var texte = string.Join("\r\n", apercu.Actions.Concat(apercu.Avertissements.Select(a => "Attention : " + a)))
                     + "\r\n\r\nL'application se fermera ; GamingTweaker.exe lui-même reste à supprimer à la main.\r\n\r\nDésinstaller maintenant ?";
-                if (apercu.Avertissements.Any(a => a.Contains("autre exécution"))) { Message = apercu.Avertissements[0]; return; }
                 if (Confirmer == null || !Confirmer(texte)) { Message = "Désinstallation annulée."; return; }
                 var bilan = await Task.Run(() => Desinstaller(true));
                 Message = string.Join(" ", bilan.Actions.Concat(bilan.Avertissements.Select(a => "Attention : " + a)));
@@ -159,6 +185,10 @@ namespace GamingTweaker.Ui
                 foreach (var m in Mesures.List(paths.MachineDir)) { var r = new ReleveLigne { Mesure = m }; r.PropertyChanged += (a, b) => CommandManager.InvalidateRequerySuggested(); Releves.Add(r); }
             }
             catch (Exception ex) { Message = "Mesures illisibles : " + ex.Message; }
+
+            Parties.Clear();
+            try { foreach (var m in MesuresJeu.List(paths.MachineDir)) Parties.Add(m); }
+            catch (Exception ex) { Message = "Mesures en jeu illisibles : " + ex.Message; }
         }
 
         /// <summary>Sessions de l'interface et de la routine (une seule racine), du plus récent au plus ancien (date de début).</summary>
@@ -447,6 +477,65 @@ namespace GamingTweaker.Ui
             var deux = Releves.Select(r => r.Mesure).OrderByDescending(m => m.Date, StringComparer.Ordinal).Take(2).OrderBy(m => m.Date, StringComparer.Ordinal).ToList();
             if (deux.Count < 2) { Comparaison = "Faites un relevé avant d'optimiser, puis un autre après : la comparaison montre ce qui a changé."; return; }
             Comparaison = FormaterComparaison(deux[0], deux[1]);
+        }
+
+        // ---------- Mesures en jeu (FPS avant / après) ----------
+
+        /// <summary>Source du compteur en jeu, partagée avec la surimpression ; null : mesure en jeu indisponible.</summary>
+        public ISourceCompteur SourceJeu { get; set; }
+        /// <summary>Enregistrement d'une partie ; remplaçable dans les tests.</summary>
+        public Func<ISourceCompteur, TimeSpan, TimeSpan, IProgress<int>, CancellationToken, Task<MesureJeu>> EnregistrerPartie { get; set; } = MesuresJeu.EnregistrerAsync;
+        public TimeSpan AttentePartie { get; set; } = MesuresJeu.Attente;
+        public TimeSpan DureePartie { get; set; } = MesuresJeu.Duree;
+
+        public ObservableCollection<MesureJeu> Parties { get; } = new ObservableCollection<MesureJeu>();
+        public ICommand MesurerPartieCommand { get; private set; }
+        public ICommand AnnulerPartieCommand { get; private set; }
+        public ICommand ComparerPartiesCommand { get; private set; }
+
+        private bool enPartie;
+        private CancellationTokenSource annulationPartie;
+        public bool EnPartie { get { return enPartie; } private set { if (Set(ref enPartie, value)) CommandManager.InvalidateRequerySuggested(); } }
+
+        private string etatPartie = "";
+        /// <summary>« Revenez dans le jeu : début dans 8 s », puis « Mesure en cours : 42 s ».</summary>
+        public string EtatPartie { get { return etatPartie; } private set { Set(ref etatPartie, value ?? ""); } }
+
+        public const string AidePartie =
+            "Lancez votre jeu, cliquez sur « Mesurer une partie », puis revenez dans le jeu : la mesure commence 10 s plus tard et dure 60 s "
+            + "(FPS et 1 % bas de la fenêtre au premier plan, rien n'est injecté dans le jeu). Faites-en une avant d'optimiser et une après, "
+            + "sur la même scène et avec les mêmes réglages graphiques, puis « Comparer les parties ».";
+        public string TexteAidePartie { get { return AidePartie; } }
+
+        public async Task MesurerPartieAsync()
+        {
+            if (enPartie || SourceJeu == null) return;
+            EnPartie = true;
+            var cts = new CancellationTokenSource();
+            annulationPartie = cts;
+            EtatPartie = "Revenez dans le jeu…";
+            try
+            {
+                var p = new Progress<int>(s => EtatPartie = s < 0 ? "Revenez dans le jeu : la mesure commence dans " + (-s) + " s." : "Mesure en cours : encore " + s + " s.");
+                var m = await EnregistrerPartie(SourceJeu, AttentePartie, DureePartie, p, cts.Token);
+                MesuresJeu.Save(m, paths.MachineDir);
+                Message = m.FpsMoyen.HasValue
+                    ? "Partie mesurée : " + m.Libelle + "." + (string.IsNullOrEmpty(m.Note) ? "" : " Attention : " + m.Note + ".")
+                    : "Aucune image mesurée : " + (m.Note ?? "le jeu n'était pas au premier plan") + ". Le jeu doit être en plein écran sans bordure ou en fenêtre.";
+                Charger();
+            }
+            catch (OperationCanceledException) { Message = "Mesure de la partie annulée."; }
+            catch (Exception ex) { Message = "Mesure de la partie impossible : " + ex.Message; }
+            finally { EnPartie = false; EtatPartie = ""; annulationPartie = null; cts.Dispose(); }
+        }
+
+        /// <summary>Compare la partie la plus récente à la précédente du même jeu.</summary>
+        public void ComparerParties()
+        {
+            var b = Parties.FirstOrDefault(m => m.FpsMoyen.HasValue);
+            var a = b == null ? null : Parties.Where(m => m != b && m.FpsMoyen.HasValue && string.Equals(m.Jeu, b.Jeu, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+            if (a == null) { Comparaison = "Mesurez deux parties du même jeu (une avant d'optimiser, une après) : la comparaison montre ce qui a changé."; return; }
+            Comparaison = MesuresJeu.Comparer(a, b);
         }
 
         private static string Signe(long v) { return (v > 0 ? "+" : "") + v.ToString(CultureInfo.CurrentCulture); }

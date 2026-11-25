@@ -115,7 +115,7 @@
             </Grid.ColumnDefinitions>
             <Border Background="{DynamicResource PanelBrush}" CornerRadius="6" Padding="8">
                 <Grid>
-                    <ListBox ItemsSource="{Binding Sessions}" SelectedItem="{Binding SessionSelectionnee, Mode=TwoWay}" ItemTemplate="{StaticResource SessionTemplate}"
+                    <ListBox ItemsSource="{Binding Sessions}" AutomationProperties.Name="Sessions" SelectedItem="{Binding SessionSelectionnee, Mode=TwoWay}" ItemTemplate="{StaticResource SessionTemplate}"
                              ItemContainerStyle="{StaticResource SessionItemStyle}" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
                     <TextBlock Text="Aucune session pour l'instant." Foreground="{DynamicResource MutedBrush}" Margin="8">
                         <TextBlock.Style>
@@ -141,7 +141,7 @@
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                         <ItemsControl ItemsSource="{Binding SessionSelectionnee.Options}" ItemTemplate="{StaticResource OptionSessionTemplate}"/>
                     </ScrollViewer>
-                    <TextBox Grid.Row="2" Text="{Binding RapportTexte, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Margin="0,8,0,0" FontFamily="Consolas" FontSize="12"/>
+                    <TextBox Grid.Row="2" AutomationProperties.Name="Rapport de la session" Text="{Binding RapportTexte, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Margin="0,8,0,0" FontFamily="Consolas" FontSize="12"/>
                 </Grid>
             </Border>
         </Grid>
@@ -170,6 +170,7 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
@@ -189,18 +190,43 @@
                         <Button Content="Avant / après" Command="{Binding ComparerCommand}" ToolTip="Compare les deux relevés les plus récents (faites-en un avant d'optimiser, un autre après), ou les deux que vous avez cochés"/>
                     </StackPanel>
                 </Grid>
-                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                <!-- Mesure en jeu : FPS et 1 % bas d'une partie, avant / après -->
+                <Border Grid.Row="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="4" Padding="12,10" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="En jeu : FPS avant / après" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                        <TextBlock Text="{Binding TexteAidePartie}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,8"/>
+                        <DockPanel Margin="0,0,0,6">
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                <Button Content="Comparer les parties" Command="{Binding ComparerPartiesCommand}" Margin="8,0,0,0"
+                                        ToolTip="Compare la dernière partie mesurée à la précédente du même jeu"/>
+                            </StackPanel>
+                            <Button Content="Mesurer une partie (60 s)" Style="{StaticResource PrimaryButton}" Command="{Binding MesurerPartieCommand}"
+                                    AutomationProperties.HelpText="La mesure commence 10 secondes après le clic : revenez dans le jeu"/>
+                            <Button Content="Annuler" Command="{Binding AnnulerPartieCommand}" Margin="8,0,0,0"
+                                    Visibility="{Binding EnPartie, Converter={StaticResource BoolVis}}"/>
+                            <TextBlock Text="{Binding EtatPartie}" VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+                        </DockPanel>
+                        <ItemsControl ItemsSource="{Binding Parties}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Libelle}" TextWrapping="Wrap" Margin="0,2"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+                <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
                     <ItemsControl ItemsSource="{Binding Releves}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}" Margin="0,3">
+                                <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}" Margin="0,3" AutomationProperties.Name="{Binding Libelle}">
                                     <TextBlock Text="{Binding Libelle}" TextWrapping="Wrap"/>
                                 </CheckBox>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </ScrollViewer>
-                <TextBox Grid.Row="3" Text="{Binding Comparaison, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" Margin="0,10,0,0" MinHeight="110" FontFamily="Consolas" FontSize="12"/>
+                <TextBox Grid.Row="4" AutomationProperties.Name="Comparaison avant / après" Text="{Binding Comparaison, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" Margin="0,10,0,0" MinHeight="110" FontFamily="Consolas" FontSize="12"/>
             </Grid>
         </Border>
 

@@ -147,8 +147,12 @@ namespace GamingTweaker
             {
                 Confirmer = texte => MessageBox.Show(fenetre, texte, "Historique", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes,
                 ApresAnnulation = () => { var _ = vm.DetectAsync(); },
+                ProposerToutRestaurer = texte => MessageBox.Show(fenetre, texte, "Désinstaller GamingTweaker", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.Yes) == MessageBoxResult.Yes,
+                ToutRestaurer = () => vm.ToutRestaurerAsync(),
                 ApresDesinstallation = () =>
                 {
+                    // Le dossier de données vient d'être supprimé : le journal applicatif ne doit pas le recréer.
+                    TraceAppli.CesserEcriture();
                     MessageBox.Show(fenetre, "GamingTweaker est désinstallé. Supprimez GamingTweaker.exe à la main si vous ne voulez plus l'utiliser.", "GamingTweaker", MessageBoxButton.OK, MessageBoxImage.Information);
                     Shutdown(0);
                 },
@@ -200,7 +204,10 @@ namespace GamingTweaker
             }
 
             // ---- Compteur en jeu (FPS, CPU, GPU, RAM) : surimpression et raccourci global ----
-            var compteur = new CompteurViewModel(paths.MachineDir, new CompteurService());
+            // Une seule source (une seule session ETW) partagée par la surimpression et la mesure en jeu de l'historique.
+            var sourceCompteur = new CompteurService();
+            var compteur = new CompteurViewModel(paths.MachineDir, sourceCompteur);
+            vm.Historique.SourceJeu = sourceCompteur;
             vm.Compteur = compteur;
             var surimpression = new CompteurWindow(compteur);
             compteur.AffichageChange += () => surimpression.Appliquer();
