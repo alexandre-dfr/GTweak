@@ -83,7 +83,7 @@ namespace GamingTweaker.Core
                 Directory.CreateDirectory(Dossier);
                 File.WriteAllText(f, "", new UTF8Encoding(false));
             }
-            catch (Exception) { }
+            catch (Exception exc) { TraceAppli.Erreur("journal de démarrage : préparation", exc); }
             Jalon("lancement");
         }
 

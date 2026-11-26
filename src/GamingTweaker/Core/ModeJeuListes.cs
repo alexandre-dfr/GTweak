@@ -26,7 +26,7 @@ namespace GamingTweaker.Core
                             res.Add(new ServiceChoix { Nom = s.ServiceName, Affichage = s.DisplayName });
                 }
             }
-            catch (Exception) { }
+            catch (Exception exc) { TraceAppli.Erreur("mode jeu : liste des services", exc); }
             return res.OrderBy(s => s.Affichage, StringComparer.CurrentCultureIgnoreCase).ToList();
         }
 

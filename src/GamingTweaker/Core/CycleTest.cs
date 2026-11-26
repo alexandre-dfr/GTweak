@@ -78,7 +78,7 @@ namespace GamingTweaker.Core
                 try { Cycle(it, factsCycle, paths, pipeline, l); }
                 catch (Exception ex) { l.resultat = "échec"; l.raison = "exception : " + ex.Message; }
                 Console.WriteLine(l.id + " : " + l.resultat + (l.raison != null ? " (" + l.raison + ")" : ""));
-                try { Ecrire(Path.ChangeExtension(fichierResultat, ".partiel.json"), Resume(lignes), lignes); } catch (Exception) { }
+                try { Ecrire(Path.ChangeExtension(fichierResultat, ".partiel.json"), Resume(lignes), lignes); } catch (Exception exc) { TraceAppli.Erreur("cycle : résultat partiel non écrit", exc); }
             }
 
             var resume = Resume(lignes);

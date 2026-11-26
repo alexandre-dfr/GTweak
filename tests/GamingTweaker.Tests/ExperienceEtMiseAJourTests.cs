@@ -359,6 +359,21 @@ namespace GamingTweaker.Tests
             Assert.Equal(attendu, CopiesProtegees.AMettreAJour(copie == null ? null : new System.Version(copie), new System.Version(courante)));
         }
 
+        [Fact]
+        public void Le_telechargement_de_la_mise_a_jour_est_borne_en_taille()
+        {
+            var src = new MemoryStream(new byte[1000]);
+            var dst = new MemoryStream();
+            Assert.Equal(1000, MiseAJour.CopierBorneAsync(src, dst, 1000).Result);
+            Assert.Equal(1000, dst.Length);
+
+            var trop = new MemoryStream(new byte[300000]);
+            var ex = Assert.Throws<AggregateException>(() => MiseAJour.CopierBorneAsync(trop, new MemoryStream(), 100000).Wait());
+            Assert.IsType<InvalidDataException>(ex.InnerException);
+            Assert.Contains("rien n'a été remplacé", ex.InnerException.Message);
+            Assert.True(MiseAJour.TailleMaxExe >= 50L * 1024 * 1024);
+        }
+
         // ---------- Version portable et CI ----------
 
         private static string Racine() => Path.GetDirectoryName(Path.GetDirectoryName(Helpers.Couverture.Chemin()));
