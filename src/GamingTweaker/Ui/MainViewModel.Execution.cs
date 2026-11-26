@@ -19,7 +19,7 @@ namespace GamingTweaker.Ui
 
         public IReadOnlyList<PreviewRow> BuildPreview()
         {
-            return Options.Where(o => o.IsChecked).OrderBy(o => Catalogue.RangMenu(o.Menu)).ThenBy(o => o.Item.Ordre).Select(o => new PreviewRow
+            return Options.Where(o => o.IsChecked).OrderBy(o => Core.Catalogue.RangMenu(o.Menu)).ThenBy(o => o.Item.Ordre).Select(o => new PreviewRow
             {
                 Id = o.Id, Menu = o.Menu,
                 Titre = o.Titre + (o.Liste == null ? "" : o.Liste.EstVide ? " : aucun élément choisi, non exécutée" : " (" + o.Liste.ResumeCourt + ")"), Risque = o.Risque,

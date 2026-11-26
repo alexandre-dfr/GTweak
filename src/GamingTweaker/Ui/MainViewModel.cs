@@ -20,7 +20,7 @@ namespace GamingTweaker.Ui
     public partial class MainViewModel : ObservableObject
     {
         /// <summary>Menus d'options dans l'ordre d'exécution (Catalogue.OrdreMenus) : la barre latérale et l'aperçu suivent cet ordre.</summary>
-        public static readonly string[] MenusOptions = Catalogue.OrdreMenus;
+        public static readonly string[] MenusOptions = Core.Catalogue.OrdreMenus;
 
         private readonly IReadOnlyList<CatalogItem> items;
         private readonly MachineFacts facts;
