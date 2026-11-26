@@ -177,7 +177,7 @@ namespace GamingTweaker.Tests
             var sub = "try { [IO.File]::OpenWrite($dest).Dispose(); 'ECRITURE-POSSIBLE' } catch { 'ECRITURE-REFUSEE' }";
             return "$GT_DownloadRoot = " + Q(racine) + "\r\n"
                 + "function Initialize-GTAdminDir([string]$Path) { Add-Content -LiteralPath " + Q(log) + " -Value ('acl ' + $Path); New-Item -ItemType Directory -Force -Path $Path | Out-Null }\r\n"
-                + "function Invoke-WebRequest { [CmdletBinding()] param([switch]$UseBasicParsing, [string]$Uri, [string]$OutFile, [int]$TimeoutSec) Add-Content -LiteralPath " + Q(log) + " -Value 'download'; Set-Content -LiteralPath $OutFile -Value 'MZ' }\r\n"
+                + "function Save-GTDownload { param([string]$Url, [string]$Dest, [long]$MaxBytes, [int]$TimeoutSec) Add-Content -LiteralPath " + Q(log) + " -Value 'download'; Set-Content -LiteralPath $Dest -Value 'MZ' }\r\n"
                 + "function Get-AuthenticodeSignature { [CmdletBinding()] param([string]$LiteralPath) $dest = $LiteralPath; Add-Content -LiteralPath " + Q(log) + " -Value ('verif ' + $(" + sub + ")); "
                 + "[pscustomobject]@{ Status = " + (signatureValide ? "'Valid'" : "'NotSigned'") + "; SignerCertificate = [pscustomobject]@{ Subject = 'CN=NVIDIA Corporation' } } }\r\n"
                 + "function Start-Process { [CmdletBinding()] param([string]$FilePath, $ArgumentList, [switch]$Wait, [switch]$PassThru) $dest = $FilePath; Add-Content -LiteralPath " + Q(log) + " -Value ('lancement ' + $(" + sub + ") + ' ' + ($ArgumentList -join ' ')); [pscustomobject]@{ ExitCode = 0 } }\r\n";
