@@ -235,6 +235,46 @@ namespace GamingTweaker.Tests
         }
 
         [Fact]
+        public void Un_telechargement_n_accepte_que_https_y_compris_apres_redirection()
+        {
+            Func<string, string> t = u => string.Join("", PsCommon.Eval("if (Test-GTDownloadUrl ([Uri]" + Q(u) + ")) { 'OK' } else { 'KO' }"));
+            Assert.Equal("OK", t("https://cdn.akamai.steamstatic.com/client/installer/SteamSetup.exe"));
+            Assert.Equal("KO", t("http://cdn.akamai.steamstatic.com/client/installer/SteamSetup.exe"));
+            Assert.Equal("KO", t("ftp://exemple.com/a.exe"));
+            Assert.Equal("KO", t("file:///C:/Windows/notepad.exe"));
+            // Refus avant toute connexion, aucun fichier créé.
+            var dest = Path.Combine(tmp, "a.exe");
+            var r = string.Join("", PsCommon.Eval("try { Save-GTDownload -Url 'http://exemple.com/a.exe' -Dest " + Q(dest) + "; 'TELECHARGE' } catch { 'REFUS ' + $_.Exception.Message }"));
+            Assert.StartsWith("REFUS", r);
+            Assert.Contains("https attendu", r);
+            Assert.False(File.Exists(dest));
+        }
+
+        [Fact]
+        public void L_apercu_annonce_les_applications_qui_ne_s_installeront_pas_seules()
+        {
+            var note = GamingTweaker.Ui.MainViewModel.NoteInstallation(new[] { "steam", "riot", "nvidia-app", "gog" }, Apps);
+            var manuel = note.Substring(0, note.IndexOf("winget uniquement", StringComparison.Ordinal));
+            Assert.Contains("page officielle (indiquée dans le rapport)", manuel);
+            Assert.Contains("Riot Client", manuel);
+            Assert.Contains("NVIDIA App", manuel);
+            Assert.Contains("winget uniquement", note);
+            Assert.Contains("GOG Galaxy", note);
+            Assert.DoesNotContain("Steam", note);   // lien direct : s'installe seule
+            Assert.Equal("", GamingTweaker.Ui.MainViewModel.NoteInstallation(new[] { "steam", "vcredist-x64" }, Apps));
+            Assert.Equal("", GamingTweaker.Ui.MainViewModel.NoteInstallation(new string[0], Apps));
+        }
+
+        [Fact]
+        public void Le_riot_client_deja_installe_est_reconnu_par_son_fichier()
+        {
+            var vus = new List<string>();
+            var p = new AppsProvider("launchers", null, new Installes(), null, f => { vus.Add(f); return f.EndsWith(@"\Riot Client\RiotClientServices.exe", StringComparison.OrdinalIgnoreCase); });
+            Assert.DoesNotContain(p.LoadAsync(CancellationToken.None).Result, e => e.Key == "riot");
+            Assert.Contains("Riot Client", p.Message);
+        }
+
+        [Fact]
         public void Battle_net_sans_winget_renvoie_a_la_page_officielle_sans_rien_telecharger()
         {
             var r = Apply("launchers", new[] { "battlenet" }, Doubles(false));

@@ -109,7 +109,7 @@ namespace GamingTweaker.Lists
         private static readonly Regex ReId = new Regex(@"^[a-z0-9][a-z0-9\-]*$", RegexOptions.CultureInvariant);
         private static readonly Regex ReHttps = new Regex(@"^https://[A-Za-z0-9.\-]+(:\d+)?/\S*$", RegexOptions.CultureInvariant);
         private static readonly Regex ReWinget = new Regex(@"^[A-Za-z0-9][A-Za-z0-9.\-_+]*$", RegexOptions.CultureInvariant);
-        private static readonly Regex ReFichier = new Regex(@"^%(SystemRoot|ProgramFiles|ProgramFiles\(x86\)|ProgramData)%\\[^%<>|""*?:]+$", RegexOptions.CultureInvariant);
+        private static readonly Regex ReFichier = new Regex(@"^%(SystemRoot|SystemDrive|ProgramFiles|ProgramFiles\(x86\)|ProgramData)%\\[^%<>|""*?:]+$", RegexOptions.CultureInvariant);
         private static readonly Regex ReMarque = new Regex(@"^(usb:[0-9A-F]{4}|carte-mere:[A-Z0-9\-]+|gpu:(NVIDIA|AMD)|intel)$", RegexOptions.CultureInvariant);
 
         /// <summary>Erreurs du catalogue (vide si valide) : chaque application doit pouvoir être installée ou indiquée (winget, lien direct ou page).</summary>
@@ -138,7 +138,7 @@ namespace GamingTweaker.Lists
                 }
                 if (!string.IsNullOrEmpty(a.Page) && !ReHttps.IsMatch(a.Page)) err.Add(id + " : page non https.");
                 foreach (var f in a.Fichiers ?? new List<string>())
-                    if (f == null || !ReFichier.IsMatch(f) || f.Contains("..")) err.Add(id + " : fichier de détection « " + f + " » refusé (%SystemRoot%, %ProgramFiles%… suivi d'un chemin).");
+                    if (f == null || !ReFichier.IsMatch(f) || f.Contains("..")) err.Add(id + " : fichier de détection « " + f + " » refusé (%SystemRoot%, %SystemDrive%, %ProgramFiles%… suivi d'un chemin).");
                 if (!string.IsNullOrEmpty(a.Marque) && !ReMarque.IsMatch(a.Marque)) err.Add(id + " : marque « " + a.Marque + " » non reconnue.");
             }
             return err;

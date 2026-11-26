@@ -68,6 +68,8 @@ namespace GamingTweaker.Core
         /// fichier partiel supprimé, pour qu'une réponse anormale ne remplisse pas le disque.
         /// </summary>
         public const long TailleMaxExe = 200L * 1024 * 1024;
+        /// <summary>Taille maximale lue pour la réponse de l'API GitHub (« releases/latest »).</summary>
+        public const int TailleMaxReponseApi = 1024 * 1024;
 
         public const string MessageSignature = "la signature de cette version est absente ou ne correspond pas à la clé de GamingTweaker ; rien n'a été remplacé.";
         public const string MessageDossier = "le dossier de GamingTweaker est redirigé (lien ou jonction) ou a changé pendant le téléchargement ; rien n'a été remplacé. Téléchargez la version depuis « Nouveautés ».";
@@ -415,7 +417,8 @@ namespace GamingTweaker.Core
         private static async Task<string> HttpGetAsync(string url)
         {
             ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
-            using (var c = new HttpClient { Timeout = TimeSpan.FromSeconds(10) })
+            // 1 Mo au plus : une réponse « releases/latest » fait quelques dizaines de Ko (sinon HttpClient accepte jusqu'à 2 Go en mémoire).
+            using (var c = new HttpClient { Timeout = TimeSpan.FromSeconds(10), MaxResponseContentBufferSize = TailleMaxReponseApi })
             {
                 // L'API GitHub refuse les requêtes sans User-Agent ; aucun identifiant de la machine ou de l'utilisateur n'est envoyé.
                 c.DefaultRequestHeaders.UserAgent.ParseAdd("GamingTweaker/" + VersionCourante);

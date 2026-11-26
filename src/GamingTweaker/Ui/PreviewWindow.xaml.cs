@@ -23,6 +23,8 @@ namespace GamingTweaker.Ui
             Sous.Text = rows.Count + (rows.Count > 1 ? " options sélectionnées. " : " option sélectionnée. ") + Sous.Text;
             if (rows.Any(r => r.Reversibilite == "définitif"))
                 Sous.Text += " Les options marquées « définitif » ne pourront pas être annulées.";
+            var noteInstallation = vm.NoteInstallationApercu();
+            if (noteInstallation.Length > 0) Sous.Text += " " + noteInstallation;
             this.vm = vm;
             try { Script.Text = vm.BuildPreviewScript(); }
             catch (Exception ex) { Script.Text = "Le script n'a pas pu être généré : " + ex.Message; Exporter.IsEnabled = false; Lancer.IsEnabled = false; }

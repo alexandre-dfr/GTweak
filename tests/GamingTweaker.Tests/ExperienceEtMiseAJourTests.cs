@@ -372,6 +372,7 @@ namespace GamingTweaker.Tests
             Assert.IsType<InvalidDataException>(ex.InnerException);
             Assert.Contains("rien n'a été remplacé", ex.InnerException.Message);
             Assert.True(MiseAJour.TailleMaxExe >= 50L * 1024 * 1024);
+            Assert.InRange(MiseAJour.TailleMaxReponseApi, 64 * 1024, 4 * 1024 * 1024);   // réponse de l'API GitHub bornée
         }
 
         // ---------- Version portable et CI ----------

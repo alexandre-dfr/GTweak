@@ -2050,20 +2050,42 @@ function Open-GTLockedFile([string]$Path) {
 
 # Taille maximale d'un telechargement (pilote NVIDIA, installateurs d'applications) : au-dela, il est arrete et le fichier partiel supprime,
 # pour qu'une reponse anormale ne remplisse pas le disque (2 Go par defaut ; les plus gros installateurs font moins de 1,5 Go).
+# Adresse acceptee pour un telechargement et pour chaque redirection : https uniquement (point de remplacement pour les tests).
+function Test-GTDownloadUrl([Uri]$Uri) {
+    return ($null -ne $Uri -and $Uri.IsAbsoluteUri -and $Uri.Scheme -eq 'https')
+}
+
 # Telecharge $Url dans $Dest (nouveau fichier) en refusant plus de $MaxBytes octets, annonces (Content-Length) ou recus ;
-# $TimeoutSec borne la duree totale. En cas d'erreur, le fichier partiel est supprime.
+# $TimeoutSec borne la duree totale. Les redirections sont suivies a la main (5 au plus) et chacune doit rester en https :
+# un lien de l'editeur redirige vers http est refuse. En cas d'erreur, le fichier partiel est supprime.
 function Save-GTDownload {
     param([Parameter(Mandatory)][string]$Url, [Parameter(Mandatory)][string]$Dest, [long]$MaxBytes = 2GB, [int]$TimeoutSec = 3000)
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    $req = [Net.HttpWebRequest]::Create($Url)
-    $req.UserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) WindowsPowerShell/5.1'
-    $req.Timeout = 60000
-    $req.ReadWriteTimeout = 60000
-    $req.AllowAutoRedirect = $true
     $limite = [DateTime]::UtcNow.AddSeconds($TimeoutSec)
+    $uri = [Uri]$Url
     $resp = $null; $in = $null; $out = $null; $ok = $false
     try {
-        $resp = $req.GetResponse()
+        for ($saut = 0; ; $saut++) {
+            if (-not (Test-GTDownloadUrl $uri)) { throw ('adresse de téléchargement refusée (https attendu) : ' + $uri.Scheme + '://' + $uri.Host) }
+            $req = [Net.HttpWebRequest]::Create($uri)
+            $req.UserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) WindowsPowerShell/5.1'
+            $req.Timeout = 60000
+            $req.ReadWriteTimeout = 60000
+            $req.AllowAutoRedirect = $false
+            try { $resp = $req.GetResponse() }
+            catch [Net.WebException] { if ($null -eq $_.Exception.Response) { throw }; $resp = $_.Exception.Response }
+            $code = [int]$resp.StatusCode
+            if ($code -ge 300 -and $code -lt 400) {
+                $loc = [string]$resp.Headers['Location']
+                $resp.Dispose(); $resp = $null
+                if ([string]::IsNullOrWhiteSpace($loc)) { throw ('redirection sans adresse (code ' + $code + ')') }
+                if ($saut -ge 5) { throw 'trop de redirections' }
+                $uri = New-Object Uri($uri, $loc)
+                continue
+            }
+            if ($code -lt 200 -or $code -ge 300) { throw ('le serveur a répondu ' + $code) }
+            break
+        }
         if ($resp.ContentLength -gt $MaxBytes) { throw ('téléchargement refusé : ' + [math]::Floor($resp.ContentLength / 1MB) + ' Mo annoncés, ' + [math]::Floor($MaxBytes / 1MB) + ' Mo au plus') }
         $in = $resp.GetResponseStream()
         $out = New-Object System.IO.FileStream($Dest, [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)

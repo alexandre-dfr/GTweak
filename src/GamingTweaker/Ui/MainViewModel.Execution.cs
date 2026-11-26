@@ -29,6 +29,33 @@ namespace GamingTweaker.Ui
             }).ToList();
         }
 
+        /// <summary>
+        /// Note de l'aperçu pour le menu Installation : les applications choisies qui ne s'installeront pas seules (sans lien direct),
+        /// pour que l'utilisateur le sache avant LANCER et non à la lecture du rapport. Chaîne vide si toutes s'installent seules.
+        /// </summary>
+        public static string NoteInstallation(IEnumerable<string> ids, IEnumerable<AppInstallable> catalogue)
+        {
+            var sel = new HashSet<string>(ids ?? Enumerable.Empty<string>(), StringComparer.OrdinalIgnoreCase);
+            var sansLien = (catalogue ?? Enumerable.Empty<AppInstallable>()).Where(a => a != null && sel.Contains(a.Id) && string.IsNullOrEmpty(a.Url)).ToList();
+            var manuelles = sansLien.Where(a => string.IsNullOrEmpty(a.Winget)).Select(a => a.Nom).ToList();
+            var parWinget = sansLien.Where(a => !string.IsNullOrEmpty(a.Winget)).Select(a => a.Nom).ToList();
+            var parts = new List<string>();
+            if (manuelles.Count > 0)
+                parts.Add("À installer vous-même depuis leur page officielle (indiquée dans le rapport) : " + string.Join(", ", manuelles) + ".");
+            if (parWinget.Count > 0)
+                parts.Add("Installées par winget uniquement ; si winget est absent, depuis leur page officielle : " + string.Join(", ", parWinget) + ".");
+            return string.Join(" ", parts);
+        }
+
+        /// <summary><see cref="NoteInstallation"/> pour les applications cochées dans les options du menu Installation.</summary>
+        public string NoteInstallationApercu()
+        {
+            var ids = Options.Where(o => o.IsChecked && o.Menu == "Installation" && o.Liste != null).SelectMany(o => o.Liste.VersSelection()).ToList();
+            if (ids.Count == 0) return "";
+            try { return NoteInstallation(ids, AppsCatalogue.LoadEmbedded()); }
+            catch (Exception ex) { TraceAppli.Erreur("aperçu : note du menu Installation", ex); return ""; }
+        }
+
         /// <summary>Synthèse de l'aperçu : options annulables, définitives, et celles qui demandent un redémarrage.</summary>
         public static string ResumeApercu(IReadOnlyList<PreviewRow> lignes)
         {
