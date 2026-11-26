@@ -47,6 +47,20 @@ namespace GamingTweaker.Core
 
     public static class Catalogue
     {
+        /// <summary>
+        /// Menus d'options dans l'ordre d'exécution (et de la barre latérale) : les mises à jour d'abord (elles peuvent rétablir des réglages),
+        /// le bloatware (une mise à jour peut réinstaller une appli du Store), les installations, la télémétrie et l'optimisation (après les
+        /// installations, qui ajoutent services et programmes au démarrage), le nettoyage en dernier (installateurs et fichiers temporaires).
+        /// </summary>
+        public static readonly string[] OrdreMenus = { "Mises à jour", "Bloatware", "Installation", "Télémétrie", "Optimisation", "Nettoyage" };
+
+        /// <summary>Rang d'exécution du menu (un menu inconnu passe après les autres).</summary>
+        public static int RangMenu(string menu)
+        {
+            var i = Array.IndexOf(OrdreMenus, menu);
+            return i < 0 ? OrdreMenus.Length : i;
+        }
+
         public static IReadOnlyList<CatalogItem> LoadEmbedded()
         {
             // Register() avant tout type Newtonsoft : la méthode qui l'utilise est compilée à part.

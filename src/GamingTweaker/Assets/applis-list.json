@@ -1,0 +1,672 @@
+[
+  {
+    "id": "vcredist-x64",
+    "categorie": "composants",
+    "nom": "Visual C++ 2015-2022 (64 bits)",
+    "detail": "Bibliothèques Microsoft demandées par la plupart des jeux et des launchers.",
+    "winget": "Microsoft.VCRedist.2015+.x64",
+    "url": "https://aka.ms/vs/17/release/vc_redist.x64.exe",
+    "type": "exe",
+    "args": "/install /quiet /norestart",
+    "editeur": "Microsoft",
+    "installe": [
+      "Microsoft Visual C++ 2015-2022 Redistributable (x64)",
+      "Microsoft Visual C++ v14 Redistributable (x64)"
+    ],
+    "defaut": true
+  },
+  {
+    "id": "vcredist-x86",
+    "categorie": "composants",
+    "nom": "Visual C++ 2015-2022 (32 bits)",
+    "detail": "Même bibliothèque pour les jeux et outils 32 bits (encore nombreux).",
+    "winget": "Microsoft.VCRedist.2015+.x86",
+    "url": "https://aka.ms/vs/17/release/vc_redist.x86.exe",
+    "type": "exe",
+    "args": "/install /quiet /norestart",
+    "editeur": "Microsoft",
+    "installe": [
+      "Microsoft Visual C++ 2015-2022 Redistributable (x86)",
+      "Microsoft Visual C++ v14 Redistributable (x86)"
+    ],
+    "defaut": true
+  },
+  {
+    "id": "directx",
+    "categorie": "composants",
+    "nom": "DirectX (runtime de fin d'utilisateur)",
+    "detail": "Anciens composants DirectX 9 à 11 (d3dx9, XAudio, XInput…) absents d'un Windows neuf ; sans eux, des jeux plus anciens refusent de démarrer.",
+    "winget": "Microsoft.DirectX",
+    "url": "https://download.microsoft.com/download/1/7/1/1718ccc4-6315-4d8e-9543-8e28a4e18c4c/dxwebsetup.exe",
+    "type": "exe",
+    "args": "/Q",
+    "editeur": "Microsoft",
+    "defaut": true
+  },
+  {
+    "id": "dotnet-desktop-8",
+    "categorie": "composants",
+    "nom": ".NET Desktop Runtime 8",
+    "detail": "Demandé par certains outils (launchers de mods, logiciels de périphériques).",
+    "winget": "Microsoft.DotNet.DesktopRuntime.8",
+    "page": "https://dotnet.microsoft.com/fr-fr/download/dotnet/8.0",
+    "installe": [
+      "Microsoft Windows Desktop Runtime - 8."
+    ]
+  },
+  {
+    "id": "steam",
+    "categorie": "launchers",
+    "nom": "Steam",
+    "detail": "Valve.",
+    "winget": "Valve.Steam",
+    "url": "https://cdn.akamai.steamstatic.com/client/installer/SteamSetup.exe",
+    "type": "exe",
+    "args": "/S",
+    "editeur": "Valve",
+    "page": "https://store.steampowered.com/about/",
+    "installe": [
+      "Steam"
+    ]
+  },
+  {
+    "id": "epic",
+    "categorie": "launchers",
+    "nom": "Epic Games Launcher",
+    "detail": "Epic Games (Fortnite, jeux gratuits de la semaine).",
+    "winget": "EpicGames.EpicGamesLauncher",
+    "url": "https://launcher-public-service-prod06.ol.epicgames.com/launcher/api/installer/download/EpicGamesLauncherInstaller.msi",
+    "type": "msi",
+    "args": "",
+    "editeur": "Epic Games",
+    "page": "https://store.epicgames.com/fr/download",
+    "installe": [
+      "Epic Games Launcher"
+    ]
+  },
+  {
+    "id": "ubisoft",
+    "categorie": "launchers",
+    "nom": "Ubisoft Connect",
+    "detail": "Ubisoft.",
+    "winget": "Ubisoft.Connect",
+    "url": "https://static3.cdn.ubi.com/orbit/launcher_installer/UbisoftConnectInstaller.exe",
+    "type": "exe",
+    "args": "/S",
+    "editeur": "Ubisoft",
+    "page": "https://www.ubisoft.com/fr-fr/ubisoft-connect/download",
+    "installe": [
+      "Ubisoft Connect"
+    ]
+  },
+  {
+    "id": "ea",
+    "categorie": "launchers",
+    "nom": "EA app",
+    "detail": "Electronic Arts (remplace Origin).",
+    "winget": "ElectronicArts.EADesktop",
+    "url": "https://origin-a.akamaihd.net/EA-Desktop-Client-Download/installer-releases/EAappInstaller.exe",
+    "type": "exe",
+    "args": "/passive /norestart",
+    "editeur": "Electronic Arts",
+    "page": "https://www.ea.com/fr/ea-app",
+    "installe": [
+      "EA app"
+    ]
+  },
+  {
+    "id": "gog",
+    "categorie": "launchers",
+    "nom": "GOG Galaxy",
+    "detail": "GOG (jeux sans DRM).",
+    "winget": "GOG.Galaxy",
+    "page": "https://www.gog.com/fr/galaxy",
+    "installe": [
+      "GOG GALAXY"
+    ]
+  },
+  {
+    "id": "battlenet",
+    "categorie": "launchers",
+    "nom": "Battle.net",
+    "detail": "Blizzard (Call of Duty, Diablo, Overwatch). Son installateur s'affiche : suivez-le jusqu'au bout.",
+    "winget": "Blizzard.BattleNet",
+    "url": "https://downloader.battle.net/download/getInstaller?os=win&installer=Battle.net-Setup.exe",
+    "type": "exe",
+    "args": "",
+    "editeur": "Blizzard",
+    "page": "https://download.battle.net/fr-fr/desktop",
+    "installe": [
+      "Battle.net"
+    ]
+  },
+  {
+    "id": "rockstar",
+    "categorie": "launchers",
+    "nom": "Rockstar Games Launcher",
+    "detail": "Rockstar Games (GTA V, Red Dead Redemption 2).",
+    "winget": "RockstarGames.Launcher",
+    "url": "https://gamedownloads.rockstargames.com/public/installer/Rockstar-Games-Launcher.exe",
+    "type": "exe",
+    "args": "/s /f",
+    "editeur": "Rockstar Games",
+    "page": "https://socialclub.rockstargames.com/rockstar-games-launcher",
+    "installe": [
+      "Rockstar Games Launcher"
+    ]
+  },
+  {
+    "id": "xbox",
+    "categorie": "launchers",
+    "nom": "Xbox (PC Game Pass)",
+    "detail": "Microsoft Store. Retirée par l'option Bloatware « Xbox » si vous la cochez aussi.",
+    "winget": "9MV0B5HZVK9Z",
+    "source": "msstore",
+    "page": "https://apps.microsoft.com/detail/9MV0B5HZVK9Z"
+  },
+  {
+    "id": "amazon",
+    "categorie": "launchers",
+    "nom": "Amazon Games",
+    "detail": "Prime Gaming.",
+    "winget": "Amazon.Games",
+    "url": "https://download.amazongames.com/AmazonGamesSetup.exe",
+    "type": "exe",
+    "args": "/S",
+    "editeur": "Amazon",
+    "page": "https://gaming.amazon.com/home",
+    "installe": [
+      "Amazon Games"
+    ]
+  },
+  {
+    "id": "lol",
+    "categorie": "launchers",
+    "nom": "League of Legends (Europe Ouest)",
+    "detail": "Riot Games : Riot Client et le jeu.",
+    "winget": "RiotGames.LeagueOfLegends.EUW",
+    "url": "https://lol.secure.dyn.riotcdn.net/channels/public/x/installer/current/live.euw.exe",
+    "type": "exe",
+    "args": "--skip-to-install",
+    "editeur": "Riot Games",
+    "page": "https://www.leagueoflegends.com/fr-fr/download/",
+    "installe": [
+      "League of Legends"
+    ]
+  },
+  {
+    "id": "valorant",
+    "categorie": "launchers",
+    "nom": "VALORANT (Europe)",
+    "detail": "Riot Games : Riot Client, le jeu et son anti-triche Vanguard (redémarrage nécessaire).",
+    "winget": "RiotGames.Valorant.EU",
+    "url": "https://valorant.secure.dyn.riotcdn.net/channels/public/x/installer/current/live.live.eu.exe",
+    "type": "exe",
+    "args": "--skip-to-install",
+    "editeur": "Riot Games",
+    "page": "https://playvalorant.com/fr-fr/download/",
+    "installe": [
+      "VALORANT"
+    ]
+  },
+  {
+    "id": "playnite",
+    "categorie": "launchers",
+    "nom": "Playnite",
+    "detail": "Bibliothèque unique pour tous les launchers (libre, sans compte).",
+    "winget": "Playnite.Playnite",
+    "page": "https://playnite.link/",
+    "installe": [
+      "Playnite"
+    ]
+  },
+  {
+    "id": "ghub",
+    "categorie": "marques",
+    "nom": "Logitech G HUB",
+    "detail": "Souris, claviers, casques et volants Logitech G.",
+    "winget": "Logitech.GHUB",
+    "url": "https://download01.logi.com/web/ftp/pub/techsupport/gaming/lghub_installer.exe",
+    "type": "exe",
+    "args": "--silent",
+    "editeur": "Logitech",
+    "page": "https://www.logitechg.com/fr-fr/innovation/g-hub.html",
+    "installe": [
+      "Logitech G HUB"
+    ],
+    "marque": "usb:046D"
+  },
+  {
+    "id": "icue",
+    "categorie": "marques",
+    "nom": "Corsair iCUE",
+    "detail": "Périphériques, ventilateurs, RGB et mémoire Corsair.",
+    "winget": "Corsair.iCUE.5",
+    "url": "https://www3.corsair.com/software/CUE_V5/public/modules/windows/installer/Install%20iCUE.exe",
+    "type": "exe",
+    "args": "--quiet",
+    "editeur": "Corsair",
+    "page": "https://www.corsair.com/fr/fr/s/downloads",
+    "installe": [
+      "iCUE"
+    ],
+    "marque": "usb:1B1C"
+  },
+  {
+    "id": "synapse",
+    "categorie": "marques",
+    "nom": "Razer Synapse 4",
+    "detail": "Périphériques Razer.",
+    "winget": "RazerInc.RazerInstaller.Synapse4",
+    "page": "https://www.razer.com/fr-fr/synapse-4",
+    "installe": [
+      "Razer Synapse"
+    ],
+    "marque": "usb:1532"
+  },
+  {
+    "id": "steelseries",
+    "categorie": "marques",
+    "nom": "SteelSeries GG",
+    "detail": "Périphériques SteelSeries (Engine, Sonar).",
+    "winget": "SteelSeries.GG",
+    "page": "https://fr.steelseries.com/gg",
+    "installe": [
+      "SteelSeries GG"
+    ],
+    "marque": "usb:1038"
+  },
+  {
+    "id": "ngenuity",
+    "categorie": "marques",
+    "nom": "HyperX NGENUITY",
+    "detail": "Périphériques HyperX (Microsoft Store).",
+    "winget": "9P1TBXR6QDCX",
+    "source": "msstore",
+    "page": "https://apps.microsoft.com/detail/9P1TBXR6QDCX",
+    "marque": "usb:0951"
+  },
+  {
+    "id": "armoury",
+    "categorie": "marques",
+    "nom": "ASUS Armoury Crate",
+    "detail": "Cartes mères, cartes graphiques et périphériques ASUS / ROG.",
+    "winget": "Asus.ArmouryCrate",
+    "page": "https://www.asus.com/fr/supportonly/armoury%20crate/helpdesk_download/",
+    "installe": [
+      "ARMOURY CRATE"
+    ],
+    "marque": "carte-mere:ASUS"
+  },
+  {
+    "id": "msicenter",
+    "categorie": "marques",
+    "nom": "MSI Center",
+    "detail": "Cartes mères et portables MSI.",
+    "winget": "MSI.MSICenter",
+    "page": "https://fr.msi.com/Landing/MSI-Center",
+    "installe": [
+      "MSI Center"
+    ],
+    "marque": "carte-mere:MICRO-STAR"
+  },
+  {
+    "id": "gigabyte",
+    "categorie": "marques",
+    "nom": "GIGABYTE Control Center",
+    "detail": "Cartes mères et cartes graphiques GIGABYTE / AORUS. Pas de paquet winget : page officielle.",
+    "page": "https://www.gigabyte.com/fr/Support/Consumer/Download",
+    "installe": [
+      "GIGABYTE Control Center"
+    ],
+    "marque": "carte-mere:GIGABYTE"
+  },
+  {
+    "id": "nzxt",
+    "categorie": "marques",
+    "nom": "NZXT CAM",
+    "detail": "Boîtiers, refroidissement et RGB NZXT.",
+    "winget": "NZXT.CAM",
+    "page": "https://nzxt.com/fr-FR/software/cam",
+    "installe": [
+      "NZXT CAM"
+    ],
+    "marque": "usb:1E71"
+  },
+  {
+    "id": "streamdeck",
+    "categorie": "marques",
+    "nom": "Elgato Stream Deck",
+    "detail": "Stream Deck.",
+    "winget": "Elgato.StreamDeck",
+    "page": "https://www.elgato.com/fr/fr/s/downloads",
+    "installe": [
+      "Elgato Stream Deck"
+    ],
+    "marque": "usb:0FD9"
+  },
+  {
+    "id": "camerahub",
+    "categorie": "marques",
+    "nom": "Elgato Camera Hub",
+    "detail": "Webcams Elgato (Facecam).",
+    "winget": "Elgato.CameraHub",
+    "page": "https://www.elgato.com/fr/fr/s/downloads",
+    "installe": [
+      "Elgato Camera Hub"
+    ]
+  },
+  {
+    "id": "nvidia-app",
+    "categorie": "marques",
+    "nom": "NVIDIA App",
+    "detail": "Pilote, réglages et enregistrement pour les cartes GeForce. Pas de paquet winget : page officielle.",
+    "page": "https://www.nvidia.com/fr-fr/software/nvidia-app/",
+    "installe": [
+      "NVIDIA app"
+    ],
+    "marque": "gpu:NVIDIA"
+  },
+  {
+    "id": "amd-adrenalin",
+    "categorie": "marques",
+    "nom": "AMD Software : Adrenalin Edition",
+    "detail": "Pilote et réglages des cartes Radeon. Pas de paquet winget : page officielle (outil de détection automatique).",
+    "page": "https://www.amd.com/fr/support/download/drivers.html",
+    "installe": [
+      "AMD Software"
+    ],
+    "marque": "gpu:AMD"
+  },
+  {
+    "id": "intel-dsa",
+    "categorie": "marques",
+    "nom": "Intel Driver & Support Assistant",
+    "detail": "Pilotes Intel (graphique, Wi-Fi, Bluetooth, chipset).",
+    "winget": "Intel.IntelDriverAndSupportAssistant",
+    "url": "https://dsadata.intel.com/installer",
+    "type": "exe",
+    "args": "/install /quiet /norestart",
+    "editeur": "Intel",
+    "page": "https://www.intel.fr/content/www/fr/fr/support/detect.html",
+    "installe": [
+      "Intel® Driver & Support Assistant",
+      "Intel(R) Driver & Support Assistant"
+    ],
+    "marque": "intel"
+  },
+  {
+    "id": "discord",
+    "categorie": "applis",
+    "nom": "Discord",
+    "groupe": "Communication",
+    "detail": "Installé pour le compte qui lance GamingTweaker.",
+    "winget": "Discord.Discord",
+    "url": "https://discord.com/api/downloads/distributions/app/installers/latest?channel=stable&platform=win&arch=x64",
+    "type": "exe",
+    "args": "-s",
+    "editeur": "Discord",
+    "page": "https://discord.com/download",
+    "installe": [
+      "Discord"
+    ]
+  },
+  {
+    "id": "teamspeak",
+    "categorie": "applis",
+    "nom": "TeamSpeak 3",
+    "groupe": "Communication",
+    "detail": "",
+    "winget": "TeamSpeakSystems.TeamSpeakClient",
+    "page": "https://www.teamspeak.com/fr/downloads/",
+    "installe": [
+      "TeamSpeak"
+    ]
+  },
+  {
+    "id": "whatsapp",
+    "categorie": "applis",
+    "nom": "WhatsApp",
+    "groupe": "Communication",
+    "detail": "Microsoft Store.",
+    "winget": "9NKSQGP7F2NH",
+    "source": "msstore",
+    "page": "https://apps.microsoft.com/detail/9NKSQGP7F2NH"
+  },
+  {
+    "id": "telegram",
+    "categorie": "applis",
+    "nom": "Telegram Desktop",
+    "groupe": "Communication",
+    "detail": "",
+    "winget": "Telegram.TelegramDesktop",
+    "page": "https://desktop.telegram.org/",
+    "installe": [
+      "Telegram Desktop"
+    ]
+  },
+  {
+    "id": "operagx",
+    "categorie": "applis",
+    "nom": "Opera GX",
+    "groupe": "Navigateurs",
+    "detail": "Navigateur orienté jeu (limiteur de processeur et de mémoire).",
+    "winget": "Opera.OperaGX",
+    "url": "https://net.geo.opera.com/opera_gx/stable/windows",
+    "type": "exe",
+    "args": "/silent",
+    "editeur": "Opera",
+    "page": "https://www.opera.com/fr/gx",
+    "installe": [
+      "Opera GX"
+    ]
+  },
+  {
+    "id": "brave",
+    "categorie": "applis",
+    "nom": "Brave",
+    "groupe": "Navigateurs",
+    "detail": "",
+    "winget": "Brave.Brave",
+    "page": "https://brave.com/fr/download/",
+    "installe": [
+      "Brave"
+    ]
+  },
+  {
+    "id": "firefox",
+    "categorie": "applis",
+    "nom": "Firefox",
+    "groupe": "Navigateurs",
+    "detail": "",
+    "winget": "Mozilla.Firefox",
+    "url": "https://download.mozilla.org/?product=firefox-latest-ssl&os=win64&lang=fr",
+    "type": "exe",
+    "args": "/S",
+    "editeur": "Mozilla",
+    "page": "https://www.mozilla.org/fr/firefox/new/",
+    "installe": [
+      "Mozilla Firefox"
+    ]
+  },
+  {
+    "id": "chrome",
+    "categorie": "applis",
+    "nom": "Google Chrome",
+    "groupe": "Navigateurs",
+    "detail": "",
+    "winget": "Google.Chrome",
+    "url": "https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi",
+    "type": "msi",
+    "args": "",
+    "editeur": "Google",
+    "page": "https://www.google.com/intl/fr_fr/chrome/",
+    "installe": [
+      "Google Chrome"
+    ]
+  },
+  {
+    "id": "obs",
+    "categorie": "applis",
+    "nom": "OBS Studio",
+    "groupe": "Streaming et musique",
+    "detail": "Enregistrement et streaming.",
+    "winget": "OBSProject.OBSStudio",
+    "page": "https://obsproject.com/fr/download",
+    "installe": [
+      "OBS Studio"
+    ]
+  },
+  {
+    "id": "medal",
+    "categorie": "applis",
+    "nom": "Medal",
+    "groupe": "Streaming et musique",
+    "detail": "Clips de jeu.",
+    "winget": "MedalB.V.Medal",
+    "page": "https://medal.tv/fr",
+    "installe": [
+      "Medal"
+    ]
+  },
+  {
+    "id": "spotify",
+    "categorie": "applis",
+    "nom": "Spotify",
+    "groupe": "Streaming et musique",
+    "detail": "Installé pour le compte qui lance GamingTweaker.",
+    "winget": "Spotify.Spotify",
+    "url": "https://download.scdn.co/SpotifyFullSetupX64.exe",
+    "type": "exe",
+    "args": "/silent /skip-app-launch",
+    "editeur": "Spotify",
+    "page": "https://www.spotify.com/fr/download/windows/",
+    "installe": [
+      "Spotify"
+    ]
+  },
+  {
+    "id": "deezer",
+    "categorie": "applis",
+    "nom": "Deezer",
+    "groupe": "Streaming et musique",
+    "detail": "",
+    "winget": "Deezer.Deezer",
+    "page": "https://www.deezer.com/fr/download",
+    "installe": [
+      "Deezer"
+    ]
+  },
+  {
+    "id": "notepadpp",
+    "categorie": "applis",
+    "nom": "Notepad++",
+    "groupe": "Outils",
+    "detail": "Éditeur de texte.",
+    "winget": "Notepad++.Notepad++",
+    "page": "https://notepad-plus-plus.org/downloads/",
+    "installe": [
+      "Notepad++"
+    ]
+  },
+  {
+    "id": "7zip",
+    "categorie": "applis",
+    "nom": "7-Zip",
+    "groupe": "Outils",
+    "detail": "Archives (zip, 7z, rar).",
+    "winget": "7zip.7zip",
+    "page": "https://www.7-zip.org/",
+    "installe": [
+      "7-Zip"
+    ]
+  },
+  {
+    "id": "vlc",
+    "categorie": "applis",
+    "nom": "VLC",
+    "groupe": "Outils",
+    "detail": "Lecteur vidéo.",
+    "winget": "VideoLAN.VLC",
+    "page": "https://www.videolan.org/vlc/",
+    "installe": [
+      "VLC media player"
+    ]
+  },
+  {
+    "id": "afterburner",
+    "categorie": "applis",
+    "nom": "MSI Afterburner",
+    "groupe": "Outils",
+    "detail": "Overclocking et courbe des ventilateurs de la carte graphique.",
+    "winget": "Guru3D.Afterburner",
+    "page": "https://fr.msi.com/Landing/afterburner/graphics-cards",
+    "installe": [
+      "MSI Afterburner"
+    ]
+  },
+  {
+    "id": "hwinfo",
+    "categorie": "applis",
+    "nom": "HWiNFO",
+    "groupe": "Outils",
+    "detail": "Capteurs et informations matérielles détaillées.",
+    "winget": "REALiX.HWiNFO",
+    "page": "https://www.hwinfo.com/download/",
+    "installe": [
+      "HWiNFO"
+    ]
+  },
+  {
+    "id": "cpuz",
+    "categorie": "applis",
+    "nom": "CPU-Z",
+    "groupe": "Outils",
+    "detail": "Processeur, carte mère et mémoire.",
+    "winget": "CPUID.CPU-Z",
+    "page": "https://www.cpuid.com/softwares/cpu-z.html",
+    "installe": [
+      "CPUID CPU-Z"
+    ]
+  },
+  {
+    "id": "parsec",
+    "categorie": "applis",
+    "nom": "Parsec",
+    "groupe": "Jeu à distance",
+    "detail": "Jeu à distance et coop en ligne.",
+    "winget": "Parsec.Parsec",
+    "url": "https://builds.parsec.app/package/parsec-windows.exe",
+    "type": "exe",
+    "args": "/silent",
+    "editeur": "Parsec",
+    "page": "https://parsec.app/downloads",
+    "installe": [
+      "Parsec"
+    ]
+  },
+  {
+    "id": "moonlight",
+    "categorie": "applis",
+    "nom": "Moonlight",
+    "groupe": "Jeu à distance",
+    "detail": "Client de jeu à distance (avec Sunshine ou une carte NVIDIA).",
+    "winget": "MoonlightGameStreamingProject.Moonlight",
+    "page": "https://moonlight-stream.org/",
+    "installe": [
+      "Moonlight Game Streaming"
+    ]
+  },
+  {
+    "id": "sunshine",
+    "categorie": "applis",
+    "nom": "Sunshine",
+    "groupe": "Jeu à distance",
+    "detail": "Serveur de jeu à distance pour Moonlight.",
+    "winget": "LizardByte.Sunshine",
+    "page": "https://app.lizardbyte.dev/Sunshine/",
+    "installe": [
+      "Sunshine"
+    ]
+  }
+]

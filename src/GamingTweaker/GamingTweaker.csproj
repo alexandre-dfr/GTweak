@@ -63,6 +63,7 @@
   <ItemGroup>
     <EmbeddedResource Include="Assets\catalog\*.json" LogicalName="catalog/%(Filename)%(Extension)" WithCulture="false" />
     <EmbeddedResource Include="Assets\bloatware-list.json" LogicalName="bloatware-list.json" WithCulture="false" />
+    <EmbeddedResource Include="Assets\applis-list.json" LogicalName="applis-list.json" WithCulture="false" />
     <EmbeddedResource Include="Assets\cles-release.txt" LogicalName="cles-release.txt" WithCulture="false" />
     <EmbeddedResource Include="Assets\scripts\*.ps1" LogicalName="scripts/%(Filename)%(Extension)" WithCulture="false" />
     <EmbeddedResource Include="Assets\runtime\*.ps1" LogicalName="runtime/%(Filename)%(Extension)" WithCulture="false" />

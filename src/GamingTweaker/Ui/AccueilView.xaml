@@ -66,6 +66,7 @@
                             ToolTip="Masquer ce guide (il ne reviendra pas)"/>
                     <StackPanel>
                         <TextBlock Text="Bienvenue ! Par où commencer ?" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <TextBlock Style="{StaticResource Secondaire}" Margin="0,0,0,4" Text="Windows tout juste installé ? L'assistant après installation pose les questions une par une, dans l'ordre d'exécution."/>
                         <TextBlock Style="{StaticResource Secondaire}" Margin="0,0,0,4" Text="1.  Diagnostic : repère ce qui bride vraiment votre PC (écran, mémoire, plan d'alimentation…) et propose la correction."/>
                         <TextBlock Style="{StaticResource Secondaire}" Margin="0,0,0,4" Text="2.  Démarrage rapide : choisissez « Gaming léger » (sans risque) ; il coche les bonnes options pour vous."/>
                         <TextBlock Style="{StaticResource Secondaire}" Margin="0,0,0,4" Text="3.  « Aperçu » montre exactement ce qui sera fait, puis « LANCER ». Tout reste annulable depuis l'Historique."/>
@@ -131,6 +132,21 @@
                     <TextBlock Text="{Binding TexteDerive}" VerticalAlignment="Center" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
                 </DockPanel>
             </Border>
+
+            <!-- ===== Assistant après installation de Windows ===== -->
+            <Button Style="{StaticResource CarteBouton}" Command="{Binding AssistantCommand}" Margin="0,0,0,24"
+                    AutomationProperties.Name="Assistant après installation de Windows" ToolTip="Questions dans l'ordre d'exécution ; rien ne change avant l'aperçu">
+                <DockPanel Margin="18,14">
+                    <TextBlock DockPanel.Dock="Right" Text="&#xE76C;" FontFamily="{StaticResource PoliceIcones}" FontSize="14" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                    <Border DockPanel.Dock="Left" Style="{StaticResource PastilleIcone}" Margin="0,0,14,0" VerticalAlignment="Center">
+                        <TextBlock Text="&#xE8FC;" Style="{StaticResource Icone}"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="Assistant après installation de Windows" FontSize="16" FontWeight="SemiBold"/>
+                        <TextBlock Style="{StaticResource Secondaire}" Text="Quelques questions dans l'ordre : mises à jour, bloatware, installation des composants, launchers, logiciels de vos périphériques et applications, télémétrie, optimisation, puis nettoyage à la fin."/>
+                    </StackPanel>
+                </DockPanel>
+            </Button>
 
             <!-- ===== 2. Démarrage rapide ===== -->
             <DockPanel Margin="2,0,0,10">

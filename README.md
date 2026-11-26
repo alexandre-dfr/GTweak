@@ -1,6 +1,6 @@
 # GamingTweaker
 
-Application Windows portable (un seul `GamingTweaker.exe`) qui règle un PC de jeu. Vous cochez des options dans cinq menus (Optimisation, Télémétrie, Bloatware, Nettoyage, Mises à jour) ; seules les options cochées sont exécutées. Interface en français. Windows 10 (1903 ou plus récent) et Windows 11, x64.
+Application Windows portable (un seul `GamingTweaker.exe`) qui règle un PC de jeu. Vous cochez des options dans six menus (Mises à jour, Bloatware, Installation, Télémétrie, Optimisation, Nettoyage) ; seules les options cochées sont exécutées, dans cet ordre. Interface en français. Windows 10 (1903 ou plus récent) et Windows 11, x64.
 
 ## Lancer
 
@@ -14,7 +14,7 @@ Ensuite :
 2. Double-cliquez : Windows demande les droits administrateur (obligatoire pour modifier le système).
 3. Cochez les options, cliquez sur **Aperçu** pour voir exactement ce qui sera fait, puis sur **LANCER**. Au premier lancement, un encadré de l'accueil résume ces étapes (bouton « Compris » pour le masquer, « Réafficher le guide » dans Paramètres).
 
-Rien n'est installé. Les capteurs matériels (menu Informations) ne sont chargés qu'à la demande.
+GamingTweaker lui-même ne s'installe pas (seules les applications que vous choisissez dans le menu Installation le sont). Les capteurs matériels (menu Informations) ne sont chargés qu'à la demande.
 
 ### Avertissement SmartScreen
 
@@ -45,6 +45,21 @@ Le meilleur moment est juste après l'installation de Windows, dans cet ordre : 
 - Aucun redémarrage automatique : si un redémarrage est nécessaire, le rapport l'indique.
 - Les profils (`.json`) ne contiennent que des identifiants d'options, jamais de commande.
 - L'exe n'est pas signé : SmartScreen ou un antivirus peut le signaler. Il modifie le système, c'est normal.
+
+## Assistant après installation de Windows
+
+Bouton **Assistant après installation de Windows** sur l'accueil : une question par écran, dans l'ordre où tout sera exécuté.
+
+1. **Mises à jour** (Windows, applications, pilote NVIDIA) : en premier, une mise à jour pouvant rétablir des réglages.
+2. **Bloatware** : les applications préinstallées à retirer.
+3. **Composants** : Visual C++ (32 et 64 bits), DirectX, .NET (Visual C++ et DirectX cochés d'office).
+4. **Launchers** : Steam, Epic Games, Ubisoft Connect, EA app, GOG Galaxy, Battle.net, Rockstar, Xbox, Amazon Games, League of Legends, VALORANT, Playnite.
+5. **Logiciels des marques** : Logitech G HUB, Corsair iCUE, Razer Synapse, SteelSeries GG, HyperX NGENUITY, ASUS Armoury Crate, MSI Center, GIGABYTE Control Center, NZXT CAM, Elgato, NVIDIA App, AMD Adrenalin, Intel DSA. Ceux de votre matériel (fabricant de la carte mère, carte graphique, périphériques USB branchés) sont cochés d'office.
+6. **Applications** : Discord, TeamSpeak, WhatsApp, Telegram, Opera GX, Brave, Firefox, Chrome, OBS Studio, Medal, Spotify, Deezer, Notepad++, 7-Zip, VLC, MSI Afterburner, HWiNFO, CPU-Z, Parsec, Moonlight, Sunshine.
+7. **Télémétrie**, 8. **Optimisation** : après les installations, dont les services et programmes au démarrage existent alors.
+9. **Nettoyage**, en dernier : il supprime aussi les installateurs et fichiers temporaires des étapes précédentes.
+
+L'assistant ne fait que cocher les options (les mêmes que dans les menus, sans les options Risqué) ; un récapitulatif, puis l'**Aperçu** et **LANCER** habituels. Les applications déjà installées ne sont pas proposées. Chaque application s'installe par `winget` s'il est présent ; sinon (Windows tout juste installé, winget pas encore là) elle est téléchargée depuis le site de son éditeur, en https, dans un dossier réservé aux administrateurs, et n'est lancée que si sa signature Authenticode est valide et délivrée à l'éditeur attendu. Une application sans paquet winget ni lien direct stable (NVIDIA App, AMD Adrenalin, GIGABYTE…) est signalée dans le rapport avec sa page officielle. Les installations ne s'annulent pas depuis l'Historique : désinstallez depuis les Paramètres de Windows.
 
 ## Profils intégrés
 
