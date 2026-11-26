@@ -42,7 +42,7 @@ namespace GamingTweaker.Ui
                     if (v != null && Enum.TryParse(v, out c)) return c;
                 }
             }
-            catch (Exception exc) { Core.TraceAppli.Erreur("thème : lecture du choix", exc); }
+            catch (Exception) { }
             return ChoixTheme.Systeme;
         }
 
@@ -81,7 +81,7 @@ namespace GamingTweaker.Ui
         public static void Definir(ChoixTheme c)
         {
             choix = c;
-            try { using (var k = Registry.CurrentUser.CreateSubKey(Cle)) k.SetValue("Theme", c.ToString()); } catch (Exception exc) { Core.TraceAppli.Erreur("thème : enregistrement du choix", exc); }
+            try { using (var k = Registry.CurrentUser.CreateSubKey(Cle)) k.SetValue("Theme", c.ToString()); } catch (Exception) { }
             Appliquer();
         }
 

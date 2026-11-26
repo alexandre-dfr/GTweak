@@ -224,7 +224,7 @@ namespace GamingTweaker.Ui
                         if (DateTime.TryParseExact(st.Debut ?? "", "yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out debut)) s.Debut = debut;
                     }
                 }
-                catch (Exception exc) { TraceAppli.Erreur("historique : state.json illisible dans " + Path.GetFileName(d), exc); }
+                catch (Exception) { }
             }
             s.Anormale = s.Etat == "Running" || s.Etat == "Failed";
             s.EtatLibelle = s.Etat == "Running" ? "interrompue (arrêt avant la fin)" : s.Etat == "Failed" ? "en échec (erreur interne)" : s.Etat == "Done" ? "terminée" : "état inconnu";
@@ -233,7 +233,7 @@ namespace GamingTweaker.Ui
             var rf = Path.Combine(d, "report.json");
             if (File.Exists(rf))
             {
-                try { r = JsonConvert.DeserializeObject<SessionReport>(File.ReadAllText(rf, Encoding.UTF8), new StringEnumConverter()); } catch (Exception exc) { TraceAppli.Erreur("historique : report.json illisible dans " + Path.GetFileName(d), exc); }
+                try { r = JsonConvert.DeserializeObject<SessionReport>(File.ReadAllText(rf, Encoding.UTF8), new StringEnumConverter()); } catch (Exception) { }
             }
             HashSet<string> annulables = new HashSet<string>();
             string erreurJournal = null;

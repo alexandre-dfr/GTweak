@@ -29,21 +29,13 @@ namespace GamingTweaker.Lists
         [JsonProperty("url")] public string Url { get; set; }
         /// <summary>« exe » ou « msi ».</summary>
         [JsonProperty("type")] public string Type { get; set; }
-        /// <summary>Arguments de l'installation silencieuse, obligatoires pour un exe (un installateur qui s'affiche bloquerait l'exécution).</summary>
+        /// <summary>Arguments de l'installation silencieuse (vide : l'installateur s'affiche).</summary>
         [JsonProperty("args")] public string Args { get; set; }
-        /// <summary>
-        /// Noms exacts acceptés pour le CN ou le O du certificat de signature du fichier téléchargé (casse, virgules et points ignorés).
-        /// Un nom qui ne fait que contenir l'un d'eux (« Not Valve Corp. ») est refusé.
-        /// </summary>
-        [JsonProperty("signataires")] public List<string> Signataires { get; set; } = new List<string>();
+        /// <summary>Nom attendu dans le CN ou le O du certificat de signature du fichier téléchargé.</summary>
+        [JsonProperty("editeur")] public string Editeur { get; set; }
         [JsonProperty("page")] public string Page { get; set; }
         /// <summary>Débuts de noms (DisplayName) qui signalent l'application déjà installée.</summary>
         [JsonProperty("installe")] public List<string> Installe { get; set; } = new List<string>();
-        /// <summary>
-        /// Fichiers (avec variables d'environnement, par exemple « %SystemRoot%\System32\d3dx9_43.dll ») qui, tous présents, signalent
-        /// l'application déjà installée : pour celles qui n'ont pas d'entrée dans « Programmes et fonctionnalités » (DirectX).
-        /// </summary>
-        [JsonProperty("fichiers")] public List<string> Fichiers { get; set; } = new List<string>();
         /// <summary>Matériel qui fait proposer l'application d'office : « usb:VVVV », « carte-mere:NOM », « gpu:NVIDIA|AMD », « intel ».</summary>
         [JsonProperty("marque")] public string Marque { get; set; }
         /// <summary>Cochée d'office quand l'option est cochée sans choix (composants).</summary>
@@ -109,7 +101,6 @@ namespace GamingTweaker.Lists
         private static readonly Regex ReId = new Regex(@"^[a-z0-9][a-z0-9\-]*$", RegexOptions.CultureInvariant);
         private static readonly Regex ReHttps = new Regex(@"^https://[A-Za-z0-9.\-]+(:\d+)?/\S*$", RegexOptions.CultureInvariant);
         private static readonly Regex ReWinget = new Regex(@"^[A-Za-z0-9][A-Za-z0-9.\-_+]*$", RegexOptions.CultureInvariant);
-        private static readonly Regex ReFichier = new Regex(@"^%(SystemRoot|ProgramFiles|ProgramFiles\(x86\)|ProgramData)%\\[^%<>|""*?:]+$", RegexOptions.CultureInvariant);
         private static readonly Regex ReMarque = new Regex(@"^(usb:[0-9A-F]{4}|carte-mere:[A-Z0-9\-]+|gpu:(NVIDIA|AMD)|intel)$", RegexOptions.CultureInvariant);
 
         /// <summary>Erreurs du catalogue (vide si valide) : chaque application doit pouvoir être installée ou indiquée (winget, lien direct ou page).</summary>
@@ -130,15 +121,11 @@ namespace GamingTweaker.Lists
                 if (!string.IsNullOrEmpty(a.Url))
                 {
                     if (!ReHttps.IsMatch(a.Url)) err.Add(id + " : lien direct non https.");
-                    if (a.Signataires == null || a.Signataires.Count == 0 || a.Signataires.Any(string.IsNullOrWhiteSpace))
-                        err.Add(id + " : lien direct sans signataire attendu (signature).");
+                    if (string.IsNullOrWhiteSpace(a.Editeur)) err.Add(id + " : lien direct sans éditeur attendu (signature).");
                     if (a.Type != "exe" && a.Type != "msi") err.Add(id + " : type « " + a.Type + " » inconnu (exe ou msi).");
-                    if (a.Type == "exe" && string.IsNullOrWhiteSpace(a.Args)) err.Add(id + " : exe sans arguments d'installation silencieuse (l'installateur bloquerait l'exécution).");
                     if (a.Args != null && Regex.IsMatch(a.Args, "[\"'`$;|&<>\r\n]")) err.Add(id + " : arguments avec un caractère interdit.");
                 }
                 if (!string.IsNullOrEmpty(a.Page) && !ReHttps.IsMatch(a.Page)) err.Add(id + " : page non https.");
-                foreach (var f in a.Fichiers ?? new List<string>())
-                    if (f == null || !ReFichier.IsMatch(f) || f.Contains("..")) err.Add(id + " : fichier de détection « " + f + " » refusé (%SystemRoot%, %ProgramFiles%… suivi d'un chemin).");
                 if (!string.IsNullOrEmpty(a.Marque) && !ReMarque.IsMatch(a.Marque)) err.Add(id + " : marque « " + a.Marque + " » non reconnue.");
             }
             return err;
@@ -172,7 +159,7 @@ namespace GamingTweaker.Lists
                                 catch (Exception) { }
                         }
                     }
-                    catch (Exception exc) { TraceAppli.Erreur("installation : lecture des programmes installés", exc); }
+                    catch (Exception) { }
                 }
             return res;
         }
@@ -231,7 +218,7 @@ namespace GamingTweaker.Lists
                 using (var s = new System.Management.ManagementObjectSearcher("SELECT Manufacturer FROM Win32_BaseBoard"))
                     foreach (System.Management.ManagementObject o in s.Get()) { m.CarteMere = Convert.ToString(o["Manufacturer"]) ?? ""; break; }
             }
-            catch (Exception exc) { TraceAppli.Erreur("installation : carte mère (WMI)", exc); }
+            catch (Exception) { }
             try
             {
                 var ids = new List<string>();
@@ -243,7 +230,7 @@ namespace GamingTweaker.Lists
                     }
                 m.AjouterPeripheriques(ids);
             }
-            catch (Exception exc) { TraceAppli.Erreur("installation : périphériques USB et HID (WMI)", exc); }
+            catch (Exception) { }
             return m;
         }
     }
@@ -257,13 +244,10 @@ namespace GamingTweaker.Lists
         private readonly IReadOnlyList<AppInstallable> apps;
         private readonly IProgrammesInstalles installes;
         private readonly ISourceMarques marques;
-        private readonly Func<string, bool> fichierExiste;
         private List<string> suggerees;
 
-        public AppsProvider(string categorie, IReadOnlyList<AppInstallable> catalogue = null, IProgrammesInstalles installes = null, ISourceMarques marques = null,
-            Func<string, bool> fichierExiste = null)
+        public AppsProvider(string categorie, IReadOnlyList<AppInstallable> catalogue = null, IProgrammesInstalles installes = null, ISourceMarques marques = null)
         {
-            this.fichierExiste = fichierExiste;
             Categorie = categorie;
             apps = (catalogue ?? AppsCatalogue.LoadEmbedded()).Where(a => a.Categorie == categorie).ToList();
             this.installes = installes ?? new RegistreProgrammesInstalles();
@@ -311,24 +295,10 @@ namespace GamingTweaker.Lists
             };
         }
 
-        /// <summary>
-        /// Vrai si un programme installé porte un nom attendu, ou si tous les fichiers de détection existent.
-        /// <paramref name="fichierExiste"/> : remplacement pour les tests (par défaut, le disque).
-        /// </summary>
-        public static bool EstInstallee(AppInstallable a, IEnumerable<string> noms, Func<string, bool> fichierExiste = null)
+        public static bool EstInstallee(AppInstallable a, IEnumerable<string> noms)
         {
-            if (a.Installe != null && a.Installe.Count > 0
-                && noms.Any(n => n != null && a.Installe.Any(p => !string.IsNullOrEmpty(p) && n.StartsWith(p, StringComparison.OrdinalIgnoreCase))))
-                return true;
-            if (a.Fichiers == null || a.Fichiers.Count == 0) return false;
-            var existe = fichierExiste ?? FichierPresent;
-            return a.Fichiers.All(f => !string.IsNullOrEmpty(f) && existe(Environment.ExpandEnvironmentVariables(f)));
-        }
-
-        private static bool FichierPresent(string chemin)
-        {
-            try { return File.Exists(chemin); }
-            catch (Exception ex) { TraceAppli.Erreur("installation : fichier de détection illisible", ex); return false; }
+            if (a.Installe == null || a.Installe.Count == 0) return false;
+            return noms.Any(n => n != null && a.Installe.Any(p => !string.IsNullOrEmpty(p) && n.StartsWith(p, StringComparison.OrdinalIgnoreCase)));
         }
 
         public ListEntry Decrire(string key)
@@ -341,7 +311,7 @@ namespace GamingTweaker.Lists
         {
             var noms = await Task.Run(() => installes.Lire() ?? new List<string>(), ct);
             var materiel = marques == null ? null : await Task.Run(() => marques.Lire(), ct);
-            var deja = await Task.Run(() => apps.Where(a => EstInstallee(a, noms, fichierExiste)).ToList(), ct);
+            var deja = apps.Where(a => EstInstallee(a, noms)).ToList();
             var proposees = apps.Where(a => !deja.Contains(a)).ToList();
             if (materiel != null) suggerees = proposees.Where(a => materiel.Correspond(a.Marque)).Select(a => a.Id).ToList();
             else if (Categorie == "composants") suggerees = proposees.Where(a => a.Defaut).Select(a => a.Id).ToList();

@@ -99,7 +99,7 @@ namespace GamingTweaker.Core
                     try { if (File.GetLastWriteTimeUtc(f) < DateTime.UtcNow.AddHours(-1)) File.Delete(f); } catch (Exception) { }
                 }
             }
-            catch (Exception exc) { TraceAppli.Erreur("nettoyage des anciens scripts", exc); }
+            catch (Exception) { }
         }
 
         /// <summary>Écrit le script (UTF-8 avec BOM) dans le dossier Run et le garde verrouillé jusqu'à Dispose.</summary>
@@ -269,7 +269,7 @@ namespace GamingTweaker.Core
                 { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
                 using (var k = Process.Start(psi)) { k.WaitForExit(10000); }
             }
-            catch (Exception exc) { TraceAppli.Erreur("arrêt du script (taskkill)", exc); }
+            catch (Exception) { }
             try { if (!p.HasExited) p.Kill(); } catch (Exception) { }
             try { p.WaitForExit(5000); } catch (Exception) { }
             AttendreFlux(p);
