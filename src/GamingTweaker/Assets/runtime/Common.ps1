@@ -2227,3 +2227,143 @@ function Get-GTNvState([object[]]$Pairs) {
     }
     return 'Applied'
 }
+
+# ---- Installation d'applications (menu Installation) -----------------------------------------------
+# $GT_AppCatalog : contenu de applis-list.json, ecrit par ScriptBuilder dans le script des qu'une option du menu Installation est choisie.
+# Pour chaque application choisie : ignoree si deja installee ; sinon winget (paquet officiel, empreinte verifiee par winget) ;
+# sinon telechargement direct (https, dossier reserve aux administrateurs, fichier verrouille, signature Authenticode valide et delivree
+# a l'editeur attendu, sinon supprime) puis installation silencieuse ; sans lien direct, la page officielle est indiquee dans le rapport.
+
+function Get-GTAppCatalog {
+    if ($null -eq $GT_AppCatalog) { throw 'Catalogue des applications absent du script.' }
+    return @($GT_AppCatalog)
+}
+
+# Noms affiches (DisplayName) des programmes installes, machine (64 et 32 bits) et utilisateur. $GT_InstalledApps : remplacement pour les tests.
+function Get-GTInstalledDisplayNames {
+    if ($null -ne $GT_InstalledApps) { return @($GT_InstalledApps) }
+    $names = @()
+    foreach ($k in @('HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall', 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall', 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall')) {
+        if (-not (Test-Path -LiteralPath $k)) { continue }
+        foreach ($s in @(Get-ChildItem -LiteralPath $k -ErrorAction SilentlyContinue)) {
+            $n = $s.GetValue('DisplayName')
+            if ($n) { $names += [string]$n }
+        }
+    }
+    return $names
+}
+
+# Vrai si un programme installe a un nom qui commence par l'un des prefixes (sans tenir compte de la casse).
+function Test-GTAppInstalled([string[]]$Prefixes, [string[]]$Installed) {
+    foreach ($p in @($Prefixes | Where-Object { $_ })) {
+        foreach ($n in @($Installed)) { if ($n -and $n.StartsWith($p, [StringComparison]::OrdinalIgnoreCase)) { return $true } }
+    }
+    return $false
+}
+
+# Vrai si la signature est valide ET delivree a l'editeur attendu : un champ CN ou O du sujet contient le nom comme mot entier
+# (« Valve » accepte « CN=Valve Corp. », refuse « CN=NotValveX » et une signature invalide ou absente).
+function Test-GTAppSignature($Signature, [string]$Editeur) {
+    if ($null -eq $Signature -or [string]::IsNullOrWhiteSpace($Editeur)) { return $false }
+    if ([string]$Signature.Status -ne 'Valid') { return $false }
+    $subject = ''
+    if ($null -ne $Signature.SignerCertificate) { $subject = [string]$Signature.SignerCertificate.Subject }
+    return [bool]($subject -match ('(?i)(^|,)\s*(CN|O)\s*=\s*"?[^,"]*\b' + [regex]::Escape($Editeur) + '\b'))
+}
+
+# Adresse acceptee pour un telechargement direct : https uniquement.
+function Test-GTAppUrl([string]$Url) {
+    return [bool]($Url -match '^https://[A-Za-z0-9.\-]+(:\d+)?/\S*$')
+}
+
+# Points de remplacement pour les tests (telechargement, signature, lancement de l'installateur).
+function Save-GTAppDownload([string]$Url, [string]$Dest) {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    $ProgressPreference = 'SilentlyContinue'
+    Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $Dest -TimeoutSec 3000
+}
+function Get-GTAppSignature([string]$Path) { return (Get-AuthenticodeSignature -LiteralPath $Path) }
+function Start-GTAppInstaller([string]$Path, [string]$Type, [string]$Arguments) {
+    if ($Type -eq 'msi') {
+        $msiexec = Join-Path $env:SystemRoot 'System32\msiexec.exe'
+        $p = Start-Process -FilePath $msiexec -ArgumentList @('/i', ('"' + $Path + '"'), '/qn', '/norestart') -Wait -PassThru
+    } elseif ([string]::IsNullOrWhiteSpace($Arguments)) {
+        # Pas d'installation silencieuse connue : l'installateur s'affiche et l'utilisateur le suit.
+        $p = Start-Process -FilePath $Path -Wait -PassThru
+    } else {
+        $p = Start-Process -FilePath $Path -ArgumentList $Arguments -Wait -PassThru
+    }
+    return [int]$p.ExitCode
+}
+
+# 0 = reussite ; 3010 et 1641 = reussite, redemarrage necessaire (Windows Installer et Burn).
+function Test-GTInstallerOk([int]$Code) { return ($Code -eq 0 -or $Code -eq 3010 -or $Code -eq 1641) }
+
+# Telechargement direct puis installation. Renvoie $true si un redemarrage est necessaire ; leve une erreur sinon (fichier supprime).
+function Install-GTAppDirect($App) {
+    $url = [string]$App.url
+    if (-not (Test-GTAppUrl $url)) { throw ('adresse de téléchargement refusée (https attendu)') }
+    if ([string]::IsNullOrWhiteSpace([string]$App.editeur)) { throw 'éditeur attendu inconnu : téléchargement refusé' }
+    $type = if ([string]$App.type -eq 'msi') { 'msi' } else { 'exe' }
+    if ([string]$App.id -notmatch '^[a-z0-9][a-z0-9\-]*$') { throw 'identifiant d''application invalide' }
+    $dir = New-GTSecureDownloadDir
+    $dest = Join-Path $dir ([string]$App.id + '-setup.' + $type)
+    $lock = $null
+    try {
+        Save-GTAppDownload $url $dest
+        if (-not (Test-Path -LiteralPath $dest)) { throw 'téléchargement vide' }
+        $lock = Open-GTLockedFile $dest
+        if (-not (Test-GTAppSignature (Get-GTAppSignature $dest) ([string]$App.editeur))) {
+            $lock.Dispose(); $lock = $null
+            Remove-Item -LiteralPath $dest -Force -ErrorAction SilentlyContinue
+            throw ('signature absente ou différente de « ' + [string]$App.editeur + ' » : fichier supprimé, rien n''a été installé')
+        }
+        $code = Start-GTAppInstaller $dest $type ([string]$App.args)
+        if (-not (Test-GTInstallerOk $code)) { throw ('l''installateur a échoué (code ' + $code + ')') }
+        return ($code -ne 0)
+    } finally {
+        if ($null -ne $lock) { $lock.Dispose() }
+        Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+# Installe les applications choisies d'une categorie (cles de applis-list.json ; seules celles du catalogue peuvent etre retenues).
+function Install-GTAppSelection {
+    param([Parameter(Mandatory)][string]$Categorie, [string[]]$Selection = @())
+    $apps = @(Get-GTAppCatalog | Where-Object { $_.categorie -eq $Categorie })
+    $r = Resolve-GTListSelection -Selection $Selection -Allowed @($apps | ForEach-Object { [string]$_.id })
+    if ($r.Names.Count -eq 0) { Skip-GTItem 'Aucune application choisie.' }
+    $installed = @(Get-GTInstalledDisplayNames)
+    $winget = Get-GTWingetPath
+    $ok = @(); $deja = @(); $manuel = @(); $errors = @(); $reboot = $false
+    foreach ($id in $r.Names) {
+        $app = $apps | Where-Object { [string]$_.id -eq $id } | Select-Object -First 1
+        $nom = [string]$app.nom
+        if ($app.installe -and (Test-GTAppInstalled @($app.installe) $installed)) { $deja += $nom; continue }
+        $fait = $false; $raison = ''
+        if ($winget -and $app.winget) {
+            $source = if ([string]$app.source -eq 'msstore') { 'msstore' } else { 'winget' }
+            $w = Invoke-GTNative $winget @('install', '--id', [string]$app.winget, '--exact', '--source', $source, '--silent', '--accept-package-agreements', '--accept-source-agreements', '--disable-interactivity')
+            if (Test-GTWingetOk $w.ExitCode) { $fait = $true; if (Test-GTWingetReboot $w.ExitCode) { $reboot = $true } }
+            else { $raison = 'winget code ' + $w.ExitCode }
+        }
+        if (-not $fait -and $app.url) {
+            try { if (Install-GTAppDirect $app) { $reboot = $true }; $fait = $true }
+            catch { $raison = (@($raison, ('téléchargement direct : ' + $_.Exception.Message)) | Where-Object { $_ }) -join ' ; ' }
+        }
+        if ($fait) { $ok += $nom; continue }
+        if (-not $raison -and $app.page) { $manuel += ($nom + ' (' + [string]$app.page + ')'); continue }
+        if (-not $raison) { $raison = 'winget absent et aucun lien direct' }
+        if ($app.page) { $raison += ' ; page officielle : ' + [string]$app.page }
+        $errors += ($nom + ' (' + $raison + ')')
+    }
+    $parts = @()
+    if ($ok.Count -gt 0) { $parts += ($ok.Count.ToString() + ' installée(s) : ' + ($ok -join ', ')) }
+    if ($deja.Count -gt 0) { $parts += ('déjà installée(s) : ' + ($deja -join ', ')) }
+    if ($manuel.Count -gt 0) { $parts += ('à installer depuis la page officielle : ' + ($manuel -join ', ')) }
+    if ($reboot) { $parts += 'un redémarrage est nécessaire pour terminer certaines installations' }
+    $note = ($parts -join ' ; ') + '.'
+    if ($errors.Count -gt 0) { throw ((@($parts + ('échec pour : ' + ($errors -join ', '))) -join ' ; ') + '.') }
+    if ($ok.Count -eq 0) { Skip-GTItem $note }
+    Set-GTItemNote $note
+}

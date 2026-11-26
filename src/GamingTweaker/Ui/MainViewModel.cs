@@ -19,7 +19,8 @@ namespace GamingTweaker.Ui
     /// </summary>
     public partial class MainViewModel : ObservableObject
     {
-        public static readonly string[] MenusOptions = { "Mises à jour", "Télémétrie", "Nettoyage", "Optimisation", "Bloatware" };
+        /// <summary>Menus d'options dans l'ordre d'exécution (Catalogue.OrdreMenus) : la barre latérale et l'aperçu suivent cet ordre.</summary>
+        public static readonly string[] MenusOptions = Core.Catalogue.OrdreMenus;
 
         private readonly IReadOnlyList<CatalogItem> items;
         private readonly MachineFacts facts;
@@ -93,6 +94,11 @@ namespace GamingTweaker.Ui
             set { if (Set(ref diagnosticVm, value) && value != null) value.Executer = ExecuterActionDiagnostic; }
         }
         public bool EstDiagnostic { get { return !EnRecherche && menuCourant == MenuDiagnostic; } }
+        /// <summary>Ouvre l'assistant après installation de Windows ; branché par la fenêtre principale.</summary>
+        public Action OuvrirAssistant { get; set; }
+        private ICommand assistantCommand;
+        public ICommand AssistantCommand { get { return assistantCommand ?? (assistantCommand = new RelayCommand(_ => { var a = OuvrirAssistant; if (a != null) a(); })); } }
+
         /// <summary>Ouvre une page des Paramètres de Windows (« ms-settings:… ») ; branché par l'application.</summary>
         public Action<string> OuvrirParametres { get; set; }
 

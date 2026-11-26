@@ -112,6 +112,7 @@ namespace GamingTweaker
             registre.Register(new WingetProvider());
             registre.Register(new WindowsUpdateProvider());
             registre.Register(new GpuDriverProvider());
+            foreach (var p in AppsProvider.Tous(facts)) registre.Register(p);
 
             MainWindow fenetre = null;
             MainViewModel vm = null;

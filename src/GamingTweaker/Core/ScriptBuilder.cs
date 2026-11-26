@@ -24,10 +24,14 @@ namespace GamingTweaker.Core
             sb.Append("$SkipIds = @($SkipIds | ForEach-Object { $_ -split ',' } | Where-Object { $_ })\r\n");
             sb.Append(Header(journalPath, quarantineDir));
 
-            // Tri stable par « ordre » puis par position dans le catalogue.
-            var selected = items.Where(i => s.OptionIds.Contains(i.Id)).OrderBy(i => i.Ordre).ToList();
+            // Tri stable : menu dans l'ordre d'exécution (Catalogue.OrdreMenus : mises à jour, bloatware, installation, télémétrie,
+            // optimisation, nettoyage en dernier), puis « ordre », puis position dans le catalogue.
+            var selected = items.Where(i => s.OptionIds.Contains(i.Id)).OrderBy(i => Catalogue.RangMenu(i.Menu)).ThenBy(i => i.Ordre).ToList();
             // Options choisies, visibles de tous les scripts (exclusions entre options, ex. deux plans d'alimentation).
             sb.Append("$GT_SelectedIds = [string[]]@(").Append(string.Join(", ", s.OptionIds.OrderBy(x => x, StringComparer.Ordinal).Select(Quote))).Append(")\r\n");
+            // Menu Installation : catalogue des applications (identifiant winget, lien direct, éditeur attendu), sur une seule ligne.
+            if (selected.Any(i => i.Liste != null && i.Liste.StartsWith(Lists.AppsCatalogue.PrefixeListe, StringComparison.Ordinal)))
+                sb.Append("$GT_AppCatalog = @(ConvertFrom-Json -InputObject @'\r\n").Append(Lists.AppsCatalogue.JsonCompact()).Append("\r\n'@ | ForEach-Object { $_ })\r\n");
             // Plan : permet au runner de connaître toutes les options avant la première (annulation, arrêt brutal).
             foreach (var it in selected)
                 sb.Append("if ($SkipIds -notcontains ").Append(Quote(it.Id)).Append(") { Write-GTEvent 'plan' ").Append(Quote(it.Id)).Append(" }\r\n");

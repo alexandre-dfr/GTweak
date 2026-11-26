@@ -18,6 +18,7 @@ namespace GamingTweaker.Ui
             AdapterALEcran();
             DataContext = vm;
             PreviewKeyDown += Raccourcis;
+            vm.OuvrirAssistant = OuvrirAssistant;
             MajIconeTheme();
             ThemeApplication.Change += MajIconeTheme;
             Closed += (s, e) => ThemeApplication.Change -= MajIconeTheme;
@@ -90,6 +91,12 @@ namespace GamingTweaker.Ui
         private void Lancer_Click(object sender, RoutedEventArgs e) { ApercuPuisExecuter(); }
 
         private void ApercuPuisExecuter() { if (OuvrirApercu()) Executer(); }
+
+        /// <summary>Assistant après installation : ses réponses cochent les options ; « Voir l'aperçu » enchaîne sur l'aperçu puis LANCER.</summary>
+        private void OuvrirAssistant()
+        {
+            if (new AssistantWindow(vm) { Owner = this }.ShowDialog() == true) ApercuPuisExecuter();
+        }
 
         /// <summary>La liste d'éléments défile seule tant qu'elle peut ; au bout, la molette fait défiler la page.</summary>
         private void ListeScroll_PreviewMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
