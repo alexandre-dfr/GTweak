@@ -254,7 +254,7 @@ namespace GamingTweaker.Ui
             }, TaskScheduler.FromCurrentSynchronizationContext());
 
             SessionInterrompue s = null;
-            try { s = RunPipeline.FindInterrupted(paths.MachineDir); } catch (Exception) { }
+            try { s = RunPipeline.FindInterrupted(paths.MachineDir); } catch (Exception exc) { TraceAppli.Erreur("recherche d'une session interrompue", exc); }
             if (s != null)
                 MessageBox.Show(this, "Une session précédente (" + s.Debut.ToString("dd/MM/yyyy HH:mm") + ") s'est arrêtée avant la fin. "
                     + "Ses modifications restent annulables depuis l'historique.\r\n\r\nDossier : " + s.SessionDir,

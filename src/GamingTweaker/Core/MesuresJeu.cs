@@ -198,7 +198,7 @@ namespace GamingTweaker.Core
                     var m = JsonConvert.DeserializeObject<MesureJeu>(File.ReadAllText(f, Encoding.UTF8), new JsonSerializerSettings { DateParseHandling = DateParseHandling.None });
                     if (m != null) res.Add(m);
                 }
-                catch (Exception) { }
+                catch (Exception exc) { TraceAppli.Erreur("mesures en jeu : fichier illisible " + Path.GetFileName(f), exc); }
             }
             return res.OrderByDescending(m => m.Date, StringComparer.Ordinal).ToList();
         }

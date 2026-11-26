@@ -45,7 +45,7 @@ namespace GamingTweaker.Info
                 return "L'installation par winget n'a pas abouti en 5 minutes et a été arrêtée : la page officielle de PawnIO a été ouverte dans le navigateur.";
             }
             catch (System.ComponentModel.Win32Exception) { }
-            catch (Exception) { }
+            catch (Exception exc) { Core.TraceAppli.Erreur("PawnIO : installation par winget", exc); }
             // Navigateur ouvert par l'explorateur du bureau : il ne tourne pas en administrateur.
             try { Core.SystemExe.OuvrirUrl(PageOfficielle); } catch { }
             return "L'installation par winget n'a pas abouti : la page officielle de PawnIO a été ouverte dans le navigateur.";

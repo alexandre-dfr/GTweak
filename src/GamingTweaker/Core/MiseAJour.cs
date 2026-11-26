@@ -63,6 +63,12 @@ namespace GamingTweaker.Core
         private static readonly Regex ShaNotes = new Regex(@"SHA-256 de GamingTweaker\.exe\s*:\s*`?([0-9A-Fa-f]{64})", RegexOptions.CultureInvariant);
         private static readonly Regex Tag = new Regex(@"^v?(\d{1,5})\.(\d{1,5})\.(\d{1,5})\z", RegexOptions.CultureInvariant);
 
+        /// <summary>
+        /// Taille maximale acceptée pour l'exe téléchargé (il fait quelques dizaines de Mo) : au-delà, le téléchargement est arrêté et le
+        /// fichier partiel supprimé, pour qu'une réponse anormale ne remplisse pas le disque.
+        /// </summary>
+        public const long TailleMaxExe = 200L * 1024 * 1024;
+
         public const string MessageSignature = "la signature de cette version est absente ou ne correspond pas à la clé de GamingTweaker ; rien n'a été remplacé.";
         public const string MessageDossier = "le dossier de GamingTweaker est redirigé (lien ou jonction) ou a changé pendant le téléchargement ; rien n'a été remplacé. Téléchargez la version depuis « Nouveautés ».";
 
@@ -191,7 +197,7 @@ namespace GamingTweaker.Core
                 Supprimer(ancien);
                 File.Move(exe, ancien);   // l'exe en cours peut être renommé, pas modifié
                 try { RenommerParPoignee(fichier.SafeFileHandle, CheminNt(exe)); }
-                catch (Exception) { try { File.Move(ancien, exe); } catch (Exception) { } throw; }
+                catch (Exception) { try { File.Move(ancien, exe); } catch (Exception exc) { TraceAppli.Erreur("mise à jour : ancien exe non remis en place", exc); } throw; }
                 TraceAppli.Ecrire("mise à jour vers " + v.Version + " installée (SHA-256 " + h + ", signature vérifiée)");
                 var prete = new MiseAJourPrete(fichier);
                 fichier = null;
@@ -349,7 +355,7 @@ namespace GamingTweaker.Core
             }
         }
 
-        private static void Supprimer(string f) { try { if (File.Exists(f)) File.Delete(f); } catch (Exception) { } }
+        private static void Supprimer(string f) { try { if (File.Exists(f)) File.Delete(f); } catch (Exception exc) { TraceAppli.Erreur("mise à jour : suppression impossible de " + Path.GetFileName(f), exc); } }
 
         private static async Task TelechargerAsync(string url, string destination)
         {
@@ -360,11 +366,36 @@ namespace GamingTweaker.Core
                 using (var r = await c.GetAsync(url, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false))
                 {
                     r.EnsureSuccessStatusCode();
+                    var annonce = r.Content.Headers.ContentLength;
+                    if (annonce.HasValue && annonce.Value > TailleMaxExe) throw new InvalidDataException(MessageTropGros(annonce.Value));
                     using (var src = await r.Content.ReadAsStreamAsync().ConfigureAwait(false))
                     using (var dst = new FileStream(destination, FileMode.CreateNew, FileAccess.Write, FileShare.None))
-                        await src.CopyToAsync(dst).ConfigureAwait(false);
+                        await CopierBorneAsync(src, dst, TailleMaxExe).ConfigureAwait(false);
                 }
             }
+        }
+
+        /// <summary>
+        /// Copie <paramref name="src"/> dans <paramref name="dst"/> et lève <see cref="InvalidDataException"/> dès que plus de
+        /// <paramref name="max"/> octets arrivent (un en-tête Content-Length peut manquer ou mentir). Renvoie le nombre d'octets copiés.
+        /// </summary>
+        public static async Task<long> CopierBorneAsync(Stream src, Stream dst, long max)
+        {
+            var tampon = new byte[81920];
+            long total = 0;
+            int n;
+            while ((n = await src.ReadAsync(tampon, 0, tampon.Length).ConfigureAwait(false)) > 0)
+            {
+                total += n;
+                if (total > max) throw new InvalidDataException(MessageTropGros(total));
+                await dst.WriteAsync(tampon, 0, n).ConfigureAwait(false);
+            }
+            return total;
+        }
+
+        private static string MessageTropGros(long taille)
+        {
+            return "le fichier téléchargé dépasse " + (TailleMaxExe / (1024 * 1024)) + " Mo (" + (taille / (1024 * 1024)) + " Mo ou plus) : téléchargement arrêté, rien n'a été remplacé.";
         }
 
         private static async Task<string> LireSignatureAsync(string url)

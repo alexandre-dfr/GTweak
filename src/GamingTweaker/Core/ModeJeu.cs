@@ -345,7 +345,7 @@ namespace GamingTweaker.Core
                     }
                 }
 
-                if (echec) { try { Ecrire(etat); } catch (Exception) { } }
+                if (echec) { try { Ecrire(etat); } catch (Exception exc) { TraceAppli.Erreur("mode jeu : état non réécrit après un rétablissement incomplet", exc); } }
                 else { try { File.Delete(Fichier); } catch (Exception ex) { bilan.Avertissements.Add("Fichier d'état non supprimé : " + ex.Message); } }
             }
             return bilan;
