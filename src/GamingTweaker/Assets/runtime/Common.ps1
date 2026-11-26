@@ -2048,42 +2048,6 @@ function Open-GTLockedFile([string]$Path) {
     return (New-Object System.IO.FileStream($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::Read))
 }
 
-# Taille maximale d'un telechargement (pilote NVIDIA, installateurs d'applications) : au-dela, il est arrete et le fichier partiel supprime,
-# pour qu'une reponse anormale ne remplisse pas le disque (2 Go par defaut ; les plus gros installateurs font moins de 1,5 Go).
-# Telecharge $Url dans $Dest (nouveau fichier) en refusant plus de $MaxBytes octets, annonces (Content-Length) ou recus ;
-# $TimeoutSec borne la duree totale. En cas d'erreur, le fichier partiel est supprime.
-function Save-GTDownload {
-    param([Parameter(Mandatory)][string]$Url, [Parameter(Mandatory)][string]$Dest, [long]$MaxBytes = 2GB, [int]$TimeoutSec = 3000)
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    $req = [Net.HttpWebRequest]::Create($Url)
-    $req.UserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) WindowsPowerShell/5.1'
-    $req.Timeout = 60000
-    $req.ReadWriteTimeout = 60000
-    $req.AllowAutoRedirect = $true
-    $limite = [DateTime]::UtcNow.AddSeconds($TimeoutSec)
-    $resp = $null; $in = $null; $out = $null; $ok = $false
-    try {
-        $resp = $req.GetResponse()
-        if ($resp.ContentLength -gt $MaxBytes) { throw ('téléchargement refusé : ' + [math]::Floor($resp.ContentLength / 1MB) + ' Mo annoncés, ' + [math]::Floor($MaxBytes / 1MB) + ' Mo au plus') }
-        $in = $resp.GetResponseStream()
-        $out = New-Object System.IO.FileStream($Dest, [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
-        $buf = New-Object byte[] 1048576
-        $total = [long]0
-        while (($n = $in.Read($buf, 0, $buf.Length)) -gt 0) {
-            $total += $n
-            if ($total -gt $MaxBytes) { throw ('téléchargement arrêté : plus de ' + [math]::Floor($MaxBytes / 1MB) + ' Mo reçus') }
-            if ([DateTime]::UtcNow -gt $limite) { throw ('téléchargement arrêté : plus de ' + $TimeoutSec + ' s') }
-            $out.Write($buf, 0, $n)
-        }
-        $ok = $true
-    } finally {
-        if ($null -ne $out) { $out.Dispose() }
-        if ($null -ne $in) { $in.Dispose() }
-        if ($null -ne $resp) { $resp.Dispose() }
-        if (-not $ok) { Remove-Item -LiteralPath $Dest -Force -ErrorAction SilentlyContinue }
-    }
-}
-
 # Telecharge l'installateur dans un dossier reserve aux administrateurs, le verrouille (aucune ecriture possible), verifie sa signature
 # (sinon suppression et erreur), l'installe en silencieux sans redemarrage, puis supprime le dossier. Le verrou est tenu de la verification au lancement.
 function Install-TweakNvidiaDriver {
@@ -2095,7 +2059,9 @@ function Install-TweakNvidiaDriver {
     $dest = Join-Path $dir $leaf
     $lock = $null
     try {
-        Save-GTDownload -Url $Url -Dest $dest
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        $ProgressPreference = 'SilentlyContinue'
+        Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $dest -TimeoutSec 3000
         $lock = Open-GTLockedFile $dest
         Confirm-GTNvidiaInstaller -Path $dest
         $p = Start-Process -FilePath $dest -ArgumentList '-s', '-noreboot' -Wait -PassThru
@@ -2265,8 +2231,8 @@ function Get-GTNvState([object[]]$Pairs) {
 # ---- Installation d'applications (menu Installation) -----------------------------------------------
 # $GT_AppCatalog : contenu de applis-list.json, ecrit par ScriptBuilder dans le script des qu'une option du menu Installation est choisie.
 # Pour chaque application choisie : ignoree si deja installee ; sinon winget (paquet officiel, empreinte verifiee par winget) ;
-# sinon telechargement direct (https, taille bornee, dossier reserve aux administrateurs, fichier verrouille, signature Authenticode valide
-# et delivree a l'un des signataires attendus, sinon supprime) puis installation silencieuse ; sans lien direct, la page officielle est indiquee dans le rapport.
+# sinon telechargement direct (https, dossier reserve aux administrateurs, fichier verrouille, signature Authenticode valide et delivree
+# a l'editeur attendu, sinon supprime) puis installation silencieuse ; sans lien direct, la page officielle est indiquee dans le rapport.
 
 function Get-GTAppCatalog {
     if ($null -eq $GT_AppCatalog) { throw 'Catalogue des applications absent du script.' }
@@ -2295,41 +2261,14 @@ function Test-GTAppInstalled([string[]]$Prefixes, [string[]]$Installed) {
     return $false
 }
 
-# Nom de signataire compare sans casse, virgules ni points, espaces reduits : « Epic Games, Inc. » = « epic games inc ».
-function ConvertTo-GTSignerKey([string]$Name) {
-    return ((($Name -replace '[,.]', ' ') -replace '\s+', ' ').Trim().ToLowerInvariant())
-}
-
-# Valeurs des champs CN et O d'un sujet de certificat (« CN="Electronic Arts, Inc.", O=... » : guillemets retires).
-function Get-GTCertSubjectNames([string]$Subject) {
-    $names = @()
-    foreach ($m in [regex]::Matches([string]$Subject, '(?i)(?:^|,)\s*(?:CN|O)\s*=\s*("(?:[^"]|"")*"|[^,]*)')) {
-        $v = $m.Groups[1].Value.Trim()
-        if ($v.Length -ge 2 -and $v.StartsWith('"') -and $v.EndsWith('"')) { $v = $v.Substring(1, $v.Length - 2).Replace('""', '"') }
-        if ($v) { $names += $v }
-    }
-    return $names
-}
-
-# Vrai si la signature est valide ET delivree a l'un des signataires attendus : le CN ou le O du sujet est EXACTEMENT l'un des noms
-# (sans tenir compte de la casse, des virgules et des points). « Valve Corp. » accepte « CN=Valve Corp. » ; refuse « CN=Not Valve Corp. »,
-# « CN=Valve Corp. Fans », un OU, une signature invalide ou absente.
-function Test-GTAppSignature($Signature, [string[]]$Signataires) {
-    $attendus = @(@($Signataires) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | ForEach-Object { ConvertTo-GTSignerKey $_ })
-    if ($null -eq $Signature -or $attendus.Count -eq 0) { return $false }
+# Vrai si la signature est valide ET delivree a l'editeur attendu : un champ CN ou O du sujet contient le nom comme mot entier
+# (« Valve » accepte « CN=Valve Corp. », refuse « CN=NotValveX » et une signature invalide ou absente).
+function Test-GTAppSignature($Signature, [string]$Editeur) {
+    if ($null -eq $Signature -or [string]::IsNullOrWhiteSpace($Editeur)) { return $false }
     if ([string]$Signature.Status -ne 'Valid') { return $false }
     $subject = ''
     if ($null -ne $Signature.SignerCertificate) { $subject = [string]$Signature.SignerCertificate.Subject }
-    foreach ($n in @(Get-GTCertSubjectNames $subject)) { if ($attendus -contains (ConvertTo-GTSignerKey $n)) { return $true } }
-    return $false
-}
-
-# Vrai si tous les fichiers de detection existent (variables d'environnement developpees) ; faux sans fichier.
-function Test-GTAppFiles([string[]]$Files) {
-    $l = @(@($Files) | Where-Object { $_ })
-    if ($l.Count -eq 0) { return $false }
-    foreach ($f in $l) { if (-not (Test-Path -LiteralPath ([Environment]::ExpandEnvironmentVariables($f)) -PathType Leaf)) { return $false } }
-    return $true
+    return [bool]($subject -match ('(?i)(^|,)\s*(CN|O)\s*=\s*"?[^,"]*\b' + [regex]::Escape($Editeur) + '\b'))
 }
 
 # Adresse acceptee pour un telechargement direct : https uniquement.
@@ -2338,15 +2277,19 @@ function Test-GTAppUrl([string]$Url) {
 }
 
 # Points de remplacement pour les tests (telechargement, signature, lancement de l'installateur).
-function Save-GTAppDownload([string]$Url, [string]$Dest) { Save-GTDownload -Url $Url -Dest $Dest }
+function Save-GTAppDownload([string]$Url, [string]$Dest) {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    $ProgressPreference = 'SilentlyContinue'
+    Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $Dest -TimeoutSec 3000
+}
 function Get-GTAppSignature([string]$Path) { return (Get-AuthenticodeSignature -LiteralPath $Path) }
 function Start-GTAppInstaller([string]$Path, [string]$Type, [string]$Arguments) {
     if ($Type -eq 'msi') {
         $msiexec = Join-Path $env:SystemRoot 'System32\msiexec.exe'
         $p = Start-Process -FilePath $msiexec -ArgumentList @('/i', ('"' + $Path + '"'), '/qn', '/norestart') -Wait -PassThru
     } elseif ([string]::IsNullOrWhiteSpace($Arguments)) {
-        # Un installateur qui s'affiche attendrait un clic, jusqu'a la limite de l'option (et sans personne devant l'ecran pour la routine).
-        throw 'installation silencieuse inconnue pour cet installateur : rien n''a été lancé'
+        # Pas d'installation silencieuse connue : l'installateur s'affiche et l'utilisateur le suit.
+        $p = Start-Process -FilePath $Path -Wait -PassThru
     } else {
         $p = Start-Process -FilePath $Path -ArgumentList $Arguments -Wait -PassThru
     }
@@ -2360,10 +2303,8 @@ function Test-GTInstallerOk([int]$Code) { return ($Code -eq 0 -or $Code -eq 3010
 function Install-GTAppDirect($App) {
     $url = [string]$App.url
     if (-not (Test-GTAppUrl $url)) { throw ('adresse de téléchargement refusée (https attendu)') }
-    $signataires = @(@($App.signataires) | Where-Object { $_ } | ForEach-Object { [string]$_ })
-    if ($signataires.Count -eq 0) { throw 'signataire attendu inconnu : téléchargement refusé' }
+    if ([string]::IsNullOrWhiteSpace([string]$App.editeur)) { throw 'éditeur attendu inconnu : téléchargement refusé' }
     $type = if ([string]$App.type -eq 'msi') { 'msi' } else { 'exe' }
-    if ($type -eq 'exe' -and [string]::IsNullOrWhiteSpace([string]$App.args)) { throw 'installation silencieuse inconnue : téléchargement refusé' }
     if ([string]$App.id -notmatch '^[a-z0-9][a-z0-9\-]*$') { throw 'identifiant d''application invalide' }
     $dir = New-GTSecureDownloadDir
     $dest = Join-Path $dir ([string]$App.id + '-setup.' + $type)
@@ -2372,10 +2313,10 @@ function Install-GTAppDirect($App) {
         Save-GTAppDownload $url $dest
         if (-not (Test-Path -LiteralPath $dest)) { throw 'téléchargement vide' }
         $lock = Open-GTLockedFile $dest
-        if (-not (Test-GTAppSignature (Get-GTAppSignature $dest) $signataires)) {
+        if (-not (Test-GTAppSignature (Get-GTAppSignature $dest) ([string]$App.editeur))) {
             $lock.Dispose(); $lock = $null
             Remove-Item -LiteralPath $dest -Force -ErrorAction SilentlyContinue
-            throw ('signature absente ou différente de « ' + ($signataires -join ' » ou « ') + ' » : fichier supprimé, rien n''a été installé')
+            throw ('signature absente ou différente de « ' + [string]$App.editeur + ' » : fichier supprimé, rien n''a été installé')
         }
         $code = Start-GTAppInstaller $dest $type ([string]$App.args)
         if (-not (Test-GTInstallerOk $code)) { throw ('l''installateur a échoué (code ' + $code + ')') }
@@ -2398,7 +2339,7 @@ function Install-GTAppSelection {
     foreach ($id in $r.Names) {
         $app = $apps | Where-Object { [string]$_.id -eq $id } | Select-Object -First 1
         $nom = [string]$app.nom
-        if (($app.installe -and (Test-GTAppInstalled @($app.installe) $installed)) -or ($app.fichiers -and (Test-GTAppFiles @($app.fichiers)))) { $deja += $nom; continue }
+        if ($app.installe -and (Test-GTAppInstalled @($app.installe) $installed)) { $deja += $nom; continue }
         $fait = $false; $raison = ''
         if ($winget -and $app.winget) {
             $source = if ([string]$app.source -eq 'msstore') { 'msstore' } else { 'winget' }

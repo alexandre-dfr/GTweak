@@ -8,9 +8,7 @@
     "url": "https://aka.ms/vs/17/release/vc_redist.x64.exe",
     "type": "exe",
     "args": "/install /quiet /norestart",
-    "signataires": [
-      "Microsoft Corporation"
-    ],
+    "editeur": "Microsoft",
     "installe": [
       "Microsoft Visual C++ 2015-2022 Redistributable (x64)",
       "Microsoft Visual C++ v14 Redistributable (x64)"
@@ -26,9 +24,7 @@
     "url": "https://aka.ms/vs/17/release/vc_redist.x86.exe",
     "type": "exe",
     "args": "/install /quiet /norestart",
-    "signataires": [
-      "Microsoft Corporation"
-    ],
+    "editeur": "Microsoft",
     "installe": [
       "Microsoft Visual C++ 2015-2022 Redistributable (x86)",
       "Microsoft Visual C++ v14 Redistributable (x86)"
@@ -44,15 +40,8 @@
     "url": "https://download.microsoft.com/download/1/7/1/1718ccc4-6315-4d8e-9543-8e28a4e18c4c/dxwebsetup.exe",
     "type": "exe",
     "args": "/Q",
-    "signataires": [
-      "Microsoft Corporation"
-    ],
-    "defaut": true,
-    "fichiers": [
-      "%SystemRoot%\\System32\\d3dx9_43.dll",
-      "%SystemRoot%\\System32\\XAudio2_7.dll",
-      "%SystemRoot%\\SysWOW64\\d3dx9_43.dll"
-    ]
+    "editeur": "Microsoft",
+    "defaut": true
   },
   {
     "id": "dotnet-desktop-8",
@@ -74,10 +63,7 @@
     "url": "https://cdn.akamai.steamstatic.com/client/installer/SteamSetup.exe",
     "type": "exe",
     "args": "/S",
-    "signataires": [
-      "Valve Corp.",
-      "Valve Corporation"
-    ],
+    "editeur": "Valve",
     "page": "https://store.steampowered.com/about/",
     "installe": [
       "Steam"
@@ -92,9 +78,7 @@
     "url": "https://launcher-public-service-prod06.ol.epicgames.com/launcher/api/installer/download/EpicGamesLauncherInstaller.msi",
     "type": "msi",
     "args": "",
-    "signataires": [
-      "Epic Games Inc."
-    ],
+    "editeur": "Epic Games",
     "page": "https://store.epicgames.com/fr/download",
     "installe": [
       "Epic Games Launcher"
@@ -109,10 +93,7 @@
     "url": "https://static3.cdn.ubi.com/orbit/launcher_installer/UbisoftConnectInstaller.exe",
     "type": "exe",
     "args": "/S",
-    "signataires": [
-      "Ubisoft Entertainment",
-      "Ubisoft Entertainment Sweden AB"
-    ],
+    "editeur": "Ubisoft",
     "page": "https://www.ubisoft.com/fr-fr/ubisoft-connect/download",
     "installe": [
       "Ubisoft Connect"
@@ -127,9 +108,7 @@
     "url": "https://origin-a.akamaihd.net/EA-Desktop-Client-Download/installer-releases/EAappInstaller.exe",
     "type": "exe",
     "args": "/passive /norestart",
-    "signataires": [
-      "Electronic Arts, Inc."
-    ],
+    "editeur": "Electronic Arts",
     "page": "https://www.ea.com/fr/ea-app",
     "installe": [
       "EA app"
@@ -150,8 +129,12 @@
     "id": "battlenet",
     "categorie": "launchers",
     "nom": "Battle.net",
-    "detail": "Blizzard (Call of Duty, Diablo, Overwatch). Par winget ; sans winget, son installateur n'a pas de mode silencieux : la page officielle est indiquée.",
+    "detail": "Blizzard (Call of Duty, Diablo, Overwatch). Son installateur s'affiche : suivez-le jusqu'au bout.",
     "winget": "Blizzard.BattleNet",
+    "url": "https://downloader.battle.net/download/getInstaller?os=win&installer=Battle.net-Setup.exe",
+    "type": "exe",
+    "args": "",
+    "editeur": "Blizzard",
     "page": "https://download.battle.net/fr-fr/desktop",
     "installe": [
       "Battle.net"
@@ -166,10 +149,7 @@
     "url": "https://gamedownloads.rockstargames.com/public/installer/Rockstar-Games-Launcher.exe",
     "type": "exe",
     "args": "/s /f",
-    "signataires": [
-      "Rockstar Games, Inc.",
-      "Take-Two Interactive Software, Inc."
-    ],
+    "editeur": "Rockstar Games",
     "page": "https://socialclub.rockstargames.com/rockstar-games-launcher",
     "installe": [
       "Rockstar Games Launcher"
@@ -193,23 +173,40 @@
     "url": "https://download.amazongames.com/AmazonGamesSetup.exe",
     "type": "exe",
     "args": "/S",
-    "signataires": [
-      "Amazon.com Services LLC",
-      "Amazon.com, Inc."
-    ],
+    "editeur": "Amazon",
     "page": "https://gaming.amazon.com/home",
     "installe": [
       "Amazon Games"
     ]
   },
   {
-    "id": "riot",
+    "id": "lol",
     "categorie": "launchers",
-    "nom": "Riot Client",
-    "detail": "Riot Games (League of Legends, VALORANT, Teamfight Tactics). Riot ne publie pas le Riot Client seul : il s'installe avec le premier jeu Riot que vous choisirez sur la page officielle. Aucun jeu n'est installé ici.",
-    "page": "https://www.riotgames.com/fr",
+    "nom": "League of Legends (Europe Ouest)",
+    "detail": "Riot Games : Riot Client et le jeu.",
+    "winget": "RiotGames.LeagueOfLegends.EUW",
+    "url": "https://lol.secure.dyn.riotcdn.net/channels/public/x/installer/current/live.euw.exe",
+    "type": "exe",
+    "args": "--skip-to-install",
+    "editeur": "Riot Games",
+    "page": "https://www.leagueoflegends.com/fr-fr/download/",
     "installe": [
-      "Riot Client"
+      "League of Legends"
+    ]
+  },
+  {
+    "id": "valorant",
+    "categorie": "launchers",
+    "nom": "VALORANT (Europe)",
+    "detail": "Riot Games : Riot Client, le jeu et son anti-triche Vanguard (redémarrage nécessaire).",
+    "winget": "RiotGames.Valorant.EU",
+    "url": "https://valorant.secure.dyn.riotcdn.net/channels/public/x/installer/current/live.live.eu.exe",
+    "type": "exe",
+    "args": "--skip-to-install",
+    "editeur": "Riot Games",
+    "page": "https://playvalorant.com/fr-fr/download/",
+    "installe": [
+      "VALORANT"
     ]
   },
   {
@@ -232,10 +229,7 @@
     "url": "https://download01.logi.com/web/ftp/pub/techsupport/gaming/lghub_installer.exe",
     "type": "exe",
     "args": "--silent",
-    "signataires": [
-      "Logitech Inc.",
-      "Logitech Europe S.A."
-    ],
+    "editeur": "Logitech",
     "page": "https://www.logitechg.com/fr-fr/innovation/g-hub.html",
     "installe": [
       "Logitech G HUB"
@@ -251,9 +245,7 @@
     "url": "https://www3.corsair.com/software/CUE_V5/public/modules/windows/installer/Install%20iCUE.exe",
     "type": "exe",
     "args": "--quiet",
-    "signataires": [
-      "Corsair Memory, Inc."
-    ],
+    "editeur": "Corsair",
     "page": "https://www.corsair.com/fr/fr/s/downloads",
     "installe": [
       "iCUE"
@@ -395,9 +387,7 @@
     "url": "https://dsadata.intel.com/installer",
     "type": "exe",
     "args": "/install /quiet /norestart",
-    "signataires": [
-      "Intel Corporation"
-    ],
+    "editeur": "Intel",
     "page": "https://www.intel.fr/content/www/fr/fr/support/detect.html",
     "installe": [
       "Intel® Driver & Support Assistant",
@@ -415,9 +405,7 @@
     "url": "https://discord.com/api/downloads/distributions/app/installers/latest?channel=stable&platform=win&arch=x64",
     "type": "exe",
     "args": "-s",
-    "signataires": [
-      "Discord Inc."
-    ],
+    "editeur": "Discord",
     "page": "https://discord.com/download",
     "installe": [
       "Discord"
@@ -467,9 +455,7 @@
     "url": "https://net.geo.opera.com/opera_gx/stable/windows",
     "type": "exe",
     "args": "/silent",
-    "signataires": [
-      "Opera Norway AS"
-    ],
+    "editeur": "Opera",
     "page": "https://www.opera.com/fr/gx",
     "installe": [
       "Opera GX"
@@ -497,9 +483,7 @@
     "url": "https://download.mozilla.org/?product=firefox-latest-ssl&os=win64&lang=fr",
     "type": "exe",
     "args": "/S",
-    "signataires": [
-      "Mozilla Corporation"
-    ],
+    "editeur": "Mozilla",
     "page": "https://www.mozilla.org/fr/firefox/new/",
     "installe": [
       "Mozilla Firefox"
@@ -515,9 +499,7 @@
     "url": "https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi",
     "type": "msi",
     "args": "",
-    "signataires": [
-      "Google LLC"
-    ],
+    "editeur": "Google",
     "page": "https://www.google.com/intl/fr_fr/chrome/",
     "installe": [
       "Google Chrome"
@@ -557,9 +539,7 @@
     "url": "https://download.scdn.co/SpotifyFullSetupX64.exe",
     "type": "exe",
     "args": "/silent /skip-app-launch",
-    "signataires": [
-      "Spotify AB"
-    ],
+    "editeur": "Spotify",
     "page": "https://www.spotify.com/fr/download/windows/",
     "installe": [
       "Spotify"
@@ -659,10 +639,7 @@
     "url": "https://builds.parsec.app/package/parsec-windows.exe",
     "type": "exe",
     "args": "/silent",
-    "signataires": [
-      "Parsec Cloud, Inc.",
-      "Unity Technologies SF"
-    ],
+    "editeur": "Parsec",
     "page": "https://parsec.app/downloads",
     "installe": [
       "Parsec"

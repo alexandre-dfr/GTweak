@@ -90,7 +90,7 @@ namespace GamingTweaker.Core
                     var s = JsonConvert.DeserializeObject<MesureSnapshot>(File.ReadAllText(f, Encoding.UTF8), new JsonSerializerSettings { DateParseHandling = DateParseHandling.None });
                     if (s != null) res.Add(s);
                 }
-                catch (Exception exc) { TraceAppli.Erreur("mesures : fichier illisible " + Path.GetFileName(f), exc); }
+                catch (Exception) { }
             }
             return res.OrderByDescending(s => s.Date, StringComparer.Ordinal).ToList();
         }

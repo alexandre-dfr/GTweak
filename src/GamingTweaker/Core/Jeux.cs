@@ -102,7 +102,7 @@ namespace GamingTweaker.Core
                 var vdf = Path.Combine(dossierSteam, "steamapps", "libraryfolders.vdf");
                 if (File.Exists(vdf)) bibliotheques.AddRange(BibliothequesSteam(File.ReadAllText(vdf, Encoding.UTF8)));
             }
-            catch (Exception exc) { TraceAppli.Erreur("jeux : bibliothèques Steam", exc); }
+            catch (Exception) { }
             foreach (var b in bibliotheques.Distinct(StringComparer.OrdinalIgnoreCase))
             {
                 try
@@ -118,7 +118,7 @@ namespace GamingTweaker.Core
                         if (Directory.Exists(dossier)) res.Add(new JeuSurveille { Nom = m.Item1, Chemin = dossier, Source = "Steam" });
                     }
                 }
-                catch (Exception exc) { TraceAppli.Erreur("jeux : manifestes Steam", exc); }
+                catch (Exception) { }
             }
             return Dedoublonner(res);
         }
@@ -133,7 +133,7 @@ namespace GamingTweaker.Core
                     if (!string.IsNullOrWhiteSpace(p) && Directory.Exists(p)) return Path.GetFullPath(p);
                 }
             }
-            catch (Exception exc) { TraceAppli.Erreur("jeux : dossier de Steam", exc); }
+            catch (Exception) { }
             var pf = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Steam");
             return Directory.Exists(pf) ? pf : null;
         }
@@ -170,7 +170,7 @@ namespace GamingTweaker.Core
                     if (m != null && Directory.Exists(m.Item2)) res.Add(new JeuSurveille { Nom = m.Item1, Chemin = m.Item2, Source = "Epic" });
                 }
             }
-            catch (Exception exc) { TraceAppli.Erreur("jeux : manifestes Epic", exc); }
+            catch (Exception) { }
             return Dedoublonner(res);
         }
 

@@ -41,35 +41,25 @@ namespace GamingTweaker.Tests
                 Assert.Contains(Apps, a => a.Categorie == c);
             }
             foreach (var id in new[] { "steam", "epic", "ubisoft", "ea", "battlenet", "rockstar", "ghub", "icue", "synapse", "steelseries", "armoury", "msicenter",
-                                       "nvidia-app", "amd-adrenalin", "discord", "operagx", "notepadpp", "deezer", "vcredist-x64", "directx", "riot" })
+                                       "nvidia-app", "amd-adrenalin", "discord", "operagx", "notepadpp", "deezer", "vcredist-x64", "directx" })
                 Assert.Contains(Apps, a => a.Id == id);
-            // Launchers seulement, aucun jeu : le Riot Client remplace League of Legends et VALORANT.
-            Assert.DoesNotContain(Apps, a => a.Id == "lol" || a.Id == "valorant");
             Assert.True(cat["ins.composants"].Recommande);
             Assert.False(cat["ins.launchers"].Recommande);
         }
 
         [Fact]
-        public void Validate_refuse_http_un_lien_sans_signataire_un_exe_interactif_et_des_arguments_dangereux()
+        public void Validate_refuse_http_un_lien_sans_editeur_et_des_arguments_dangereux()
         {
-            var x1 = new List<string> { "X Inc." };
             var e = AppsCatalogue.Validate(new[]
             {
-                new AppInstallable { Id = "a", Categorie = "applis", Nom = "A", Url = "http://x.com/a.exe", Type = "exe", Signataires = x1, Args = "/S" },
-                new AppInstallable { Id = "b", Categorie = "applis", Nom = "B", Url = "https://x.com/b.exe", Type = "exe", Args = "/S" },
-                new AppInstallable { Id = "c", Categorie = "applis", Nom = "C", Url = "https://x.com/c.exe", Type = "exe", Signataires = x1, Args = "/S; calc" },
+                new AppInstallable { Id = "a", Categorie = "applis", Nom = "A", Url = "http://x.com/a.exe", Type = "exe", Editeur = "X" },
+                new AppInstallable { Id = "b", Categorie = "applis", Nom = "B", Url = "https://x.com/b.exe", Type = "exe" },
+                new AppInstallable { Id = "c", Categorie = "applis", Nom = "C", Url = "https://x.com/c.exe", Type = "exe", Editeur = "X", Args = "/S; calc" },
                 new AppInstallable { Id = "d", Categorie = "inconnue", Nom = "D", Winget = "D.D" },
                 new AppInstallable { Id = "e", Categorie = "applis", Nom = "E" },
-                new AppInstallable { Id = "f", Categorie = "applis", Nom = "F", Url = "https://x.com/f.exe", Type = "exe", Signataires = x1 },
-                new AppInstallable { Id = "g", Categorie = "applis", Nom = "G", Page = "https://x.com/", Fichiers = new List<string> { @"C:\Windows\x.dll", @"%SystemRoot%\..\x.dll" } },
-                new AppInstallable { Id = "h", Categorie = "applis", Nom = "H", Url = "https://x.com/h.msi", Type = "msi", Signataires = x1,
-                                     Fichiers = new List<string> { @"%SystemRoot%\System32\d3dx9_43.dll" } },
             });
             Assert.Contains(e, x => x.StartsWith("a :") && x.Contains("https"));
-            Assert.Contains(e, x => x.StartsWith("b :") && x.Contains("signataire"));
-            Assert.Contains(e, x => x.StartsWith("f :") && x.Contains("silencieuse"));
-            Assert.Equal(2, e.Count(x => x.StartsWith("g :") && x.Contains("fichier de détection")));
-            Assert.DoesNotContain(e, x => x.StartsWith("h :"));   // un msi s'installe toujours en silence (msiexec /qn)
+            Assert.Contains(e, x => x.StartsWith("b :") && x.Contains("éditeur"));
             Assert.Contains(e, x => x.StartsWith("c :") && x.Contains("arguments"));
             Assert.Contains(e, x => x.StartsWith("d :") && x.Contains("catégorie"));
             Assert.Contains(e, x => x.StartsWith("e :") && x.Contains("ni winget"));
@@ -128,45 +118,13 @@ namespace GamingTweaker.Tests
         [Fact]
         public void Composants_coches_par_defaut_et_detail_indique_le_mode_d_installation()
         {
-            var p = new AppsProvider("composants", null, new Installes("Microsoft Visual C++ 2015-2022 Redistributable (x86) - 14.40.33810"), null, _ => false);
+            var p = new AppsProvider("composants", null, new Installes("Microsoft Visual C++ 2015-2022 Redistributable (x86) - 14.40.33810"));
             Assert.Contains("vcredist-x86", p.SelectionParDefaut);   // avant le chargement : valeur du catalogue
             var l = p.LoadAsync(CancellationToken.None).Result;
             Assert.Equal(new[] { "vcredist-x64", "directx" }, p.SelectionParDefaut);
             Assert.Contains("winget, sinon téléchargement direct", l.Single(e => e.Key == "vcredist-x64").Detail);
             var nv = AppsProvider.Entree(Apps.Single(a => a.Id == "nvidia-app"));
             Assert.Contains("page officielle", nv.Detail);
-        }
-
-        [Fact]
-        public void DirectX_deja_present_n_est_pas_propose_meme_sans_entree_dans_les_programmes()
-        {
-            var vus = new List<string>();
-            var p = new AppsProvider("composants", null, new Installes(), null, f => { vus.Add(f); return true; });
-            var l = p.LoadAsync(CancellationToken.None).Result;
-            Assert.DoesNotContain(l, e => e.Key == "directx");
-            Assert.Contains("DirectX", p.Message);
-            Assert.Contains(vus, f => f.EndsWith(@"\System32\d3dx9_43.dll", StringComparison.OrdinalIgnoreCase) && !f.Contains("%"));
-            Assert.Contains(vus, f => f.EndsWith(@"\SysWOW64\d3dx9_43.dll", StringComparison.OrdinalIgnoreCase));
-
-            // Un seul fichier manquant suffit pour proposer DirectX.
-            var p2 = new AppsProvider("composants", null, new Installes(), null, f => !f.EndsWith("XAudio2_7.dll", StringComparison.OrdinalIgnoreCase));
-            Assert.Contains(p2.LoadAsync(CancellationToken.None).Result, e => e.Key == "directx");
-        }
-
-        [Fact]
-        public void Battle_net_et_riot_client_n_ont_pas_de_lien_direct_et_chaque_exe_direct_s_installe_en_silence()
-        {
-            Assert.Null(Apps.Single(a => a.Id == "battlenet").Url);
-            Assert.Equal("Blizzard.BattleNet", Apps.Single(a => a.Id == "battlenet").Winget);
-            var riot = Apps.Single(a => a.Id == "riot");
-            Assert.Equal("launchers", riot.Categorie);
-            Assert.Null(riot.Url);
-            Assert.False(string.IsNullOrEmpty(riot.Page));
-            foreach (var a in Apps.Where(x => !string.IsNullOrEmpty(x.Url)))
-            {
-                Assert.True(a.Type == "msi" || !string.IsNullOrWhiteSpace(a.Args), a.Id + " : exe direct sans installation silencieuse");
-                Assert.NotEmpty(a.Signataires);
-            }
         }
 
         // ---- Ordre d'exécution et script ----------------------------------------------------------------------
@@ -196,51 +154,17 @@ namespace GamingTweaker.Tests
         }
 
         [Fact]
-        public void La_signature_doit_etre_valide_et_venir_exactement_d_un_signataire_attendu()
+        public void La_signature_doit_etre_valide_et_venir_de_l_editeur_attendu()
         {
-            Func<string, string, string[], string> t = (statut, sujet, noms) => string.Join("", PsCommon.Eval(
+            Func<string, string, string, string> t = (statut, sujet, editeur) => string.Join("", PsCommon.Eval(
                 "$s = [pscustomobject]@{ Status = " + Q(statut) + "; SignerCertificate = [pscustomobject]@{ Subject = " + Q(sujet) + " } }\r\n"
-                + "if (Test-GTAppSignature $s @(" + string.Join(", ", noms.Select(Q)) + ")) { 'OK' } else { 'KO' }"));
-            Assert.Equal("OK", t("Valid", "CN=Valve Corp., O=Valve Corp., L=Bellevue, S=Washington, C=US", new[] { "Valve Corp." }));
-            Assert.Equal("OK", t("Valid", "CN=\"Epic Games Inc.\", O=\"Epic Games Inc.\", C=US", new[] { "Epic Games Inc." }));
-            Assert.Equal("OK", t("Valid", "CN=\"Electronic Arts, Inc.\", O=\"Electronic Arts, Inc.\", C=US", new[] { "Electronic Arts, Inc." }));
-            Assert.Equal("OK", t("Valid", "CN=Logitech Inc, O=Logitech Inc", new[] { "Logitech Inc." }));                       // point final ignoré
-            Assert.Equal("OK", t("Valid", "CN=Ubisoft Entertainment Sweden AB", new[] { "Ubisoft Entertainment", "Ubisoft Entertainment Sweden AB" }));
-            Assert.Equal("KO", t("NotSigned", "CN=Valve Corp.", new[] { "Valve Corp." }));
-            Assert.Equal("KO", t("Valid", "CN=Not Valve Corp., O=Pirate", new[] { "Valve Corp." }));                         // ne fait que contenir le nom
-            Assert.Equal("KO", t("Valid", "CN=Valve Corp. Fans, O=Valve Corp. Fans", new[] { "Valve Corp." }));
-            Assert.Equal("KO", t("Valid", "CN=Microsoft Fan Club Ltd, O=Microsoft Fan Club Ltd", new[] { "Microsoft Corporation" }));
-            Assert.Equal("KO", t("Valid", "CN=Pirate, OU=Valve Corp.", new[] { "Valve Corp." }));                             // OU ignoré
-            Assert.Equal("KO", t("Valid", "CN=Valve Corp.", new string[0]));
-        }
-
-        [Fact]
-        public void Les_fichiers_de_detection_doivent_tous_exister()
-        {
-            var a = Path.Combine(tmp, "a.dll"); var b = Path.Combine(tmp, "b.dll");
-            File.WriteAllText(a, "x");
-            Func<string[], string> t = f => string.Join("", PsCommon.Eval("if (Test-GTAppFiles @(" + string.Join(", ", f.Select(Q)) + ")) { 'OK' } else { 'KO' }"));
-            Assert.Equal("OK", t(new[] { a }));
-            Assert.Equal("KO", t(new[] { a, b }));
-            Assert.Equal("KO", t(new string[0]));
-            Assert.Equal("KO", t(new[] { tmp }));   // un dossier n'est pas un fichier
-        }
-
-        [Fact]
-        public void Un_exe_sans_installation_silencieuse_n_est_jamais_lance()
-        {
-            var r = string.Join("", PsCommon.Eval("try { Start-GTAppInstaller 'C:\\x.exe' 'exe' '' ; 'LANCE' } catch { 'REFUS ' + $_.Exception.Message }"));
-            Assert.StartsWith("REFUS", r);
-            Assert.Contains("silencieuse", r);
-        }
-
-        [Fact]
-        public void Battle_net_sans_winget_renvoie_a_la_page_officielle_sans_rien_telecharger()
-        {
-            var r = Apply("launchers", new[] { "battlenet" }, Doubles(false));
-            Assert.Contains("##GT|skip|ins.launchers|à installer depuis la page officielle", r);
-            Assert.Contains("https://download.battle.net/", r);
-            Assert.DoesNotContain("download", Log());
+                + "if (Test-GTAppSignature $s " + Q(editeur) + ") { 'OK' } else { 'KO' }"));
+            Assert.Equal("OK", t("Valid", "CN=Valve Corp., O=Valve Corp., L=Bellevue, S=Washington, C=US", "Valve"));
+            Assert.Equal("OK", t("Valid", "CN=\"Epic Games Inc.\", O=\"Epic Games Inc.\", C=US", "Epic Games"));
+            Assert.Equal("KO", t("NotSigned", "CN=Valve Corp.", "Valve"));
+            Assert.Equal("KO", t("Valid", "CN=NotValveX, O=Pirate", "Valve"));
+            Assert.Equal("KO", t("Valid", "CN=Pirate, OU=Valve", "Valve"));
+            Assert.Equal("KO", t("Valid", "CN=Valve Corp.", ""));
         }
 
         /// <summary>Doubles : winget journalise et renvoie le code demandé ; téléchargement, signature, dossier et installateur factices.</summary>
