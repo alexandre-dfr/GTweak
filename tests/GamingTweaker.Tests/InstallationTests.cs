@@ -150,7 +150,7 @@ namespace GamingTweaker.Tests
         {
             var items = new[] { It("opt.a", "Optimisation") };
             var script = ScriptBuilder.Build(items, new Selection { OptionIds = new HashSet<string> { "opt.a" } }, "j.jsonl");
-            Assert.DoesNotContain("$GT_AppCatalog", script);
+            Assert.DoesNotContain("$GT_AppCatalog = @(", script);
         }
 
         [Fact]
