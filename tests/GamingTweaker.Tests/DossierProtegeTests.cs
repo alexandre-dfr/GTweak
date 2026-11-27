@@ -74,6 +74,35 @@ namespace GamingTweaker.Tests
         }
 
         [Fact]
+        public void Dans_le_dossier_run_un_element_douteux_est_purge_au_lieu_d_arreter_l_application()
+        {
+            // winget crée Run\WinGet (TEMP des programmes lancés) avec le compte de l'utilisateur pour propriétaire.
+            var j = new Func<EntreeProtection, EntreeProtection>(e => { e.Jetable = true; return e; });
+            var d = DossierProtege.Decider(j(E(proprio: Utilisateur)), true, @"Run\WinGet");
+            Assert.Equal(ActionProtection.Purger, d.Action);
+            Assert.Contains("propriétaire non fiable", d.Raison);
+            Assert.Equal(ActionProtection.Purger, DossierProtege.Decider(j(E(lien: true)), true, @"Run\piege").Action);
+            Assert.Equal(ActionProtection.Purger, DossierProtege.Decider(j(E(dossier: false, liens: 2)), true, @"Run\x").Action);
+            Assert.Equal(ActionProtection.Aucune, DossierProtege.Decider(j(E()), true, @"Run\sain").Action);
+            // Hors de Run, ou la racine elle-même : toujours un refus.
+            Assert.Equal(ActionProtection.Refuser, DossierProtege.Decider(E(proprio: Utilisateur), true, @"App\x").Action);
+            Assert.Equal(ActionProtection.Refuser, DossierProtege.Decider(j(E(racine: true, proprio: Utilisateur)), true, "r").Action);
+        }
+
+        [Fact]
+        public void Dacl_du_dossier_run_restreint_les_droits_du_proprietaire()
+        {
+            var acl = DossierProtege.DaclAttendue(true, true);
+            var aces = acl.Cast<CommonAce>().ToList();
+            Assert.Equal(4, aces.Count);
+            var owner = aces.Single(a => a.SecurityIdentifier.Value == DossierProtege.SidDroitsProprietaire);
+            Assert.Equal(0x1200A9, owner.AccessMask);   // lecture et exécution seulement
+            Assert.True(owner.AceFlags.HasFlag(AceFlags.ContainerInherit) && owner.AceFlags.HasFlag(AceFlags.ObjectInherit));
+            Assert.True(DossierProtege.DaclSure(aces.Select(a => new AceInfo { Sid = a.SecurityIdentifier.Value, Masque = a.AccessMask, Autorise = true })));
+            Assert.Equal(3, DossierProtege.DaclAttendue(true).Count);   // ailleurs : inchangée
+        }
+
+        [Fact]
         public void Hors_elevation_le_proprietaire_n_est_pas_verifie()
         {
             Assert.Equal(ActionProtection.Appliquer, DossierProtege.Decider(E(racine: true, proprio: Utilisateur), false, "r").Action);
@@ -229,6 +258,28 @@ namespace GamingTweaker.Tests
             Assert.Equal(avantDehors, Sddl(dehors, true));
             Assert.Equal(avantCible, Sddl(cibleDehors, false));
             Assert.True(File.Exists(Path.Combine(r2, "App", "version.dll"))); // rien n'est supprimé : refus
+        }
+
+        [Fact]
+        public void Une_jonction_dans_run_est_supprimee_elle_meme_sans_toucher_sa_cible()
+        {
+            var dehors = Path.Combine(tmp, "Dehors3"); Directory.CreateDirectory(dehors);
+            var cibleDehors = Path.Combine(dehors, "garder.txt"); File.WriteAllText(cibleDehors, "dehors");
+            var racine = Path.Combine(tmp, "R3");
+            var winget = Path.Combine(racine, "Run", "WinGet", "defaultState");
+            Directory.CreateDirectory(winget);
+            File.WriteAllText(Path.Combine(winget, "log.txt"), "x");
+            Jonction(Path.Combine(racine, "Run", "WinGet", "piege"), dehors);
+            File.WriteAllText(Path.Combine(racine, "Run", "script.ps1"), "# sain");
+
+            // Le contenu sain reste ; la jonction (refusée hors de Run) est supprimée elle-même, sa cible reste intacte.
+            DossierProtege.Securiser(racine, definirProprietaire: EstEleve());
+            // Élevé, WinGet (créé par ce compte, propriétaire non fiable) est purgé en entier ; sinon seule la jonction l'est.
+            var piege = Path.Combine(racine, "Run", "WinGet", "piege");
+            Assert.False(Directory.Exists(piege) || File.Exists(piege));
+            Assert.True(File.Exists(Path.Combine(racine, "Run", "script.ps1")));
+            Assert.True(File.Exists(cibleDehors));
+            Assert.Equal("dehors", File.ReadAllText(cibleDehors));
         }
 
         [Fact]

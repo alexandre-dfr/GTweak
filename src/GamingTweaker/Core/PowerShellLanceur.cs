@@ -69,7 +69,7 @@ namespace GamingTweaker.Core
         /// </summary>
         public static string ChoisirDossierRun(bool admin, string racineProtegee, string tempUtilisateur)
         {
-            return admin ? Path.Combine(racineProtegee, "Run") : Path.Combine(tempUtilisateur, "GamingTweaker", "Run");
+            return admin ? Path.Combine(racineProtegee, DossierProtege.NomDossierJetable) : Path.Combine(tempUtilisateur, "GamingTweaker", "Run");
         }
 
         public static string PreparerDossierRun()
@@ -82,7 +82,15 @@ namespace GamingTweaker.Core
             {
                 // Racine absente (premier lancement sans passage par le contrôle de démarrage) : créée et vérifiée d'abord.
                 if (!Directory.Exists(racine)) DossierProtege.Securiser(racine);
-                if (!Directory.Exists(run)) DossierProtege.CreerDossier(run);
+                // Run est aussi le TEMP des programmes lancés (winget, installateurs) : ce qu'ils y créent appartient au compte de l'utilisateur.
+                // OWNER RIGHTS (hérité) empêche ce compte, sans élévation, d'en changer les droits ; au démarrage suivant, ces éléments
+                // sont supprimés (contenu jetable) au lieu d'arrêter l'application.
+                if (!Directory.Exists(run)) DossierProtege.CreerDossier(run, true, true);
+                else
+                {
+                    try { DossierProtege.RestreindreProprietaire(run); }
+                    catch (Exception ex) { TraceAppli.Erreur("dossier Run : restriction du propriétaire impossible", ex); }
+                }
             }
             else Directory.CreateDirectory(run);
             NettoyerAnciens(run);

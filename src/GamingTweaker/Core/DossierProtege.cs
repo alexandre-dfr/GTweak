@@ -12,7 +12,7 @@ using Microsoft.Win32.SafeHandles;
 namespace GamingTweaker.Core
 {
     /// <summary>Aucune : rien à changer ; Appliquer : réécrire la DACL protégée ; Refuser : élément douteux, l'application s'arrête (jamais repris ni supprimé).</summary>
-    public enum ActionProtection { Aucune, Appliquer, Refuser }
+    public enum ActionProtection { Aucune, Appliquer, Refuser, Purger }
 
     /// <summary>Ce qui a été lu sur un élément du dossier (par poignée, sans suivre les liens).</summary>
     public class EntreeProtection
@@ -27,6 +27,12 @@ namespace GamingTweaker.Core
         public bool EstVolumeInattendu { get; set; }
         public string ProprietaireSid { get; set; }
         public bool DaclSure { get; set; }
+        /// <summary>
+        /// Élément du dossier Run (scripts et dossier temporaire des programmes lancés) : contenu jetable. Un élément refusé y est supprimé
+        /// par poignée au lieu d'arrêter l'application (winget, par exemple, y crée un dossier « WinGet » dont le propriétaire est le compte
+        /// de l'utilisateur et non le groupe Administrateurs).
+        /// </summary>
+        public bool Jetable { get; set; }
     }
 
     public class DecisionProtection
@@ -63,6 +69,10 @@ namespace GamingTweaker.Core
         public const string SidSysteme = "S-1-5-18";
         public const string SidAdministrateurs = "S-1-5-32-544";
         public const string SidUtilisateurs = "S-1-5-32-545";
+        /// <summary>OWNER RIGHTS : une entrée pour ce SID remplace les droits implicites du propriétaire (lecture de la DACL et modification).</summary>
+        public const string SidDroitsProprietaire = "S-1-3-4";
+        /// <summary>Sous-dossier des scripts et dossier temporaire (TEMP) des programmes lancés : son contenu est jetable.</summary>
+        public const string NomDossierJetable = "Run";
         public const string SidTrustedInstaller = "S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464";
 
         private const int LectureExecution = 0x1200A9;          // FileSystemRights.ReadAndExecute (Synchronize inclus)
@@ -91,6 +101,14 @@ namespace GamingTweaker.Core
         /// <param name="verifierProprietaire">Vrai quand l'appli est élevée. Hors élévation (tests), tout est créé par l'utilisateur courant : seuls liens et redirections sont refusés.</param>
         public static DecisionProtection Decider(EntreeProtection e, bool verifierProprietaire, string chemin)
         {
+            var d = DeciderSansPurge(e, verifierProprietaire, chemin);
+            if (d.Action == ActionProtection.Refuser && e.Jetable && !e.EstRacine)
+                return new DecisionProtection { Action = ActionProtection.Purger, Raison = d.Raison };
+            return d;
+        }
+
+        private static DecisionProtection DeciderSansPurge(EntreeProtection e, bool verifierProprietaire, string chemin)
+        {
             if (e.EstLien)
                 return Refus("lien ou jonction à la place d'un élément du dossier de données : " + chemin);
             if (e.EstRacine && !e.EstDossier)
@@ -107,19 +125,26 @@ namespace GamingTweaker.Core
 
         private static DecisionProtection Refus(string raison) { return new DecisionProtection { Action = ActionProtection.Refuser, Raison = raison }; }
 
-        /// <summary>DACL appliquée : SYSTEM et Administrateurs contrôle total, Utilisateurs lecture et exécution (héritables pour un dossier).</summary>
-        public static RawAcl DaclAttendue(bool dossier)
+        /// <summary>
+        /// DACL appliquée : SYSTEM et Administrateurs contrôle total, Utilisateurs lecture et exécution (héritables pour un dossier).
+        /// <paramref name="restreindreProprietaire"/> (dossier Run) : OWNER RIGHTS en lecture et exécution, hérité. Un élément qu'un programme
+        /// lancé y crée a pour propriétaire le compte de l'utilisateur ; sans cette entrée, ce compte pourrait, même sans élévation, en changer
+        /// les droits puis le modifier.
+        /// </summary>
+        public static RawAcl DaclAttendue(bool dossier, bool restreindreProprietaire = false)
         {
             var flags = dossier ? AceFlags.ContainerInherit | AceFlags.ObjectInherit : AceFlags.None;
-            var acl = new RawAcl(GenericAcl.AclRevision, 3);
+            var acl = new RawAcl(GenericAcl.AclRevision, 4);
             acl.InsertAce(acl.Count, new CommonAce(flags, AceQualifier.AccessAllowed, ControleTotal, new SecurityIdentifier(SidSysteme), false, null));
             acl.InsertAce(acl.Count, new CommonAce(flags, AceQualifier.AccessAllowed, ControleTotal, new SecurityIdentifier(SidAdministrateurs), false, null));
             acl.InsertAce(acl.Count, new CommonAce(flags, AceQualifier.AccessAllowed, LectureExecution, new SecurityIdentifier(SidUtilisateurs), false, null));
+            if (restreindreProprietaire)
+                acl.InsertAce(acl.Count, new CommonAce(flags, AceQualifier.AccessAllowed, LectureExecution, new SecurityIdentifier(SidDroitsProprietaire), false, null));
             return acl;
         }
 
         /// <summary>Sécurité de création : DACL protégée attendue et, en mode élevé, propriétaire Administrateurs.</summary>
-        public static DirectorySecurity SecuriteDeCreation(bool definirProprietaire)
+        public static DirectorySecurity SecuriteDeCreation(bool definirProprietaire, bool restreindreProprietaire = false)
         {
             var s = new DirectorySecurity();
             s.SetAccessRuleProtection(true, false);
@@ -127,6 +152,8 @@ namespace GamingTweaker.Core
             s.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(SidSysteme), FileSystemRights.FullControl, heritage, PropagationFlags.None, AccessControlType.Allow));
             s.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(SidAdministrateurs), FileSystemRights.FullControl, heritage, PropagationFlags.None, AccessControlType.Allow));
             s.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(SidUtilisateurs), FileSystemRights.ReadAndExecute, heritage, PropagationFlags.None, AccessControlType.Allow));
+            if (restreindreProprietaire)
+                s.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(SidDroitsProprietaire), FileSystemRights.ReadAndExecute, heritage, PropagationFlags.None, AccessControlType.Allow));
             if (definirProprietaire) s.SetOwner(new SecurityIdentifier(SidAdministrateurs));
             return s;
         }
@@ -146,9 +173,26 @@ namespace GamingTweaker.Core
         }
 
         /// <summary>Crée un sous-dossier de façon atomique avec la DACL protégée (aucun instant sans protection).</summary>
-        public static void CreerDossier(string chemin, bool definirProprietaire = true)
+        public static void CreerDossier(string chemin, bool definirProprietaire = true, bool restreindreProprietaire = false)
         {
-            Directory.CreateDirectory(chemin, SecuriteDeCreation(definirProprietaire));
+            Directory.CreateDirectory(chemin, SecuriteDeCreation(definirProprietaire, restreindreProprietaire));
+        }
+
+        /// <summary>
+        /// Dossier Run déjà créé par une version précédente : lui applique (par poignée, sans propagation) la DACL avec OWNER RIGHTS,
+        /// héritée par les éléments créés ensuite.
+        /// </summary>
+        public static void RestreindreProprietaire(string dossier)
+        {
+            dossier = Path.GetFullPath(dossier).TrimEnd('\\');
+            using (var h = Ouvrir(dossier))
+            {
+                BY_HANDLE_FILE_INFORMATION info;
+                if (!GetFileInformationByHandle(h, out info)) throw new Win32Exception(Marshal.GetLastWin32Error(), "Lecture des attributs impossible : " + dossier);
+                if ((info.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0 || (info.FileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
+                    throw new IOException("Refus de sécurité, le dossier Run n'est pas un dossier ordinaire : " + dossier);
+                Appliquer(h, dossier, true, true);
+            }
         }
 
         /// <summary>Crée le dossier (DACL protégée, atomique) ou vérifie celui qui existe, puis contrôle tout son contenu. Lève une exception (refus) si un élément n'est pas sûr.</summary>
@@ -162,15 +206,16 @@ namespace GamingTweaker.Core
             if (string.IsNullOrWhiteSpace(racine)) throw new ArgumentException("Dossier à sécuriser non précisé.");
             racine = Path.GetFullPath(racine).TrimEnd('\\');
             if (!Existe(racine)) CreerDossier(racine, definirProprietaire);
-            Traiter(racine, true, definirProprietaire, 0);
+            Traiter(racine, true, definirProprietaire, 0, Path.Combine(racine, NomDossierJetable) + "\\");
         }
 
         /// <summary>
         /// Traite un élément par sa poignée, ouverte sans suivre les liens et en partage lecture seule. Pour un dossier, la poignée est tenue
         /// pendant le traitement de ses enfants. Lève une exception (texte en français) au premier élément refusé.
         /// </summary>
-        private static void Traiter(string chemin, bool estRacine, bool verifierProprietaire, uint volumeRacine)
+        private static void Traiter(string chemin, bool estRacine, bool verifierProprietaire, uint volumeRacine, string prefixeJetable)
         {
+            DecisionProtection purge = null;
             using (var h = Ouvrir(chemin))
             {
                 BY_HANDLE_FILE_INFORMATION info;
@@ -185,13 +230,47 @@ namespace GamingTweaker.Core
                     EstRacine = estRacine, EstDossier = estDossier, EstLien = (info.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0,
                     NombreLiens = (int)info.NumberOfLinks, EstVolumeInattendu = !estRacine && info.VolumeSerialNumber != volumeRacine,
                     ProprietaireSid = proprio, DaclSure = DaclSure(aces),
+                    Jetable = !estRacine && chemin.StartsWith(prefixeJetable, StringComparison.OrdinalIgnoreCase),
                 }, verifierProprietaire, chemin);
 
                 if (d.Action == ActionProtection.Refuser) throw new IOException("Refus de sécurité, " + d.Raison);
-                if (d.Action == ActionProtection.Appliquer) Appliquer(h, chemin, estDossier);
-                if (estDossier)
-                    foreach (var enfant in Directory.GetFileSystemEntries(chemin))
-                        Traiter(enfant, false, verifierProprietaire, volumeRacine);
+                if (d.Action == ActionProtection.Purger) purge = d;
+                else
+                {
+                    if (d.Action == ActionProtection.Appliquer) Appliquer(h, chemin, estDossier);
+                    if (estDossier)
+                        foreach (var enfant in Directory.GetFileSystemEntries(chemin))
+                            Traiter(enfant, false, verifierProprietaire, volumeRacine, prefixeJetable);
+                }
+            }
+            // Le dossier parent reste ouvert par l'appelant (partage en lecture seule) : il ne peut être ni renommé ni remplacé pendant la purge.
+            if (purge != null)
+            {
+                try { Purger(chemin); }
+                catch (Exception ex) { throw new IOException("Refus de sécurité, " + purge.Raison + " (suppression impossible : " + ex.Message + ")"); }
+                TraceAppli.Ecrire("dossier de données : élément temporaire supprimé (" + purge.Raison + ")");
+            }
+        }
+
+        /// <summary>
+        /// Supprime un élément et son contenu par poignée, sans jamais suivre un lien : un lien ou une jonction est supprimé lui-même, jamais sa cible.
+        /// Chaque dossier reste ouvert (sans partage en écriture ni suppression) pendant la suppression de son contenu.
+        /// </summary>
+        private static void Purger(string chemin)
+        {
+            var h = CreateFile(@"\\?\" + chemin, DELETE | FILE_READ_ATTRIBUTES | FILE_READ_DATA, FILE_SHARE_READ, IntPtr.Zero, 3 /* OPEN_EXISTING */,
+                FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, IntPtr.Zero);
+            if (h.IsInvalid) { int e = Marshal.GetLastWin32Error(); h.Dispose(); throw new Win32Exception(e, "ouverture impossible : " + chemin); }
+            using (h)
+            {
+                BY_HANDLE_FILE_INFORMATION info;
+                if (!GetFileInformationByHandle(h, out info)) throw new Win32Exception(Marshal.GetLastWin32Error(), "lecture des attributs impossible : " + chemin);
+                bool lien = (info.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0;
+                if (!lien && (info.FileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
+                    foreach (var enfant in Directory.GetFileSystemEntries(chemin)) Purger(enfant);
+                var supprimer = new byte[] { 1, 0, 0, 0 };   // FILE_DISPOSITION_INFO.DeleteFile = TRUE
+                if (!SetFileInformationByHandle(h, 4 /* FileDispositionInfo */, supprimer, (uint)supprimer.Length))
+                    throw new Win32Exception(Marshal.GetLastWin32Error(), "suppression impossible : " + chemin);
             }
         }
 
@@ -243,11 +322,11 @@ namespace GamingTweaker.Core
         /// <summary>
         /// Écrit la DACL (jamais le propriétaire) sur la poignée par SetKernelObjectSecurity : aucune propagation automatique vers le contenu.
         /// </summary>
-        private static void Appliquer(SafeFileHandle h, string chemin, bool estDossier)
+        private static void Appliquer(SafeFileHandle h, string chemin, bool estDossier, bool restreindreProprietaire = false)
         {
             var sd = new RawSecurityDescriptor(
                 ControlFlags.DiscretionaryAclPresent | ControlFlags.DiscretionaryAclProtected | ControlFlags.SelfRelative,
-                null, null, null, DaclAttendue(estDossier));
+                null, null, null, DaclAttendue(estDossier, restreindreProprietaire));
             var octets = new byte[sd.BinaryLength]; sd.GetBinaryForm(octets, 0);
             if (!SetKernelObjectSecurity(h, DACL_SECURITY_INFORMATION, octets))
             {
@@ -263,6 +342,7 @@ namespace GamingTweaker.Core
 
         // ---------- Win32 ----------
 
+        private const uint DELETE = 0x00010000;
         private const uint FILE_READ_DATA = 0x0001, READ_CONTROL = 0x00020000, WRITE_DAC = 0x00040000, FILE_READ_ATTRIBUTES = 0x0080;
         private const uint FILE_SHARE_READ = 0x1;
         private const uint FILE_FLAG_BACKUP_SEMANTICS = 0x02000000, FILE_FLAG_OPEN_REPARSE_POINT = 0x00200000;
@@ -288,6 +368,8 @@ namespace GamingTweaker.Core
         [DllImport("kernel32.dll")] private static extern IntPtr LocalFree(IntPtr p);
         [DllImport("advapi32.dll")]
         private static extern int GetSecurityInfo(SafeFileHandle h, int type, uint quoi, out IntPtr owner, out IntPtr group, out IntPtr dacl, out IntPtr sacl, out IntPtr sd);
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool SetFileInformationByHandle(SafeFileHandle h, int classe, byte[] info, uint taille);
         [DllImport("advapi32.dll", SetLastError = true)]
         private static extern bool SetKernelObjectSecurity(SafeFileHandle h, uint quoi, byte[] sd);
     }
